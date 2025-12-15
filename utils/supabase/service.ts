@@ -14,3 +14,11 @@ export async function createSupabaseServiceRole() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
+
+/**
+ * Alias for createSupabaseServiceRole for consistency
+ * Creates a Supabase client with admin/service role privileges
+ */
+export async function createAdminClient() {
+  return createSupabaseServiceRole();
+}

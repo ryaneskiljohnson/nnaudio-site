@@ -198,9 +198,6 @@ export async function createCheckoutSession(
     let priceId: string;
     let mode: "payment" | "subscription";
 
-    // Check if customer has previously had a trial
-    const hasHadTrial = await hasCustomerHadTrial(customerId);
-
     // Choose the correct price ID based on plan type
     switch (planType) {
       case "monthly":
@@ -256,20 +253,9 @@ export async function createCheckoutSession(
     // Enable entering promotion codes on the Checkout page
     sessionConfig.allow_promotion_codes = true;
 
-    // Add trial period for subscription plans (not applicable to lifetime purchases)
+    // Set payment method collection for subscription plans
     if (mode === "subscription") {
-      // Only add trial if customer hasn't had one before
-      if (!hasHadTrial) {
-        sessionConfig.subscription_data = {
-          trial_period_days: collectPaymentMethod ? 14 : 7, // Extended trial if collecting payment method
-        };
-      }
-      // If customer has had a trial before, no trial_period_days - they'll be charged immediately
-
-      // Set payment method collection based on collectPaymentMethod flag and trial history
-      // If customer has had a trial before, always require payment method
-      const requiresPaymentMethod = hasHadTrial || collectPaymentMethod;
-      sessionConfig.payment_method_collection = requiresPaymentMethod
+      sessionConfig.payment_method_collection = collectPaymentMethod
         ? "always"
         : "if_required";
     }
@@ -379,69 +365,7 @@ export async function findOrCreateCustomer(email: string): Promise<string> {
   }
 }
 
-/**
- * Checks if a customer has previously had a trial subscription
- * @param customerId The Stripe customer ID
- * @returns True if customer has had a trial before
- */
-export async function hasCustomerHadTrial(
-  customerId: string
-): Promise<boolean> {
-  try {
-    // Get all subscriptions for this customer
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      limit: 100,
-    });
 
-    // Check if any subscription had a trial period
-    const hasHadTrial = subscriptions.data.some(
-      (sub) =>
-        sub.trial_start !== null ||
-        sub.trial_end !== null ||
-        sub.status === "trialing"
-    );
-
-    return hasHadTrial;
-  } catch (error) {
-    console.error("Error checking customer trial history:", error);
-    // If we can't check, assume they haven't had a trial to be safe
-    return false;
-  }
-}
-
-/**
- * Server action: Checks if a customer has previously had a trial subscription by email
- * @param email Customer email to check
- * @returns Object with hasHadTrial boolean and customerId
- */
-export async function checkCustomerTrialStatus(email: string): Promise<{
-  hasHadTrial: boolean;
-  customerId: string | null;
-  error?: string;
-}> {
-  try {
-    // Find or create customer
-    const customerId = await findOrCreateCustomer(email);
-
-    // Check trial history
-    const hasHadTrial = await hasCustomerHadTrial(customerId);
-
-    const result = {
-      hasHadTrial,
-      customerId,
-    };
-
-    return result;
-  } catch (error) {
-    console.error("Error checking customer trial status:", error);
-    return {
-      hasHadTrial: false,
-      customerId: null,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
 
 export type CustomerPurchasedProResponse = {
   success: boolean;

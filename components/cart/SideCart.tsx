@@ -169,7 +169,8 @@ const ItemName = styled(Link)`
 
 const ItemPrice = styled.div`
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: #4ecdc4;
+  font-weight: 600;
 `;
 
 const ItemActions = styled.div`
@@ -259,7 +260,7 @@ const SummaryTotal = styled.div`
   margin-top: 0.5rem;
   font-size: 1.2rem;
   font-weight: 700;
-  color: white;
+  color: #4ecdc4;
 `;
 
 const ViewCartButton = styled(Link)`
@@ -400,17 +401,23 @@ export default function SideCart({ isOpen, onClose }: SideCartProps) {
                           {item.name}
                         </ItemName>
                         <ItemPrice>
-                          {hasDiscount && (
-                            <span style={{
-                              textDecoration: 'line-through',
-                              color: 'rgba(255, 255, 255, 0.5)',
-                              marginRight: '0.5rem',
-                              fontSize: '0.85rem'
-                            }}>
-                              ${item.price.toFixed(2)}
-                            </span>
+                          {displayPrice === 0 || displayPrice === null ? (
+                            <span>FREE</span>
+                          ) : (
+                            <>
+                              {hasDiscount && (
+                                <span style={{
+                                  textDecoration: 'line-through',
+                                  color: 'rgba(255, 255, 255, 0.5)',
+                                  marginRight: '0.5rem',
+                                  fontSize: '0.85rem'
+                                }}>
+                                  ${item.price.toFixed(2)}
+                                </span>
+                              )}
+                              <span>${displayPrice.toFixed(2)}</span>
+                            </>
                           )}
-                          <span>${displayPrice.toFixed(2)}</span>
                         </ItemPrice>
                         
                         <ItemActions>

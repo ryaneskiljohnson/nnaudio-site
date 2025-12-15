@@ -136,7 +136,7 @@ const PriceContainer = styled.div`
 const Price = styled.div`
   font-size: 3rem;
   font-weight: 700;
-  color: #8a2be2;
+  color: #4ecdc4;
 `;
 
 const OriginalPrice = styled.div`
@@ -962,6 +962,7 @@ export default function ProductPage() {
 
   const displayPrice = product.sale_price || product.price;
   const hasDiscount = product.sale_price && product.sale_price < product.price;
+  const isFree = displayPrice === 0 || displayPrice === null;
 
   return (
     <Container>
@@ -1035,7 +1036,10 @@ export default function ProductPage() {
               </ProductTagline>
             )}
 
-            {product.review_count > 0 && (
+            {product.review_count != null && 
+             product.review_count > 0 && 
+             product.average_rating != null && 
+             product.average_rating > 0 && (
               <Rating>
                 <Stars>
                   {[...Array(5)].map((_, i) => (
@@ -1054,8 +1058,8 @@ export default function ProductPage() {
             )}
 
             <PriceContainer>
-              <Price>${displayPrice}</Price>
-              {hasDiscount && (
+              <Price>{isFree ? 'FREE' : `$${displayPrice}`}</Price>
+              {hasDiscount && !isFree && (
                 <OriginalPrice>${product.price}</OriginalPrice>
               )}
             </PriceContainer>
@@ -1452,8 +1456,10 @@ export default function ProductPage() {
                       <h3 style={{ color: 'white', marginBottom: '0.5rem', fontSize: '1.2rem' }}>
                         {related.name}
                       </h3>
-                      <div style={{ color: '#8a2be2', fontSize: '1.3rem', fontWeight: 700 }}>
-                        ${related.sale_price || related.price}
+                      <div style={{ color: '#4ecdc4', fontSize: '1.3rem', fontWeight: 700 }}>
+                        {((related.sale_price || related.price) === 0 || (related.sale_price || related.price) === null) 
+                          ? 'FREE' 
+                          : `$${related.sale_price || related.price}`}
                       </div>
                     </div>
                   </RelatedCard>

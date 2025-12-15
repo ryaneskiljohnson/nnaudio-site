@@ -71,7 +71,7 @@ export default function PrivacyPolicyPage() {
     <>
       <NextSEO
         title={t("legal.privacyPolicy", "Privacy Policy")}
-        description={t("legal.privacy.intro.content", "This Privacy Policy explains how Cymasphere collects, uses, and protects your personal information when you use our services.")}
+        description={t("legal.privacy.intro.content", "This Privacy Policy explains how NNAudio collects, uses, and protects your personal information when you use our services.")}
       />
       
       <Container>
@@ -82,7 +82,7 @@ export default function PrivacyPolicyPage() {
           <Section>
             <SectionTitle>{t("legal.privacy.intro.title", "1. Introduction")}</SectionTitle>
             <SectionContent>
-              {t("legal.privacy.intro.content", "This Privacy Policy explains how Cymasphere collects, uses, and protects your personal information when you use our services. We respect your privacy and are committed to protecting your personal data.")}
+              {t("legal.privacy.intro.content", "This Privacy Policy explains how NNAudio collects, uses, and protects your personal information when you use our services. We respect your privacy and are committed to protecting your personal data.")}
             </SectionContent>
           </Section>
 
@@ -145,13 +145,13 @@ export default function PrivacyPolicyPage() {
           <Section>
             <SectionTitle>{t("legal.privacy.contact.title", "10. Contact Us")}</SectionTitle>
             <SectionContent>
-              {t("legal.privacy.contact.content", "If you have questions about this Privacy Policy, please contact us at support@cymasphere.com.")}
+              {t("legal.privacy.contact.content", "If you have questions about this Privacy Policy, please contact us at support@newnationllc.com.")}
             </SectionContent>
           </Section>
 
           <ContactInfo>
             <strong>{t("legal.contactInformation")}</strong><br />
-            {t("legal.email")}: support@cymasphere.com
+            {t("legal.email")}: support@newnationllc.com
           </ContactInfo>
         </motion.div>
       </Container>

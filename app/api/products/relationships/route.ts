@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const adminSupabase = createAdminClient();
+    const adminSupabase = await createAdminClient();
 
     const { data: relationship, error } = await adminSupabase
       .from('product_relationships')

@@ -515,8 +515,8 @@ export default function ProfilePage() {
   return (
     <>
       <NextSEO
-        title={t("dashboard.profile.title", "Profile") + " - Cymasphere"}
-        description={t("dashboard.profile.title", "Your Cymasphere profile")}
+        title={t("dashboard.profile.title", "Profile") + " - NNAudio"}
+        description={t("dashboard.profile.title", "Your NNAudio profile")}
         canonical="/profile"
         noindex={true}
       />

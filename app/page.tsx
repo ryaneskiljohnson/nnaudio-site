@@ -13,10 +13,10 @@ const PricingSection = dynamic(() => import("@/components/sections/PricingSectio
   loading: () => <div style={{ minHeight: "800px", background: "#0a0a0a" }} />,
 });
 
-const FAQSection = dynamic(() => import("@/components/sections/FAQSection"), {
-  ssr: true,
-  loading: () => <div style={{ minHeight: "600px", background: "#0a0a0a" }} />,
-});
+// const FAQSection = dynamic(() => import("@/components/sections/FAQSection"), {
+//   ssr: true,
+//   loading: () => <div style={{ minHeight: "600px", background: "#0a0a0a" }} />,
+// });
 
 // Fallback static products (used if API fails)
 const staticPlugins = [
@@ -283,7 +283,7 @@ export default function Home() {
       <PricingSection />
       
       {/* FAQ section */}
-      <FAQSection />
+      {/* <FAQSection /> */}
     </>
   );
 }

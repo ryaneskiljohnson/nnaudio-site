@@ -8,7 +8,6 @@ import {
   FaFilePdf,
   FaInfoCircle,
   FaRocket,
-  FaTabletAlt,
 } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -191,29 +190,6 @@ const DownloadButton = styled.a<{ disabled?: boolean }>`
   }
 `;
 
-const ComingSoonBadge = styled.div`
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
-  color: white;
-  padding: 0.4rem 0.8rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-  z-index: 10;
-  white-space: nowrap;
-`;
-
-const DownloadItemWithBadge = styled(DownloadItem)`
-  position: relative;
-  overflow: visible;
-`;
-
 const ResourcesSection = styled.div`
   margin-top: 2rem;
 `;
@@ -285,6 +261,26 @@ const ResourceTitle = styled.div`
 const ResourceDescription = styled.div`
   font-size: 0.85rem;
   color: var(--text-secondary);
+`;
+
+const InfoBox = styled.div`
+  background: linear-gradient(135deg, rgba(108, 99, 255, 0.1), rgba(78, 205, 196, 0.1));
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+  color: var(--text);
+  
+  p {
+    margin: 0;
+    line-height: 1.6;
+    font-size: 0.95rem;
+  }
+  
+  strong {
+    color: white;
+    font-weight: 600;
+  }
 `;
 
 const ResourceLink = styled.a`
@@ -378,11 +374,11 @@ function Downloads() {
         if (files) {
           const windowsFile = files.find(
             (file) =>
-              file.name.includes("Cymasphere_Installer") &&
+              file.name.includes("NNAudio_Installer") &&
               file.name.endsWith(".exe")
           );
           const macosFile = files.find(
-            (file) => file.name === "Cymasphere_Installer.pkg"
+            (file) => file.name === "NNAudio_Installer.pkg"
           );
 
           const formatFileSize = (bytes: number | null | undefined): string => {
@@ -442,9 +438,26 @@ function Downloads() {
       <DownloadCard>
         <CardTitle>
           <FaDownload />{" "}
-          {t("dashboard.downloads.installers", "Cymasphere Installers")}
+          {t("dashboard.downloads.installers", "NNAudio Installers")}
         </CardTitle>
         <CardContent>
+          <InfoBox>
+            <p>
+              {t(
+                "dashboard.downloads.accessInfo",
+                "All NNAudio products are installed using NNAudio Access, our product manager software app. This includes plugins, MIDI packs, loops, presets, templates, and all other products. After installing NNAudio Access, you can browse, download, and manage all your purchased products from one convenient location."
+              ).split("NNAudio Access").map((part, index, array) => 
+                index < array.length - 1 ? (
+                  <React.Fragment key={index}>
+                    {part}
+                    <strong>NNAudio Access</strong>
+                  </React.Fragment>
+                ) : (
+                  part
+                )
+              )}
+            </p>
+          </InfoBox>
           <DownloadsGrid>
             <DownloadItem>
               <DownloadHeader>
@@ -455,7 +468,7 @@ function Downloads() {
                   <DownloadName>
                     {t(
                       "dashboard.downloads.macosTitle",
-                      "Cymasphere for macOS"
+                      "NNAudio Access for macOS"
                     )}
                   </DownloadName>
                   <DownloadVersion>
@@ -485,7 +498,7 @@ function Downloads() {
                     href={
                       fileInfo.macos.size === "Loading..."
                         ? "#"
-                        : "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/builds//Cymasphere_Installer.pkg"
+                        : "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/builds//NNAudio_Installer.pkg"
                     }
                     disabled={fileInfo.macos.size === "Loading..."}
                     onClick={(e) => {
@@ -515,7 +528,7 @@ function Downloads() {
                   <DownloadName>
                     {t(
                       "dashboard.downloads.windowsTitle",
-                      "Cymasphere for Windows"
+                      "NNAudio Access for Windows"
                     )}
                   </DownloadName>
                   <DownloadVersion>
@@ -545,7 +558,7 @@ function Downloads() {
                     href={
                       fileInfo.windows.size === "Loading..."
                         ? "#"
-                        : "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/builds//Cymasphere_Installer.exe"
+                        : "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/builds//NNAudio_Installer.exe"
                     }
                     disabled={fileInfo.windows.size === "Loading..."}
                     onClick={(e) => {
@@ -565,57 +578,6 @@ function Downloads() {
                 </DownloadButtonContainer>
               </DownloadDetails>
             </DownloadItem>
-
-            <DownloadItemWithBadge>
-              <ComingSoonBadge>
-                {t("dashboard.downloads.comingSoon", "Coming Soon")}
-              </ComingSoonBadge>
-              <DownloadHeader>
-                <DownloadIcon>
-                  <FaTabletAlt />
-                </DownloadIcon>
-                <DownloadInfo>
-                  <DownloadName>
-                    {t("dashboard.downloads.ipadTitle", "Cymasphere for iPad")}
-                  </DownloadName>
-                  <DownloadVersion>
-                    {t("dashboard.downloads.version", "Version")}{" "}
-                    {versionInfo.version}
-                  </DownloadVersion>
-                </DownloadInfo>
-              </DownloadHeader>
-              <DownloadDetails>
-                <div>
-                  <DownloadDescription>
-                    {t(
-                      "dashboard.downloads.ipadDesc",
-                      "Native iPad app with full feature set, optimized for iPad. Available soon on the App Store."
-                    )}
-                  </DownloadDescription>
-                  <DownloadMeta>
-                    <DownloadSize>—</DownloadSize>
-                    <DownloadDate>
-                      {t("dashboard.downloads.comingSoon", "Coming Soon")}
-                    </DownloadDate>
-                  </DownloadMeta>
-                </div>
-                <DownloadButtonContainer>
-                  <DownloadButton
-                    href="#"
-                    disabled={true}
-                    onClick={(e) => {
-                      e.preventDefault();
-                    }}
-                  >
-                    <FaApple />{" "}
-                    {t(
-                      "dashboard.downloads.viewOnAppStore",
-                      "View on App Store"
-                    )}
-                  </DownloadButton>
-                </DownloadButtonContainer>
-              </DownloadDetails>
-            </DownloadItemWithBadge>
           </DownloadsGrid>
         </CardContent>
       </DownloadCard>
@@ -641,7 +603,7 @@ function Downloads() {
                   <ResourceDescription>
                     {t(
                       "dashboard.downloads.gettingStartedDesc",
-                      "Interactive guide to set up Cymasphere for your OS and DAW"
+                      "Interactive guide to set up NNAudio Products for your OS and DAW"
                     )}
                   </ResourceDescription>
                 </ResourceInfo>

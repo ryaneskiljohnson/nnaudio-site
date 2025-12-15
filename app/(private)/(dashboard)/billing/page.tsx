@@ -424,24 +424,6 @@ export default function BillingPage() {
   // Get subscription data from user object and cast to extended profile type
   const userSubscription = user.profile as ProfileWithSubscriptionDetails;
 
-  // Define a function to determine if the user is in a trial period
-  const isInTrialPeriod = useMemo(() => {
-    if (!userSubscription.trial_expiration) return false;
-    return new Date() < new Date(userSubscription.trial_expiration);
-  }, [userSubscription.trial_expiration]);
-
-  // Calculate days left in trial
-  const daysLeftInTrial = useMemo(() => {
-    if (!userSubscription.trial_expiration) return 0;
-    const today = new Date();
-    const trialEnd = new Date(userSubscription.trial_expiration);
-    const diffTime = Number(trialEnd) - Number(today);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays > 0 ? diffDays : 0;
-  }, [userSubscription.trial_expiration]);
-
-  // State for trial status checking
-  const [hasHadTrial, setHasHadTrial] = useState<boolean | null>(null);
 
   // State for NFR status
   const [hasNfr, setHasNfr] = useState<boolean | null>(null);
@@ -499,24 +481,6 @@ export default function BillingPage() {
   // Add state for portal redirect loading
   const [isPortalLoading, setIsPortalLoading] = useState(false);
 
-  // Check if user has completed a trial
-  const hasCompletedTrial = useMemo(() => {
-    // Consider a trial completed if:
-    // 1. User has an active subscription (not "none")
-    // 2. User has a past trial_expiration date but no active subscription
-    return (
-      userSubscription.subscription !== "none" ||
-      (userSubscription.trial_expiration &&
-        new Date(userSubscription.trial_expiration) < new Date() &&
-        userSubscription.subscription === "none")
-    );
-  }, [userSubscription]);
-
-  // Check if the user should see trial messaging
-  const shouldShowTrialContent = useMemo(() => {
-    // Only show trial content if user is currently in an active trial period
-    return isInTrialPeriod && !hasCompletedTrial;
-  }, [isInTrialPeriod, hasCompletedTrial]);
 
   // Function to refresh user data from AuthContext
   const refreshUserData = async () => {
@@ -526,26 +490,6 @@ export default function BillingPage() {
     setLastUserUpdate(new Date());
   };
 
-  // Function to check if customer has had a trial before
-  const checkTrialStatus = useCallback(async () => {
-    if (!user?.email) return;
-
-    try {
-      const { checkCustomerTrialStatus } = await import(
-        "@/utils/stripe/actions"
-      );
-      const result = await checkCustomerTrialStatus(user.email);
-
-      if (result.error) {
-        setHasHadTrial(false); // Default to false on error
-      } else {
-        setHasHadTrial(result.hasHadTrial);
-      }
-    } catch (error) {
-      console.error("Error checking trial status:", error);
-      setHasHadTrial(false); // Default to false on error
-    }
-  }, [user?.email]);
 
   // Fetch NFR status
   useEffect(() => {
@@ -580,8 +524,8 @@ export default function BillingPage() {
 
       // Only fetch user-specific data if they have a customer ID
       if (user?.profile?.customer_id) {
-        // Fetch upcoming invoice if user has an active subscription or is in trial
-        if (isInTrialPeriod || userSubscription.subscription !== "none") {
+        // Fetch upcoming invoice if user has an active subscription
+        if (userSubscription.subscription !== "none") {
           fetchUpcomingInvoice();
         }
 
@@ -684,17 +628,10 @@ export default function BillingPage() {
     // Fetch all data when component mounts or lastUserUpdate changes
     fetchAllData();
 
-    // Check trial status for logged-in users
-    if (user?.email) {
-      checkTrialStatus();
-    }
   }, [
     user?.profile?.customer_id,
-    isInTrialPeriod,
     lastUserUpdate,
     userSubscription.subscription,
-    user?.email,
-    checkTrialStatus,
   ]);
 
   // Function to refresh all data
@@ -733,9 +670,7 @@ export default function BillingPage() {
       setShowPlanModal(false);
       setIsPlanChangeLoading(false);
 
-      await initiateCheckoutHook("lifetime", {
-        hasHadTrial: hasHadTrial === true,
-      });
+      await initiateCheckoutHook("lifetime", {});
       return;
     }
 
@@ -759,7 +694,6 @@ export default function BillingPage() {
 
       await initiateCheckoutHook(validPlanType, {
         willProvideCard,
-        hasHadTrial: hasHadTrial === true,
       });
       return;
     }
@@ -783,7 +717,6 @@ export default function BillingPage() {
       // Keep modal open and show loading spinner while creating checkout session
       // Redirect to Stripe Checkout for plan change
       const result = await initiateCheckoutHook(validPlanType, {
-        hasHadTrial: hasHadTrial === true,
         isPlanChange: true,
       });
 
@@ -957,31 +890,6 @@ export default function BillingPage() {
         {t("dashboard.billing.title", "Billing & Subscription")}
       </SectionTitle>
 
-      {shouldShowTrialContent && (
-        <AlertBanner
-          style={{
-            backgroundColor: "rgba(249, 200, 70, 0.1)",
-            borderColor: "rgba(249, 200, 70, 0.3)",
-            color: "#F96E46",
-          }}
-        >
-          <FaGift />
-          <p>
-            {t(
-              "dashboard.billing.trialBanner",
-              "You're currently on a {{trialDays}}-day free trial with full access to all premium features. {{daysLeft}} days remaining. Your first payment of ${{amount}} will be on {{date}}.",
-              {
-                trialDays: 7,
-                daysLeft: daysLeftInTrial,
-                amount: isLoadingInvoice
-                  ? "..."
-                  : upcomingInvoiceAmount?.toFixed(2) || getCurrentPrice(),
-                date: formatDate(userSubscription.trial_expiration),
-              }
-            )}
-          </p>
-        </AlertBanner>
-      )}
 
       {priceError && (
         <AlertBanner style={{ backgroundColor: "rgba(255, 72, 66, 0.1)" }}>
@@ -1027,50 +935,6 @@ export default function BillingPage() {
                   </PlanDescription>
                 </div>
 
-                {/* Right Column */}
-                <div>
-                  {/* Trial Status */}
-                  {hasHadTrial !== null && (
-                    <div
-                      style={{
-                        marginTop: "0",
-                        padding: "0.75rem",
-                        background: hasHadTrial
-                          ? "rgba(255, 87, 51, 0.1)"
-                          : "rgba(16, 185, 129, 0.1)",
-                        borderRadius: "6px",
-                        fontSize: "0.9rem",
-                        display: "flex",
-                        alignItems: "center",
-                        color: hasHadTrial
-                          ? "var(--warning)"
-                          : "var(--success)",
-                      }}
-                    >
-                      {hasHadTrial ? (
-                        <>
-                          <FaCheck
-                            style={{ marginRight: "0.5rem", flexShrink: 0 }}
-                          />
-                          {t(
-                            "dashboard.billing.trialCompleted",
-                            "Free trial completed"
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <FaGift
-                            style={{ marginRight: "0.5rem", flexShrink: 0 }}
-                          />
-                          {t(
-                            "dashboard.billing.trialAvailable",
-                            "Free trial available - choose a plan below to start"
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
               </PlanDetails>
             </CardContent>
           </BillingCard>
@@ -1089,7 +953,6 @@ export default function BillingPage() {
             onBillingPeriodChange={(period) =>
               setSelectedBillingPeriodForPricing(period)
             }
-            showTrialOptions={!hasHadTrial}
           />
         </div>
       ) : (
@@ -1255,32 +1118,6 @@ export default function BillingPage() {
                     )}
                   </div>
                 )}
-
-                {/* Trial Status - show if we know the status, but not for lifetime or Elite access */}
-                {hasHadTrial !== null &&
-                  !hasNfr &&
-                  !isSubscriptionLifetime(userSubscription.subscription) && (
-                    <div
-                      style={{
-                        marginTop: "0.75rem",
-                        padding: "0.75rem",
-                        background: "rgba(16, 185, 129, 0.1)",
-                        borderRadius: "6px",
-                        fontSize: "0.9rem",
-                        display: "flex",
-                        alignItems: "center",
-                        color: "var(--success)",
-                      }}
-                    >
-                      <FaCheck
-                        style={{ marginRight: "0.5rem", flexShrink: 0 }}
-                      />
-                      {t(
-                        "dashboard.billing.usedFreeTrial",
-                        "You used your free trial to start this subscription"
-                      )}
-                    </div>
-                  )}
               </div>
             </PlanDetails>
 
@@ -1396,7 +1233,7 @@ export default function BillingPage() {
             onIntervalChange={handleIntervalChange}
             onConfirm={handleConfirmPlanChange}
             formatDate={formatDate}
-            planName="Cymasphere Pro"
+            planName="NNAudio Pro"
             monthlyPrice={monthlyPrice ?? 0}
             yearlyPrice={yearlyPrice ?? 0}
             lifetimePrice={lifetimePrice ?? 0}
@@ -1440,7 +1277,6 @@ export default function BillingPage() {
             lifetimeDiscount={lifetimeDiscount || undefined}
             onCardToggleChange={handleCardToggleChange}
             isPlanChangeLoading={isPlanChangeLoading}
-            hasHadTrial={hasHadTrial}
           />
         )}
       </AnimatePresence>

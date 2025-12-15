@@ -701,7 +701,7 @@ function DashboardPage() {
           {user
             ? t(
                 "dashboard.main.welcomeSubtitle",
-                "Here's an overview of your CYMASPHERE account"
+                "Here's an overview of your NNAudio account"
               )
             : t(
                 "dashboard.main.pleaseSignIn",

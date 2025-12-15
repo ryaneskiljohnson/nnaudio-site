@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const adminSupabase = createAdminClient();
+    const adminSupabase = await createAdminClient();
 
     // Create slug from name if not provided
     const slug = body.slug || body.name.toLowerCase()

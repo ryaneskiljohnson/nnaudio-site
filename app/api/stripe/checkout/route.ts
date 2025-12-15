@@ -91,26 +91,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if customer has had a trial before
-    if (resolved_customer_id) {
-      try {
-      const hasHadTrial = await hasCustomerHadTrial(resolved_customer_id);
-
-      // If customer has had a trial and we're trying to give them another trial, return error
-      if (hasHadTrial && !collectPaymentMethod && planType !== "lifetime") {
-        return NextResponse.json({
-          url: null,
-          error: "TRIAL_USED_BEFORE",
-          message:
-            "You've already used a trial before. Please provide payment information to proceed.",
-          hasHadTrial: true,
-        });
-        }
-      } catch (error) {
-        console.error("Error checking trial history:", error);
-        // Continue with checkout even if trial check fails
-      }
-    }
 
     // CRITICAL: Check if customer already has a lifetime purchase
     if (resolved_customer_id && planType === "lifetime") {
@@ -279,30 +259,6 @@ async function findOrCreateCustomer(email: string): Promise<string> {
   }
 }
 
-/**
- * Checks if a customer has previously had a trial subscription
- */
-async function hasCustomerHadTrial(customerId: string): Promise<boolean> {
-  try {
-    // Get all subscriptions for this customer
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      limit: 100,
-    });
-
-    // Check if any subscription had a trial period
-    return subscriptions.data.some(
-      (sub) =>
-        sub.trial_start !== null ||
-        sub.trial_end !== null ||
-        sub.status === "trialing"
-    );
-  } catch (error) {
-    console.error("Error checking customer trial history:", error);
-    // If we can't check, assume they haven't had a trial to be safe
-    return false;
-  }
-}
 
 /**
  * Checks if a customer has already purchased lifetime access
@@ -417,15 +373,6 @@ async function createCheckoutSession(
       return { url: null, error: `Invalid plan type: ${planType}` };
     }
 
-    // Check if customer has previously had a trial
-    let hasHadTrial = false;
-    try {
-      hasHadTrial = await hasCustomerHadTrial(customerId);
-    } catch (error) {
-      console.error("Error checking trial history in createCheckoutSession:", error);
-      // Continue with checkout even if trial check fails
-    }
-
     // Determine mode based on plan type
     let mode: "subscription" | "payment";
     let subscriptionData:
@@ -438,15 +385,7 @@ async function createCheckoutSession(
     } else {
       // All other plans are subscriptions
       mode = "subscription";
-
-      // For plan changes, NEVER add a trial period - user already has a subscription
-      // Only add trial for new subscriptions if customer hasn't had one before
-      if (!isPlanChange && !hasHadTrial) {
-        subscriptionData = {
-          trial_period_days: collectPaymentMethod ? 14 : 7, // Extended trial if collecting payment method
-        };
-      }
-      // If this is a plan change OR customer has had a trial before, no trial_period_days - they'll be charged immediately
+      // No trial periods - charge immediately
     }
 
     // Get user_id and email from Supabase if customer_id is available
@@ -484,13 +423,8 @@ async function createCheckoutSession(
       }
     }
 
-    // Get plan name for Meta tracking with trial period
-    let planName = await getPlanName(priceId, planType);
-    
-    // Add trial period to plan name for better tracking
-    if (mode === "subscription" && subscriptionData?.trial_period_days) {
-      planName = `${planName}_trial${subscriptionData.trial_period_days}`;
-    }
+    // Get plan name for Meta tracking
+    const planName = await getPlanName(priceId, planType);
     
     // Generate event_id for deduplication
     const eventId = randomUUID();
@@ -554,12 +488,9 @@ async function createCheckoutSession(
       };
     }
 
-    // Set payment method collection based on collectPaymentMethod flag and trial history
+    // Set payment method collection based on collectPaymentMethod flag
     if (mode === "subscription") {
-      // If customer has had a trial before, always require payment method
-      // Otherwise, use the collectPaymentMethod flag
-      const requiresPaymentMethod = hasHadTrial || collectPaymentMethod;
-      sessionParams.payment_method_collection = requiresPaymentMethod
+      sessionParams.payment_method_collection = collectPaymentMethod
         ? "always"
         : "if_required";
     }

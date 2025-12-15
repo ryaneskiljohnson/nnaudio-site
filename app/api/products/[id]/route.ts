@@ -112,7 +112,7 @@ export async function PUT(
 
     const { id } = params;
     const body = await request.json();
-    const adminSupabase = createAdminClient();
+    const adminSupabase = await createAdminClient();
 
     const { data: product, error } = await adminSupabase
       .from('products')
@@ -175,7 +175,7 @@ export async function DELETE(
     }
 
     const { id } = params;
-    const adminSupabase = createAdminClient();
+    const adminSupabase = await createAdminClient();
 
     const { error } = await adminSupabase
       .from('products')

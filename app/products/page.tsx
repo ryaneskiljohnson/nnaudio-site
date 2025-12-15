@@ -140,6 +140,7 @@ const ProductName = styled.h3`
   font-weight: 600;
   margin-bottom: 0.5rem;
   color: white;
+  text-align: center;
 `;
 
 const ProductTagline = styled.p`
@@ -152,7 +153,7 @@ const ProductTagline = styled.p`
 const ProductPrice = styled.div`
   font-size: 1.5rem;
   font-weight: 700;
-  color: #8a2be2;
+  color: #4ecdc4;
   margin-top: 1rem;
 `;
 
@@ -357,7 +358,9 @@ export default function ProductsPage() {
                   
                   <ProductMeta>
                     <ProductPrice>
-                      {product.sale_price ? (
+                      {product.price === 0 || product.price === null ? (
+                        'FREE'
+                      ) : product.sale_price ? (
                         <>
                           <span style={{ textDecoration: 'line-through', fontSize: '1rem', opacity: 0.6, marginRight: '8px' }}>
                             ${product.price}
@@ -373,10 +376,13 @@ export default function ProductsPage() {
                     </CategoryBadge>
                   </ProductMeta>
                   
-                  {product.review_count && product.review_count > 0 && (
+                  {product.review_count != null && 
+                   product.review_count > 0 && 
+                   product.average_rating != null && 
+                   product.average_rating > 0 && (
                     <Rating>
                       <FaStar />
-                      <span>{product.average_rating?.toFixed(1)} ({product.review_count})</span>
+                      <span>{product.average_rating.toFixed(1)} ({product.review_count})</span>
                     </Rating>
                   )}
                 </ProductInfo>

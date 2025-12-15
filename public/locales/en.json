@@ -564,7 +564,7 @@
     },
     "main": {
       "welcome": "Welcome back, {{name}}!",
-      "welcomeSubtitle": "Here's an overview of your CYMASPHERE account",
+      "welcomeSubtitle": "Here's an overview of your NNAudio account",
       "pleaseSignIn": "Please sign in to access your dashboard",
       "deviceConnections": "Device Connections",
       "activeDevices": "Active device connections",
@@ -636,14 +636,14 @@
       "support": "Support",
       "supportAvailability": "24/7",
       "premiumSupport": "Premium support available",
-      "supportIntro": "Need help with your account or have questions about Cymasphere? Send us a message and we'll get back to you as soon as possible.",
+      "supportIntro": "Need help with your account or have questions about NNAudio? Send us a message and we'll get back to you as soon as possible.",
       "yourName": "Your Name",
       "yourEmail": "Your Email",
       "message": "Your Message",
       "sending": "Sending...",
       "downloads": "Downloads",
       "downloadIntro": "Access your software downloads and installation files.",
-      "downloadAvailable": "Download the latest version of Cymasphere and get started with your music production.",
+      "downloadAvailable": "Download the latest version of NNAudio and get started with your music production.",
       "downloadRequiresSubscription": "Subscribe to access software downloads and premium features.",
       "goToDownloads": "Go to Downloads",
       "viewDownloads": "View Downloads",
@@ -754,10 +754,11 @@
       "downloadComplete": "Download Complete",
       "installationInstructions": "Installation Instructions",
       "systemRequirements": "System Requirements",
-      "installers": "Cymasphere Installers",
-      "macosTitle": "Cymasphere for macOS",
+      "installers": "NNAudio Installers",
+      "accessInfo": "All NNAudio products are installed using NNAudio Access, our product manager software app. This includes plugins, MIDI packs, loops, presets, templates, and all other products. After installing NNAudio Access, you can browse, download, and manage all your purchased products from one convenient location.",
+      "macosTitle": "NNAudio Access for macOS",
       "macosDesc": "Universal installer for macOS with standalone app and plugins (AU, VST3) for both Apple Silicon and Intel processors.",
-      "windowsTitle": "Cymasphere for Windows",
+      "windowsTitle": "NNAudio Access for Windows",
       "windowsDesc": "Complete installer for Windows 10/11 including standalone app and plugin formats (VST3).",
       "updated": "Updated",
       "updateDate": "March 10, 2023",
@@ -765,7 +766,8 @@
       "downloadWindows": "Download for Windows",
       "resources": "Resources",
       "quickStart": "Quick Start Guide",
-      "quickStartDesc": "Get up and running with Cymasphere in minutes",
+      "quickStartDesc": "Get up and running with NNAudio in minutes",
+      "gettingStartedDesc": "Interactive guide to set up NNAudio Products for your OS and DAW",
       "downloadPdf": "Download PDF"
     },
     "settings": {
@@ -868,11 +870,11 @@
     "terms": {
       "acceptance": {
         "title": "1. Acceptance of Terms",
-        "content": "By accessing or using Cymasphere's services, website, or applications, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services."
+        "content": "By accessing or using NNAudio's services, website, or applications, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services."
       },
       "description": {
         "title": "2. Description of Service",
-        "content": "Cymasphere provides music theory and composition tools through web and desktop applications. These services may change from time to time without prior notice."
+        "content": "NNAudio provides music production plugins, MIDI packs, loops, and related products through our website. These services may change from time to time without prior notice."
       },
       "accounts": {
         "title": "3. User Accounts",
@@ -880,15 +882,15 @@
       },
       "content": {
         "title": "4. User Content",
-        "content": "You retain all rights to any content you create, upload, or share through our services. By uploading content, you grant Cymasphere a non-exclusive license to use, reproduce, and distribute your content solely to provide services to you."
+        "content": "You retain all rights to any content you create, upload, or share through our services. By uploading content, you grant NNAudio a non-exclusive license to use, reproduce, and distribute your content as necessary to provide our services."
       },
       "ip": {
         "title": "5. Intellectual Property",
-        "content": "Cymasphere and its content, features, and functionality are owned by us and are protected by copyright, trademark, and other intellectual property laws."
+        "content": "NNAudio and its content, features, and functionality are owned by us and are protected by copyright, trademark, and other intellectual property laws."
       },
       "subscription": {
         "title": "6. Subscription and Payments",
-        "content": "Various subscription plans are available for Cymasphere. By subscribing, you agree to pay the applicable fees. Subscription fees are non-refundable except as required by law."
+        "content": "Various subscription plans and individual products are available from NNAudio. By subscribing or purchasing, you agree to pay the applicable fees."
       },
       "termination": {
         "title": "7. Termination",
@@ -900,7 +902,7 @@
       },
       "limitation": {
         "title": "9. Limitation of Liability",
-        "content": "In no event shall Cymasphere be liable for any indirect, incidental, special, or consequential damages arising out of or in connection with your use of our services."
+        "content": "In no event shall NNAudio be liable for any indirect, incidental, special, or consequential damages arising out of or in connection with your use of our services."
       },
       "changes": {
         "title": "10. Changes to Terms",
@@ -908,17 +910,17 @@
       },
       "governing": {
         "title": "11. Governing Law",
-        "content": "These terms shall be governed by the laws of the jurisdiction in which Cymasphere operates, without regard to its conflict of law provisions."
+        "content": "These terms shall be governed by the laws of the jurisdiction in which NNAudio operates, without regard to its conflict of law provisions."
       },
       "contact": {
         "title": "12. Contact",
-        "content": "For questions about these terms, please contact us at support@cymasphere.com."
+        "content": "For questions about these terms, please contact us at support@newnationllc.com."
       }
     },
     "privacy": {
       "intro": {
         "title": "1. Introduction",
-        "content": "This Privacy Policy explains how Cymasphere collects, uses, and protects your personal information when you use our services. We respect your privacy and are committed to protecting your personal data."
+        "content": "This Privacy Policy explains how NNAudio collects, uses, and protects your personal information when you use our services. We respect your privacy and are committed to protecting your personal data."
       },
       "collect": {
         "title": "2. Information We Collect",
@@ -954,7 +956,7 @@
       },
       "contact": {
         "title": "10. Contact Us",
-        "content": "If you have questions about this Privacy Policy, please contact us at support@cymasphere.com."
+        "content": "If you have questions about this Privacy Policy, please contact us at support@newnationllc.com."
       }
     }
   },

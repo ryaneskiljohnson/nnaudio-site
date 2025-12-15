@@ -617,10 +617,10 @@ const getInstructions = (
       instructions.push({
         title: "Set Up Virtual MIDI Device (LoopMIDI)",
         steps: [
-          'Download and install the free <a href="https://www.tobias-erichsen.de/software/loopmidi.html" target="_blank" rel="noopener noreferrer">LoopMIDI</a> software, which allows you to create a virtual MIDI device that you can route MIDI from Cymasphere to',
+          'Download and install the free <a href="https://www.tobias-erichsen.de/software/loopmidi.html" target="_blank" rel="noopener noreferrer">LoopMIDI</a> software, which allows you to create a virtual MIDI device that you can route MIDI from NNAudio to',
           "Launch LoopMIDI and click '+' to create a new port",
-          'Name it (e.g., "Cymasphere MIDI")',
-          "Keep LoopMIDI running while using Cymasphere",
+          'Name it (e.g., "NNAudio MIDI")',
+          "Keep LoopMIDI running while using NNAudio",
         ],
       });
     }
@@ -639,27 +639,27 @@ const getInstructions = (
           }`,
           "Add an instrument track with any virtual instrument",
           "Record-enable the instrument track",
-          "Cymasphere will output MIDI to the virtual MIDI device, which will come back into Logic Pro like an external keyboard",
+          "NNAudio will output MIDI to the virtual MIDI device, which will come back into Logic Pro like an external keyboard",
         ],
       });
       instructions.push({
         title: "MIDI Map Transport Controls (Optional but Recommended)",
         steps: [
-          "This allows you to use Cymasphere's transport control to sync with Logic Pro's transport",
+          "This allows you to use NNAudio's transport control to sync with Logic Pro's transport",
           "In Logic Pro, go to Logic Pro > Control Surfaces > Learn Assignment for...",
           "Select the control you want to map (e.g., Play, Stop, Record)",
-          "In Cymasphere, click the corresponding transport button",
+          "In NNAudio, click the corresponding transport button",
           "Logic Pro will detect the MIDI message and create the assignment",
           "Repeat for other transport controls (Play, Stop, Record, etc.)",
-          "Now Cymasphere's transport controls will control Logic Pro's transport!",
+          "Now NNAudio's transport controls will control Logic Pro's transport!",
         ],
       });
     } else {
       instructions.push({
-        title: "Add Cymasphere as Plugin in Logic Pro",
+        title: "Add NNAudio as Plugin in Logic Pro",
         steps: [
           "Create a new software instrument track",
-          "Add Cymasphere as a MIDI FX",
+          "Add NNAudio as a MIDI FX",
           "In the instrument slot, under Utility, add External Instrument to the same track",
           `Open External Instrument and set MIDI Destination to ${
             os === "macos" ? "IAC Driver" : "your LoopMIDI port"
@@ -667,19 +667,19 @@ const getInstructions = (
           "Create a new software instrument track with any virtual instrument",
           "Set the MIDI input channel of the instrument track to 1, 2, 3, or the appropriate channel",
           "Record-enable the instrument track",
-          "Open Cymasphere and press voicing buttons in Palette view—you should see the instrument track metering and hear audio",
+          "Open NNAudio and press voicing buttons in Palette view—you should see the instrument track metering and hear audio",
         ],
       });
       instructions.push({
         title: "MIDI Map Transport Controls (Optional but Recommended)",
         steps: [
-          "This allows you to use Cymasphere's transport control to sync with Logic Pro's transport",
+          "This allows you to use NNAudio's transport control to sync with Logic Pro's transport",
           "In Logic Pro, go to Logic Pro > Control Surfaces > Learn Assignment for...",
           "Select the control you want to map (e.g., Play, Stop, Record)",
-          "In Cymasphere, click the corresponding transport button",
+          "In NNAudio, click the corresponding transport button",
           "Logic Pro will detect the MIDI message and create the assignment",
           "Repeat for other transport controls (Play, Stop, Record, etc.)",
-          "Now Cymasphere's transport controls will control Logic Pro's transport!",
+          "Now NNAudio's transport controls will control Logic Pro's transport!",
         ],
       });
     }
@@ -694,54 +694,54 @@ const getInstructions = (
           }`,
           "Create an instrument track with any virtual instrument",
           "Arm both tracks for recording",
-          "Cymasphere will send MIDI to Ableton through the virtual MIDI device",
+          "NNAudio will send MIDI to Ableton through the virtual MIDI device",
         ],
       });
       instructions.push({
         title: "MIDI Map Transport Controls (Optional but Recommended)",
         steps: [
-          "This allows you to use Cymasphere's transport control to sync with Ableton Live's transport",
+          "This allows you to use NNAudio's transport control to sync with Ableton Live's transport",
           `Go to Preferences > MIDI and enable ${
             os === "macos" ? "IAC Driver" : "your LoopMIDI port"
           } as a Remote input`,
           "In Ableton Live, click the MIDI button in the top right corner (or press Cmd/Ctrl + M) to enter MIDI Map Mode",
           "Click on the transport control you want to map in Ableton (e.g., Play button, Stop button, Record button)",
-          "In Cymasphere, click the corresponding transport button",
+          "In NNAudio, click the corresponding transport button",
           "Ableton will detect the MIDI message and create the assignment",
           "Repeat for other transport controls you want to map",
           "Click the MIDI button again (or press Cmd/Ctrl + M) to exit MIDI Map Mode",
-          "Now Cymasphere's transport controls will control Ableton Live's transport!",
+          "Now NNAudio's transport controls will control Ableton Live's transport!",
         ],
       });
     } else {
       instructions.push({
-        title: "Set Up Cymasphere Plugin in Ableton Live",
+        title: "Set Up NNAudio Plugin in Ableton Live",
         steps: [
-          "Open the plugin menu on the side, navigate to NNAudio > Cymasphere, and drag it to create a new track",
-          "For each instrument you want to use, create a MIDI track and set its input to the Cymasphere track",
-          `Change the input dropdown from "Post FX" to "Cymasphere"`,
+          "Open the plugin menu on the side, navigate to NNAudio plugins, and drag it to create a new track",
+          "For each instrument you want to use, create a MIDI track and set its input to the NNAudio track",
+          `Change the input dropdown from "Post FX" to "NNAudio"`,
           `Set the MIDI Out to ${
             os === "macos" ? "IAC Driver" : "your LoopMIDI port"
           } and select the appropriate MIDI channel (1, 2, 3, etc.)`,
           "Create an instrument track with any virtual instrument",
-          "Record-enable both the MIDI track and instrument track (not the Cymasphere track)",
-          "Open Cymasphere and press voicing buttons in Palette view—you'll see MIDI flow from Cymasphere → MIDI track → instrument track",
+          "Record-enable both the MIDI track and instrument track (not the NNAudio track)",
+          "Open NNAudio and press voicing buttons in Palette view—you'll see MIDI flow from NNAudio → MIDI track → instrument track",
         ],
       });
       instructions.push({
         title: "MIDI Map Transport Controls (Optional but Recommended)",
         steps: [
-          "This allows you to use Cymasphere's transport control to sync with Ableton Live's transport",
+          "This allows you to use NNAudio's transport control to sync with Ableton Live's transport",
           `Go to Preferences > MIDI and enable ${
             os === "macos" ? "IAC Driver" : "your LoopMIDI port"
           } as a Remote input`,
           "In Ableton Live, click the MIDI button in the top right corner (or press Cmd/Ctrl + M) to enter MIDI Map Mode",
           "Click on the transport control you want to map in Ableton (e.g., Play button, Stop button, Record button)",
-          "In Cymasphere, click the corresponding transport button",
+          "In NNAudio, click the corresponding transport button",
           "Ableton will detect the MIDI message and create the assignment",
           "Repeat for other transport controls you want to map",
           "Click the MIDI button again (or press Cmd/Ctrl + M) to exit MIDI Map Mode",
-          "Now Cymasphere's transport controls will control Ableton Live's transport!",
+          "Now NNAudio's transport controls will control Ableton Live's transport!",
         ],
       });
     }
@@ -756,13 +756,13 @@ const getInstructions = (
           }`,
           "Create an instrument track with any virtual instrument",
           "Arm both tracks for recording",
-          "Cymasphere will send MIDI to Studio One through the virtual MIDI device",
+          "NNAudio will send MIDI to Studio One through the virtual MIDI device",
         ],
       });
       instructions.push({
         title: "MIDI Map Transport Controls (Optional but Recommended)",
         steps: [
-          "This allows you to use Cymasphere's transport control to sync with Studio One's transport",
+          "This allows you to use NNAudio's transport control to sync with Studio One's transport",
           `Go to Studio One > ${
             os === "macos" ? "Preferences" : "Options"
           } > External Devices`,
@@ -772,41 +772,41 @@ const getInstructions = (
             os === "macos" ? "IAC Driver" : "your LoopMIDI port"
           }`,
           "Click 'MIDI Learn' button in the device settings",
-          "In Cymasphere, click the transport control you want to map (e.g., Play, Stop, Record)",
+          "In NNAudio, click the transport control you want to map (e.g., Play, Stop, Record)",
           "Right-click the corresponding control in Studio One and assign the command (e.g., Start, Stop, Record)",
           "Repeat for other transport controls you want to map",
           "Click 'OK' to save the device settings",
-          "Now Cymasphere's transport controls will control Studio One's transport!",
+          "Now NNAudio's transport controls will control Studio One's transport!",
         ],
       });
     } else {
       instructions.push({
-        title: "Set Up Cymasphere Plugin in Studio One",
+        title: "Set Up NNAudio Plugin in Studio One",
         steps: [
           "Create a new instrument track",
-          "Add Cymasphere as an instrument plugin on this track",
+          "Add NNAudio as an instrument plugin on this track",
           "For each instrument you want to use, create a new instrument track with your desired virtual instrument",
-          "On each instrument track, set the MIDI input to the Cymasphere instrument track",
+          "On each instrument track, set the MIDI input to the NNAudio instrument track",
           "Select the appropriate MIDI channel (1, 2, 3, etc.) for each instrument track",
-          "Record-enable the instrument tracks (not the Cymasphere track)",
-          "Open Cymasphere and press voicing buttons in Palette view—you'll see MIDI flow from Cymasphere → instrument tracks",
+          "Record-enable the instrument tracks (not the NNAudio track)",
+          "Open NNAudio and press voicing buttons in Palette view—you'll see MIDI flow from NNAudio → instrument tracks",
         ],
       });
       instructions.push({
         title: "MIDI Map Transport Controls (Optional but Recommended)",
         steps: [
-          "This allows you to use Cymasphere's transport control to sync with Studio One's transport",
+          "This allows you to use NNAudio's transport control to sync with Studio One's transport",
           `Go to Studio One > ${
             os === "macos" ? "Preferences" : "Options"
           } > External Devices`,
           "Click the 'Add' button to add a new device",
           "Select 'New Control Surface'",
           "In the device settings, click 'MIDI Learn'",
-          "In Cymasphere, click the transport control you want to map (e.g., Play, Stop, Record)",
+          "In NNAudio, click the transport control you want to map (e.g., Play, Stop, Record)",
           "Right-click the corresponding control in Studio One and assign the command (e.g., Start, Stop, Record)",
           "Repeat for other transport controls you want to map",
           "Click 'OK' to save the device settings",
-          "Now Cymasphere's transport controls will control Studio One's transport!",
+          "Now NNAudio's transport controls will control Studio One's transport!",
         ],
       });
     }
@@ -818,12 +818,12 @@ const getInstructions = (
           os === "macos" ? "IAC Driver on macOS" : "LoopMIDI on Windows"
         })`,
         type === "plugin"
-          ? "Add Cymasphere as a MIDI Effect (VST3 or AU)"
+          ? "Add NNAudio as a MIDI Effect (VST3 or AU)"
           : "Configure your DAW to receive MIDI from the virtual device",
         "Create an instrument track with your desired virtual instrument",
-        "Route MIDI from Cymasphere through the virtual device to your instrument",
+        "Route MIDI from NNAudio through the virtual device to your instrument",
         "Record-enable the instrument track",
-        "Open Cymasphere and test with Palette view voicing buttons",
+        "Open NNAudio and test with Palette view voicing buttons",
         "For specific help, join our Discord community at discord.gg/gXGqqYR47B",
       ],
     });
@@ -894,11 +894,11 @@ export default function GettingStartedWizard() {
         if (files) {
           const windowsFile = files.find(
             (file) =>
-              file.name.includes("Cymasphere_Installer") &&
+              file.name.includes("NNAudio_Installer") &&
               file.name.endsWith(".exe")
           );
           const macosFile = files.find(
-            (file) => file.name === "Cymasphere_Installer.pkg"
+            (file) => file.name === "NNAudio_Installer.pkg"
           );
 
           const formatFileSize = (bytes: number | null | undefined): string => {
@@ -1029,7 +1029,7 @@ export default function GettingStartedWizard() {
       case 2:
         return (
           <>
-            <StepTitle>Download & Install Cymasphere</StepTitle>
+            <StepTitle>Download & Install NNAudio</StepTitle>
             <StepDescription>
               Download the installer for your operating system if you haven't
               already.
@@ -1041,7 +1041,7 @@ export default function GettingStartedWizard() {
                 </DownloadIcon>
                 <DownloadInfo>
                   <DownloadName>
-                    Cymasphere for {os === "macos" ? "macOS" : "Windows"}
+                    NNAudio for {os === "macos" ? "macOS" : "Windows"}
                   </DownloadName>
                   <DownloadVersion>
                     Version {versionInfo.version}
@@ -1070,8 +1070,8 @@ export default function GettingStartedWizard() {
                 <DownloadButtonStyled
                   href={
                     os === "macos"
-                      ? "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/builds//Cymasphere_Installer.pkg"
-                      : "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/builds//Cymasphere_Installer.exe"
+                        ? "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/builds//NNAudio_Installer.pkg"
+                      : "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/builds//NNAudio_Installer.exe"
                   }
                 >
                   <FaDownload /> Download for{" "}
@@ -1093,8 +1093,8 @@ export default function GettingStartedWizard() {
                     <li>Follow the installation wizard</li>
                     <li>
                       {os === "macos"
-                        ? "The installer will place Cymasphere in your Applications folder and plugins in /Library/Audio/Plug-Ins/"
-                        : "The installer will place Cymasphere in C:\\Program Files\\Cymasphere\\ and plugins in C:\\Program Files\\Common Files\\VST3\\"}
+                        ? "The installer will place NNAudio in your Applications folder and plugins in /Library/Audio/Plug-Ins/"
+                        : "The installer will place NNAudio in C:\\Program Files\\NNAudio\\ and plugins in C:\\Program Files\\Common Files\\VST3\\"}
                     </li>
                     <li>
                       Once complete, click Next to configure your workflow!
@@ -1111,7 +1111,7 @@ export default function GettingStartedWizard() {
           <>
             <StepTitle>Choose Installation Type</StepTitle>
             <StepDescription>
-              How do you want to use Cymasphere?
+              How do you want to use NNAudio?
             </StepDescription>
             <OptionsGrid>
               <OptionCard
@@ -1125,7 +1125,7 @@ export default function GettingStartedWizard() {
                 </OptionIcon>
                 <OptionName>Plugin</OptionName>
                 <OptionDescription>
-                  Use Cymasphere as a plugin in your DAW
+                  Use NNAudio as a plugin in your DAW
                 </OptionDescription>
               </OptionCard>
               <OptionCard
@@ -1139,7 +1139,7 @@ export default function GettingStartedWizard() {
                 </OptionIcon>
                 <OptionName>Standalone</OptionName>
                 <OptionDescription>
-                  Run Cymasphere as a separate application
+                  Run NNAudio as a separate application
                 </OptionDescription>
               </OptionCard>
             </OptionsGrid>
@@ -1219,7 +1219,7 @@ export default function GettingStartedWizard() {
           <>
             <StepTitle>Setup Instructions</StepTitle>
             <StepDescription>
-              Follow these steps to get Cymasphere working with your setup.
+              Follow these steps to get NNAudio working with your setup.
             </StepDescription>
             <InstructionsContainer>
               {instructions.map((instruction, index) => (
@@ -1254,7 +1254,7 @@ export default function GettingStartedWizard() {
       <WizardHeader>
         <WizardTitle>Getting Started</WizardTitle>
         <WizardSubtitle>
-          Let's get Cymasphere set up for your specific setup
+          Let's get NNAudio set up for your specific setup
         </WizardSubtitle>
       </WizardHeader>
 

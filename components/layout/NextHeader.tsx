@@ -647,6 +647,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
       { name: "Plugins", path: "/plugins" },
       { name: "Packs", path: "/packs" },
       { name: "All Products", path: "/products" },
+      { name: "Bundles", path: "/bundles" },
       { name: "Pricing", path: "/#pricing" },
       { name: "FAQ", path: "/#faq" },
     ],

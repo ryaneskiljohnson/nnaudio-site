@@ -172,7 +172,8 @@ const ItemName = styled(Link)`
 
 const ItemPrice = styled.div`
   font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: #4ecdc4;
+  font-weight: 600;
 `;
 
 const ItemActions = styled.div`
@@ -277,7 +278,7 @@ const SummaryTotal = styled.div`
   margin-top: 1rem;
   font-size: 1.3rem;
   font-weight: 700;
-  color: white;
+  color: #4ecdc4;
 `;
 
 const CheckoutButton = styled(motion.button)`
@@ -393,16 +394,22 @@ export default function CartPage() {
                         {item.name}
                       </ItemName>
                       <ItemPrice>
-                        {hasDiscount && (
-                          <span style={{
-                            textDecoration: 'line-through',
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            marginRight: '0.5rem'
-                          }}>
-                            ${item.price.toFixed(2)}
-                          </span>
+                        {displayPrice === 0 || displayPrice === null ? (
+                          <span>FREE</span>
+                        ) : (
+                          <>
+                            {hasDiscount && (
+                              <span style={{
+                                textDecoration: 'line-through',
+                                color: 'rgba(255, 255, 255, 0.5)',
+                                marginRight: '0.5rem'
+                              }}>
+                                ${item.price.toFixed(2)}
+                              </span>
+                            )}
+                            <span>${displayPrice.toFixed(2)}</span>
+                          </>
                         )}
-                        <span>${displayPrice.toFixed(2)}</span>
                       </ItemPrice>
                       
                       <ItemActions>

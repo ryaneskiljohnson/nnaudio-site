@@ -71,7 +71,7 @@ export default function TermsOfServicePage() {
     <>
       <NextSEO
         title={t("legal.termsOfService", "Terms of Service")}
-        description={t("legal.terms.acceptance.content", "By accessing or using Cymasphere's services, website, or applications, you agree to be bound by these Terms of Service.")}
+        description={t("legal.terms.acceptance.content", "By accessing or using NNAudio's services, website, or applications, you agree to be bound by these Terms of Service.")}
       />
       
       <Container>
@@ -82,14 +82,14 @@ export default function TermsOfServicePage() {
           <Section>
             <SectionTitle>{t("legal.terms.acceptance.title", "1. Acceptance of Terms")}</SectionTitle>
             <SectionContent>
-              {t("legal.terms.acceptance.content", "By accessing or using Cymasphere's services, website, or applications, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.")}
+              {t("legal.terms.acceptance.content", "By accessing or using NNAudio's services, website, or applications, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.")}
             </SectionContent>
           </Section>
 
           <Section>
             <SectionTitle>{t("legal.terms.description.title", "2. Description of Service")}</SectionTitle>
             <SectionContent>
-              {t("legal.terms.description.content", "Cymasphere provides music theory and composition tools through web and desktop applications. These services may change from time to time without prior notice.")}
+              {t("legal.terms.description.content", "NNAudio provides music production plugins, MIDI packs, loops, and related products through our website. These services may change from time to time without prior notice.")}
             </SectionContent>
           </Section>
 
@@ -103,21 +103,21 @@ export default function TermsOfServicePage() {
           <Section>
             <SectionTitle>{t("legal.terms.content.title", "4. User Content")}</SectionTitle>
             <SectionContent>
-              {t("legal.terms.content.content", "You retain all rights to any content you create, upload, or share through our services. By uploading content, you grant Cymasphere a non-exclusive license to use, reproduce, and distribute your content as necessary to provide our services.")}
+              {t("legal.terms.content.content", "You retain all rights to any content you create, upload, or share through our services. By uploading content, you grant NNAudio a non-exclusive license to use, reproduce, and distribute your content as necessary to provide our services.")}
             </SectionContent>
           </Section>
 
           <Section>
             <SectionTitle>{t("legal.terms.ip.title", "5. Intellectual Property")}</SectionTitle>
             <SectionContent>
-              {t("legal.terms.ip.content", "Cymasphere and its content, features, and functionality are owned by us and are protected by copyright, trademark, and other intellectual property laws.")}
+              {t("legal.terms.ip.content", "NNAudio and its content, features, and functionality are owned by us and are protected by copyright, trademark, and other intellectual property laws.")}
             </SectionContent>
           </Section>
 
           <Section>
             <SectionTitle>{t("legal.terms.subscription.title", "6. Subscription and Payments")}</SectionTitle>
             <SectionContent>
-              {t("legal.terms.subscription.content", "Various subscription plans are available for Cymasphere. By subscribing, you agree to pay the applicable fees.")}
+              {t("legal.terms.subscription.content", "Various subscription plans and individual products are available from NNAudio. By subscribing or purchasing, you agree to pay the applicable fees.")}
             </SectionContent>
           </Section>
 
@@ -138,7 +138,7 @@ export default function TermsOfServicePage() {
           <Section>
             <SectionTitle>{t("legal.terms.limitation.title", "9. Limitation of Liability")}</SectionTitle>
             <SectionContent>
-              {t("legal.terms.limitation.content", "In no event shall Cymasphere be liable for any indirect, incidental, special, or consequential damages arising out of or in connection with your use of our services.")}
+              {t("legal.terms.limitation.content", "In no event shall NNAudio be liable for any indirect, incidental, special, or consequential damages arising out of or in connection with your use of our services.")}
             </SectionContent>
           </Section>
 
@@ -152,20 +152,20 @@ export default function TermsOfServicePage() {
           <Section>
             <SectionTitle>{t("legal.terms.governing.title", "11. Governing Law")}</SectionTitle>
             <SectionContent>
-              {t("legal.terms.governing.content", "These terms shall be governed by the laws of the jurisdiction in which Cymasphere operates, without regard to its conflict of law provisions.")}
+              {t("legal.terms.governing.content", "These terms shall be governed by the laws of the jurisdiction in which NNAudio operates, without regard to its conflict of law provisions.")}
             </SectionContent>
           </Section>
 
           <Section>
             <SectionTitle>{t("legal.terms.contact.title", "12. Contact")}</SectionTitle>
             <SectionContent>
-              {t("legal.terms.contact.content", "For questions about these terms, please contact us at support@cymasphere.com.")}
+              {t("legal.terms.contact.content", "For questions about these terms, please contact us at support@newnationllc.com.")}
             </SectionContent>
           </Section>
 
           <ContactInfo>
             <strong>{t("legal.contactInformation")}</strong><br />
-            {t("legal.email")}: support@cymasphere.com
+            {t("legal.email")}: support@newnationllc.com
           </ContactInfo>
         </motion.div>
       </Container>

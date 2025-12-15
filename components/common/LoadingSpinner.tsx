@@ -1,5 +1,6 @@
 import React from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
+import { motion } from "framer-motion";
 import NNAudioLogo from "./NNAudioLogo";
 
 // Define interfaces for styled-components props
@@ -34,7 +35,20 @@ const LoadingWrapper = styled.div`
   position: relative;
 `;
 
-// Removed separate EnergyBall to avoid double or stacked animated orbs
+const pulseAnimation = keyframes`
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+`;
+
+const AnimatedLogoWrapper = styled(motion.div)`
+  animation: ${pulseAnimation} 1.5s ease-in-out infinite;
+`;
 
 const LoadingText = styled.div<LoadingTextProps>`
   margin-top: 20px;
@@ -55,19 +69,31 @@ interface LoadingSpinnerProps {
 }
 
 /**
- * Simplified loading spinner for the Cymasphere app
+ * Loading spinner with animated NNAudio logo
  */
 const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = "medium",
   fullScreen = false,
   text = "Loading...",
 }) => {
-  const energyBallSize = size === "large" ? "140px" : size === "small" ? "80px" : "120px";
+  const logoSize = size === "large" ? "140px" : size === "small" ? "80px" : "120px";
 
   return (
     <Container $fullScreen={fullScreen}>
       <LoadingWrapper>
-        <NNAudioLogo size={energyBallSize} showText={false} />
+        <AnimatedLogoWrapper
+          animate={{
+            scale: [1, 0.95, 1],
+            opacity: [1, 0.7, 1],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        >
+          <NNAudioLogo size={logoSize} showText={false} />
+        </AnimatedLogoWrapper>
         {text && <LoadingText $size={size}>{text}</LoadingText>}
       </LoadingWrapper>
     </Container>

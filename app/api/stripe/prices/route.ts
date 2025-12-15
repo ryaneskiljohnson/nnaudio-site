@@ -7,9 +7,41 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 export async function GET(): Promise<NextResponse<PricesResponse>> {
   try {
     // Get the price IDs from environment variables
-    const monthlyPriceId = process.env.STRIPE_PRICE_ID_MONTHLY!;
-    const annualPriceId = process.env.STRIPE_PRICE_ID_ANNUAL!;
-    const lifetimePriceId = process.env.STRIPE_PRICE_ID_LIFETIME!;
+    const monthlyPriceId = process.env.STRIPE_PRICE_ID_MONTHLY;
+    const annualPriceId = process.env.STRIPE_PRICE_ID_ANNUAL;
+    const lifetimePriceId = process.env.STRIPE_PRICE_ID_LIFETIME;
+
+    // If Stripe price IDs are not configured, return fallback prices
+    if (!monthlyPriceId || !annualPriceId || !lifetimePriceId) {
+      const fallbackPrices: Record<PlanType, PriceData> = {
+        monthly: {
+          id: "",
+          type: "monthly",
+          amount: 0,
+          currency: "usd",
+          name: "Monthly Plan",
+        },
+        annual: {
+          id: "",
+          type: "annual",
+          amount: 0,
+          currency: "usd",
+          name: "Annual Plan",
+        },
+        lifetime: {
+          id: "",
+          type: "lifetime",
+          amount: 0,
+          currency: "usd",
+          name: "Lifetime Plan",
+        },
+      };
+
+      return NextResponse.json({
+        success: true,
+        prices: fallbackPrices,
+      });
+    }
 
     // Fetch prices from Stripe
     const [monthlyPrice, annualPrice, lifetimePrice] = await Promise.all([

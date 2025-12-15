@@ -395,7 +395,6 @@ const Loader = styled.div`
 interface PricingCardProps {
   billingPeriod: PlanType;
   onBillingPeriodChange?: (period: PlanType) => void;
-  showTrialOptions?: boolean;
   compact?: boolean;
   hideButton?: boolean;
   variant?: "default" | "change_plan";
@@ -404,7 +403,6 @@ interface PricingCardProps {
 export default function PricingCard({
   billingPeriod,
   onBillingPeriodChange,
-  showTrialOptions = false,
   compact = false,
   hideButton = false,
   variant = "default",
@@ -417,12 +415,10 @@ export default function PricingCard({
     null
   );
   const [pricesLoading, setPricesLoading] = useState(true);
-  const [trialType, setTrialType] = useState<"7day" | "14day">("14day");
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState<
     "short" | "long" | null
   >(null);
-  const [hasHadStripeTrial, setHasHadStripeTrial] = useState<boolean>(false);
   const [activePromotion, setActivePromotion] = useState<any>(null);
 
   // Fetch prices from Stripe
@@ -436,10 +432,12 @@ export default function PricingCard({
         if (result.success && result.prices) {
           setPrices(result.prices);
         } else {
-          console.error("Error fetching prices:", result.error);
+          // Silently handle missing prices - Stripe not configured yet
+          setPrices(null);
         }
       } catch (error) {
-        console.error("Error fetching prices:", error);
+        // Silently handle errors - Stripe not configured yet
+        setPrices(null);
       } finally {
         setPricesLoading(false);
       }
@@ -475,31 +473,6 @@ export default function PricingCard({
     fetchPromotion();
   }, [billingPeriod, user?.profile?.subscription]);
 
-  // Fetch trial status when user is logged in
-  useEffect(() => {
-    const checkTrialStatus = async () => {
-      if (!user?.email) {
-        setHasHadStripeTrial(false);
-        return;
-      }
-
-      try {
-        const { checkCustomerTrialStatus } = await import("@/utils/stripe/actions");
-        const result = await checkCustomerTrialStatus(user.email);
-
-        if (result.error) {
-          setHasHadStripeTrial(false);
-        } else {
-          setHasHadStripeTrial(result.hasHadTrial);
-        }
-      } catch (error) {
-        console.error("Error checking trial status:", error);
-        setHasHadStripeTrial(false);
-      }
-    };
-
-    checkTrialStatus();
-  }, [user?.email]);
 
   // Get current plan
   const currentPlan = prices?.[billingPeriod];
@@ -610,37 +583,13 @@ export default function PricingCard({
     user?.profile?.subscription === billingPeriod &&
     user.profile.subscription !== "none";
 
-  // Determine if we should show trial options
-  // Don't show if user already has an active subscription
-  const shouldShowTrialOptions =
-    showTrialOptions && 
-    !hasHadStripeTrial && 
-    billingPeriod !== "lifetime" &&
-    (!user?.profile || user?.profile?.subscription === "none");
-
-  // Determine if we should show the "no trial available" message
-  // Show when: user has had a trial before, and billing period is not lifetime
-  // In change_plan variant or when hideButton is true, show message even if subscription is not "none"
-  const shouldShowTrialMessage = useMemo(() => {
-    if (!hasHadStripeTrial || billingPeriod === "lifetime") {
-      return false;
-    }
-    
-    // If hideButton is true (modal context) or variant is change_plan, show message regardless of subscription status
-    if (hideButton || variant === "change_plan") {
-      return true;
-    }
-    
-    // Otherwise, only show if subscription is "none" and showTrialOptions is true
-    return (
-      showTrialOptions &&
-      (!user?.profile || user?.profile?.subscription === "none")
-    );
-  }, [hasHadStripeTrial, showTrialOptions, billingPeriod, user?.profile?.subscription, hideButton, variant]);
 
   // Handle checkout
   const handleCheckout = async (collectPaymentMethod: boolean) => {
-    if (!prices) return;
+    if (!prices || !prices[billingPeriod]) {
+      console.warn("Prices not available - Stripe not configured yet");
+      return;
+    }
 
     // If user is not logged in, show email collection modal
     // (for trials or lifetime purchases)
@@ -653,7 +602,6 @@ export default function PricingCard({
 
     const result = await initiateCheckout(billingPeriod, {
       collectPaymentMethod,
-      hasHadTrial: hasHadStripeTrial,
     });
 
     setCheckoutLoading(null);
@@ -698,9 +646,9 @@ export default function PricingCard({
       }
 
       setShowEmailModal(false);
-      setCheckoutLoading(trialType === "14day" ? "long" : "short");
+      setCheckoutLoading("long");
 
-      const collectPaymentMethod = trialType === "14day";
+      const collectPaymentMethod = true;
 
       const result = await initiateCheckout(billingPeriod, {
         collectPaymentMethod,
@@ -729,11 +677,8 @@ export default function PricingCard({
   const getButtonConfig = useMemo(() => {
     if (!user?.profile) {
       return {
-        text: shouldShowTrialOptions
-          ? t("pricing.freeTrial.startTrial", "Start Trial")
-          : t("pricing.buyNow", "Buy Now"),
-        action: () =>
-          handleCheckout(shouldShowTrialOptions ? trialType === "14day" : false),
+        text: t("pricing.buyNow", "Buy Now"),
+        action: () => handleCheckout(false),
         variant: "primary" as const,
         requiresPrices: true,
       };
@@ -761,21 +706,15 @@ export default function PricingCard({
     }
 
     return {
-      text: shouldShowTrialOptions
-        ? t("pricing.freeTrial.startTrial", "Start Trial")
-        : t("pricing.upgradeNow", "Upgrade Now"),
-      action: () =>
-        handleCheckout(shouldShowTrialOptions ? trialType === "14day" : false),
+      text: t("pricing.upgradeNow", "Upgrade Now"),
+      action: () => handleCheckout(false),
       variant: "primary" as const,
       requiresPrices: true,
     };
   }, [
     user?.profile,
-    shouldShowTrialOptions,
-    trialType,
     t,
     billingPeriod,
-    hasHadStripeTrial,
     router,
   ]);
 
@@ -799,13 +738,6 @@ export default function PricingCard({
             {t("pricing.currentPlan", "Current Plan")}
           </CurrentPlanBadge>
         )}
-        {shouldShowTrialOptions &&
-          !isCurrentPlan &&
-          user?.profile?.subscription !== "lifetime" && (
-            <CardTrialBadge>
-              {t("pricing.freeTrial.title", "14-Day Free Trial")}
-            </CardTrialBadge>
-          )}
 
         <CardHeader>
           <PlanName>
@@ -908,128 +840,25 @@ export default function PricingCard({
             ))}
           </FeaturesList>
 
-          {/* Show trial message even when hideButton is true (for modal context) */}
-          {shouldShowTrialMessage && hideButton && (
-            <TrialMessage>
-              {t(
-                "pricing.noTrialAvailable",
-                "You've already used a free trial. Start a subscription to continue enjoying all premium features."
-              )}
-            </TrialMessage>
-          )}
-
           {!hideButton && (
             <>
-              {shouldShowTrialOptions ? (
-                <TrialOptionContainer>
-                  <RadioOptionsContainer>
-                    <RadioOptionTitle>
-                      <FaGift />{" "}
-                      {t(
-                        "pricing.freeTrial.chooseFree",
-                        "Choose your free trial option:"
-                      )}
-                    </RadioOptionTitle>
-                    <RadioButtonGroup>
-                      <RadioOption>
-                        <RadioInput
-                          type="radio"
-                          name="trialOption"
-                          value="14day"
-                          checked={trialType === "14day"}
-                          onChange={() => setTrialType("14day")}
-                        />
-                        <TrialIcon>
-                          <FaUnlock />
-                        </TrialIcon>
-                        <TrialDescription>
-                          {t(
-                            "pricing.freeTrial.withCard",
-                            "14-day trial - Add card on file"
-                          )}
-                          <br />
-                          {t(
-                            "pricing.freeTrial.noCharge",
-                            "(won't be charged until trial ends)"
-                          )}
-                        </TrialDescription>
-                      </RadioOption>
-
-                      <RadioOption>
-                        <RadioInput
-                          type="radio"
-                          name="trialOption"
-                          value="7day"
-                          checked={trialType === "7day"}
-                          onChange={() => setTrialType("7day")}
-                        />
-                        <TrialIcon>
-                          <FaUnlock />
-                        </TrialIcon>
-                        <TrialDescription>
-                          {t(
-                            "pricing.freeTrial.noCard",
-                            "7-day trial - No credit card required"
-                          )}
-                        </TrialDescription>
-                      </RadioOption>
-                    </RadioButtonGroup>
-                  </RadioOptionsContainer>
-
-                  <CheckoutButton
-                    onClick={() => handleCheckout(trialType === "14day")}
-                    disabled={pricesLoading || checkoutLoading !== null}
-                  >
-                    {checkoutLoading !== null ? (
-                      <>
-                        {t("pricing.processing", "Processing")} <Loader />
-                      </>
-                    ) : (
-                      t("pricing.freeTrial.startTrial", "Start Trial")
-                    )}
-                  </CheckoutButton>
-                </TrialOptionContainer>
-              ) : shouldShowTrialMessage ? (
-                <>
-                  <TrialMessage>
-                    {t(
-                      "pricing.noTrialAvailable",
-                      "You've already used a free trial. Start a subscription to continue enjoying all premium features."
-                    )}
-                  </TrialMessage>
-                  <CheckoutButton
-                    onClick={getButtonConfig.action}
-                    disabled={pricesLoading || checkoutLoading !== null}
-                    $variant={getButtonConfig.variant}
-                  >
-                    {checkoutLoading !== null ? (
-                      <>
-                        {t("pricing.processing", "Processing")} <Loader />
-                      </>
-                    ) : (
-                      getButtonConfig.text
-                    )}
-                  </CheckoutButton>
-                </>
-              ) : (
-                /* Show button based on user status */
-                <CheckoutButton
-                  onClick={getButtonConfig.action}
-                  disabled={
-                    (getButtonConfig.requiresPrices && pricesLoading) ||
-                    checkoutLoading !== null
-                  }
-                  $variant={getButtonConfig.variant}
-                >
-                  {checkoutLoading !== null ? (
-                    <>
-                      {t("pricing.processing", "Processing")} <Loader />
-                    </>
-                  ) : (
-                    getButtonConfig.text
-                  )}
-                </CheckoutButton>
-              )}
+              {/* Show button based on user status */}
+              <CheckoutButton
+                onClick={getButtonConfig.action}
+                disabled={
+                  (getButtonConfig.requiresPrices && (pricesLoading || !prices || !prices[billingPeriod])) ||
+                  checkoutLoading !== null
+                }
+                $variant={getButtonConfig.variant}
+              >
+                {checkoutLoading !== null ? (
+                  <>
+                    {t("pricing.processing", "Processing")} <Loader />
+                  </>
+                ) : (
+                  getButtonConfig.text
+                )}
+              </CheckoutButton>
             </>
           )}
         </CardBody>
@@ -1041,12 +870,8 @@ export default function PricingCard({
           isOpen={showEmailModal}
           onClose={() => setShowEmailModal(false)}
           onSubmit={handleEmailSubmit}
-          collectPaymentMethod={
-            billingPeriod === "lifetime" ? true : trialType === "14day"
-          }
-          trialDays={
-            billingPeriod === "lifetime" ? 0 : trialType === "14day" ? 14 : 7
-          }
+          collectPaymentMethod={true}
+          trialDays={0}
         />
       )}
     </>

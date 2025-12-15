@@ -16,6 +16,7 @@ import {
   FaShieldAlt,
   FaRocket,
   FaTicketAlt,
+  FaBox,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
@@ -617,6 +618,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <FaDownload /> {t("dashboard.layout.downloads", "Downloads")}
             </NavItem>
           </Link>
+          <Link href="/my-products">
+            <NavItem
+              $active={pathname === "/my-products" ? "true" : "false"}
+              onClick={(e) => handleNavigation(e, "/my-products")}
+            >
+              <FaBox /> {t("dashboard.layout.myProducts", "My Products")}
+            </NavItem>
+          </Link>
           <Link href="/getting-started">
             <NavItem
               $active={pathname === "/getting-started" ? "true" : "false"}
@@ -765,6 +774,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               onClick={(e) => handleNavigation(e, "/downloads")}
             >
               <FaDownload /> {t("dashboard.layout.downloads", "Downloads")}
+            </MobileNavItem>
+          </Link>
+
+          <Link href="/my-products">
+            <MobileNavItem
+              $active={pathname === "/my-products" ? "true" : "false"}
+              variants={menuItemVariants}
+              custom={4}
+              initial="hidden"
+              animate="visible"
+              onClick={(e) => handleNavigation(e, "/my-products")}
+            >
+              <FaBox /> {t("dashboard.layout.myProducts", "My Products")}
             </MobileNavItem>
           </Link>
 

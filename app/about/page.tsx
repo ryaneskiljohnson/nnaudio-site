@@ -2,216 +2,357 @@
 
 import React from "react";
 import styled from "styled-components";
-import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
+import { FaMusic, FaPlug, FaLayerGroup, FaRocket, FaHeart } from "react-icons/fa";
+import NextSEO from "@/components/NextSEO";
 
 const PageContainer = styled.div`
   min-height: 100vh;
-  background: var(--surface);
+  background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
   padding: 120px 0 60px;
 `;
 
 const ContentWrapper = styled.div`
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 0 2rem;
 `;
 
 const PageTitle = styled.h1`
-  font-size: 3rem;
+  font-size: 3.5rem;
   font-weight: 800;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   letter-spacing: -0.5px;
-  text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
   color: white;
   text-align: center;
   background: linear-gradient(135deg, #6c63ff, #4ecdc4);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
+
+  @media (max-width: 768px) {
+    font-size: 2.5rem;
+  }
+`;
+
+const Subtitle = styled.p`
+  font-size: 1.3rem;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  margin-bottom: 4rem;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+
+  @media (max-width: 768px) {
+    font-size: 1.1rem;
+  }
 `;
 
 const AboutUsContent = styled.div`
   color: var(--text);
-  font-size: 1rem;
-  line-height: 1.7;
+  font-size: 1.05rem;
+  line-height: 1.8;
 
   h3 {
-    font-size: 1.6rem;
-    margin-top: 30px;
-    margin-bottom: 15px;
-    color: var(--primary);
+    font-size: 1.8rem;
+    margin-top: 3rem;
+    margin-bottom: 1.5rem;
+    color: white;
     background: linear-gradient(135deg, #6c63ff, #4ecdc4);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
     display: inline-block;
+    font-weight: 700;
+
+    @media (max-width: 768px) {
+      font-size: 1.5rem;
+    }
   }
 
   p {
-    margin-bottom: 20px;
+    margin-bottom: 1.5rem;
+    color: rgba(255, 255, 255, 0.85);
   }
 
   ul,
   ol {
-    margin-bottom: 20px;
-    padding-left: 25px;
+    margin-bottom: 2rem;
+    padding-left: 2rem;
+    color: rgba(255, 255, 255, 0.85);
   }
 
   li {
-    margin-bottom: 12px;
+    margin-bottom: 1rem;
+    line-height: 1.7;
   }
 
-  a {
-    color: var(--accent);
-    text-decoration: none;
-    transition: color 0.2s;
-
-    &:hover {
-      color: var(--primary);
-      text-decoration: underline;
-    }
+  strong {
+    color: #4ECDC4;
+    font-weight: 600;
   }
 `;
 
 const CompanyHighlight = styled.div`
-  background: rgba(108, 99, 255, 0.1);
-  border-left: 4px solid var(--primary);
-  padding: 20px;
-  margin: 30px 0;
-  border-radius: 0 8px 8px 0;
-`;
-
-const TeamSection = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 30px;
-  margin: 40px 0;
-`;
-
-const TeamMember = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-`;
-
-const TeamMemberImage = styled.div`
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background-color: rgba(108, 99, 255, 0.2);
-  margin-bottom: 15px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40px;
-  color: var(--primary);
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  background: linear-gradient(135deg, rgba(108, 99, 255, 0.15), rgba(78, 205, 196, 0.15));
+  border-left: 4px solid #4ECDC4;
+  padding: 2rem;
+  margin: 3rem 0;
+  border-radius: 0 12px 12px 0;
+  
+  p {
+    margin: 0;
+    font-size: 1.1rem;
+    line-height: 1.8;
+    color: white;
   }
 `;
 
-const TeamMemberName = styled.h4`
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 5px;
-  color: white;
+const ValuesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin: 2rem 0;
 `;
 
-const TeamMemberRole = styled.p`
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
+const ValueCard = styled(motion.div)`
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 2rem;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(78, 205, 196, 0.5);
+    transform: translateY(-4px);
+  }
+`;
+
+const ValueIcon = styled.div`
+  font-size: 2.5rem;
+  color: #4ECDC4;
+  margin-bottom: 1rem;
+`;
+
+const ValueTitle = styled.h4`
+  font-size: 1.3rem;
+  color: white;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+`;
+
+const ValueDescription = styled.p`
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.6;
+  margin: 0;
+`;
+
+const ContactSection = styled.div`
+  background: rgba(78, 205, 196, 0.1);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-top: 3rem;
+  text-align: center;
+`;
+
+const ContactTitle = styled.h3`
+  color: white;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+`;
+
+const ContactEmail = styled.a`
+  color: #4ECDC4;
+  font-size: 1.2rem;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
+
+  &:hover {
+    color: #6c63ff;
+    text-decoration: underline;
+  }
 `;
 
 const AboutUsPage = () => {
-  const { t } = useTranslation();
+  const fadeIn = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
+  };
+
+  const staggerChildren = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
 
   return (
-    <PageContainer>
-      <ContentWrapper>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <PageTitle>{t("footer.aboutUs", "About Us")}</PageTitle>
-          
-          <AboutUsContent>
-            <h3>{t("aboutUs.mission.title", "Our Mission")}</h3>
-            <p>
-              {t("aboutUs.mission.content", "Cymasphere's mission is to make music theory accessible without requiring years of study or technical application to an instrument. We believe that deep musical understanding should be within reach of all creators, not just trained musicians. Our tools are designed to remove traditional barriers to music creation while offering creative freedom.")}
-            </p>
+    <>
+      <NextSEO
+        title="About Us | NNAudio"
+        description="Learn about NNAudio - creators of professional music production plugins, MIDI packs, and loops. Discover our mission to empower producers with innovative tools."
+      />
+      <PageContainer>
+        <ContentWrapper>
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={staggerChildren}
+          >
+            <motion.div variants={fadeIn}>
+              <PageTitle>About NNAudio</PageTitle>
+              <Subtitle>
+                Professional music production tools crafted for creators who demand excellence
+              </Subtitle>
+            </motion.div>
 
-            <CompanyHighlight>
-              {t("aboutUs.mission.highlight", "We're committed to empowering creators of all levels by making music's theoretical complexity intuitive and accessible. Our goal is to enable you to realize your creative vision without the years of study normally required.")}
-            </CompanyHighlight>
+            <AboutUsContent>
+              <motion.div variants={fadeIn}>
+                <h3>Our Mission</h3>
+                <p>
+                  At NNAudio, we're dedicated to creating innovative, professional-grade music production tools that inspire creativity and elevate your sound. We believe that great music starts with great tools, and we're committed to providing producers, composers, and artists with plugins, MIDI packs, and loops that push the boundaries of what's possible in modern music production.
+                </p>
 
-            <h3>{t("aboutUs.story.title", "Our Story")}</h3>
-            <p>
-              {t("aboutUs.story.content1", "Founded by Ryan Johnson, a passionate musician, and Garrett Fleischer, an experienced software engineer, Cymasphere was born from a shared vision: to democratize music creation by eliminating the requirement of deep theoretical knowledge.")}
-            </p>
+                <CompanyHighlight>
+                  <p>
+                    <strong>Our commitment:</strong> Every product we create is designed with the professional producer in mind. We combine cutting-edge technology with intuitive design to deliver tools that seamlessly integrate into your workflow and help you achieve your creative vision.
+                  </p>
+                </CompanyHighlight>
+              </motion.div>
 
-            <p>
-              {t("aboutUs.story.content2", "After observing that existing music software either required advanced theoretical understanding or severely limited creativity, our founders set out to create a tool that would make musical sophistication accessible to everyone, without requiring years of theoretical study or technical mastery of an instrument.")}
-            </p>
+              <motion.div variants={fadeIn}>
+                <h3>What We Create</h3>
+                <p>
+                  NNAudio specializes in three core areas of music production:
+                </p>
 
-            <h3>{t("aboutUs.values.title", "Our Values")}</h3>
-            <p>
-              {t("aboutUs.values.intro", "At Cymasphere, we're guided by a set of core values that shape everything we do:")}
-            </p>
+                <ul>
+                  <li>
+                    <strong>Audio Plugins:</strong> From powerful synthesizers like Curio to creative effects processors like CrystalBall, our plugins are designed to be both sonically exceptional and creatively inspiring. Each plugin is crafted with attention to detail, ensuring professional-quality sound and intuitive workflows.
+                  </li>
+                  <li>
+                    <strong>MIDI Packs:</strong> Our curated collection of MIDI patterns spans genres and styles, providing producers with ready-to-use musical ideas that can spark new creative directions or serve as the foundation for entire tracks.
+                  </li>
+                  <li>
+                    <strong>Sample Packs & Loops:</strong> Professionally recorded and meticulously crafted, our sample packs and loops offer producers high-quality sounds that can be used immediately or serve as starting points for further creative exploration.
+                  </li>
+                </ul>
+              </motion.div>
 
-            <ul>
-              <li>
-                <strong>{t("aboutUs.values.integrity.title", "Musical Integrity")}</strong> - {t("aboutUs.values.integrity.content", "We respect the principles of music theory while embracing innovation")}
-              </li>
-              <li>
-                <strong>{t("aboutUs.values.design.title", "Intuitive Design")}</strong> - {t("aboutUs.values.design.content", "Our interfaces are visually clear and immediately understandable")}
-              </li>
-              <li>
-                <strong>{t("aboutUs.values.freedom.title", "Creative Freedom")}</strong> - {t("aboutUs.values.freedom.content", "We provide guidance without limiting expression")}
-              </li>
-              <li>
-                <strong>{t("aboutUs.values.learning.title", "Continuous Learning")}</strong> - {t("aboutUs.values.learning.content", "Our tools help users develop their musical understanding")}
-              </li>
-            </ul>
+              <motion.div variants={fadeIn}>
+                <h3>Our Values</h3>
+                <p>
+                  Everything we do at NNAudio is guided by these core principles:
+                </p>
 
-            <h3>{t("aboutUs.approach.title", "Our Approach")}</h3>
-            <p>
-              {t("aboutUs.approach.intro", "Cymasphere takes a unique approach to music composition software by focusing on:")}
-            </p>
+                <ValuesGrid>
+                  <ValueCard variants={fadeIn}>
+                    <ValueIcon>
+                      <FaMusic />
+                    </ValueIcon>
+                    <ValueTitle>Musical Excellence</ValueTitle>
+                    <ValueDescription>
+                      We're passionate about music and committed to creating products that meet the highest standards of quality and musicality.
+                    </ValueDescription>
+                  </ValueCard>
 
-            <ol>
-              <li>{t("aboutUs.approach.point1", "Visualizing harmony and voice leading in intuitive ways")}</li>
-              <li>
-                {t("aboutUs.approach.point2", "Providing intelligent suggestions while respecting your creative direction")}
-              </li>
-              <li>
-                {t("aboutUs.approach.point3", "Integrating theoretical concepts seamlessly into the creative workflow")}
-              </li>
-              <li>{t("aboutUs.approach.point4", "Building bridges between composition, arrangement, and production")}</li>
-            </ol>
+                  <ValueCard variants={fadeIn}>
+                    <ValueIcon>
+                      <FaPlug />
+                    </ValueIcon>
+                    <ValueTitle>Innovation</ValueTitle>
+                    <ValueDescription>
+                      We constantly push the boundaries of what's possible, exploring new technologies and creative approaches to music production.
+                    </ValueDescription>
+                  </ValueCard>
 
-            <p>
-              {t("aboutUs.approach.conclusion", "We're constantly refining our approach based on user feedback and the latest developments in music technology. We believe in creating tools that grow with you and adapt to your evolving creative needs.")}
-            </p>
+                  <ValueCard variants={fadeIn}>
+                    <ValueIcon>
+                      <FaLayerGroup />
+                    </ValueIcon>
+                    <ValueTitle>Professional Quality</ValueTitle>
+                    <ValueDescription>
+                      Every product undergoes rigorous testing and refinement to ensure it meets the demands of professional producers and studios.
+                    </ValueDescription>
+                  </ValueCard>
 
-            <h3>{t("aboutUs.future.title", "Looking Forward")}</h3>
-            <p>
-              {t("aboutUs.future.content1", "As we continue to develop Cymasphere, we're excited about the future of music creation. Our roadmap includes advanced integration with major DAWs, expanded harmonic palettes, deeper AI-assisted composition features, and much more.")}
-            </p>
+                  <ValueCard variants={fadeIn}>
+                    <ValueIcon>
+                      <FaRocket />
+                    </ValueIcon>
+                    <ValueTitle>Workflow Efficiency</ValueTitle>
+                    <ValueDescription>
+                      We design our tools to integrate seamlessly into your existing workflow, saving you time and allowing you to focus on creativity.
+                    </ValueDescription>
+                  </ValueCard>
 
-            <p>
-              {t("aboutUs.future.content2", "We invite you to join us on this journey and help shape the future of intelligent music creation tools.")}
-            </p>
-          </AboutUsContent>
-        </motion.div>
-      </ContentWrapper>
-    </PageContainer>
+                  <ValueCard variants={fadeIn}>
+                    <ValueIcon>
+                      <FaHeart />
+                    </ValueIcon>
+                    <ValueTitle>Creator-Focused</ValueTitle>
+                    <ValueDescription>
+                      We listen to our community and build products that solve real problems faced by music producers every day.
+                    </ValueDescription>
+                  </ValueCard>
+                </ValuesGrid>
+              </motion.div>
+
+              <motion.div variants={fadeIn}>
+                <h3>Our Approach</h3>
+                <p>
+                  What sets NNAudio apart is our holistic approach to music production tools:
+                </p>
+
+                <ol>
+                  <li>
+                    <strong>Sound First:</strong> Every product starts with exceptional sound quality. We spend countless hours designing, testing, and refining until we achieve the sonic character we're looking for.
+                  </li>
+                  <li>
+                    <strong>User Experience:</strong> Great sound means nothing if the tool is difficult to use. We prioritize intuitive interfaces and logical workflows that feel natural from the moment you open a plugin.
+                  </li>
+                  <li>
+                    <strong>Continuous Improvement:</strong> We're constantly updating and refining our products based on user feedback and new technological developments. When you purchase an NNAudio product, you're investing in a tool that will continue to evolve.
+                  </li>
+                  <li>
+                    <strong>Community Driven:</strong> Our products are shaped by the needs and feedback of the music production community. We're not just creating tools for ourselves—we're building solutions for producers around the world.
+                  </li>
+                </ol>
+              </motion.div>
+
+              <motion.div variants={fadeIn}>
+                <h3>Looking Forward</h3>
+                <p>
+                  The future of music production is exciting, and we're thrilled to be part of it. We're continuously working on new plugins, expanding our MIDI and sample libraries, and exploring innovative ways to enhance the creative process. Our roadmap includes advanced features, new product categories, and deeper integrations with modern production workflows.
+                </p>
+                <p>
+                  Whether you're a bedroom producer just starting out or a seasoned professional working on major releases, NNAudio is here to provide the tools you need to bring your musical ideas to life. We invite you to explore our products, join our community, and discover how NNAudio can elevate your music production.
+                </p>
+              </motion.div>
+
+              <motion.div variants={fadeIn}>
+                <ContactSection>
+                  <ContactTitle>Get in Touch</ContactTitle>
+                  <p style={{ color: 'rgba(255, 255, 255, 0.8)', marginBottom: '1rem' }}>
+                    Have questions about our products or need support? We're here to help.
+                  </p>
+                  <ContactEmail href="mailto:support@newnationllc.com">
+                    support@newnationllc.com
+                  </ContactEmail>
+                </ContactSection>
+              </motion.div>
+            </AboutUsContent>
+          </motion.div>
+        </ContentWrapper>
+      </PageContainer>
+    </>
   );
 };
 
-export default AboutUsPage; 
+export default AboutUsPage;
