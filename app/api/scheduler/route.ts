@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { emailScheduler } from "@/utils/scheduler";
 
+// Force Node.js runtime (not Edge) since scheduler uses node-cron which requires Node.js APIs
+export const runtime = 'nodejs';
+
 export async function GET() {
   try {
     const status = emailScheduler.getStatus();
