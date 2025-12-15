@@ -1,10 +1,7 @@
 {
   "functions": {
-    "api/**/*": {
+    "api/**/*.{js,ts}": {
       "runtime": "nodejs20.x"
-    },
-    "middleware": {
-      "runtime": "edge"
     }
   }
 }
