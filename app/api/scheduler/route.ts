@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     
     switch (action) {
       case "start":
-        emailScheduler.start();
+        await emailScheduler.start();
         return NextResponse.json({
           message: "Scheduler started",
           status: emailScheduler.getStatus(),

@@ -1,6 +1,5 @@
-// Import node-cron directly - this file should ONLY be imported in Node.js runtime contexts
-// The API routes that use this file explicitly set runtime = 'nodejs'
-import * as cron from "node-cron";
+// DO NOT import node-cron at top level - it causes Edge runtime bundling issues
+// Import it dynamically only when needed in Node.js runtime
 
 interface SchedulerConfig {
   enabled: boolean;
@@ -9,10 +8,14 @@ interface SchedulerConfig {
   cronSecret: string;
 }
 
+// Type for the scheduled task - avoid importing node-cron types at top level
+type ScheduledTask = any;
+
 class EmailCampaignScheduler {
   private isRunning = false;
   private config: SchedulerConfig;
-  private scheduledTask: cron.ScheduledTask | null = null;
+  private scheduledTask: ScheduledTask | null = null;
+  private cronModule: any = null;
 
   constructor() {
     // Determine the correct base URL for the scheduler endpoint
@@ -90,7 +93,7 @@ class EmailCampaignScheduler {
     }
   }
 
-  start(): void {
+  async start(): Promise<void> {
     if (!this.config.enabled) {
       console.log(
         "📅 Scheduler disabled (NODE_ENV not production and ENABLE_SCHEDULER not true)"
@@ -103,6 +106,16 @@ class EmailCampaignScheduler {
       return;
     }
 
+    // Dynamically import node-cron only when starting (Node.js runtime only)
+    if (!this.cronModule) {
+      try {
+        this.cronModule = await import("node-cron");
+      } catch (error) {
+        console.error("Failed to load node-cron:", error);
+        return;
+      }
+    }
+
     console.log("📅 Email Campaign Scheduler starting:", {
       enabled: this.config.enabled,
       cronExpression: this.config.cronExpression,
@@ -110,7 +123,7 @@ class EmailCampaignScheduler {
       environment: process.env.NODE_ENV,
     });
 
-    this.scheduledTask = cron.schedule(
+    this.scheduledTask = this.cronModule.schedule(
       this.config.cronExpression,
       () => {
         this.processScheduledCampaigns();
