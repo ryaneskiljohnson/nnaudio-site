@@ -152,7 +152,8 @@ class EmailCampaignScheduler {
 export const emailScheduler = new EmailCampaignScheduler();
 
 // Auto-start in production or when explicitly enabled
-if (typeof window === "undefined") {
-  // Server-side only
+// Only start if we're in Node.js runtime (not Edge)
+if (typeof window === "undefined" && typeof EdgeRuntime === "undefined") {
+  // Server-side only, Node.js runtime
   emailScheduler.start();
 }
