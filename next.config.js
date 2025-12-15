@@ -16,6 +16,8 @@ const nextConfig = {
       bodySizeLimit: '10mb', // Increase limit to 10MB for file uploads
     },
   },
+  // Exclude node-cron from Edge runtime bundling (it uses __dirname)
+  serverExternalPackages: ['node-cron'],
   images: {
     remotePatterns: [
       {

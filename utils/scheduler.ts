@@ -1,6 +1,7 @@
 // Dynamic import for node-cron to prevent Edge runtime issues
 // node-cron uses __dirname which isn't available in Edge runtime
-let cron: typeof import("node-cron") | null = null;
+// Use 'any' type to prevent TypeScript from analyzing node-cron module
+let cron: any = null;
 
 // Lazy load node-cron only in Node.js runtime
 async function getCron() {
@@ -20,7 +21,7 @@ interface SchedulerConfig {
 class EmailCampaignScheduler {
   private isRunning = false;
   private config: SchedulerConfig;
-  private scheduledTask: cron.ScheduledTask | null = null;
+  private scheduledTask: any = null; // Use 'any' to avoid analyzing node-cron types
 
   constructor() {
     // Determine the correct base URL for the scheduler endpoint
