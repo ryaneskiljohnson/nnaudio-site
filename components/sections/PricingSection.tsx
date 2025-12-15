@@ -48,7 +48,7 @@ const PricingContainer = styled.section`
 `;
 
 const Glow = styled.div`
-  position: absolute;
+    position: absolute;
   width: 520px;
   height: 520px;
   border-radius: 50%;
