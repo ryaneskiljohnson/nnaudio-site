@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
-import { FaSave, FaArrowLeft, FaPlus, FaTrash, FaSpinner } from "react-icons/fa";
+import { FaSave, FaArrowLeft, FaPlus, FaTrash, FaSpinner, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 
@@ -62,6 +62,36 @@ const SectionTitle = styled.h2`
   color: var(--text);
   margin-bottom: 1rem;
   font-weight: 600;
+`;
+
+const CollapsibleSectionTitle = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.5rem;
+  margin: -0.5rem;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  
+  h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--text);
+    font-weight: 600;
+  }
+`;
+
+const CollapsibleContent = styled.div<{ $isOpen: boolean }>`
+  max-height: ${props => props.$isOpen ? '5000px' : '0'};
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  margin-top: ${props => props.$isOpen ? '1rem' : '0'};
 `;
 
 const FormGroup = styled.div`
@@ -256,7 +286,8 @@ export default function EditProductPage() {
   });
   
   const [features, setFeatures] = useState<string[]>(['']);
-  const [audioSamples, setAudioSamples] = useState<{url: string, title: string}[]>([]);
+  const [audioSamples, setAudioSamples] = useState<{url: string, name: string}[]>([]);
+  const [audioSamplesExpanded, setAudioSamplesExpanded] = useState(true);
 
   useEffect(() => {
     if (productId) {
@@ -299,7 +330,10 @@ export default function EditProductPage() {
           ? product.features 
           : ['']);
         setAudioSamples(product.audio_samples && Array.isArray(product.audio_samples)
-          ? product.audio_samples
+          ? product.audio_samples.map((audio: any) => ({
+              url: audio.url || audio.src || '',
+              name: audio.name || audio.title || ''
+            }))
           : []);
       }
     } catch (error) {
@@ -336,6 +370,23 @@ export default function EditProductPage() {
     setFeatures(features.filter((_, i) => i !== index));
   };
 
+  const handleAudioSampleChange = (index: number, field: 'url' | 'name', value: string) => {
+    const newAudioSamples = [...audioSamples];
+    newAudioSamples[index] = {
+      ...newAudioSamples[index],
+      [field]: value
+    };
+    setAudioSamples(newAudioSamples);
+  };
+
+  const addAudioSample = () => {
+    setAudioSamples([...audioSamples, { url: '', name: '' }]);
+  };
+
+  const removeAudioSample = (index: number) => {
+    setAudioSamples(audioSamples.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -352,7 +403,12 @@ export default function EditProductPage() {
         price: parseFloat(formData.price),
         sale_price: formData.sale_price ? parseFloat(formData.sale_price) : null,
         features: features.filter(f => f.trim() !== ''),
-        audio_samples: audioSamples.filter(s => s.url.trim() !== ''),
+        audio_samples: audioSamples
+          .filter(s => s.url.trim() !== '')
+          .map(s => ({
+            url: s.url.trim(),
+            name: s.name.trim() || s.url.split('/').pop() || 'Audio Sample'
+          })),
       };
 
       const response = await fetch(`/api/products/${productId}`, {
@@ -618,6 +674,56 @@ export default function EditProductPage() {
           <AddButton type="button" onClick={addFeature}>
             <FaPlus /> Add Feature
           </AddButton>
+        </FormSection>
+
+        <FormSection>
+          <CollapsibleSectionTitle onClick={() => setAudioSamplesExpanded(!audioSamplesExpanded)}>
+            <SectionTitle>Audio Samples {audioSamples.length > 0 && `(${audioSamples.length})`}</SectionTitle>
+            {audioSamplesExpanded ? <FaChevronUp /> : <FaChevronDown />}
+          </CollapsibleSectionTitle>
+          
+          <CollapsibleContent $isOpen={audioSamplesExpanded}>
+            {audioSamples.length === 0 ? (
+              <div style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                No audio samples. Click "Add Audio Sample" to add one.
+              </div>
+            ) : (
+              <FeaturesList>
+                {audioSamples.map((audio, index) => (
+                  <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                    <FeatureItem>
+                      <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Audio URL</Label>
+                      <FeatureInput
+                        type="url"
+                        value={audio.url}
+                        onChange={(e) => handleAudioSampleChange(index, 'url', e.target.value)}
+                        placeholder="https://...supabase.co/storage/.../audio-file.mp3"
+                      />
+                    </FeatureItem>
+                    <FeatureItem>
+                      <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Audio Name</Label>
+                      <FeatureInput
+                        type="text"
+                        value={audio.name}
+                        onChange={(e) => handleAudioSampleChange(index, 'name', e.target.value)}
+                        placeholder="Sample Name"
+                      />
+                      <RemoveButton
+                        type="button"
+                        onClick={() => removeAudioSample(index)}
+                      >
+                        <FaTrash />
+                      </RemoveButton>
+                    </FeatureItem>
+                  </div>
+                ))}
+              </FeaturesList>
+            )}
+            
+            <AddButton type="button" onClick={addAudioSample}>
+              <FaPlus /> Add Audio Sample
+            </AddButton>
+          </CollapsibleContent>
         </FormSection>
 
         <FormSection>
