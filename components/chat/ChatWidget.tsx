@@ -74,7 +74,7 @@ const ChatButton = styled.button<{ $isOpen: boolean }>`
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
   border: none;
   color: white;
   cursor: pointer;
@@ -82,7 +82,7 @@ const ChatButton = styled.button<{ $isOpen: boolean }>`
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
   transition: all 0.3s ease;
   transform: ${props => props.$isOpen ? 'scale(0.9)' : 'scale(1)'};
   position: relative;
@@ -93,7 +93,7 @@ const ChatButton = styled.button<{ $isOpen: boolean }>`
 
   &:hover {
     transform: ${props => props.$isOpen ? 'scale(0.85)' : 'scale(1.1)'};
-    box-shadow: 0 6px 25px rgba(108, 99, 255, 0.4);
+    box-shadow: 0 6px 25px rgba(138, 43, 226, 0.6);
   }
 
   @media (max-width: 768px) {
@@ -154,7 +154,7 @@ const ChatWindow = styled.div<{ $isOpen: boolean; $height?: string }>`
 `;
 
 const ChatHeader = styled.div`
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
   color: white;
   padding: 16px;
   display: flex;
@@ -235,7 +235,7 @@ const MessageBubble = styled.div<{ $isUser: boolean }>`
   padding: 12px 16px;
   border-radius: 18px;
   background: ${props => props.$isUser 
-    ? 'linear-gradient(135deg, var(--primary), var(--accent))' 
+    ? 'linear-gradient(135deg, #8a2be2 0%, #4b0082 100%)' 
     : 'rgba(255, 255, 255, 0.08)'};
   color: ${props => props.$isUser ? 'white' : 'var(--text)'};
   align-self: ${props => props.$isUser ? 'flex-end' : 'flex-start'};
@@ -317,17 +317,17 @@ const CTAButton = styled.span`
   margin-top: 10px;
   padding: 10px 14px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
   color: white;
   font-weight: 600;
   font-size: 13px;
   text-decoration: none;
-  box-shadow: 0 4px 12px rgba(108, 99, 255, 0.35);
+  box-shadow: 0 4px 12px rgba(138, 43, 226, 0.4);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(108, 99, 255, 0.45);
+    box-shadow: 0 6px 16px rgba(138, 43, 226, 0.6);
   }
 `;
 
@@ -399,7 +399,7 @@ const SendButton = styled.button`
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
   border: none;
   color: white;
   cursor: pointer;

@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
 import { FaShoppingCart, FaTrash, FaPlus, FaMinus, FaChevronRight, FaHome } from "react-icons/fa";
 
@@ -313,13 +314,12 @@ const CheckoutButton = styled(motion.button)`
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, getTotal, getItemCount } = useCart();
+  const router = useRouter();
   const total = getTotal();
   const itemCount = getItemCount();
 
   const handleCheckout = () => {
-    // TODO: Implement checkout flow
-    console.log('Checkout with items:', items);
-    alert('Checkout functionality coming soon!');
+    router.push('/checkout');
   };
 
   return (
@@ -356,8 +356,16 @@ export default function CartPage() {
           <CartContainer>
             <CartItems>
               {items.map((item, index) => {
-                const displayPrice = item.sale_price || item.price;
-                const hasDiscount = item.sale_price && item.sale_price < item.price;
+                // Determine display price:
+                // - If sale_price is 0, product is FREE
+                // - If sale_price exists and > 0, use sale_price
+                // - Otherwise use regular price
+                const displayPrice = (item.sale_price === 0) 
+                  ? 0 
+                  : (item.sale_price !== null && item.sale_price !== undefined && item.sale_price > 0) 
+                    ? item.sale_price 
+                    : item.price;
+                const hasDiscount = item.sale_price !== null && item.sale_price !== undefined && item.sale_price > 0 && item.sale_price < item.price;
                 
                 return (
                   <CartItemCard

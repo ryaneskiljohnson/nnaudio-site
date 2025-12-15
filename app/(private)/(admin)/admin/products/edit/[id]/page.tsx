@@ -288,6 +288,11 @@ export default function EditProductPage() {
   const [features, setFeatures] = useState<string[]>(['']);
   const [audioSamples, setAudioSamples] = useState<{url: string, name: string}[]>([]);
   const [audioSamplesExpanded, setAudioSamplesExpanded] = useState(true);
+  const [stripeIds, setStripeIds] = useState<{
+    stripe_product_id?: string | null;
+    stripe_price_id?: string | null;
+    stripe_sale_price_id?: string | null;
+  }>({});
 
   useEffect(() => {
     if (productId) {
@@ -335,6 +340,13 @@ export default function EditProductPage() {
               name: audio.name || audio.title || ''
             }))
           : []);
+        
+        // Store Stripe IDs
+        setStripeIds({
+          stripe_product_id: product.stripe_product_id,
+          stripe_price_id: product.stripe_price_id,
+          stripe_sale_price_id: product.stripe_sale_price_id,
+        });
       }
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -422,6 +434,17 @@ export default function EditProductPage() {
       const data = await response.json();
 
       if (data.success) {
+        // Show Stripe sync status if prices were updated
+        if (data.stripe_synced === false && data.stripe_error) {
+          alert(`Product saved successfully, but Stripe sync failed: ${data.stripe_error}`);
+        } else if (data.stripe_synced === true && data.product) {
+          // Update local Stripe IDs
+          setStripeIds({
+            stripe_product_id: data.product.stripe_product_id,
+            stripe_price_id: data.product.stripe_price_id,
+            stripe_sale_price_id: data.product.stripe_sale_price_id,
+          });
+        }
         router.push('/admin/products');
       } else {
         alert(`Error: ${data.error}`);
@@ -574,6 +597,35 @@ export default function EditProductPage() {
               </Select>
             </FormGroup>
           </GridRow>
+
+          {/* Stripe Integration Info */}
+          {(stripeIds.stripe_product_id || stripeIds.stripe_price_id) && (
+            <FormSection>
+              <SectionTitle>Stripe Integration</SectionTitle>
+              <FormGroup>
+                <Label>Stripe Product ID</Label>
+                <Input
+                  type="text"
+                  value={stripeIds.stripe_product_id || ''}
+                  readOnly
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
+                />
+              </FormGroup>
+              <FormGroup>
+                <Label>Stripe Price ID</Label>
+                <Input
+                  type="text"
+                  value={stripeIds.stripe_price_id || ''}
+                  readOnly
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
+                />
+              </FormGroup>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                Stripe products and prices are automatically synced when you save changes to the price field. 
+                Sale prices are for display/marketing purposes only and are not synced to Stripe.
+              </p>
+            </FormSection>
+          )}
 
           <FormGroup>
             <CheckboxLabel>

@@ -368,8 +368,16 @@ export default function SideCart({ isOpen, onClose }: SideCartProps) {
                 </EmptyCart>
               ) : (
                 items.map((item) => {
-                  const displayPrice = item.sale_price || item.price;
-                  const hasDiscount = item.sale_price && item.sale_price < item.price;
+                  // Determine display price:
+                  // - If sale_price is 0, product is FREE
+                  // - If sale_price exists and > 0, use sale_price
+                  // - Otherwise use regular price
+                  const displayPrice = (item.sale_price === 0) 
+                    ? 0 
+                    : (item.sale_price !== null && item.sale_price !== undefined && item.sale_price > 0) 
+                      ? item.sale_price 
+                      : item.price;
+                  const hasDiscount = item.sale_price !== null && item.sale_price !== undefined && item.sale_price > 0 && item.sale_price < item.price;
                   
                   return (
                     <CartItemCard key={item.id}>

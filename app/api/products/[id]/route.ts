@@ -114,6 +114,32 @@ export async function PUT(
     const body = await request.json();
     const adminSupabase = await createAdminClient();
 
+    // Check if price or sale_price changed - if so, sync to Stripe
+    const shouldSyncStripe = body.price !== undefined || body.sale_price !== undefined;
+    
+    // Get existing product to check current Stripe IDs
+    let existingStripeIds: {
+      stripe_product_id?: string | null;
+      stripe_price_id?: string | null;
+      stripe_sale_price_id?: string | null;
+    } = {};
+    
+    if (shouldSyncStripe) {
+      const { data: existingProduct } = await adminSupabase
+        .from('products')
+        .select('stripe_product_id, stripe_price_id, stripe_sale_price_id, name, description, short_description, price, sale_price')
+        .eq('id', id)
+        .single();
+      
+      if (existingProduct) {
+        existingStripeIds = {
+          stripe_product_id: existingProduct.stripe_product_id,
+          stripe_price_id: existingProduct.stripe_price_id,
+          stripe_sale_price_id: existingProduct.stripe_sale_price_id,
+        };
+      }
+    }
+
     const { data: product, error } = await adminSupabase
       .from('products')
       .update(body)
@@ -127,6 +153,67 @@ export async function PUT(
         { success: false, error: error.message },
         { status: 500 }
       );
+    }
+
+    // Sync to Stripe if prices changed
+    if (shouldSyncStripe && product) {
+      try {
+        const { syncProductToStripe } = await import('@/utils/stripe/product-sync');
+        
+        const syncResult = await syncProductToStripe(
+          product.id,
+          product.name,
+          product.description || product.short_description || '',
+          product.price,
+          product.sale_price,
+          existingStripeIds.stripe_product_id,
+          existingStripeIds.stripe_price_id,
+          existingStripeIds.stripe_sale_price_id
+        );
+
+        if (syncResult.success) {
+          // Update product with Stripe IDs (clear sale price ID since we don't use it)
+          await adminSupabase
+            .from('products')
+            .update({
+              stripe_product_id: syncResult.stripe_product_id,
+              stripe_price_id: syncResult.stripe_price_id,
+              stripe_sale_price_id: null, // Clear sale price ID - not used
+            })
+            .eq('id', id);
+          
+          // Refresh product data to include Stripe IDs
+          const { data: updatedProduct } = await adminSupabase
+            .from('products')
+            .select('*')
+            .eq('id', id)
+            .single();
+          
+          return NextResponse.json({
+            success: true,
+            product: updatedProduct || product,
+            stripe_synced: true,
+          });
+        } else {
+          console.error('Stripe sync failed:', syncResult.error);
+          // Still return success for product update, but log Stripe error
+          return NextResponse.json({
+            success: true,
+            product,
+            stripe_synced: false,
+            stripe_error: syncResult.error,
+          });
+        }
+      } catch (stripeError: any) {
+        console.error('Error syncing to Stripe:', stripeError);
+        // Still return success for product update
+        return NextResponse.json({
+          success: true,
+          product,
+          stripe_synced: false,
+          stripe_error: stripeError.message,
+        });
+      }
     }
 
     return NextResponse.json({
