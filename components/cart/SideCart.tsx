@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
 import { FaTimes, FaTrash, FaPlus, FaMinus, FaShoppingCart, FaChevronRight } from "react-icons/fa";
 
@@ -322,13 +323,13 @@ interface SideCartProps {
 
 export default function SideCart({ isOpen, onClose }: SideCartProps) {
   const { items, removeItem, updateQuantity, getTotal, getItemCount } = useCart();
+  const router = useRouter();
   const total = getTotal();
   const itemCount = getItemCount();
 
   const handleCheckout = () => {
     onClose();
-    // TODO: Navigate to checkout or implement checkout flow
-    window.location.href = '/cart';
+    router.push('/checkout');
   };
 
   return (

@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import NNAudHeroSection from "@/components/sections/NNAudHeroSection";
 import ProductsSection from "@/components/sections/ProductsSection";
 import FeaturedProductsSection from "@/components/sections/FeaturedProductsSection";
+import LoadingComponent from "@/components/common/LoadingComponent";
 // Lazy load waveform transition for better initial page load
 const WaveformTransition = dynamic(() => import("@/components/sections/WaveformTransition"), {
   ssr: false,
@@ -15,7 +16,7 @@ const WaveformTransition = dynamic(() => import("@/components/sections/WaveformT
 // Lazy load non-critical sections
 const PricingSection = dynamic(() => import("@/components/sections/PricingSection"), {
   ssr: true,
-  loading: () => <div style={{ minHeight: "800px", background: "#0a0a0a" }} />,
+  loading: () => <LoadingComponent text="Loading pricing..." />,
 });
 
 // const FAQSection = dynamic(() => import("@/components/sections/FAQSection"), {
@@ -280,7 +281,7 @@ export default function Home() {
   return (
     <>
       {/* Hero section */}
-      <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0a0a0a" }} />}>
+      <Suspense fallback={<LoadingComponent fullScreen />}>
         <div style={{ position: 'relative', overflow: 'visible' }}>
           <NNAudHeroSection />
           {!loading && featuredProducts.length > 0 && (
@@ -290,9 +291,7 @@ export default function Home() {
       </Suspense>
       
       {loading ? (
-        <div style={{ minHeight: "400px", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", color: "white" }}>
-          Loading products...
-        </div>
+        <LoadingComponent fullScreen text="Loading products..." />
       ) : (
         <>
           {/* Featured Products section */}

@@ -460,7 +460,37 @@ const StripeLogoImage = styled.img`
 `;
 
 // Payment Form Component
-function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: any[]; total: number; appliedPromo: { code: string; discount: { amount: number; percent: number }; promotionCodeId: string } | null; onOrderComplete: () => void }) {
+function PaymentForm({ 
+  items, 
+  total, 
+  appliedPromo, 
+  onOrderComplete,
+  billingFields,
+  onBillingFieldsChange
+}: { 
+  items: any[]; 
+  total: number; 
+  appliedPromo: { code: string; discount: { amount: number; percent: number }; promotionCodeId: string } | null; 
+  onOrderComplete: () => void;
+  billingFields: {
+    email: string;
+    billingName: string;
+    billingAddress: string;
+    billingCity: string;
+    billingState: string;
+    billingZip: string;
+    billingCountry: string;
+  };
+  onBillingFieldsChange: (fields: {
+    email: string;
+    billingName: string;
+    billingAddress: string;
+    billingCity: string;
+    billingState: string;
+    billingZip: string;
+    billingCountry: string;
+  }) => void;
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -472,19 +502,21 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
   const [success, setSuccess] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   
-  // Billing information
-  const [email, setEmail] = useState('');
-  const [billingName, setBillingName] = useState('');
-  const [billingAddress, setBillingAddress] = useState('');
-  const [billingCity, setBillingCity] = useState('');
-  const [billingState, setBillingState] = useState('');
-  const [billingZip, setBillingZip] = useState('');
-  const [billingCountry, setBillingCountry] = useState('US');
+  // Use billing fields from props
+  const { email, billingName, billingAddress, billingCity, billingState, billingZip, billingCountry } = billingFields;
+  
+  // Helper to update billing fields
+  const updateBillingField = (field: string, value: string) => {
+    onBillingFieldsChange({
+      ...billingFields,
+      [field]: value,
+    });
+  };
 
   // Set email from user if logged in
   useEffect(() => {
-    if (user?.email) {
-      setEmail(user.email);
+    if (user?.email && !billingFields.email) {
+      updateBillingField('email', user.email);
     }
   }, [user]);
 
@@ -506,7 +538,12 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
         const data = await response.json();
 
         if (data.success) {
-          setClientSecret(data.clientSecret);
+          // Handle free orders or orders below Stripe minimum ($0.50)
+          if (data.isFreeOrder) {
+            setClientSecret(null); // No payment needed
+          } else {
+            setClientSecret(data.clientSecret);
+          }
         } else {
           setError(data.error || 'Failed to initialize payment');
         }
@@ -520,58 +557,9 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
     }
   }, [items, appliedPromo]);
 
-  const handleApplyPromoCode = async () => {
-    if (!promoCode.trim()) {
-      setPromoCodeError('Please enter a promo code');
-      return;
-    }
-
-    setIsValidatingPromo(true);
-    setPromoCodeError(null);
-
-    try {
-      const response = await fetch('/api/promo-code/validate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          code: promoCode.trim(),
-          amount: total,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setAppliedPromo({
-          code: data.promotionCode.code,
-          discount: data.discount,
-          promotionCodeId: data.promotionCode.id,
-        });
-        onPromoCodeApplied({
-          amount: data.discount.amount,
-          percent: data.discount.percent,
-          code: data.promotionCode.code,
-        });
-        setPromoCode('');
-      } else {
-        setPromoCodeError(data.error || 'Invalid promo code');
-      }
-    } catch (err: any) {
-      setPromoCodeError(err.message || 'Failed to validate promo code');
-    } finally {
-      setIsValidatingPromo(false);
-    }
-  };
-
-  const handleRemovePromoCode = () => {
-    setAppliedPromo(null);
-    onPromoCodeApplied(null);
-    setPromoCodeError(null);
-  };
-
   const finalTotal = Math.max(total - (appliedPromo?.discount.amount || 0), 0);
+  // Apply Stripe minimum: if total is between $0 and $0.50, charge $0.50
+  const displayTotal = finalTotal > 0 && finalTotal < 0.50 ? 0.50 : finalTotal;
   const isFreeOrder = finalTotal === 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -651,8 +639,26 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
 
       const piData = await piResponse.json();
 
-      if (!piData.success || !piData.clientSecret) {
+      if (!piData.success) {
         setError(piData.error || 'Failed to initialize payment.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Handle free orders or orders below Stripe minimum ($0.50)
+      if (piData.isFreeOrder) {
+        // Skip Stripe payment for free orders
+        setSuccess(true);
+        clearCart();
+        onOrderComplete();
+        setTimeout(() => {
+          router.push(`/checkout-success?session_id=free-order`);
+        }, 800);
+        return;
+      }
+
+      if (!piData.clientSecret) {
+        setError('Failed to initialize payment.');
         setIsProcessing(false);
         return;
       }
@@ -718,6 +724,7 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
         iconColor: '#ff5e62',
       },
     },
+    hidePostalCode: true, // Hide ZIP code field since we collect it separately
   };
 
   return (
@@ -727,7 +734,7 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
         <Input
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => updateBillingField('email', e.target.value)}
           placeholder="your@email.com"
           required
           readOnly={!!user?.email}
@@ -747,7 +754,7 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
             <Input
               type="text"
               value={billingName}
-              onChange={(e) => setBillingName(e.target.value)}
+              onChange={(e) => updateBillingField('billingName', e.target.value)}
               placeholder="Full name on card"
               required
             />
@@ -758,7 +765,7 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
             <Input
               type="text"
               value={billingAddress}
-              onChange={(e) => setBillingAddress(e.target.value)}
+              onChange={(e) => updateBillingField('billingAddress', e.target.value)}
               placeholder="Street address"
               required
             />
@@ -770,7 +777,7 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
               <Input
                 type="text"
                 value={billingCity}
-                onChange={(e) => setBillingCity(e.target.value)}
+                onChange={(e) => updateBillingField('billingCity', e.target.value)}
                 placeholder="City"
                 required
               />
@@ -780,7 +787,7 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
               <Input
                 type="text"
                 value={billingState}
-                onChange={(e) => setBillingState(e.target.value)}
+                onChange={(e) => updateBillingField('billingState', e.target.value)}
                 placeholder="State"
                 required
               />
@@ -793,7 +800,7 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
               <Input
                 type="text"
                 value={billingZip}
-                onChange={(e) => setBillingZip(e.target.value)}
+                onChange={(e) => updateBillingField('billingZip', e.target.value)}
                 placeholder="ZIP"
                 required
               />
@@ -803,7 +810,7 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
               <Input
                 type="text"
                 value={billingCountry}
-                onChange={(e) => setBillingCountry(e.target.value)}
+                onChange={(e) => updateBillingField('billingCountry', e.target.value)}
                 placeholder="Country"
                 required
               />
@@ -847,7 +854,7 @@ function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: a
         ) : (
           <>
             <FaLock />
-            {finalTotal === 0 ? 'Complete Order' : `Pay $${finalTotal.toFixed(2)}`}
+            {finalTotal === 0 ? 'Complete Order' : `Pay $${displayTotal.toFixed(2)}`}
           </>
         )}
       </PayButton>
@@ -981,10 +988,29 @@ function PromoCodeSection({
 export default function CheckoutPage() {
   const { items, getTotal } = useCart();
   const router = useRouter();
+  const { user } = useAuth();
   const total = getTotal();
   const [appliedDiscount, setAppliedDiscount] = useState<{ amount: number; percent: number; code: string } | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: { amount: number; percent: number }; promotionCodeId: string } | null>(null);
   const [orderComplete, setOrderComplete] = useState(false);
+  
+  // Billing fields state - moved to parent to persist across component remounts
+  const [billingFields, setBillingFields] = useState({
+    email: user?.email || '',
+    billingName: '',
+    billingAddress: '',
+    billingCity: '',
+    billingState: '',
+    billingZip: '',
+    billingCountry: 'US',
+  });
+  
+  // Update email when user changes
+  useEffect(() => {
+    if (user?.email && !billingFields.email) {
+      setBillingFields(prev => ({ ...prev, email: user.email || '' }));
+    }
+  }, [user, billingFields.email]);
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -998,6 +1024,8 @@ export default function CheckoutPage() {
   }
 
   const finalTotal = Math.max(appliedDiscount ? total - appliedDiscount.amount : total, 0);
+  // Apply Stripe minimum: if total is between $0 and $0.50, charge $0.50
+  const displayTotal = finalTotal > 0 && finalTotal < 0.50 ? 0.50 : finalTotal;
 
   return (
     <Container>
@@ -1026,14 +1054,13 @@ export default function CheckoutPage() {
             <SectionTitle>Payment Details</SectionTitle>
             <Elements stripe={stripePromise}>
               <PaymentForm 
-                key={`${items.length}-${total}-${appliedPromo?.promotionCodeId || 'no-promo'}`}
+                key={`${items.length}-${total}`}
                 items={items} 
                 total={total}
                 appliedPromo={appliedPromo}
-                onPromoCodeApplied={(discount) => {
-                  setAppliedDiscount(discount);
-                }}
                 onOrderComplete={() => setOrderComplete(true)}
+                billingFields={billingFields}
+                onBillingFieldsChange={setBillingFields}
               />
             </Elements>
           </CheckoutForm>
@@ -1118,7 +1145,7 @@ export default function CheckoutPage() {
               <SummaryTotal>
                 <span>Total</span>
                 <span>
-                  {finalTotal === 0 ? 'FREE' : `$${finalTotal.toFixed(2)}`}
+                  {finalTotal === 0 ? 'FREE' : `$${displayTotal.toFixed(2)}`}
                 </span>
               </SummaryTotal>
           </OrderSummary>
