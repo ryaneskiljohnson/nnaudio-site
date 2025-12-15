@@ -3,6 +3,9 @@ import { promises as fs } from "fs";
 import path from "path";
 import "server-only";
 
+// Force Node.js runtime (not Edge) since we use fs and path APIs
+export const runtime = 'nodejs';
+
 // Languages we support - duplicated here to avoid importing from client component
 const languages = ["en", "es", "fr", "it", "de", "pt", "tr", "zh", "ja"];
 const defaultLanguage = "en";
