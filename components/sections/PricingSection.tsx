@@ -44,7 +44,7 @@ const PricingContainer = styled.section`
     radial-gradient(circle at 80% 0%, rgba(78, 205, 196, 0.18), transparent 30%),
     linear-gradient(180deg, #06070f 0%, #0b0f1f 100%);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 `;
 
 const Glow = styled.div`

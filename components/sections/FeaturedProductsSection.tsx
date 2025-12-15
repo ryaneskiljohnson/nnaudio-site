@@ -4,12 +4,13 @@ import React from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { cleanHtmlText } from "@/utils/stringUtils";
 
 const SectionContainer = styled.section`
   padding: 120px 20px;
   background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 `;
 
 const ContentContainer = styled.div`
@@ -161,7 +162,8 @@ const ActionButton = styled(motion.button)`
 interface FeaturedProduct {
   id: number;
   name: string;
-  description: string;
+  tagline?: string;
+  description?: string; // Kept for backward compatibility, but tagline is preferred
   logo: string;
   thumbnail?: string;
   backgroundImage?: string;
@@ -219,7 +221,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
                   />
                 </ProductLogo>
                 <ProductTitle>{product.name}</ProductTitle>
-                <ProductDescription>{product.description}</ProductDescription>
+                <ProductDescription>{cleanHtmlText(product.tagline || product.description || '')}</ProductDescription>
                 <ProductActions>
                   <ProductPrice>{product.price}</ProductPrice>
                   <ActionButton

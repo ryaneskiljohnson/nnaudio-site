@@ -6,6 +6,11 @@ import dynamic from "next/dynamic";
 import NNAudHeroSection from "@/components/sections/NNAudHeroSection";
 import ProductsSection from "@/components/sections/ProductsSection";
 import FeaturedProductsSection from "@/components/sections/FeaturedProductsSection";
+// Lazy load waveform transition for better initial page load
+const WaveformTransition = dynamic(() => import("@/components/sections/WaveformTransition"), {
+  ssr: false,
+  loading: () => null, // No loading state needed - it's decorative
+});
 
 // Lazy load non-critical sections
 const PricingSection = dynamic(() => import("@/components/sections/PricingSection"), {
@@ -133,7 +138,7 @@ const staticFeaturedProducts = [
   {
     id: 1,
     name: "Curio",
-    description: "Unleash The Sorcery Within - Advanced synthesizer with unique sound design capabilities and intuitive workflow",
+    tagline: "Unleash The Sorcery Within",
     logo: "/images/nnaud-io/Curio-LogoText.webp",
     thumbnail: "/images/nnaud-io/Curio-LogoText.webp",
     backgroundImage: "/images/nnaud-io/Curio-BG-Motion.gif",
@@ -142,7 +147,7 @@ const staticFeaturedProducts = [
   {
     id: 2,
     name: "PercGadget",
-    description: "Innovation And Rhythm Converge - Powerful percussion sequencer and drum machine with advanced pattern creation",
+    tagline: "Innovation And Rhythm Converge",
     logo: "/images/nnaud-io/PercGadget-LogoTrans-600x150.webp",
     thumbnail: "/images/nnaud-io/PercGadget-LogoTrans-600x150.webp",
     backgroundImage: "/images/nnaud-io/PercGadget-BG-Motion1.gif",
@@ -151,7 +156,7 @@ const staticFeaturedProducts = [
   {
     id: 3,
     name: "CrystalBall",
-    description: "Sculpt Your Sonic Reality - Revolutionary effects processor with AI-powered modulation and real-time visualization",
+    tagline: "Sculpt Your Sonic Reality",
     logo: "/images/nnaud-io/CrystalBall-Logo.png",
     thumbnail: "/images/nnaud-io/CrystalBall-Logo.png",
     backgroundImage: "/images/nnaud-io/CrystalBall-Features-BG.gif",
@@ -160,7 +165,7 @@ const staticFeaturedProducts = [
   {
     id: 4,
     name: "Life Death",
-    description: "Experience the duality of sound - A powerful plugin that explores the contrast between light and dark musical textures",
+    tagline: "Experience the duality of sound",
     logo: "/images/nnaud-io/LifeDeathLogo-600x150.webp",
     thumbnail: "/images/nnaud-io/LifeDeathLogo-600x150.webp",
     backgroundImage: "/images/nnaud-io/LifeDeathBG-1.webp",
@@ -169,7 +174,7 @@ const staticFeaturedProducts = [
   {
     id: 5,
     name: "Time Zones",
-    description: "Creative delay and time-based effects plugin for expansive spatial sound",
+    tagline: "Creative delay and time-based effects",
     logo: "/images/nnaud-io/Time-Zones-Logo-600x157.jpg",
     thumbnail: "/images/nnaud-io/Time-Zones-Logo-600x157.jpg",
     backgroundImage: "/images/nnaud-io/Time-Zones-Logo-600x157.jpg",
@@ -178,7 +183,7 @@ const staticFeaturedProducts = [
   {
     id: 6,
     name: "Weaknd",
-    description: "Analog-style synthesizer with vintage warmth and modern flexibility",
+    tagline: "Analog-style synthesizer",
     logo: "/images/nnaud-io/WeakndLogo-600x150.webp",
     thumbnail: "/images/nnaud-io/WeakndLogo-600x150.webp",
     backgroundImage: "/images/nnaud-io/WeakndBG.webp",
@@ -204,7 +209,7 @@ export default function Home() {
           const mappedFeatured = featuredData.products.map((p: any) => ({
             id: p.id,
             name: p.name,
-            description: p.short_description || p.tagline || '',
+            tagline: p.tagline || p.short_description || '', // Use tagline first (subtitle), not full description
             logo: p.logo_url || p.featured_image_url || '',
             thumbnail: p.featured_image_url || p.logo_url || '',
             backgroundImage: p.background_image_url || p.background_video_url || '',
@@ -213,34 +218,48 @@ export default function Home() {
           setFeaturedProducts(mappedFeatured);
         }
 
-        // Fetch plugins
-        const pluginsResponse = await fetch('/api/products?category=plugin&status=active&limit=6');
+            // Fetch plugins (limit to 4 for mobile, will load all when "Show All" is clicked)
+            const pluginsResponse = await fetch('/api/products?category=plugin&status=active&limit=4');
         const pluginsData = await pluginsResponse.json();
         
         if (pluginsData.success) {
           const mappedPlugins = pluginsData.products.map((p: any) => ({
             id: p.id,
             name: p.name,
-            description: p.short_description || p.tagline || '',
+            slug: p.slug,
+            tagline: p.tagline || p.short_description || '', // Card subtitle - short text only
+            short_description: p.short_description,
+            description: p.description, // Full description for product pages
+            category: p.category || 'plugin', // For fallback subtitle generation
             image: p.logo_url || p.featured_image_url || '',
+            featured_image_url: p.featured_image_url,
+            logo_url: p.logo_url,
             backgroundImage: p.background_image_url || p.background_video_url || '',
-            price: `$${p.sale_price || p.price}`,
+            price: typeof p.sale_price === 'number' ? p.sale_price : (typeof p.price === 'number' ? p.price : 0),
+            sale_price: p.sale_price,
           }));
           setPlugins(mappedPlugins);
         }
 
-        // Fetch packs
-        const packsResponse = await fetch('/api/products?category=pack&status=active&limit=8');
+            // Fetch packs (limit to 4 for mobile, will load all when "Show All" is clicked)
+            const packsResponse = await fetch('/api/products?category=pack&status=active&limit=4');
         const packsData = await packsResponse.json();
         
         if (packsData.success) {
           const mappedPacks = packsData.products.map((p: any) => ({
             id: p.id,
             name: p.name,
-            description: p.short_description || p.tagline || '',
+            slug: p.slug,
+            tagline: p.tagline || p.short_description || '', // Card subtitle - short text only
+            short_description: p.short_description,
+            description: p.description, // Full description for product pages
+            category: p.category || 'pack', // For fallback subtitle generation
             image: p.featured_image_url || p.logo_url || '',
+            featured_image_url: p.featured_image_url,
+            logo_url: p.logo_url,
             backgroundImage: p.background_image_url || '',
-            price: `$${p.sale_price || p.price}`,
+            price: typeof p.sale_price === 'number' ? p.sale_price : (typeof p.price === 'number' ? p.price : 0),
+            sale_price: p.sale_price,
           }));
           setPacks(mappedPacks);
         }
@@ -262,7 +281,12 @@ export default function Home() {
     <>
       {/* Hero section */}
       <Suspense fallback={<div style={{ minHeight: "100vh", background: "#0a0a0a" }} />}>
-        <NNAudHeroSection />
+        <div style={{ position: 'relative', overflow: 'visible' }}>
+          <NNAudHeroSection />
+          {!loading && featuredProducts.length > 0 && (
+            <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#0a0a0a" />
+          )}
+        </div>
       </Suspense>
       
       {loading ? (
@@ -273,31 +297,46 @@ export default function Home() {
         <>
           {/* Featured Products section */}
           {featuredProducts.length > 0 && (
-            <FeaturedProductsSection
-              id="featured"
-              title="Featured Products"
-              products={featuredProducts}
-            />
+            <div style={{ position: 'relative', overflow: 'visible' }}>
+              <FeaturedProductsSection
+                id="featured"
+                title="Featured Products"
+                products={featuredProducts}
+              />
+              {plugins.length > 0 && (
+                <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#0a0a0a" />
+              )}
+            </div>
           )}
           
           {/* Plugins section */}
           {plugins.length > 0 && (
-            <ProductsSection
-              id="plugins"
-              title="Premium Plugins"
-              subtitle="Professional-grade tools for modern music production"
-              products={plugins}
-            />
+            <div style={{ position: 'relative', overflow: 'visible' }}>
+              <ProductsSection
+                id="plugins"
+                title="Premium Plugins"
+                subtitle="Professional-grade tools for modern music production"
+                products={plugins}
+                fetchAllUrl="/api/products?category=plugin&status=active&limit=100"
+              />
+              {packs.length > 0 && (
+                <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#1a1a2e" />
+              )}
+            </div>
           )}
-          
+
           {/* Packs section */}
           {packs.length > 0 && (
-            <ProductsSection
-              id="packs"
-              title="Sample Packs"
-              subtitle="Curated collections of high-quality sounds and samples"
-              products={packs}
-            />
+            <div style={{ position: 'relative', overflow: 'visible' }}>
+              <ProductsSection
+                id="packs"
+                title="Sample Packs"
+                subtitle="Curated collections of high-quality sounds and samples"
+                products={packs}
+                fetchAllUrl="/api/products?category=pack&status=active&limit=100"
+              />
+              <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#06070f" />
+            </div>
           )}
         </>
       )}
