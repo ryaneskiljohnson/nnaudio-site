@@ -13,14 +13,20 @@ class EmailCampaignScheduler {
   private scheduledTask: cron.ScheduledTask | null = null;
 
   constructor() {
+    // Determine the correct base URL for the scheduler endpoint
+    // Priority: VERCEL_URL (auto-provided by Vercel) > NEXT_PUBLIC_SITE_URL > localhost fallback
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_SITE_URL
+      ? process.env.NEXT_PUBLIC_SITE_URL
+      : "http://localhost:3000";
+
     this.config = {
       enabled:
         process.env.NODE_ENV === "production" ||
         process.env.ENABLE_SCHEDULER === "true",
       cronExpression: process.env.SCHEDULER_CRON || "* * * * *", // Every minute by default
-      endpoint: process.env.NEXT_PUBLIC_SITE_URL
-        ? `${process.env.NEXT_PUBLIC_SITE_URL}/api/email-campaigns/process-scheduled`
-        : "http://localhost:3000/api/email-campaigns/process-scheduled",
+      endpoint: `${baseUrl}/api/email-campaigns/process-scheduled`,
       cronSecret: process.env.CRON_SECRET || "your-secret-key",
     };
 
