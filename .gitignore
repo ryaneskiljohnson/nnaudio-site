@@ -49,3 +49,6 @@ lightsail_key
 lightsail_key.pubdb/universe.users.csv
 db/universe.users.trimmed.csv
 db/universe.users.trimmed.modified.csv
+
+# Nested git repositories (not submodules)
+cymasphere/.git
