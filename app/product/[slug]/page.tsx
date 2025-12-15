@@ -5,8 +5,10 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { FaStar, FaShoppingCart, FaDownload, FaCheck, FaPlay, FaPause, FaMusic, FaVideo } from "react-icons/fa";
+import { FaStar, FaShoppingCart, FaDownload, FaCheck, FaPlay, FaPause, FaMusic, FaVideo, FaChevronRight, FaHome, FaVolumeUp } from "react-icons/fa";
 import { useParams } from "next/navigation";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/contexts/ToastContext";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -14,7 +16,7 @@ const Container = styled.div`
 `;
 
 const HeroSection = styled.section<{ $bgImage?: string }>`
-  padding: 140px 20px 80px;
+  padding: 140px 20px 40px;
   background: ${props => props.$bgImage 
     ? `linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.9) 100%), url(${props.$bgImage})`
     : 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)'};
@@ -35,6 +37,43 @@ const HeroContent = styled.div`
     grid-template-columns: 1fr;
     gap: 2rem;
   }
+`;
+
+const BreadcrumbContainer = styled.div`
+  grid-column: 1 / -1;
+  margin-bottom: 0.5rem;
+`;
+
+const BreadcrumbList = styled.nav`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const BreadcrumbLink = styled(Link)`
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: rgba(255, 255, 255, 1);
+  }
+`;
+
+const BreadcrumbSeparator = styled.span`
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+`;
+
+const BreadcrumbCurrent = styled.span`
+  color: rgba(255, 255, 255, 1);
+  font-weight: 500;
 `;
 
 const ProductImageContainer = styled(motion.div)`
@@ -128,7 +167,7 @@ const BuyButton = styled(motion.button)`
 `;
 
 const ContentSection = styled.section`
-  padding: 80px 20px;
+  padding: 40px 20px;
   max-width: 1200px;
   margin: 0 auto;
 `;
@@ -136,7 +175,7 @@ const ContentSection = styled.section`
 const SectionTitle = styled.h2`
   font-size: 2.5rem;
   color: white;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   font-weight: 700;
 `;
 
@@ -144,7 +183,7 @@ const Description = styled.div`
   font-size: 1.1rem;
   line-height: 1.8;
   color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 3rem;
+  margin-bottom: 0;
   
   p {
     margin-bottom: 1rem;
@@ -381,9 +420,9 @@ const VolumeContainer = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.75rem;
   opacity: 0.7;
   transition: opacity 0.2s ease;
+  margin-left: auto;
   
   ${PlaylistContainer}:hover & {
     opacity: 1;
@@ -464,7 +503,7 @@ const PlaylistItemDuration = styled.div`
 `;
 
 const VolumeSlider = styled.input`
-  flex: 1;
+  width: 150px;
   height: 4px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
@@ -544,6 +583,8 @@ const LoadingContainer = styled.div`
 export default function ProductPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const { addItem } = useCart();
+  const { success } = useToast();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
@@ -926,6 +967,27 @@ export default function ProductPage() {
     <Container>
       <HeroSection $bgImage={product.background_image_url || product.background_video_url}>
         <HeroContent>
+          <BreadcrumbContainer>
+            <BreadcrumbList>
+              <BreadcrumbLink href="/">
+                <FaHome size={14} />
+                <span>Home</span>
+              </BreadcrumbLink>
+              <BreadcrumbSeparator>
+                <FaChevronRight size={10} />
+              </BreadcrumbSeparator>
+              <BreadcrumbLink href="/products">
+                <span>Products</span>
+              </BreadcrumbLink>
+              <BreadcrumbSeparator>
+                <FaChevronRight size={10} />
+              </BreadcrumbSeparator>
+              <BreadcrumbCurrent>
+                {product.name}
+              </BreadcrumbCurrent>
+            </BreadcrumbList>
+          </BreadcrumbContainer>
+          
           <ProductImageContainer
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
@@ -1001,6 +1063,20 @@ export default function ProductPage() {
             <BuyButton
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                if (product) {
+                  addItem({
+                    id: product.id,
+                    name: product.name,
+                    slug: product.slug,
+                    price: product.price,
+                    sale_price: product.sale_price,
+                    featured_image_url: product.featured_image_url,
+                    logo_url: product.logo_url,
+                  });
+                  success(`${product.name} added to cart!`, 3000);
+                }
+              }}
             >
               <FaShoppingCart /> Add to Cart
             </BuyButton>
@@ -1090,63 +1166,62 @@ export default function ProductPage() {
                     <span>{formatTime(duration)}</span>
                   </AudioTime>
                 </CurrentTrackInfo>
+                <VolumeContainer>
+                  <FaVolumeUp size={14} style={{ color: 'rgba(255, 255, 255, 0.6)' }} />
+                  <VolumeSlider
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={volume}
+                    onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                  />
+                </VolumeContainer>
               </PlaylistHeader>
               
               <WaveformContainer onClick={handleWaveformClick}>
-                {isPlaying && analyserRef.current ? (
-                  <WaveformCanvas
-                    ref={waveformCanvasRef}
-                    style={{ width: '100%', height: '100%', cursor: 'pointer' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleWaveformClick(e as any);
-                    }}
-                  />
-                ) : (
-                  <StaticWaveform>
-                    {waveformData.length > 0 ? (
-                      waveformData.map((height, index) => {
-                        const progress = duration > 0 ? (currentTime / duration) : 0;
-                        const isActive = index / waveformData.length <= progress;
-                        return (
-                          <WaveformBar
-                            key={index}
-                            $height={height}
-                            $isActive={isActive}
-                          />
-                        );
-                      })
-                    ) : (
-                      <div style={{ 
-                        width: '100%', 
-                        textAlign: 'center', 
-                        color: 'rgba(255, 255, 255, 0.4)',
-                        fontSize: '0.9rem'
-                      }}>
-                        Loading waveform...
-                      </div>
-                    )}
-                  </StaticWaveform>
-                )}
-              </WaveformContainer>
+                  {isPlaying && analyserRef.current ? (
+                    <WaveformCanvas
+                      ref={waveformCanvasRef}
+                      style={{ width: '100%', height: '100%', cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleWaveformClick(e as any);
+                      }}
+                    />
+                  ) : (
+                    <StaticWaveform>
+                      {waveformData.length > 0 ? (
+                        waveformData.map((height, index) => {
+                          const progress = duration > 0 ? (currentTime / duration) : 0;
+                          const isActive = index / waveformData.length <= progress;
+                          return (
+                            <WaveformBar
+                              key={index}
+                              $height={height}
+                              $isActive={isActive}
+                            />
+                          );
+                        })
+                      ) : (
+                        <div style={{ 
+                          width: '100%', 
+                          textAlign: 'center', 
+                          color: 'rgba(255, 255, 255, 0.4)',
+                          fontSize: '0.9rem'
+                        }}>
+                          Loading waveform...
+                        </div>
+                      )}
+                    </StaticWaveform>
+                  )}
+                </WaveformContainer>
               
               <ProgressContainer>
                 <ProgressBar onClick={handleProgressClick}>
                   <ProgressFill $progress={duration > 0 ? (currentTime / duration) * 100 : 0} />
                 </ProgressBar>
               </ProgressContainer>
-              
-              <VolumeContainer>
-                <FaMusic size={14} style={{ color: 'rgba(255, 255, 255, 0.6)' }} />
-                <VolumeSlider
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={volume}
-                  onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                />
-              </VolumeContainer>
               
               <Playlist>
                 <PlaylistTitle>Playlist ({product.audio_samples.length} tracks)</PlaylistTitle>

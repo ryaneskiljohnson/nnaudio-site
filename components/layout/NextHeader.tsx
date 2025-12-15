@@ -13,13 +13,16 @@ import {
   FaRegLightbulb,
   FaRegCreditCard,
   FaShieldAlt,
+  FaShoppingCart,
 } from "react-icons/fa";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import NextLanguageSelector from "@/components/i18n/NextLanguageSelector";
 import Image from "next/image";
+import SideCart from "@/components/cart/SideCart";
 // Import translations directly to avoid hook ordering issues
 import i18next from "i18next";
 
@@ -559,6 +562,46 @@ const UserMenuLogout = styled.button`
   }
 `;
 
+const CartButton = styled.button`
+  position: relative;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--primary);
+  }
+
+  svg {
+    font-size: 20px;
+  }
+`;
+
+const CartBadge = styled.span`
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  border: 2px solid var(--background);
+`;
+
 interface NextHeaderProps {
   hasActiveBanner?: boolean;
 }
@@ -569,9 +612,12 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [sideCartOpen, setSideCartOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const { user, signOut } = useAuth();
+  const { getItemCount } = useCart();
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const cartItemCount = getItemCount();
 
   // Track language to force re-render on language change
   const [language, setLanguage] = useState(() =>
@@ -681,9 +727,14 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
   };
 
   const renderAuthSection = () => {
-    if (user) {
-      return (
-        <UserMenuContainer ref={userMenuRef} className="user-menu">
+    return (
+      <>
+        <CartButton onClick={() => setSideCartOpen(true)}>
+          <FaShoppingCart />
+          {cartItemCount > 0 && <CartBadge>{cartItemCount > 99 ? '99+' : cartItemCount}</CartBadge>}
+        </CartButton>
+        {user ? (
+          <UserMenuContainer ref={userMenuRef} className="user-menu">
           <UserButton onClick={() => setUserMenuOpen(!userMenuOpen)}>
             <FaUserCircle />
           </UserButton>
@@ -708,17 +759,16 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
             </UserMenuLogout>
           </UserDropdown>
         </UserMenuContainer>
-      );
-    }
-
-    return (
-      <>
-        <AuthButton onClick={handleLoginClick}>
-          {getTranslation("common.login")}
-        </AuthButton>
-        <AuthButton $isPrimary onClick={handleSignupClick}>
-          {getTranslation("common.signUp")}
-        </AuthButton>
+        ) : (
+          <>
+            <AuthButton onClick={handleLoginClick}>
+              {getTranslation("common.login")}
+            </AuthButton>
+            <AuthButton $isPrimary onClick={handleSignupClick}>
+              {getTranslation("common.signUp")}
+            </AuthButton>
+          </>
+        )}
       </>
     );
   };
@@ -760,6 +810,10 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
           </Nav>
 
           <MobileActions>
+            <CartButton onClick={() => setSideCartOpen(true)}>
+              <FaShoppingCart />
+              {cartItemCount > 0 && <CartBadge>{cartItemCount > 99 ? '99+' : cartItemCount}</CartBadge>}
+            </CartButton>
             <MenuToggle onClick={() => setMenuOpen(!menuOpen)}>
               {menuOpen ? <FaTimes /> : <FaBars />}
             </MenuToggle>
@@ -889,6 +943,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
         )}
       </AnimatePresence>
       <Overlay $isVisible={menuOpen} onClick={() => setMenuOpen(false)} />
+      <SideCart isOpen={sideCartOpen} onClose={() => setSideCartOpen(false)} />
     </>
   );
 };

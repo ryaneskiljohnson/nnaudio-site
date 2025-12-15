@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { ThemeProvider } from "styled-components";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
 import NextHeader from "@/components/layout/NextHeader";
 import Footer from "@/components/layout/Footer";
 import { usePathname } from "next/navigation";
@@ -178,6 +179,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <ThemeProvider theme={theme}>
       <ToastProvider>
+        <CartProvider>
         <AuthProvider>
           <LayoutContent
             shouldHideHeaderFooter={shouldHideHeaderFooter}
@@ -188,6 +190,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
             {children}
           </LayoutContent>
         </AuthProvider>
+        </CartProvider>
       </ToastProvider>
     </ThemeProvider>
   );
