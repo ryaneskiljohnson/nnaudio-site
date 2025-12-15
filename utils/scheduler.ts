@@ -1,15 +1,6 @@
-// Dynamic import for node-cron to prevent Edge runtime issues
-// node-cron uses __dirname which isn't available in Edge runtime
-// Use 'any' type to prevent TypeScript from analyzing node-cron module
-let cron: any = null;
-
-// Lazy load node-cron only in Node.js runtime
-async function getCron() {
-  if (!cron && typeof EdgeRuntime === "undefined") {
-    cron = await import("node-cron");
-  }
-  return cron;
-}
+// Import node-cron directly - this file should ONLY be imported in Node.js runtime contexts
+// The API routes that use this file explicitly set runtime = 'nodejs'
+import * as cron from "node-cron";
 
 interface SchedulerConfig {
   enabled: boolean;
@@ -21,7 +12,7 @@ interface SchedulerConfig {
 class EmailCampaignScheduler {
   private isRunning = false;
   private config: SchedulerConfig;
-  private scheduledTask: any = null; // Use 'any' to avoid analyzing node-cron types
+  private scheduledTask: cron.ScheduledTask | null = null;
 
   constructor() {
     // Determine the correct base URL for the scheduler endpoint
@@ -99,7 +90,7 @@ class EmailCampaignScheduler {
     }
   }
 
-  async start(): Promise<void> {
+  start(): void {
     if (!this.config.enabled) {
       console.log(
         "📅 Scheduler disabled (NODE_ENV not production and ENABLE_SCHEDULER not true)"
@@ -112,13 +103,6 @@ class EmailCampaignScheduler {
       return;
     }
 
-    // Only load node-cron in Node.js runtime
-    const cronModule = await getCron();
-    if (!cronModule) {
-      console.log("📅 Scheduler skipped (Edge runtime detected)");
-      return;
-    }
-
     console.log("📅 Email Campaign Scheduler starting:", {
       enabled: this.config.enabled,
       cronExpression: this.config.cronExpression,
@@ -126,7 +110,7 @@ class EmailCampaignScheduler {
       environment: process.env.NODE_ENV,
     });
 
-    this.scheduledTask = cronModule.schedule(
+    this.scheduledTask = cron.schedule(
       this.config.cronExpression,
       () => {
         this.processScheduledCampaigns();
@@ -169,11 +153,6 @@ class EmailCampaignScheduler {
 // Singleton instance
 export const emailScheduler = new EmailCampaignScheduler();
 
-// Auto-start in production or when explicitly enabled
-// Only start if we're in Node.js runtime (not Edge)
-if (typeof window === "undefined" && typeof EdgeRuntime === "undefined") {
-  // Server-side only, Node.js runtime - start asynchronously
-  emailScheduler.start().catch((err) => {
-    console.error("Failed to start scheduler:", err);
-  });
-}
+// DO NOT auto-start here - it causes Edge runtime bundling issues
+// Start explicitly via API route: POST /api/scheduler with action: "start"
+// Or call emailScheduler.start() in a Node.js API route only

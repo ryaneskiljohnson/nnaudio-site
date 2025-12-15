@@ -3,15 +3,23 @@ import { NextRequest, NextResponse } from "next/server";
 // Force Node.js runtime (not Edge) since scheduler uses node-cron which requires Node.js APIs
 export const runtime = 'nodejs';
 
-// Dynamic import to prevent node-cron from being analyzed in Edge runtime
-const getScheduler = async () => {
-  const { emailScheduler } = await import("@/utils/scheduler");
-  return emailScheduler;
-};
+// Direct import - safe because this route explicitly uses Node.js runtime
+import { emailScheduler } from "@/utils/scheduler";
+
+// Auto-start scheduler on first API call in production
+let hasStarted = false;
+function ensureStarted() {
+  if (!hasStarted && (process.env.NODE_ENV === "production" || process.env.ENABLE_SCHEDULER === "true")) {
+    emailScheduler.start().catch((err) => {
+      console.error("Failed to auto-start scheduler:", err);
+    });
+    hasStarted = true;
+  }
+}
 
 export async function GET() {
   try {
-    const emailScheduler = await getScheduler();
+    ensureStarted();
     const status = emailScheduler.getStatus();
     
     return NextResponse.json({
@@ -35,14 +43,13 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    ensureStarted();
     const body = await request.json();
     const action = body.action;
-
-    const emailScheduler = await getScheduler();
     
     switch (action) {
       case "start":
-        await emailScheduler.start();
+        emailScheduler.start();
         return NextResponse.json({
           message: "Scheduler started",
           status: emailScheduler.getStatus(),
