@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { emailScheduler } from "@/utils/scheduler";
 
 // Force Node.js runtime (not Edge) since scheduler uses node-cron which requires Node.js APIs
 export const runtime = 'nodejs';
 
+// Dynamic import to prevent node-cron from being analyzed in Edge runtime
+const getScheduler = async () => {
+  const { emailScheduler } = await import("@/utils/scheduler");
+  return emailScheduler;
+};
+
 export async function GET() {
   try {
+    const emailScheduler = await getScheduler();
     const status = emailScheduler.getStatus();
     
     return NextResponse.json({
@@ -32,9 +38,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const action = body.action;
 
+    const emailScheduler = await getScheduler();
+    
     switch (action) {
       case "start":
-        emailScheduler.start();
+        await emailScheduler.start();
         return NextResponse.json({
           message: "Scheduler started",
           status: emailScheduler.getStatus(),

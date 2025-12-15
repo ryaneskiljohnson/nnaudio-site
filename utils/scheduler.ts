@@ -1,4 +1,14 @@
-import * as cron from "node-cron";
+// Dynamic import for node-cron to prevent Edge runtime issues
+// node-cron uses __dirname which isn't available in Edge runtime
+let cron: typeof import("node-cron") | null = null;
+
+// Lazy load node-cron only in Node.js runtime
+async function getCron() {
+  if (!cron && typeof EdgeRuntime === "undefined") {
+    cron = await import("node-cron");
+  }
+  return cron;
+}
 
 interface SchedulerConfig {
   enabled: boolean;
@@ -88,7 +98,7 @@ class EmailCampaignScheduler {
     }
   }
 
-  start(): void {
+  async start(): Promise<void> {
     if (!this.config.enabled) {
       console.log(
         "📅 Scheduler disabled (NODE_ENV not production and ENABLE_SCHEDULER not true)"
@@ -101,6 +111,13 @@ class EmailCampaignScheduler {
       return;
     }
 
+    // Only load node-cron in Node.js runtime
+    const cronModule = await getCron();
+    if (!cronModule) {
+      console.log("📅 Scheduler skipped (Edge runtime detected)");
+      return;
+    }
+
     console.log("📅 Email Campaign Scheduler starting:", {
       enabled: this.config.enabled,
       cronExpression: this.config.cronExpression,
@@ -108,7 +125,7 @@ class EmailCampaignScheduler {
       environment: process.env.NODE_ENV,
     });
 
-    this.scheduledTask = cron.schedule(
+    this.scheduledTask = cronModule.schedule(
       this.config.cronExpression,
       () => {
         this.processScheduledCampaigns();
@@ -154,6 +171,8 @@ export const emailScheduler = new EmailCampaignScheduler();
 // Auto-start in production or when explicitly enabled
 // Only start if we're in Node.js runtime (not Edge)
 if (typeof window === "undefined" && typeof EdgeRuntime === "undefined") {
-  // Server-side only, Node.js runtime
-  emailScheduler.start();
+  // Server-side only, Node.js runtime - start asynchronously
+  emailScheduler.start().catch((err) => {
+    console.error("Failed to start scheduler:", err);
+  });
 }
