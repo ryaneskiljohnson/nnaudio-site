@@ -8,6 +8,7 @@ import Link from "next/link";
 import { FaSearch, FaFilter, FaStar, FaShoppingCart } from "react-icons/fa";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
+import { cleanHtmlText } from "@/utils/stringUtils";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -420,7 +421,7 @@ export default function ProductsPage() {
                 <ProductInfo>
                   <ProductName>{product.name}</ProductName>
                   {product.tagline && (
-                    <ProductTagline>{product.tagline}</ProductTagline>
+                    <ProductTagline>{cleanHtmlText(product.tagline)}</ProductTagline>
                   )}
                   
                   <PriceRow>

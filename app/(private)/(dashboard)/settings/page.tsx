@@ -14,6 +14,10 @@ import {
   FaTimes,
   FaCheck,
   FaInfoCircle,
+  FaUser,
+  FaLock,
+  FaSave,
+  FaTimesCircle,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import AnimatedCard from "@/components/settings/CardComponent";
@@ -296,6 +300,8 @@ interface SettingsState {
 
 interface ProfileState {
   deleteConfirmation: string;
+  first_name: string;
+  last_name: string;
 }
 
 interface Device {
@@ -313,14 +319,32 @@ function Settings() {
 
   const [profile, setProfile] = useState<ProfileState>({
     deleteConfirmation: "",
+    first_name: user?.profile?.first_name || "",
+    last_name: user?.profile?.last_name || "",
   });
 
-  const { user, session, signOut, refreshUser } = useAuth();
+  const [profileMessage, setProfileMessage] = useState<{
+    text: string;
+    type: "error" | "success" | "";
+  }>({ text: "", type: "" });
+
+  const { user, session, signOut, refreshUser, updateProfile, resetPassword } = useAuth();
 
   // Refresh pro status on mount (same as login)
   useEffect(() => {
     refreshUser();
   }, [refreshUser]); // Run on mount and when refreshUser changes
+
+  // Initialize profile data from user
+  useEffect(() => {
+    if (user?.profile) {
+      setProfile((prev) => ({
+        ...prev,
+        first_name: user.profile.first_name || "",
+        last_name: user.profile.last_name || "",
+      }));
+    }
+  }, [user]);
 
   // Modal states
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -446,6 +470,119 @@ function Settings() {
       ...prevProfile,
       [key]: e.target.value,
     }));
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.profile) return;
+
+    const updatedProfile = {
+      ...user.profile,
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+    };
+
+    try {
+      const { error } = await updateProfile(updatedProfile);
+      if (error) {
+        setProfileMessage({
+          text: t(
+            "dashboard.profile.errorUpdating",
+            "Error updating profile: {{error}}",
+            { error: error.toString() }
+          ),
+          type: "error",
+        });
+      } else {
+        setProfileMessage({
+          text: t(
+            "dashboard.profile.profileUpdated",
+            "Profile information updated successfully!"
+          ),
+          type: "success",
+        });
+      }
+    } catch (error) {
+      setProfileMessage({
+        text: t(
+          "dashboard.profile.unexpectedError",
+          "An unexpected error occurred: {{error}}",
+          {
+            error: error instanceof Error ? error.message : "Unknown error",
+          }
+        ),
+        type: "error",
+      });
+    }
+
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setProfileMessage({ text: "", type: "" });
+    }, 3000);
+  };
+
+  const handleResetPassword = async () => {
+    if (!user?.email) {
+      setProfileMessage({
+        text: t(
+          "dashboard.profile.noEmailFound",
+          "No email address found for password reset"
+        ),
+        type: "error",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await resetPassword(user.email);
+      if (error) {
+        if (
+          error.message.includes("email rate limit exceeded") ||
+          error.message.includes("rate limit")
+        ) {
+          setProfileMessage({
+            text: t(
+              "dashboard.profile.tooManyAttempts",
+              "Too many password reset attempts. Please wait a few minutes before trying again."
+            ),
+            type: "error",
+          });
+        } else {
+          setProfileMessage({
+            text: t(
+              "dashboard.profile.errorSendingReset",
+              "Error sending reset email: {{error}}",
+              { error: error.message }
+            ),
+            type: "error",
+          });
+        }
+      } else {
+        setProfileMessage({
+          text: t(
+            "dashboard.profile.passwordResetSent",
+            "Password reset email sent! Please check your inbox."
+          ),
+          type: "success",
+        });
+      }
+    } catch (error) {
+      setProfileMessage({
+        text: t(
+          "dashboard.profile.unexpectedError",
+          "An unexpected error occurred: {{error}}",
+          {
+            error: error instanceof Error ? error.message : "Unknown error",
+          }
+        ),
+        type: "error",
+      });
+    }
+
+    // Clear message after 3 seconds
+    setTimeout(() => {
+      setProfileMessage({ text: "", type: "" });
+    }, 3000);
   };
 
   const handleLogout = () => {
@@ -626,10 +763,94 @@ function Settings() {
     <SettingsContainer>
       <SectionTitle>{t("dashboard.settings.title", "Settings")}</SectionTitle>
 
+      {/* Profile Settings */}
+      {profileMessage.text && (
+        <Message type={profileMessage.type as "error" | "success"}>
+          {profileMessage.type === "error" ? <FaTimesCircle /> : <FaUser />}
+          {profileMessage.text}
+        </Message>
+      )}
+
       <AnimatedCard
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
+      >
+        <CardTitle>
+          <FaUser />{" "}
+          {t("dashboard.profile.personalInfo", "Personal Information")}
+        </CardTitle>
+        <CardContent>
+          <Form onSubmit={handleSaveProfile}>
+            <TwoColumnGrid>
+              <FormGroup>
+                <Label>{t("dashboard.profile.firstName", "First Name")}</Label>
+                <Input
+                  type="text"
+                  value={profile.first_name}
+                  onChange={(e) => handleProfileChange(e, "first_name")}
+                  required
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label>{t("dashboard.profile.lastName", "Last Name")}</Label>
+                <Input
+                  type="text"
+                  value={profile.last_name}
+                  onChange={(e) => handleProfileChange(e, "last_name")}
+                  required
+                />
+              </FormGroup>
+            </TwoColumnGrid>
+
+            <FormGroup>
+              <Label>{t("dashboard.profile.email", "Email Address")}</Label>
+              <ReadOnlyInput
+                type="email"
+                value={user?.email || ""}
+                readOnly
+                disabled
+              />
+            </FormGroup>
+
+            <Button
+              type="submit"
+              as={motion.button}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <FaSave /> {t("dashboard.profile.saveChanges", "Save Changes")}
+            </Button>
+          </Form>
+        </CardContent>
+      </AnimatedCard>
+
+      <AnimatedCard
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
+        <CardTitle>
+          <FaLock /> {t("dashboard.profile.passwordSection", "Change Password")}
+        </CardTitle>
+        <CardContent>
+          <Button
+            onClick={handleResetPassword}
+            as={motion.button}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <FaLock />{" "}
+            {t("dashboard.profile.sendResetEmail", "Send Password Reset Email")}
+          </Button>
+        </CardContent>
+      </AnimatedCard>
+
+      <AnimatedCard
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
       >
         <CardTitle>
           <FaMobileAlt /> {t("dashboard.settings.devices", "Active Devices")}
@@ -701,7 +922,7 @@ function Settings() {
       <AnimatedCard
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
       >
         <CardTitle>
           <FaTrash style={{ color: "var(--error)" }} />{" "}
@@ -901,6 +1122,10 @@ const Form = styled.form`
 
 const FormGroup = styled.div`
   margin-bottom: 1.5rem;
+
+  @media (max-width: 768px) {
+    margin-bottom: 1.25rem;
+  }
 `;
 
 const Label = styled.label`
@@ -922,6 +1147,65 @@ const Input = styled.input`
   &:focus {
     outline: none;
     border-color: var(--primary);
+  }
+
+  @media (max-width: 768px) {
+    padding: 0.85rem 1rem;
+    font-size: 16px; /* Prevent zoom on iOS */
+    border-radius: 8px;
+  }
+`;
+
+const ReadOnlyInput = styled(Input)`
+  background-color: rgba(30, 30, 46, 0.3);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+
+  &:focus {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+`;
+
+const TwoColumnGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+
+  @media (min-width: 768px) {
+    grid-template-columns: 1fr 1fr;
+  }
+`;
+
+interface MessageProps {
+  type: "error" | "success";
+  children: React.ReactNode;
+}
+
+const Message = styled.div<MessageProps>`
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  color: ${(props) =>
+    props.type === "error" ? "var(--error)" : "var(--success)"};
+  background-color: ${(props) =>
+    props.type === "error"
+      ? "rgba(255, 87, 51, 0.1)"
+      : "rgba(0, 201, 167, 0.1)"};
+  border: 1px solid
+    ${(props) =>
+      props.type === "error"
+        ? "rgba(255, 87, 51, 0.3)"
+        : "rgba(0, 201, 167, 0.3)"};
+  display: flex;
+  align-items: center;
+
+  svg {
+    margin-right: 0.75rem;
+  }
+
+  @media (max-width: 768px) {
+    padding: 0.85rem;
+    border-radius: 8px;
   }
 `;
 

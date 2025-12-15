@@ -9,6 +9,7 @@ import { FaStar, FaShoppingCart, FaDownload, FaCheck, FaPlay, FaPause, FaMusic, 
 import { useParams } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
+import { cleanHtmlText } from "@/utils/stringUtils";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -1032,7 +1033,7 @@ export default function ProductPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.3 }}
               >
-                {product.tagline}
+                {cleanHtmlText(product.tagline)}
               </ProductTagline>
             )}
 
@@ -1109,9 +1110,10 @@ export default function ProductPage() {
         <ContentSection>
           <SectionTitle>Description</SectionTitle>
           <Description>
-            {product.description.split('\n').map((paragraph: string, i: number) => (
-              <p key={i}>{paragraph}</p>
-            ))}
+            {cleanHtmlText(product.description).split('\n').map((paragraph: string, i: number) => {
+              const cleaned = paragraph.trim();
+              return cleaned ? <p key={i}>{cleaned}</p> : null;
+            })}
           </Description>
         </ContentSection>
       )}

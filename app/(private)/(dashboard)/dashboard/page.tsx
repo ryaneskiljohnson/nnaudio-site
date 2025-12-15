@@ -12,6 +12,7 @@ import {
   FaExclamationTriangle,
   FaInfoCircle,
   FaDownload,
+  FaShoppingBag,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import { capitalize } from "@/utils/stringUtils";
@@ -372,6 +373,8 @@ function DashboardPage() {
   const [deviceCount, setDeviceCount] = useState(0);
   const [maxDevices, setMaxDevices] = useState(3);
   const [isLoadingDevices, setIsLoadingDevices] = useState(true);
+  const [orderCount, setOrderCount] = useState(0);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
 
   // State for prices
   const [isLoadingPrices, setIsLoadingPrices] = useState(true);
@@ -431,6 +434,32 @@ function DashboardPage() {
 
     if (user) {
       fetchDeviceCount();
+    }
+  }, [user]);
+
+  // Fetch order count on component mount
+  useEffect(() => {
+    async function fetchOrderCount() {
+      try {
+        setIsLoadingOrders(true);
+        const response = await fetch("/api/orders/count");
+        const data = await response.json();
+
+        if (data.success && typeof data.count === "number") {
+          setOrderCount(data.count);
+        } else {
+          setOrderCount(0);
+        }
+      } catch (err) {
+        console.error("Error in fetchOrderCount:", err);
+        setOrderCount(0);
+      } finally {
+        setIsLoadingOrders(false);
+      }
+    }
+
+    if (user) {
+      fetchOrderCount();
     }
   }, [user]);
 
@@ -495,6 +524,10 @@ function DashboardPage() {
 
   const navigateToSettings = () => {
     router.push("/settings");
+  };
+
+  const navigateToOrders = () => {
+    router.push("/my-orders");
   };
 
   const handleContactInputChange = (
@@ -713,39 +746,31 @@ function DashboardPage() {
       <StatsGrid>
         <StatCard
           whileHover={{ y: -5, transition: { duration: 0.2 } }}
-          onClick={navigateToBilling}
+          onClick={navigateToOrders}
         >
           <StatHeader>
-            <StatTitle>{t("dashboard.main.plan", "Current Plan")}</StatTitle>
+            <StatTitle>{t("dashboard.main.orders", "Orders")}</StatTitle>
             <StatIcon color="linear-gradient(90deg, #6c63ff, #4ecdc4)">
-              <FaCreditCard />
+              <FaShoppingBag />
             </StatIcon>
           </StatHeader>
           <StatValue>
-            {hasNfr === true
-              ? "Elite Access"
-              : user.profile.subscription === "none"
-              ? t("common.none", "None")
-              : capitalize(user.profile.subscription)}
+            {isLoadingOrders ? (
+              <div
+                style={{
+                  minWidth: "60px",
+                  display: "inline-block",
+                  textAlign: "center",
+                }}
+              >
+                <LoadingComponent size="20px" text="" />
+              </div>
+            ) : (
+              orderCount
+            )}
           </StatValue>
           <StatDescription>
-            {shouldShowTrialContent()
-              ? t(
-                  "dashboard.main.trialDaysLeft",
-                  "{{days}} days left in your free trial",
-                  { days: getDaysLeftInTrial() }
-                )
-              : user.profile.subscription === "lifetime"
-              ? t(
-                  "dashboard.main.lifetimeAccess",
-                  "Includes free updates for life"
-                )
-              : user.profile.subscription !== "none"
-              ? t("dashboard.main.fullAccess", "You have full access")
-              : t(
-                  "dashboard.main.upgradeToPro",
-                  "Upgrade to Pro for full access"
-                )}
+            {t("dashboard.main.totalOrders", "Total orders placed")}
           </StatDescription>
         </StatCard>
 

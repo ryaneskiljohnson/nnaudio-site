@@ -706,32 +706,36 @@ export default function ChatWidget({ className }: ChatWidgetProps) {
   }, [isOpen]);
 
   // Auto-open chat widget after 15 seconds if not on dashboard pages and user is not logged in
+  // DISABLED: Auto-open is currently disabled
   useEffect(() => {
-    const isDashboardPage = pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
-    const isLoggedIn = !!user;
+    // Auto-open disabled - users must manually open the chat widget
+    return;
     
-    // Don't auto-open if:
-    // - On dashboard/admin pages
-    // - User is logged in
-    // - Email modal is open
-    // - Already auto-opened
-    // - Chat is already open
-    if (!isDashboardPage && !isLoggedIn && !hasAutoOpened && !isOpen && !isEmailModalOpen) {
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-        setHasAutoOpened(true);
-        // Play pleasant sound when auto-opening (only if audio was initialized)
-        if (audioInitialized) {
-          playSound().catch(() => {
-            console.log("Audio not available for chat widget auto-open");
-          });
-        } else {
-          console.log("Audio not initialized yet, skipping auto-open sound");
-        }
-      }, 15000); // 15 seconds
-
-      return () => clearTimeout(timer);
-    }
+    // const isDashboardPage = pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
+    // const isLoggedIn = !!user;
+    // 
+    // // Don't auto-open if:
+    // // - On dashboard/admin pages
+    // // - User is logged in
+    // // - Email modal is open
+    // // - Already auto-opened
+    // // - Chat is already open
+    // if (!isDashboardPage && !isLoggedIn && !hasAutoOpened && !isOpen && !isEmailModalOpen) {
+    //   const timer = setTimeout(() => {
+    //     setIsOpen(true);
+    //     setHasAutoOpened(true);
+    //     // Play pleasant sound when auto-opening (only if audio was initialized)
+    //     if (audioInitialized) {
+    //       playSound().catch(() => {
+    //         console.log("Audio not available for chat widget auto-open");
+    //       });
+    //     } else {
+    //       console.log("Audio not initialized yet, skipping auto-open sound");
+    //     }
+    //   }, 15000); // 15 seconds
+    //
+    //   return () => clearTimeout(timer);
+    // }
   }, [pathname, hasAutoOpened, isOpen, audioInitialized, isEmailModalOpen, user]);
 
   const handleSendMessage = async () => {

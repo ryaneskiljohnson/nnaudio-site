@@ -117,6 +117,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Stripe minimum charge is $0.50 USD
+    const STRIPE_MINIMUM_AMOUNT = 0.50;
+    
+    // If total is exactly $0, treat as free order
+    if (totalAmount === 0) {
+      return NextResponse.json({
+        success: true,
+        isFreeOrder: true,
+        amount: 0,
+        message: 'This is a free order.',
+      });
+    }
+    
+    // If total is less than Stripe minimum (but not $0), charge the minimum $0.50
+    if (totalAmount > 0 && totalAmount < STRIPE_MINIMUM_AMOUNT) {
+      console.log(`⚠️ Order total ($${totalAmount.toFixed(2)}) is below Stripe's minimum of $${STRIPE_MINIMUM_AMOUNT.toFixed(2)}. Charging minimum amount.`);
+      totalAmount = STRIPE_MINIMUM_AMOUNT;
+      // Adjust discount amount to reflect the minimum charge
+      discountAmount = Math.max(0, (items.reduce((sum: number, item: CartItem) => {
+        const price = item.sale_price || item.price;
+        return sum + price * item.quantity;
+      }, 0)) - totalAmount);
+    }
+
     // Build line items for metadata
     const lineItems = items.map((item: CartItem) => ({
       id: item.id,
@@ -148,6 +172,7 @@ export async function POST(request: NextRequest) {
       success: true,
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
+      isFreeOrder: false,
     });
   } catch (error: any) {
     console.error('Error creating payment intent:', error);

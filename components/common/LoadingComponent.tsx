@@ -32,6 +32,9 @@ const LoadingText = styled.p`
   font-size: 1rem;
   color: white;
   text-align: center;
+  font-family: var(--font-montserrat), "Montserrat", sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.3px;
 `;
 
 interface LoadingComponentProps {

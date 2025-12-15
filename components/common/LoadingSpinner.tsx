@@ -59,6 +59,9 @@ const LoadingText = styled.div<LoadingTextProps>`
       : props.$size === "small"
       ? "1rem"
       : "1.2rem"};
+  font-family: var(--font-montserrat), "Montserrat", sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.3px;
 `;
 
 // Define interface for component props

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { FaCheckCircle, FaArrowLeft, FaShoppingCart, FaHome } from "react-icons/fa";
 import { useCart } from "@/contexts/CartContext";
 import { BundleWithProducts } from "@/types/bundles";
+import { cleanHtmlText } from "@/utils/stringUtils";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -513,7 +514,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                         color: 'rgba(255, 255, 255, 0.6)',
                         marginBottom: '0.5rem'
                       }}>
-                        {product.tagline}
+                        {cleanHtmlText(product.tagline)}
                       </p>
                     )}
                     <ProductPrice>

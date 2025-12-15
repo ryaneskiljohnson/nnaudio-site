@@ -8,6 +8,7 @@ import Link from "next/link";
 import { FaBox, FaLock, FaCheckCircle, FaExternalLinkAlt } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { cleanHtmlText } from "@/utils/stringUtils";
 
 const Container = styled.div`
   width: 100%;
@@ -357,7 +358,7 @@ export default function MyProductsPage() {
                         lineHeight: "1.5",
                       }}
                     >
-                      {product.short_description}
+                      {cleanHtmlText(product.short_description)}
                     </p>
                   )}
                   <div style={{ display: "flex", justifyContent: "center" }}>

@@ -17,6 +17,7 @@ import {
   FaRocket,
   FaTicketAlt,
   FaBox,
+  FaShoppingBag,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
@@ -586,6 +587,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </LogoContainer>
 
         <nav>
+          {user.is_admin && (
+            <Link href="/admin">
+              <NavItem
+                $active={pathname.startsWith("/admin") ? "true" : "false"}
+                onClick={(e) => handleNavigation(e, "/admin")}
+              >
+                <FaShieldAlt />{" "}
+                {t("dashboard.layout.adminConsole", "Admin Console")}
+              </NavItem>
+            </Link>
+          )}
           <Link href="/dashboard">
             <NavItem
               $active={pathname === "/dashboard" ? "true" : "false"}
@@ -594,28 +606,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <FaTachometerAlt /> {t("dashboard.layout.dashboard", "Dashboard")}
             </NavItem>
           </Link>
-          <Link href="/profile">
+          <Link href="/my-orders">
             <NavItem
-              $active={pathname === "/profile" ? "true" : "false"}
-              onClick={(e) => handleNavigation(e, "/profile")}
+              $active={pathname === "/my-orders" ? "true" : "false"}
+              onClick={(e) => handleNavigation(e, "/my-orders")}
             >
-              <FaUser /> {t("dashboard.layout.profile", "Profile")}
-            </NavItem>
-          </Link>
-          <Link href="/billing">
-            <NavItem
-              $active={pathname === "/billing" ? "true" : "false"}
-              onClick={(e) => handleNavigation(e, "/billing")}
-            >
-              <FaCreditCard /> {t("dashboard.layout.billing", "Billing")}
-            </NavItem>
-          </Link>
-          <Link href="/downloads">
-            <NavItem
-              $active={pathname === "/downloads" ? "true" : "false"}
-              onClick={(e) => handleNavigation(e, "/downloads")}
-            >
-              <FaDownload /> {t("dashboard.layout.downloads", "Downloads")}
+              <FaShoppingBag /> {t("dashboard.layout.myOrders", "My Orders")}
             </NavItem>
           </Link>
           <Link href="/my-products">
@@ -634,6 +630,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <FaRocket /> {t("dashboard.layout.gettingStarted", "Getting Started")}
             </NavItem>
           </Link>
+          <Link href="/downloads">
+            <NavItem
+              $active={pathname === "/downloads" ? "true" : "false"}
+              onClick={(e) => handleNavigation(e, "/downloads")}
+            >
+              <FaDownload /> {t("dashboard.layout.downloads", "Downloads")}
+            </NavItem>
+          </Link>
+          <Link href="/billing">
+            <NavItem
+              $active={pathname === "/billing" ? "true" : "false"}
+              onClick={(e) => handleNavigation(e, "/billing")}
+            >
+              <FaCreditCard /> {t("dashboard.layout.billing", "Billing")}
+            </NavItem>
+          </Link>
           <Link href="/support">
             <NavItem
               $active={pathname === "/support" ? "true" : "false"}
@@ -650,17 +662,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <FaCog /> {t("dashboard.layout.settings", "Settings")}
             </NavItem>
           </Link>
-          {user.is_admin && (
-            <Link href="/admin">
-              <NavItem
-                $active={pathname.startsWith("/admin") ? "true" : "false"}
-                onClick={(e) => handleNavigation(e, "/admin")}
-              >
-                <FaShieldAlt />{" "}
-                {t("dashboard.layout.adminConsole", "Admin Console")}
-              </NavItem>
-            </Link>
-          )}
         </nav>
 
         <UserInfo>
