@@ -113,14 +113,12 @@ export async function GET(): Promise<NextResponse<PricesResponse>> {
       },
     };
 
-    return NextResponse.json(
-      {
-        success: false,
-        prices: fallbackPrices,
-        error:
-          error instanceof Error ? error.message : "Failed to fetch prices",
-      },
-      { status: 500 }
-    );
+    // Do NOT surface 500 to the app; return fallback prices with success false
+    // so the UI can handle gracefully without blocking render.
+    return NextResponse.json({
+      success: false,
+      prices: fallbackPrices,
+      error: error instanceof Error ? error.message : "Failed to fetch prices",
+    });
   }
 }

@@ -1,0 +1,15 @@
+node_modules/
+.next/
+build/
+.turbo/
+dist/
+coverage/
+*.log
+.git/
+.DS_Store
+tmp/
+temp/
+logs/
+.cache/
+*.tsbuildinfo
+

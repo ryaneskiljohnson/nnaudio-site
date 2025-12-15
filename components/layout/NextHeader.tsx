@@ -615,7 +615,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
   const [sideCartOpen, setSideCartOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const { user, signOut } = useAuth();
-  const { getItemCount, items } = useCart();
+  const { getItemCount, items, isLoaded: isCartLoaded } = useCart();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const cartItemCount = getItemCount();
   const prevCartItemCountRef = useRef<number>(cartItemCount);
@@ -711,6 +711,9 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
 
   // Open sidebar cart when an item is added
   useEffect(() => {
+    // Wait until cart is hydrated to avoid opening from localStorage load
+    if (!isCartLoaded) return;
+
     // Never auto-open on checkout page
     if (pathname.startsWith("/checkout")) {
       setSideCartOpen(false);
@@ -729,7 +732,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
       setSideCartOpen(true);
     }
     prevCartItemCountRef.current = cartItemCount;
-  }, [cartItemCount, items.length]);
+  }, [cartItemCount, items.length, isCartLoaded]);
 
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();
