@@ -147,12 +147,6 @@ const GridRow = styled.div`
   }
 `;
 
-const FeaturesList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
 const FeatureItem = styled.div`
   display: flex;
   gap: 0.5rem;
