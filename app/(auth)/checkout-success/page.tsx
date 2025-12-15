@@ -87,44 +87,47 @@ const SuccessIcon = styled(FaCheckCircle)`
 `;
 
 const Title = styled.h1`
-  font-size: 2.5rem;
-  font-weight: 700;
+  font-size: 2.6rem;
+  font-weight: 800;
   margin-bottom: 1rem;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: linear-gradient(135deg, #8a2be2 0%, #4ecdc4 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+  text-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
 `;
 
 const Subtitle = styled.h2`
-  font-size: 1.5rem;
-  font-weight: 400;
-  margin-bottom: 2rem;
-  color: var(--text-secondary);
+  font-size: 1.35rem;
+  font-weight: 500;
+  margin-bottom: 1.75rem;
+  color: rgba(255, 255, 255, 0.85);
 `;
 
 const Message = styled.p`
-  font-size: 1.2rem;
-  line-height: 1.6;
+  font-size: 1.05rem;
+  line-height: 1.65;
   margin-bottom: 2rem;
-  max-width: 800px;
-  color: var(--text-secondary);
+  max-width: 820px;
+  color: rgba(255, 255, 255, 0.8);
 `;
 
 const BackButton = styled.button`
-  padding: 12px 24px;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 40%, #4ecdc4 100%);
   color: white;
   border: none;
-  border-radius: 25px;
-  font-weight: 600;
+  border-radius: 999px;
+  font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  margin-top: 2rem;
+  margin-top: 2.2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 
   &:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
   }
 `;
 
@@ -463,28 +466,28 @@ function CheckoutSuccessContent() {
         {isTrial ? (
           <>
             <Title>Trial Started!</Title>
-            <Subtitle>Welcome to Cymasphere Pro</Subtitle>
+            <Subtitle>Welcome to NNAudio</Subtitle>
             <Message>
               {isSignedUp
-                ? "Your free trial has been successfully activated. You can now explore all the premium features of Cymasphere Pro."
-                : "Your free trial has been successfully activated. To start using Cymasphere Pro, you'll need to create your account."}
+                ? "Your free trial is live. Explore everything NNAudio offers."
+                : "Your free trial is live. Create your account to start using NNAudio."}
             </Message>
           </>
         ) : (
           <>
             <Title>Payment Successful!</Title>
-            <Subtitle>Thank you for your purchase</Subtitle>
+            <Subtitle>Thank you for choosing NNAudio</Subtitle>
             <Message>
               {isSignedUp
-                ? "Your payment has been processed successfully. You can now access your Cymasphere Pro downloads."
-                : "Your payment has been processed successfully. To start using Cymasphere Pro, you'll need to create your account."}
+                ? "Your payment is complete. You can now access your NNAudio products and downloads."
+                : "Your payment is complete. Create your account to access your NNAudio products and downloads."}
             </Message>
           </>
         )}
 
         <BackButton onClick={handleContinue}>
           {isLoggedIn || isSignedUp
-            ? "Download Cymasphere"
+            ? "Go to Downloads"
             : "Create Your Account"}
         </BackButton>
       </ContentContainer>

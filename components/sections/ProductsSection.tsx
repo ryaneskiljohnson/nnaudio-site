@@ -213,12 +213,31 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
               whileHover={{ scale: 1.02 }}
             >
               <ProductImage>
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                />
+                {product.image ? (
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background:
+                        "linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(75, 0, 130, 0.2))",
+                      color: "rgba(255, 255, 255, 0.6)",
+                      fontSize: "2rem",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {product.name?.[0] || "N"}
+                  </div>
+                )}
               </ProductImage>
               <ProductInfo>
                 <ProductName>{product.name}</ProductName>

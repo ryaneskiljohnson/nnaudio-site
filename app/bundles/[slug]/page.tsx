@@ -29,25 +29,31 @@ const BreadcrumbList = styled.nav`
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
 `;
 
 const BreadcrumbLink = styled(Link)`
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
-  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: color 0.2s ease;
   
   &:hover {
-    color: #4ECDC4;
+    color: rgba(255, 255, 255, 1);
   }
 `;
 
 const BreadcrumbSeparator = styled.span`
   color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
 `;
 
 const BreadcrumbCurrent = styled.span`
-  color: white;
+  color: rgba(255, 255, 255, 1);
+  font-weight: 500;
 `;
 
 const Header = styled.div`
@@ -357,11 +363,16 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
         <BreadcrumbContainer>
           <BreadcrumbList>
             <BreadcrumbLink href="/">
-              <FaHome /> Home
+              <FaHome size={14} />
+              <span>Home</span>
             </BreadcrumbLink>
-            <BreadcrumbSeparator>/</BreadcrumbSeparator>
+            <BreadcrumbSeparator>
+              <span>/</span>
+            </BreadcrumbSeparator>
             <BreadcrumbLink href="/bundles">Bundles</BreadcrumbLink>
-            <BreadcrumbSeparator>/</BreadcrumbSeparator>
+            <BreadcrumbSeparator>
+              <span>/</span>
+            </BreadcrumbSeparator>
             <BreadcrumbCurrent>{bundle.name}</BreadcrumbCurrent>
           </BreadcrumbList>
         </BreadcrumbContainer>

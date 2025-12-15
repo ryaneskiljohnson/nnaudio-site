@@ -135,6 +135,7 @@ const staticFeaturedProducts = [
     name: "Curio",
     description: "Unleash The Sorcery Within - Advanced synthesizer with unique sound design capabilities and intuitive workflow",
     logo: "/images/nnaud-io/Curio-LogoText.webp",
+    thumbnail: "/images/nnaud-io/Curio-LogoText.webp",
     backgroundImage: "/images/nnaud-io/Curio-BG-Motion.gif",
     price: "$49",
   },
@@ -143,6 +144,7 @@ const staticFeaturedProducts = [
     name: "PercGadget",
     description: "Innovation And Rhythm Converge - Powerful percussion sequencer and drum machine with advanced pattern creation",
     logo: "/images/nnaud-io/PercGadget-LogoTrans-600x150.webp",
+    thumbnail: "/images/nnaud-io/PercGadget-LogoTrans-600x150.webp",
     backgroundImage: "/images/nnaud-io/PercGadget-BG-Motion1.gif",
     price: "$39",
   },
@@ -151,6 +153,7 @@ const staticFeaturedProducts = [
     name: "CrystalBall",
     description: "Sculpt Your Sonic Reality - Revolutionary effects processor with AI-powered modulation and real-time visualization",
     logo: "/images/nnaud-io/CrystalBall-Logo.png",
+    thumbnail: "/images/nnaud-io/CrystalBall-Logo.png",
     backgroundImage: "/images/nnaud-io/CrystalBall-Features-BG.gif",
     price: "$59",
   },
@@ -159,7 +162,26 @@ const staticFeaturedProducts = [
     name: "Life Death",
     description: "Experience the duality of sound - A powerful plugin that explores the contrast between light and dark musical textures",
     logo: "/images/nnaud-io/LifeDeathLogo-600x150.webp",
+    thumbnail: "/images/nnaud-io/LifeDeathLogo-600x150.webp",
     backgroundImage: "/images/nnaud-io/LifeDeathBG-1.webp",
+    price: "$44",
+  },
+  {
+    id: 5,
+    name: "Time Zones",
+    description: "Creative delay and time-based effects plugin for expansive spatial sound",
+    logo: "/images/nnaud-io/Time-Zones-Logo-600x157.jpg",
+    thumbnail: "/images/nnaud-io/Time-Zones-Logo-600x157.jpg",
+    backgroundImage: "/images/nnaud-io/Time-Zones-Logo-600x157.jpg",
+    price: "$29",
+  },
+  {
+    id: 6,
+    name: "Weaknd",
+    description: "Analog-style synthesizer with vintage warmth and modern flexibility",
+    logo: "/images/nnaud-io/WeakndLogo-600x150.webp",
+    thumbnail: "/images/nnaud-io/WeakndLogo-600x150.webp",
+    backgroundImage: "/images/nnaud-io/WeakndBG.webp",
     price: "$44",
   },
 ];
@@ -174,7 +196,7 @@ export default function Home() {
     const fetchProducts = async () => {
       try {
         // Fetch featured products
-        const featuredResponse = await fetch('/api/products?featured=true&status=active&limit=4');
+        const featuredResponse = await fetch('/api/products?featured=true&status=active&limit=6');
         const featuredData = await featuredResponse.json();
         
         if (featuredData.success) {
@@ -184,6 +206,7 @@ export default function Home() {
             name: p.name,
             description: p.short_description || p.tagline || '',
             logo: p.logo_url || p.featured_image_url || '',
+            thumbnail: p.featured_image_url || p.logo_url || '',
             backgroundImage: p.background_image_url || p.background_video_url || '',
             price: `$${p.sale_price || p.price}`,
           }));

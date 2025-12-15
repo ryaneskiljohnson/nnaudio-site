@@ -186,7 +186,7 @@ const NavLink = styled.div<{ $isActive: boolean }>`
     left: 0;
     width: ${(props) => (props.$isActive ? "100%" : "0")};
     height: 2px;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
+    background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
     transition: width 0.3s ease;
   }
 
@@ -615,9 +615,11 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
   const [sideCartOpen, setSideCartOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const { user, signOut } = useAuth();
-  const { getItemCount } = useCart();
+  const { getItemCount, items } = useCart();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const cartItemCount = getItemCount();
+  const prevCartItemCountRef = useRef<number>(cartItemCount);
+  const isInitialMountRef = useRef<boolean>(true);
 
   // Track language to force re-render on language change
   const [language, setLanguage] = useState(() =>
@@ -706,6 +708,28 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
       document.body.style.overflow = "unset";
     };
   }, [menuOpen]);
+
+  // Open sidebar cart when an item is added
+  useEffect(() => {
+    // Never auto-open on checkout page
+    if (pathname.startsWith("/checkout")) {
+      setSideCartOpen(false);
+      prevCartItemCountRef.current = cartItemCount;
+      isInitialMountRef.current = false;
+      return;
+    }
+
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      prevCartItemCountRef.current = cartItemCount;
+      return;
+    }
+
+    if (cartItemCount > prevCartItemCountRef.current) {
+      setSideCartOpen(true);
+    }
+    prevCartItemCountRef.current = cartItemCount;
+  }, [cartItemCount, items.length]);
 
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();

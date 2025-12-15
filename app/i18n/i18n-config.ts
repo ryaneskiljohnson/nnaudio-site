@@ -45,12 +45,33 @@ export const getCurrentLanguage = (): string => {
 
 // Function to load translations for a language
 export const loadTranslations = async (locale: string) => {
+  // Fallback empty translations object
+  const fallbackData = {};
+  
   try {
     // Add timestamp to prevent caching
     const timestamp = new Date().getTime();
     
-    // Use fetch to get translations from our API
-    const response = await fetch(`/api/translations?locale=${locale}&_=${timestamp}`);
+    // Use fetch to get translations from our API with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    let response: Response;
+    try {
+      response = await fetch(`/api/translations?locale=${locale}&_=${timestamp}`, {
+        signal: controller.signal,
+      });
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        console.error(`[loadTranslations] Request timeout for locale ${locale}`);
+      } else {
+        console.error(`[loadTranslations] Network error fetching translations for ${locale}:`, fetchError);
+      }
+      throw fetchError;
+    }
+    
+    clearTimeout(timeoutId);
     
     // Check if response is ok (200-299)
     if (!response.ok) {
@@ -95,11 +116,35 @@ export const loadTranslations = async (locale: string) => {
     }
 
     return data;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`[loadTranslations] Error loading translations for ${locale}:`, error);
     
-    // Return an object with the locale key so at least we don't have completely empty data
-    return {};
+    // Try to initialize i18next with fallback data if not already initialized
+    if (!i18n.isInitialized) {
+      try {
+        await i18n
+          .use(initReactI18next)
+          .init({
+            lng: locale,
+            fallbackLng: defaultLanguage,
+            interpolation: {
+              escapeValue: false,
+            },
+            resources: {
+              [locale]: {
+                translation: fallbackData
+              }
+            },
+            returnNull: false,
+            returnEmptyString: false,
+          });
+      } catch (initError) {
+        console.error(`[loadTranslations] Failed to initialize i18next with fallback:`, initError);
+      }
+    }
+    
+    // Return fallback data instead of empty object
+    return fallbackData;
   }
 };
 

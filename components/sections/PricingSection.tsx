@@ -9,7 +9,6 @@ import React, {
 } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
-import { FaGift } from "react-icons/fa";
 // Import Stripe actions
 // Removed server action imports - now using API routes
 import { PlanType } from "@/types/stripe";
@@ -40,95 +39,127 @@ const NNAudioLogo = dynamic(() => import("../common/NNAudioLogo"), {
 }) as React.ComponentType<NNAudioLogoProps>;
 
 const PricingContainer = styled.section`
-  padding: 150px 20px 120px; /* Increased top padding from 120px to 150px */
-  background-color: var(--background);
+  padding: 140px 20px;
+  background: radial-gradient(circle at 15% 20%, rgba(142, 65, 255, 0.18), transparent 32%),
+    radial-gradient(circle at 80% 0%, rgba(78, 205, 196, 0.18), transparent 30%),
+    linear-gradient(180deg, #06070f 0%, #0b0f1f 100%);
   position: relative;
   overflow: hidden;
-  min-height: 1000px; /* Increased from 900px for more vertical space */
+`;
 
-  &:before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(
-      circle at 80% 20%,
-      rgba(108, 99, 255, 0.08),
-      transparent 40%
-    );
-    opacity: 0.6;
-    z-index: 0;
-  }
+const Glow = styled.div`
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.35;
+  background: radial-gradient(circle, rgba(138, 43, 226, 0.9), transparent 55%);
+  top: -120px;
+  left: -140px;
+  pointer-events: none;
+`;
 
-  /* Mobile responsive styling */
-  @media (max-width: 768px) {
-    padding: 100px 10px 80px; /* Reduce padding on mobile */
-    min-height: 800px;
-  }
-
-  @media (max-width: 480px) {
-    padding: 80px 5px 60px; /* Further reduce padding on smaller mobile devices */
-    min-height: 700px;
-  }
+const GlowRight = styled(Glow)`
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(78, 205, 196, 0.9), transparent 55%);
+  top: 40px;
+  right: -120px;
+  left: auto;
 `;
 
 const ContentContainer = styled.div`
-  max-width: 550px;
+  max-width: 980px;
   margin: 0 auto;
   position: relative;
   z-index: 3;
-  background: linear-gradient(
-    rgba(var(--background-rgb), 0.8) 0%,
-    rgba(var(--background-rgb), 0.95) 20%,
-    rgba(var(--background-rgb), 0.95) 80%,
-    rgba(var(--background-rgb), 0.8) 100%
-  );
-  border-radius: 12px;
-  padding: 60px 40px 50px; /* Increased horizontal padding from 10px to 40px */
-  box-shadow: 0 0 40px 20px rgba(0, 0, 0, 0.2);
-  pointer-events: auto; /* Enable clicks on content */
-
-  /* Mobile responsive styling */
-  @media (max-width: 768px) {
-    padding: 40px 15px 30px; /* Reduce padding on mobile for more space */
-    border-radius: 8px;
-  }
-
-  @media (max-width: 480px) {
-    padding: 30px 10px 25px; /* Further reduce padding on smaller mobile devices */
-  }
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 52px 44px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
 `;
 
 const SectionTitle = styled.h2`
-  font-size: 2.2rem;
+  font-size: 2.4rem;
   text-align: center;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
   margin-top: 0;
   position: relative;
-  pointer-events: none; /* No need for interaction */
-
-  &:after {
-    content: "";
-    position: absolute;
-    bottom: -8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 70px;
-    height: 3px;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    border-radius: 2px;
-  }
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #8a2be2 0%, #4ecdc4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
 `;
 
 const SectionSubtitle = styled.p`
   text-align: center;
-  color: var(--text-secondary);
-  font-size: 1rem;
-  max-width: 700px;
-  margin: 0 auto 15px;
-  pointer-events: none; /* No need for interaction */
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1.08rem;
+  max-width: 820px;
+  margin: 0 auto 22px;
+  line-height: 1.6;
+`;
+
+const PillRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin: 24px auto 32px;
+`;
+
+const Pill = styled.span`
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+`;
+
+const Columns = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  margin-top: 22px;
+`;
+
+const Card = styled.div`
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 20px 22px;
+  color: white;
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
+  position: relative;
+  overflow: hidden;
+
+  &:before {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    border-radius: 12px;
+    background: linear-gradient(140deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
+    pointer-events: none;
+  }
+`;
+
+const CardTitle = styled.h3`
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+`;
+
+const CardText = styled.p`
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.65;
+  font-size: 0.97rem;
 `;
 
 // Simplified particle element - just one subtle accent
@@ -144,50 +175,6 @@ const Particle = styled.div`
   bottom: 5%;
   right: 5%;
 `;
-
-// Add definitions for the components causing linter errors
-const TrialBanner = styled.div`
-  background: rgba(108, 99, 255, 0.1);
-  border: 1px solid rgba(108, 99, 255, 0.3);
-  border-radius: 10px;
-  padding: 15px 20px;
-  margin: 10px auto 15px;
-  max-width: 700px;
-  pointer-events: none;
-`;
-
-const TrialText = styled.div`
-  text-align: center;
-
-  h3 {
-    font-size: 1.3rem;
-    margin: 0 0 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    svg {
-      margin-right: 8px;
-      color: var(--primary);
-    }
-
-    span {
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin: 0 5px;
-      font-weight: 700;
-    }
-  }
-
-  p {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-    line-height: 1.5;
-  }
-`;
-
 
 const PricingSection = () => {
   const { t } = useTranslation();
@@ -219,33 +206,12 @@ const PricingSection = () => {
 
   // State to track the selected billing period
   const [billingPeriod, setBillingPeriod] = useState<PlanType>("monthly");
-  // State for checking if user has had trial via Stripe
-  const [hasHadStripeTrial, setHasHadStripeTrial] = useState<boolean>(false);
-
-  // Fetch trial status when user is logged in
+  // Set billing period to match user's current subscription when logged in
   useEffect(() => {
-    const checkTrialStatus = async () => {
-      if (!user?.email) {
-        return;
-      }
-
-      try {
-        const { checkCustomerTrialStatus } = await import("@/utils/stripe/actions");
-        const result = await checkCustomerTrialStatus(user.email);
-
-        if (result.error) {
-          setHasHadStripeTrial(false); // Default to false on error
-        } else {
-          setHasHadStripeTrial(result.hasHadTrial);
-        }
-      } catch (error) {
-        console.error("Error checking trial status:", error);
-        setHasHadStripeTrial(false); // Default to false on error
-      }
-    };
-
-    checkTrialStatus();
-  }, [user?.email]);
+    if (user?.profile?.subscription && user.profile.subscription !== "none") {
+      setBillingPeriod(user.profile.subscription);
+    }
+  }, [user?.profile?.subscription]);
 
   // Set billing period to match user's current subscription when logged in
   useEffect(() => {
@@ -264,71 +230,6 @@ const PricingSection = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [billingPeriod]);
-
-  // Check if user has completed a trial or has a subscription
-  useEffect(() => {
-    const checkTrialStatus = async () => {
-      if (!user?.email) {
-        setHasHadStripeTrial(false);
-        return;
-      }
-
-      try {
-        const { checkCustomerTrialStatus } = await import("@/utils/stripe/actions");
-        const result = await checkCustomerTrialStatus(user.email);
-
-        if (result.error) {
-          setHasHadStripeTrial(false); // Default to false on error
-        } else {
-          setHasHadStripeTrial(result.hasHadTrial);
-        }
-      } catch (error) {
-        console.error("Error checking trial status:", error);
-        setHasHadStripeTrial(false); // Default to false on error
-      }
-    };
-
-    checkTrialStatus();
-  }, [user?.email]);
-
-  // Set billing period to match user's current subscription when logged in
-  useEffect(() => {
-    if (user?.profile?.subscription && user.profile.subscription !== "none") {
-      setBillingPeriod(user.profile.subscription);
-    }
-  }, [user?.profile?.subscription]);
-
-  // Simplify the resize effect to avoid unused variables
-  useEffect(() => {
-    // Just keep the event listener for resize
-    const handleResize = () => {
-      // Empty handler that does nothing but satisfies the dependency
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [billingPeriod]);
-
-  // Check if user has completed a trial or has a subscription
-  const shouldHideTrialContent = React.useMemo(() => {
-    if (!user?.profile) return false;
-
-    // Hide trial content if:
-    return (
-      // User has an active subscription
-      user.profile.subscription !== "none" ||
-      // User previously had a trial that expired
-      (user.profile.trial_expiration &&
-        new Date(user.profile.trial_expiration) < new Date()) ||
-      // User previously had a subscription that ended
-      (user.profile.subscription === "none" &&
-        user.profile.subscription_expiration &&
-        new Date(user.profile.subscription_expiration) < new Date()) ||
-      // User has ever started a trial via Stripe (regardless of current status)
-      hasHadStripeTrial
-    );
-  }, [user, hasHadStripeTrial]);
-
 
   // Check for active sale (fetched by banner component)
   // Skip entirely for lifetime users - they don't need promotions
@@ -455,62 +356,40 @@ const PricingSection = () => {
            isBannerDismissed && 
            <PromotionBanner showCountdown={true} dismissible={false} variant="card" />}
 
-          {/* Free Trial Banner - Only show if user hasn't completed a trial */}
-          {!shouldHideTrialContent && (
-            <TrialBanner>
-              <TrialText>
-                <h3>
-                  <FaGift />{" "}
-                  {t("pricing.freeTrial.title", "Try FREE for up to 14 days")}
-                </h3>
-                <p>
-                  {t(
-                    "pricing.freeTrial.description",
-                    "Experience all premium features with two trial options."
-                  )}
-                  <br />
-                  {t(
-                    "pricing.freeTrial.options",
-                    "Choose 7 days with no card or 14 days with card on file."
-                  )}
-                </p>
-              </TrialText>
-            </TrialBanner>
-          )}
-
           <SectionSubtitle>
-            {t(
-              "pricing.chooseOption",
-              "Choose the billing option that works best for you."
-            )}
-            <br />
-            {t(
-              "pricing.allFeatures",
-              "All options include full access to all features."
-            )}
+            We keep pricing frictionless: own singles forever, bundle to save,
+            or subscribe if you want fresh drops and updates rolling in.
           </SectionSubtitle>
 
-          {/* Billing period toggle */}
-          <BillingToggle
-            billingPeriod={billingPeriod}
-            onBillingPeriodChange={(period) => setBillingPeriod(period)}
-            userSubscription={user?.profile?.subscription || "none"}
-            showSavingsInfo={true}
-          />
-        </motion.div>
+          <PillRow>
+            <Pill>One-time ownership</Pill>
+            <Pill>Bundle & save</Pill>
+            <Pill>Subscriptions for updates</Pill>
+          </PillRow>
 
-        {/* Single pricing card */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true, amount: 0.2 }}
-        >
-          <PricingCard
-            billingPeriod={billingPeriod}
-            onBillingPeriodChange={(period) => setBillingPeriod(period)}
-            showTrialOptions={!hasHadStripeTrial && (!user?.profile || user?.profile?.subscription === "none")}
-          />
+          <Columns>
+            <Card>
+              <CardTitle>Individual Products</CardTitle>
+              <CardText>
+                Every plugin, MIDI pack, loop pack, and preset is a one-time purchase. Buy it once,
+                keep it forever. Zero subscriptions required.
+              </CardText>
+            </Card>
+            <Card>
+              <CardTitle>Bundles</CardTitle>
+              <CardText>
+                Get everything in a category (or everything we make) and save. Grab a one-time bundle
+                to own it all, or pick monthly/annual if you want lower upfront and constant updates.
+              </CardText>
+            </Card>
+            <Card>
+              <CardTitle>Subscriptions</CardTitle>
+              <CardText>
+                Subscriptions keep you synced with new drops and updates in the bundle you choose.
+                Cancel anytime. Prefer ownership? There’s always a one-time option right beside it.
+              </CardText>
+            </Card>
+          </Columns>
         </motion.div>
       </ContentContainer>
     </PricingContainer>

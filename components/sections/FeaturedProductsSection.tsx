@@ -89,6 +89,19 @@ const CardContent = styled.div`
   z-index: 2;
 `;
 
+const ThumbnailBadge = styled.div`
+  position: absolute;
+  top: -28px;
+  right: 24px;
+  width: 96px;
+  height: 96px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+`;
+
 const ProductLogo = styled.div`
   position: relative;
   width: 100%;
@@ -150,6 +163,7 @@ interface FeaturedProduct {
   name: string;
   description: string;
   logo: string;
+  thumbnail?: string;
   backgroundImage?: string;
   price: string;
 }
@@ -185,6 +199,17 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
               whileHover={{ scale: 1.02 }}
             >
               <CardContent>
+                {product.thumbnail && (
+                  <ThumbnailBadge>
+                    <Image
+                      src={product.thumbnail}
+                      alt={`${product.name} thumbnail`}
+                      fill
+                      sizes="120px"
+                      style={{ objectFit: "cover" }}
+                    />
+                  </ThumbnailBadge>
+                )}
                 <ProductLogo>
                   <Image
                     src={product.logo}

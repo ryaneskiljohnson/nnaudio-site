@@ -460,7 +460,7 @@ const StripeLogoImage = styled.img`
 `;
 
 // Payment Form Component
-function PaymentForm({ items, total, appliedPromo }: { items: any[]; total: number; appliedPromo: { code: string; discount: { amount: number; percent: number }; promotionCodeId: string } | null }) {
+function PaymentForm({ items, total, appliedPromo, onOrderComplete }: { items: any[]; total: number; appliedPromo: { code: string; discount: { amount: number; percent: number }; promotionCodeId: string } | null; onOrderComplete: () => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
@@ -571,10 +571,28 @@ function PaymentForm({ items, total, appliedPromo }: { items: any[]; total: numb
     setPromoCodeError(null);
   };
 
+  const finalTotal = Math.max(total - (appliedPromo?.discount.amount || 0), 0);
+  const isFreeOrder = finalTotal === 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!stripe || !elements || !clientSecret) {
+    // If order is free, skip Stripe and mark success immediately
+    if (isFreeOrder) {
+      setIsProcessing(true);
+      setError(null);
+      setSuccess(true);
+      clearCart();
+      onOrderComplete();
+      setTimeout(() => {
+        router.push(`/checkout-success?session_id=free-order`);
+      }, 800);
+      return;
+    }
+
+    if (!stripe || !elements) {
+      setError('Payment could not be initialized. Please refresh and try again.');
+      setIsProcessing(false);
       return;
     }
 
@@ -618,16 +636,38 @@ function PaymentForm({ items, total, appliedPromo }: { items: any[]; total: numb
       return;
     }
 
-    const cardElement = elements.getElement(CardElement);
-
-    if (!cardElement) {
-      setError('Card element not found');
-      setIsProcessing(false);
-      return;
-    }
-
     try {
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+      // Always create a fresh payment intent before confirming
+      const piResponse = await fetch('/api/payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          items,
+          promotionCodeId: appliedPromo ? appliedPromo.promotionCodeId : undefined,
+        }),
+      });
+
+      const piData = await piResponse.json();
+
+      if (!piData.success || !piData.clientSecret) {
+        setError(piData.error || 'Failed to initialize payment.');
+        setIsProcessing(false);
+        return;
+      }
+
+      setClientSecret(piData.clientSecret);
+
+      const cardElement = elements.getElement(CardElement);
+
+      if (!cardElement) {
+        setError('Card element not found');
+        setIsProcessing(false);
+        return;
+      }
+
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(piData.clientSecret, {
         payment_method: {
           card: cardElement,
           billing_details: {
@@ -650,6 +690,7 @@ function PaymentForm({ items, total, appliedPromo }: { items: any[]; total: numb
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         setSuccess(true);
         clearCart();
+        onOrderComplete();
         
         // Redirect to success page after a short delay
         setTimeout(() => {
@@ -699,80 +740,84 @@ function PaymentForm({ items, total, appliedPromo }: { items: any[]; total: numb
         )}
       </FormGroup>
 
-      <FormGroup>
-        <Label>Billing Name *</Label>
-        <Input
-          type="text"
-          value={billingName}
-          onChange={(e) => setBillingName(e.target.value)}
-          placeholder="Full name on card"
-          required
-        />
-      </FormGroup>
+      {!isFreeOrder && (
+        <>
+          <FormGroup>
+            <Label>Billing Name *</Label>
+            <Input
+              type="text"
+              value={billingName}
+              onChange={(e) => setBillingName(e.target.value)}
+              placeholder="Full name on card"
+              required
+            />
+          </FormGroup>
 
-      <FormGroup>
-        <Label>Billing Address *</Label>
-        <Input
-          type="text"
-          value={billingAddress}
-          onChange={(e) => setBillingAddress(e.target.value)}
-          placeholder="Street address"
-          required
-        />
-      </FormGroup>
+          <FormGroup>
+            <Label>Billing Address *</Label>
+            <Input
+              type="text"
+              value={billingAddress}
+              onChange={(e) => setBillingAddress(e.target.value)}
+              placeholder="Street address"
+              required
+            />
+          </FormGroup>
 
-      <FormRow>
-        <FormGroup>
-          <Label>City *</Label>
-          <Input
-            type="text"
-            value={billingCity}
-            onChange={(e) => setBillingCity(e.target.value)}
-            placeholder="City"
-            required
-          />
-        </FormGroup>
-        <FormGroup>
-          <Label>State *</Label>
-          <Input
-            type="text"
-            value={billingState}
-            onChange={(e) => setBillingState(e.target.value)}
-            placeholder="State"
-            required
-          />
-        </FormGroup>
-      </FormRow>
+          <FormRow>
+            <FormGroup>
+              <Label>City *</Label>
+              <Input
+                type="text"
+                value={billingCity}
+                onChange={(e) => setBillingCity(e.target.value)}
+                placeholder="City"
+                required
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label>State *</Label>
+              <Input
+                type="text"
+                value={billingState}
+                onChange={(e) => setBillingState(e.target.value)}
+                placeholder="State"
+                required
+              />
+            </FormGroup>
+          </FormRow>
 
-      <FormRow>
-        <FormGroup>
-          <Label>ZIP Code *</Label>
-          <Input
-            type="text"
-            value={billingZip}
-            onChange={(e) => setBillingZip(e.target.value)}
-            placeholder="ZIP"
-            required
-          />
-        </FormGroup>
-        <FormGroup>
-          <Label>Country *</Label>
-          <Input
-            type="text"
-            value={billingCountry}
-            onChange={(e) => setBillingCountry(e.target.value)}
-            placeholder="Country"
-            required
-          />
-        </FormGroup>
-      </FormRow>
+          <FormRow>
+            <FormGroup>
+              <Label>ZIP Code *</Label>
+              <Input
+                type="text"
+                value={billingZip}
+                onChange={(e) => setBillingZip(e.target.value)}
+                placeholder="ZIP"
+                required
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label>Country *</Label>
+              <Input
+                type="text"
+                value={billingCountry}
+                onChange={(e) => setBillingCountry(e.target.value)}
+                placeholder="Country"
+                required
+              />
+            </FormGroup>
+          </FormRow>
 
-      <FormGroup>
-        <Label>Card Information *</Label>
-        <CardElementContainer>
-          <CardElement options={cardElementOptions} />
-        </CardElementContainer>
-      </FormGroup>
+          <FormGroup>
+            <Label>Card Information *</Label>
+            <CardElementContainer>
+              <CardElement options={cardElementOptions} />
+            </CardElementContainer>
+          </FormGroup>
+        </>
+      )}
 
       {error && (
         <ErrorMessage>
@@ -802,7 +847,7 @@ function PaymentForm({ items, total, appliedPromo }: { items: any[]; total: numb
         ) : (
           <>
             <FaLock />
-            Pay ${(appliedPromo ? total - appliedPromo.discount.amount : total).toFixed(2)}
+            {finalTotal === 0 ? 'Complete Order' : `Pay $${finalTotal.toFixed(2)}`}
           </>
         )}
       </PayButton>
@@ -939,19 +984,20 @@ export default function CheckoutPage() {
   const total = getTotal();
   const [appliedDiscount, setAppliedDiscount] = useState<{ amount: number; percent: number; code: string } | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: { amount: number; percent: number }; promotionCodeId: string } | null>(null);
+  const [orderComplete, setOrderComplete] = useState(false);
 
   // Redirect if cart is empty
   useEffect(() => {
-    if (items.length === 0) {
+    if (items.length === 0 && !orderComplete) {
       router.push('/cart');
     }
-  }, [items, router]);
+  }, [items, router, orderComplete]);
 
-  if (items.length === 0) {
+  if (items.length === 0 && !orderComplete) {
     return null;
   }
 
-  const finalTotal = appliedDiscount ? total - appliedDiscount.amount : total;
+  const finalTotal = Math.max(appliedDiscount ? total - appliedDiscount.amount : total, 0);
 
   return (
     <Container>
@@ -980,15 +1026,14 @@ export default function CheckoutPage() {
             <SectionTitle>Payment Details</SectionTitle>
             <Elements stripe={stripePromise}>
               <PaymentForm 
+                key={`${items.length}-${total}-${appliedPromo?.promotionCodeId || 'no-promo'}`}
                 items={items} 
-                total={total} 
+                total={total}
+                appliedPromo={appliedPromo}
                 onPromoCodeApplied={(discount) => {
                   setAppliedDiscount(discount);
-                  if (discount) {
-                    // Find the promo code from the discount code
-                    // This is a bit of a workaround - we'll need to pass the full promo object
-                  }
                 }}
+                onOrderComplete={() => setOrderComplete(true)}
               />
             </Elements>
           </CheckoutForm>
@@ -1014,7 +1059,7 @@ export default function CheckoutPage() {
             />
             
             {items.map((item) => {
-              const displayPrice = item.sale_price || item.price;
+              const displayPrice = item.sale_price && item.sale_price > 0 ? item.sale_price : item.price;
               const itemTotal = displayPrice * item.quantity;
               
               return (
@@ -1056,26 +1101,26 @@ export default function CheckoutPage() {
               );
             })}
 
-            {appliedDiscount && (
-              <>
-                <SummaryRow>
-                  <span>Subtotal</span>
-                  <span>${total.toFixed(2)}</span>
-                </SummaryRow>
-                <SummaryRow>
-                  <span>Discount ({appliedDiscount.code})</span>
-                  <span style={{ color: '#4ecdc4' }}>
-                    -${appliedDiscount.amount.toFixed(2)}
-                  </span>
-                </SummaryRow>
-              </>
-            )}
-            <SummaryTotal>
-              <span>Total</span>
-              <span>
-                {finalTotal === 0 ? 'FREE' : `$${finalTotal.toFixed(2)}`}
-              </span>
-            </SummaryTotal>
+              {appliedDiscount && (
+                <>
+                  <SummaryRow>
+                    <span>Subtotal</span>
+                    <span>${total.toFixed(2)}</span>
+                  </SummaryRow>
+                  <SummaryRow>
+                    <span>Discount ({appliedDiscount.code})</span>
+                    <span style={{ color: '#4ecdc4' }}>
+                      -${appliedDiscount.amount.toFixed(2)}
+                    </span>
+                  </SummaryRow>
+                </>
+              )}
+              <SummaryTotal>
+                <span>Total</span>
+                <span>
+                  {finalTotal === 0 ? 'FREE' : `$${finalTotal.toFixed(2)}`}
+                </span>
+              </SummaryTotal>
           </OrderSummary>
         </CheckoutContainer>
       </Content>

@@ -34,13 +34,26 @@ export default function useLanguage() {
       
       // Load translations
       try {
-        await loadTranslations(lang);
+        const translations = await loadTranslations(lang);
         // Force language change
         await i18next.changeLanguage(lang);
         setCurrentLanguage(lang);
         console.log(`[useLanguage] Initialized with language: ${lang}`);
-      } catch (error) {
+        
+        // If translations are empty, log a warning but don't fail
+        if (!translations || Object.keys(translations).length === 0) {
+          console.warn(`[useLanguage] Received empty translations for ${lang}, but continuing anyway`);
+        }
+      } catch (error: any) {
         console.error('[useLanguage] Failed to initialize language:', error);
+        // Still set the language even if translations failed to load
+        // This prevents the app from being stuck in loading state
+        try {
+          await i18next.changeLanguage(lang);
+          setCurrentLanguage(lang);
+        } catch (changeError) {
+          console.error('[useLanguage] Failed to change language:', changeError);
+        }
       } finally {
         setIsLoading(false);
       }
