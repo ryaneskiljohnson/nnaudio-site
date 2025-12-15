@@ -62,30 +62,54 @@ export async function POST(request: NextRequest) {
     }, 0);
 
     // Apply promotion code discount if provided
+    // promotionCodeId can be either a Stripe promotion code ID (promo_xxxxx) or a code string
     let discountAmount = 0;
     if (promotionCodeId) {
       try {
-        // List promotion codes to find the one matching the code
-        const promotionCodes = await stripe.promotionCodes.list({
-          code: promotionCodeId.toUpperCase(),
-          active: true,
-          limit: 1,
-        });
+        let promotionCode: Stripe.PromotionCode | null = null;
+        
+        // Check if it's a promotion code ID (starts with 'promo_')
+        if (promotionCodeId.startsWith('promo_')) {
+          try {
+            promotionCode = await stripe.promotionCodes.retrieve(promotionCodeId);
+          } catch (error) {
+            console.error('Error retrieving promotion code by ID:', error);
+          }
+        }
+        
+        // If not found by ID, try looking up by code string
+        if (!promotionCode) {
+          const promotionCodes = await stripe.promotionCodes.list({
+            code: promotionCodeId.toUpperCase(),
+            active: true,
+            limit: 1,
+          });
+          if (promotionCodes.data.length > 0) {
+            promotionCode = promotionCodes.data[0];
+          }
+        }
 
-        if (promotionCodes.data.length > 0) {
-          const promotionCode = promotionCodes.data[0];
+        if (promotionCode) {
           const coupon = typeof promotionCode.coupon === 'string'
             ? await stripe.coupons.retrieve(promotionCode.coupon)
             : promotionCode.coupon;
 
           if (coupon.valid) {
+            // Calculate discount amount
             if (coupon.percent_off) {
               discountAmount = (totalAmount * coupon.percent_off) / 100;
             } else if (coupon.amount_off) {
               discountAmount = coupon.amount_off / 100; // Convert from cents to dollars
             }
             totalAmount = Math.max(0, totalAmount - discountAmount);
+            
+            console.log(`✅ Applied discount: $${discountAmount.toFixed(2)} (${coupon.percent_off ? coupon.percent_off + '%' : '$' + discountAmount.toFixed(2)})`);
+            console.log(`💰 Original total: $${(totalAmount + discountAmount).toFixed(2)}, Final total: $${totalAmount.toFixed(2)}`);
+          } else {
+            console.warn('⚠️ Coupon is not valid');
           }
+        } else {
+          console.warn(`⚠️ Promotion code not found: ${promotionCodeId}`);
         }
       } catch (error) {
         console.error('Error applying promotion code:', error);
@@ -101,14 +125,17 @@ export async function POST(request: NextRequest) {
       price: item.sale_price || item.price,
     }));
 
-    // Create Payment Intent
+    // Create Payment Intent with discounted amount
+    // Note: Payment Intents don't support discounts parameter - we apply discount by reducing amount
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(totalAmount * 100), // Convert to cents
+      amount: Math.round(totalAmount * 100), // Convert to cents (already discounted)
       currency: 'usd',
       customer: stripeCustomerId,
       metadata: {
         cart_items: JSON.stringify(lineItems),
-        total_amount: totalAmount.toString(),
+        original_total: (totalAmount + discountAmount).toFixed(2),
+        discount_amount: discountAmount.toFixed(2),
+        total_amount: totalAmount.toFixed(2),
         user_id: user?.id || 'anonymous',
         ...(promotionCodeId && { promotion_code: promotionCodeId }),
       },
