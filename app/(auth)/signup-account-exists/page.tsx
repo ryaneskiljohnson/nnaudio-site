@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import { FaInfoCircle } from "react-icons/fa";
-import CymasphereLogo from "@/components/common/CymasphereLogo";
+import NNAudioLogo from "@/components/common/NNAudioLogo";
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -173,7 +173,7 @@ export default function AccountExists() {
     <PageContainer>
       <HeaderNav>
         <HeaderContent>
-          <CymasphereLogo
+          <NNAudioLogo
             size="40px"
             fontSize="1.8rem"
             href="/"

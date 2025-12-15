@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import { FaArrowLeft } from "react-icons/fa";
-import CymasphereLogo from "@/components/common/CymasphereLogo";
+import NNAudioLogo from "@/components/common/NNAudioLogo";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import { useTranslation } from "react-i18next";
 import useLanguage from "@/hooks/useLanguage";
@@ -386,7 +386,7 @@ function Login() {
             justifyContent: "center",
           }}
         >
-          <CymasphereLogo
+          <NNAudioLogo
             size="40px"
             fontSize="1.8rem"
             href=""

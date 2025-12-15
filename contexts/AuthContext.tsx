@@ -126,10 +126,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (logged_in_user) {
           const { profile, error } = await fetchProfile(logged_in_user.id);
-          if (error) {
+          
+          // Always check admin status, even if profile fetch fails
+          const { is_admin, error: adminError } = await fetchIsAdmin(
+            logged_in_user.id
+          );
+          
+          if (adminError) {
+            console.error(
+              "[AuthContext] Error fetching admin status:",
+              adminError instanceof Error
+                ? adminError.message
+                : String(adminError)
+            );
+          } else {
             console.log(
-              "error fetching profile",
-              error instanceof Error ? error.message : String(error)
+              `[AuthContext] Admin status for ${logged_in_user.email}:`,
+              is_admin,
+              `(User ID: ${logged_in_user.id})`
+            );
+          }
+          
+          if (error) {
+            console.error(
+              "[AuthContext] Error fetching profile:",
+              error instanceof Error ? error.message : String(error),
+              "Error object:",
+              error
             );
             // Don't set user to null - keep them logged in even if profile fetch fails
             // This is important for password reset flow
@@ -149,26 +172,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser({
               ...logged_in_user,
               profile: defaultProfile,
-              is_admin: false,
+              is_admin: is_admin || false, // Use admin status even if profile fetch failed
             });
             return;
-          }
-
-          const { is_admin, error: adminError } = await fetchIsAdmin(
-            logged_in_user.id
-          );
-          if (adminError) {
-            console.log(
-              "error fetching admin status",
-              adminError instanceof Error
-                ? adminError.message
-                : String(adminError)
-            );
-          } else {
-            console.log(
-              `[AuthContext] Admin status for ${logged_in_user.email}:`,
-              is_admin
-            );
           }
 
           if (profile) {

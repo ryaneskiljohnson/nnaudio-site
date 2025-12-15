@@ -177,7 +177,7 @@ export async function previewEmail(campaignId: string): Promise<PreviewResponse>
               ${socialLinksHtml ? `<div style="margin-bottom: 16px; text-align: center;">${socialLinksHtml}</div>` : ""}
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse;">
                 <tr>
-                  <td align="center" style="padding: 0 0 8px 0; text-align: center; color: ${element.textColor || '#ffffff'};">${element.footerText || `© ${new Date().getFullYear()} Cymasphere Inc. All rights reserved.`}</td>
+                  <td align="center" style="padding: 0 0 8px 0; text-align: center; color: ${element.textColor || '#ffffff'};">${element.footerText || `© ${new Date().getFullYear()} NNAud.io All rights reserved.`}</td>
                 </tr>
               </table>
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse;">

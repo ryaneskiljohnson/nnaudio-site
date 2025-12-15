@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import { FaCheckCircle } from "react-icons/fa";
-import CymasphereLogo from "@/components/common/CymasphereLogo";
+import NNAudioLogo from "@/components/common/NNAudioLogo";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -442,7 +442,7 @@ function CheckoutSuccessContent() {
     <PageContainer>
       <HeaderNav>
         <HeaderContent>
-          <CymasphereLogo
+          <NNAudioLogo
             size="40px"
             fontSize="1.8rem"
             href="/"

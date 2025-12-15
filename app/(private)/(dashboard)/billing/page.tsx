@@ -32,8 +32,8 @@ import LoadingComponent from "@/components/common/LoadingComponent";
 import { useTranslation } from "react-i18next";
 import dynamic from "next/dynamic";
 
-// Type definitions for CymasphereLogo component
-interface CymasphereLogoProps {
+// Type definitions for NNAudioLogo component
+interface NNAudioLogoProps {
   size?: string;
   fontSize?: string;
   showText?: boolean;
@@ -43,12 +43,12 @@ interface CymasphereLogoProps {
 }
 
 // Use dynamic import to handle JavaScript component in TypeScript
-const CymasphereLogo = dynamic(
-  () => import("@/components/common/CymasphereLogo"),
+const NNAudioLogo = dynamic(
+  () => import("@/components/common/NNAudioLogo"),
   {
     ssr: false,
   }
-) as React.ComponentType<CymasphereLogoProps>;
+) as React.ComponentType<NNAudioLogoProps>;
 
 // Extended profile interface with additional fields we need
 interface ProfileWithSubscriptionDetails {
@@ -1108,7 +1108,7 @@ export default function BillingPage() {
               <div>
                 <PlanName>
                   <div className="logo-container">
-                    <CymasphereLogo
+                    <NNAudioLogo
                       size="36px"
                       fontSize="1.5rem"
                       showText={true}

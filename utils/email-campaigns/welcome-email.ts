@@ -134,7 +134,7 @@ export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
           <tr>
             <td style="padding: 20px 24px; background-color: #f8f9fa; border-top: 1px solid #e9ecef; text-align: center; font-size: 0.85em; color: #666;">
               <p style="margin: 0 0 10px 0;">
-                © ${new Date().getFullYear()} Cymasphere. All rights reserved.
+                © ${new Date().getFullYear()} NNAud.io. All rights reserved.
               </p>
               <p style="margin: 0;">
                 <a href="${siteUrl}/support" style="color: #6c63ff; text-decoration: none;">Support</a> | 
@@ -207,7 +207,7 @@ If you have any questions or need assistance, our support team is here to help. 
 Happy creating!
 The Cymasphere Team
 
-© ${new Date().getFullYear()} Cymasphere. All rights reserved.
+© ${new Date().getFullYear()} NNAud.io. All rights reserved.
 ${siteUrl}/support | ${siteUrl}/terms-of-service | ${siteUrl}/privacy-policy
   `.trim();
 }

@@ -10,8 +10,8 @@ import {
 } from "react-icons/fa6";
 import LegalModal from "../modals/LegalModal";
 import AboutUsModal from "../modals/AboutUsModal";
-import EnergyBall from "../common/EnergyBall";
-import { playLydianMaj7Chord } from "../../utils/audioUtils";
+import NNAudioLogo from "../common/NNAudioLogo";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 
 const FooterContainer = styled.footer`
@@ -65,19 +65,10 @@ const FooterLogoLink = styled.a`
   &:hover {
     text-decoration: none;
   }
-`;
-
-const LogoText = styled.div`
-  display: flex;
-  align-items: center;
-  text-transform: uppercase;
-  letter-spacing: 2.5px;
-
-  span {
-    font-family: "Montserrat", sans-serif;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+  
+  img {
+    height: 50px;
+    width: auto;
   }
 `;
 
@@ -187,11 +178,6 @@ const NextFooter = () => {
       e.preventDefault();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-    try {
-      playLydianMaj7Chord();
-    } catch {
-      console.log("Audio not available");
-    }
   };
 
   return (
@@ -201,22 +187,22 @@ const NextFooter = () => {
           <Link href="/">
             <FooterLogoLink
               onClick={handleLogoClick}
-              title="Click to hear a beautiful Lydian Maj7(9, #11, 13) chord"
             >
-              <EnergyBall />
-              <LogoText>
-                <span>CYMA</span>SPHERE
-              </LogoText>
+              <Image
+                src="/images/nnaud-io/NNAudio-logo-white.png"
+                alt="NNAud.io Logo"
+                width={200}
+                height={127}
+                style={{ height: '50px', width: 'auto' }}
+              />
             </FooterLogoLink>
           </Link>
-          <BrandCredit href="https://nnaud.io">by NNAudio</BrandCredit>
           <FooterDescription>
-            Cymasphere is an interactive music compositional tool for producers,
-            composers, performing musicians, educators, and students.
+            Resources for Modern Music Producers. Discover premium plugins, sample packs, and tools designed to elevate your music production workflow.
           </FooterDescription>
           <SocialLinks>
             <SocialIcon
-              href="https://x.com/cymasphere"
+              href="https://twitter.com/nnaud_io"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="X (Twitter)"
@@ -224,7 +210,7 @@ const NextFooter = () => {
               <FaXTwitter />
             </SocialIcon>
             <SocialIcon
-              href="https://instagram.com/cymasphere"
+              href="https://www.instagram.com/nnaud.io"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
@@ -232,7 +218,7 @@ const NextFooter = () => {
               <FaInstagram />
             </SocialIcon>
             <SocialIcon
-              href="https://facebook.com/cymasphere"
+              href="https://www.facebook.com/p/NNAudio-100082113654617/"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Facebook"
@@ -240,20 +226,12 @@ const NextFooter = () => {
               <FaFacebook />
             </SocialIcon>
             <SocialIcon
-              href="https://youtube.com/@cymasphere"
+              href="https://www.youtube.com/channel/UCZAAA6ZjaUQT1ru5-_M9b_A"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="YouTube"
             >
               <FaYoutube />
-            </SocialIcon>
-            <SocialIcon
-              href="https://discord.gg/gXGqqYR47B"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Discord"
-            >
-              <FaDiscord />
             </SocialIcon>
           </SocialLinks>
         </FooterColumn>
@@ -263,12 +241,15 @@ const NextFooter = () => {
           <Link href="/">
             <FooterLink>Home</FooterLink>
           </Link>
-          <FooterLink as="a" href="#features">
-            Features
-          </FooterLink>
-          <FooterLink as="a" href="#how-it-works">
-            How It Works
-          </FooterLink>
+          <Link href="/plugins">
+            <FooterLink>Plugins</FooterLink>
+          </Link>
+          <Link href="/packs">
+            <FooterLink>Packs</FooterLink>
+          </Link>
+          <Link href="/products">
+            <FooterLink>All Products</FooterLink>
+          </Link>
           <FooterLink as="a" href="#pricing">
             Pricing
           </FooterLink>
@@ -352,7 +333,7 @@ const NextFooter = () => {
       </FooterContent>
       <Copyright>
         <p>
-          &copy; {new Date().getFullYear()} CYMASPHERE{" "}
+          &copy; {new Date().getFullYear()} NNAud.io{" "}
           <span>All rights reserved</span>
         </p>
       </Copyright>

@@ -285,7 +285,7 @@ ${message}
                             <a href="https://cymasphere.com" style="color: #6c63ff; text-decoration: none;">Cymasphere</a> by <a href="https://nnaud.io" style="color: #6c63ff; text-decoration: none;">NNAudio</a>
                         </div>
                         
-                        <p class="copyright" style="margin: 0; color: #666666;">© ${new Date().getFullYear()} Cymasphere. All rights reserved.</p>
+                        <p class="copyright" style="margin: 0; color: #666666;">© ${new Date().getFullYear()} NNAud.io. All rights reserved.</p>
                         <p style="margin-top: 10px; font-size: 11px; color: #666666;">You can reply directly to this email to respond to the user.</p>
                     </div>
                 </div>

@@ -6,7 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { FaArrowLeft, FaPlay } from "react-icons/fa";
 import PlaylistViewer from "../components/PlaylistViewer";
 import VideoPlayer from "../components/VideoPlayer";
-import CymasphereLogo from "@/components/common/CymasphereLogo";
+import NNAudioLogo from "@/components/common/NNAudioLogo";
 import { getPlaylists, getUserProfile, generatePlaylist } from "@/app/actions/tutorials";
 // Removed loading spinner per request
 
@@ -329,7 +329,7 @@ export default function PlaylistsPage() {
     <Container>
       <Header>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <CymasphereLogo
+          <NNAudioLogo
             size="32px"
             fontSize="1.4rem"
             href="/admin"

@@ -484,7 +484,7 @@ export default function ChatWidget({ className }: ChatWidgetProps) {
   useEffect(() => {
     const initialGreeting: Message = {
       id: '1',
-      text: t('chat.greeting') || "Hi! I'm your Cymasphere assistant. I can help you with questions about our music production tools, pricing, features, and more. What would you like to know?",
+      text: t('chat.greeting') || "Hi! I'm your NNAudio assistant. I can help you with questions about our music production tools, pricing, features, and more. What would you like to know?",
       isUser: false,
       timestamp: new Date()
     };
@@ -812,7 +812,7 @@ export default function ChatWidget({ className }: ChatWidgetProps) {
         <ChatHeader>
           <ChatTitle>
             <FaRobot />
-            {t('chat.title') || 'Cymasphere Assistant'}
+            {t('chat.title') || 'NNAudio Assistant'}
           </ChatTitle>
           <CloseButton onClick={() => setIsOpen(false)}>
             <FaTimes />
@@ -863,7 +863,7 @@ export default function ChatWidget({ className }: ChatWidgetProps) {
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
             onFocus={handleInputFocus}
-            placeholder={t('chat.placeholder') || 'Ask me anything about Cymasphere...'}
+            placeholder={t('chat.placeholder') || 'Ask me anything about NNAudio...'}
             disabled={isTyping}
           />
           <SendButton 

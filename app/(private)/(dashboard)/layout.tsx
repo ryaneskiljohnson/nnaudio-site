@@ -20,7 +20,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import CymasphereLogo from "@/components/common/CymasphereLogo";
+import NNAudioLogo from "@/components/common/NNAudioLogo";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import { useTranslation } from "react-i18next";
 import useLanguage from "@/hooks/useLanguage";
@@ -570,7 +570,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <Sidebar ref={sidebarRef} $isOpen={sidebarOpen}>
         <LogoContainer>
           <Link href="/dashboard">
-            <CymasphereLogo
+            <NNAudioLogo
               size="32px"
               fontSize="1.4rem"
               onClick={(e: React.MouseEvent<HTMLElement>) =>

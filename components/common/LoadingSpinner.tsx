@@ -1,6 +1,6 @@
 import React from "react";
 import styled from "styled-components";
-import CymasphereLogo from "./CymasphereLogo";
+import NNAudioLogo from "./NNAudioLogo";
 
 // Define interfaces for styled-components props
 interface ContainerProps {
@@ -67,7 +67,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   return (
     <Container $fullScreen={fullScreen}>
       <LoadingWrapper>
-        <CymasphereLogo size={energyBallSize} showText={false} />
+        <NNAudioLogo size={energyBallSize} showText={false} />
         {text && <LoadingText $size={size}>{text}</LoadingText>}
       </LoadingWrapper>
     </Container>

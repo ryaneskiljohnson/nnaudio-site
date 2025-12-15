@@ -15,8 +15,8 @@ import {
 } from "react-icons/fa";
 import LegalModal from "@/components/modals/LegalModal";
 import AboutUsModal from "@/components/modals/AboutUsModal";
-import EnergyBall from "@/components/common/EnergyBall";
-import { playLydianMaj7Chord } from "@/utils/audioUtils";
+import NNAudioLogo from "@/components/common/NNAudioLogo";
+import Image from "next/image";
 import i18next from "i18next";
 
 const FooterContainer = styled.footer`
@@ -70,19 +70,10 @@ const FooterLogo = styled.div`
   &:hover {
     text-decoration: none;
   }
-`;
-
-const LogoText = styled.div`
-  display: flex;
-  align-items: center;
-  text-transform: uppercase;
-  letter-spacing: 2.5px;
-
-  span {
-    font-family: "Montserrat", sans-serif;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+  
+  img {
+    height: 50px;
+    width: auto;
   }
 `;
 
@@ -451,27 +442,24 @@ const Footer = () => {
                 if (window.location.pathname === "/") {
                   e.preventDefault();
                   window.scrollTo({ top: 0, behavior: "smooth" });
-                  try {
-                    playLydianMaj7Chord();
-                  } catch {
-                    console.log("Audio not available");
-                  }
                 }
               }}
             >
-              <EnergyBall size="35px" marginRight="12px" />
-              <LogoText>
-                <span>CYMA</span>SPHERE
-              </LogoText>
+              <Image
+                src="/images/nnaud-io/NNAudio-logo-white.png"
+                alt="NNAud.io Logo"
+                width={200}
+                height={127}
+                style={{ height: '50px', width: 'auto' }}
+              />
             </FooterLogo>
           </Link>
-          <BrandCredit href="https://nnaud.io">{getTranslation("footer.byNNAudio", "by NNAudio")}</BrandCredit>
           <FooterDescription>
-            {getTranslation("footer.description", "Cymasphere is an interactive music compositional tool for producers, composers, performing musicians, educators, and students.")}
+            {getTranslation("footer.description", "Resources for Modern Music Producers. Discover premium plugins, sample packs, and tools designed to elevate your music production workflow.")}
           </FooterDescription>
           <SocialLinks>
             <SocialIcon
-              href="https://x.com/cymasphere"
+              href="https://twitter.com/nnaud_io"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="X (Twitter)"
@@ -479,7 +467,7 @@ const Footer = () => {
               <FaXTwitter />
             </SocialIcon>
             <SocialIcon
-              href="https://instagram.com/cymasphere"
+              href="https://www.instagram.com/nnaud.io"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
@@ -487,7 +475,7 @@ const Footer = () => {
               <FaInstagram />
             </SocialIcon>
             <SocialIcon
-              href="https://facebook.com/cymasphere"
+              href="https://www.facebook.com/p/NNAudio-100082113654617/"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Facebook"
@@ -495,20 +483,12 @@ const Footer = () => {
               <FaFacebook />
             </SocialIcon>
             <SocialIcon
-              href="https://youtube.com/@cymasphere"
+              href="https://www.youtube.com/channel/UCZAAA6ZjaUQT1ru5-_M9b_A"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="YouTube"
             >
               <FaYoutube />
-            </SocialIcon>
-            <SocialIcon
-              href="https://discord.gg/gXGqqYR47B"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Discord"
-            >
-              <FaDiscord />
             </SocialIcon>
           </SocialLinks>
         </FooterColumn>
@@ -518,12 +498,15 @@ const Footer = () => {
           <Link href="/">
             <FooterLink>{getTranslation("header.home", "Home")}</FooterLink>
           </Link>
-          <FooterAnchor as="a" href="#features">
-            {getTranslation("header.features", "Features")}
-          </FooterAnchor>
-          <FooterAnchor as="a" href="#how-it-works">
-            {getTranslation("header.howItWorks", "How It Works")}
-          </FooterAnchor>
+          <Link href="/plugins">
+            <FooterLink>Plugins</FooterLink>
+          </Link>
+          <Link href="/packs">
+            <FooterLink>Packs</FooterLink>
+          </Link>
+          <Link href="/products">
+            <FooterLink>All Products</FooterLink>
+          </Link>
           <FooterAnchor as="a" href="#pricing">
             {getTranslation("header.pricing", "Pricing")}
           </FooterAnchor>
@@ -566,16 +549,7 @@ const Footer = () => {
       </FooterContent>
       <Copyright>
         <p>
-          {getTranslation("footer.copyright", `© ${new Date().getFullYear()} Cymasphere. All rights reserved.`, { year: new Date().getFullYear() })}
-          <span>
-            <CopyrightLink
-              href="https://nnaud.io"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {getTranslation("footer.byNNAudio", "by NNAudio")}
-            </CopyrightLink>
-          </span>
+          {getTranslation("footer.copyright", `© ${new Date().getFullYear()} NNAud.io. All rights reserved.`, { year: new Date().getFullYear() })}
         </p>
       </Copyright>
       <LegalModal

@@ -2294,7 +2294,7 @@ function CreateCampaignPage() {
           { platform: 'youtube', url: 'https://www.youtube.com/@cymasphere' },
           { platform: 'discord', url: 'https://discord.gg/gXGqqYR47B' }
         ],
-        footerText: `© ${new Date().getFullYear()} Cymasphere Inc. All rights reserved.`,
+        footerText: `© ${new Date().getFullYear()} NNAud.io All rights reserved.`,
         unsubscribeText: 'Unsubscribe',
         unsubscribeUrl: 'https://cymasphere.com/unsubscribe?email={{email}}',
         privacyText: 'Privacy Policy',
@@ -3194,7 +3194,7 @@ function CreateCampaignPage() {
             { platform: 'youtube', url: 'https://youtube.com/cymasphere' },
             { platform: 'discord', url: 'https://discord.gg/gXGqqYR47B' }
           ],
-          footerText: `© ${currentYear} Cymasphere Inc. All rights reserved.`,
+          footerText: `© ${currentYear} NNAud.io All rights reserved.`,
           unsubscribeText: 'Unsubscribe',
           unsubscribeUrl: '#unsubscribe',
           privacyText: 'Privacy Policy',
@@ -3676,7 +3676,7 @@ function CreateCampaignPage() {
             ">
               ${socialLinksHtml ? `<div style="margin-bottom: 0.5rem; text-align: center;">${socialLinksHtml}</div>` : ""}
               <div style="margin-bottom: 0.5rem;">
-                ${element.footerText || `© ${new Date().getFullYear()} Cymasphere Inc. All rights reserved.`}
+                ${element.footerText || `© ${new Date().getFullYear()} NNAud.io All rights reserved.`}
               </div>
               <div>
                 <a href="${(element.unsubscribeUrl && element.unsubscribeUrl.trim()) ? element.unsubscribeUrl : 'https://cymasphere.com/unsubscribe?email={{email}}'}" style="color: #ffffff; text-decoration: underline; cursor: pointer;">${element.unsubscribeText || "Unsubscribe"}</a>

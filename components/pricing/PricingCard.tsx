@@ -13,8 +13,8 @@ import dynamic from "next/dynamic";
 import EmailCollectionModal from "../modals/EmailCollectionModal";
 import LoadingSpinner from "../common/LoadingSpinner";
 
-// Type definitions for CymasphereLogo component
-interface CymasphereLogoProps {
+// Type definitions for NNAudioLogo component
+interface NNAudioLogoProps {
   size?: string;
   fontSize?: string;
   showText?: boolean;
@@ -24,9 +24,9 @@ interface CymasphereLogoProps {
 }
 
 // Use dynamic import to handle JavaScript component in TypeScript
-const CymasphereLogo = dynamic(() => import("../common/CymasphereLogo"), {
+const NNAudioLogo = dynamic(() => import("../common/NNAudioLogo"), {
   ssr: false,
-}) as React.ComponentType<CymasphereLogoProps>;
+}) as React.ComponentType<NNAudioLogoProps>;
 
 // Styled components
 const PricingCardContainer = styled(motion.div)<{
@@ -810,10 +810,10 @@ export default function PricingCard({
         <CardHeader>
           <PlanName>
             <div className="logo-container">
-              <CymasphereLogo
+              <NNAudioLogo
                 size="40px"
                 fontSize="1.8rem"
-                showText={true}
+                showText={false}
                 onClick={(e: React.MouseEvent) => e.preventDefault()}
                 href=""
                 className=""

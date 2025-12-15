@@ -1,7 +1,7 @@
 {
-  "name": "Cymasphere",
-  "short_name": "Cymasphere",
-  "description": "A platform for exploring and creating with sound in a new dimension",
+  "name": "NNAud.io",
+  "short_name": "NNAud.io",
+  "description": "Resources for Modern Music Producers",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#121212",

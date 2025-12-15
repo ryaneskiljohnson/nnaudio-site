@@ -137,11 +137,13 @@ export async function fetchUserSessions(): Promise<{
       const { data, error } = await supabase
         .from("user_sessions")
         .select("ip, user_agent, refreshed_at, updated_at, created_at")
-        .ilike("user_agent", "cymasphere:%");
+        .eq("user_id", user.id)
+        .order("refreshed_at", { ascending: false });
 
       if (error) {
         console.error("Error in fetchUserSession:", error);
-        return { sessions: [], error: "Failed to fetch user sessions" };
+        // Return empty sessions instead of error to prevent UI breaking
+        return { sessions: [], error: null };
       }
 
       // Group sessions by user_agent and keep only the most recent session for each unique user agent
@@ -160,11 +162,16 @@ export async function fetchUserSessions(): Promise<{
               new Date(lastUsed) >
                 new Date(uniqueSessions.get(userAgent).last_used))
           ) {
-            uniqueSessions.set(userAgent, {
-              ip: (session.ip as string) || "Unknown",
-              device_name: userAgent.replace("cymasphere: ", ""),
-              last_used: lastUsed || new Date().toISOString(),
-            });
+          // Extract device name from user agent or use a default
+          let deviceName = userAgent || "Unknown Device";
+          // Remove any app-specific prefixes
+          deviceName = deviceName.replace(/^(nnaudio|cymasphere):\s*/i, "");
+          
+          uniqueSessions.set(userAgent, {
+            ip: (session.ip as string) || "Unknown",
+            device_name: deviceName,
+            last_used: lastUsed || new Date().toISOString(),
+          });
           }
         }
       });

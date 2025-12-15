@@ -29,11 +29,12 @@ import {
   FaImage,
   FaBullseye,
   FaPlay,
+  FaBox,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import CymasphereLogo from "@/components/common/CymasphereLogo";
+import NNAudioLogo from "@/components/common/NNAudioLogo";
 
 import NextLanguageSelector from "@/components/i18n/NextLanguageSelector";
 
@@ -572,8 +573,22 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     // if (user && user.profile?.subscription !== "admin") {
     //   router.push("/dashboard");
     // }
-    if (user && !user.is_admin) {
-      router.push("/dashboard");
+    if (user) {
+      console.log('[AdminLayout] User object:', {
+        id: user.id,
+        email: user.email,
+        is_admin: user.is_admin,
+        profile: user.profile
+      });
+      
+      if (!user.is_admin) {
+        console.log('[AdminLayout] User is not admin, redirecting to dashboard');
+        router.push("/dashboard");
+      } else {
+        console.log('[AdminLayout] User is admin, showing admin layout');
+      }
+    } else {
+      console.log('[AdminLayout] No user found');
     }
   }, [user, router]);
 
@@ -674,9 +689,26 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }),
   };
 
-  if (!user || !user.is_admin) {
+  if (!user) {
+    console.log('[AdminLayout] No user, returning null');
     return null;
   }
+  
+  if (!user.is_admin) {
+    console.log('[AdminLayout] User is not admin, returning null. User:', {
+      id: user.id,
+      email: user.email,
+      is_admin: user.is_admin,
+      profile: user.profile ? 'exists' : 'missing'
+    });
+    return null;
+  }
+  
+  console.log('[AdminLayout] Rendering admin layout for admin user:', {
+    id: user.id,
+    email: user.email,
+    is_admin: user.is_admin
+  });
 
   // Temporarily disabled admin check for testing
   // if (user.profile?.subscription !== "admin") {
@@ -689,7 +721,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <Sidebar ref={sidebarRef} $isOpen={sidebarOpen}>
         <LogoContainer>
           <Link href="/admin">
-            <CymasphereLogo
+            <NNAudioLogo
               size="32px"
               fontSize="1.4rem"
               onClick={(e: React.MouseEvent<HTMLElement>) =>
@@ -737,6 +769,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaTag />
               Coupons
+            </NavItem>
+          </Link>
+          <Link href="/admin/products">
+            <NavItem
+              $active={pathname.startsWith("/admin/products") ? "true" : "false"}
+              onClick={(e) => handleNavigation(e, "/admin/products")}
+            >
+              <FaBox />
+              Products
             </NavItem>
           </Link>
           <Link href="/admin/promotions">
@@ -996,7 +1037,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </MenuButton>
 
         <MobileLogoContent>
-          <CymasphereLogo
+          <NNAudioLogo
             size="24px"
             fontSize="1.2rem"
             href="/admin"
@@ -1056,6 +1097,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaTag />
               Coupons
+            </MobileNavItem>
+          </Link>
+
+          <Link href="/admin/products">
+            <MobileNavItem
+              $active={pathname.startsWith("/admin/products") ? "true" : "false"}
+              variants={menuItemVariants}
+              custom={2.5}
+              initial="hidden"
+              animate="visible"
+              onClick={(e) => handleNavigation(e, "/admin/products")}
+            >
+              <FaBox />
+              Products
             </MobileNavItem>
           </Link>
 

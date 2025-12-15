@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import CymasphereLogo from "@/components/common/CymasphereLogo";
+import NNAudioLogo from "@/components/common/NNAudioLogo";
 
 export default function NotFound() {
   return (
@@ -17,7 +17,7 @@ export default function NotFound() {
         backgroundColor: "var(--background)",
       }}
     >
-      <CymasphereLogo size="60px" fontSize="2rem" />
+      <NNAudioLogo size="60px" fontSize="2rem" />
       <h1
         style={{
           fontSize: "6rem",

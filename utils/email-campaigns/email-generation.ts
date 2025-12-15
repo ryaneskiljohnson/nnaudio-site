@@ -201,7 +201,7 @@ export function generateHtmlFromElements(
               ${socialLinksHtml ? `<div style="margin-top: 24px; margin-bottom: 16px; text-align: center; font-size: ${footerFontSize};">${socialLinksHtml}</div>` : ""}
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse;">
                 <tr>
-                  <td align="center" style="padding: 0 0 8px 0; text-align: center; color: ${element.textColor || '#ffffff'}; font-size: ${footerFontSize};">${element.footerText || `© ${new Date().getFullYear()} Cymasphere Inc. All rights reserved.`}</td>
+                  <td align="center" style="padding: 0 0 8px 0; text-align: center; color: ${element.textColor || '#ffffff'}; font-size: ${footerFontSize};">${element.footerText || `© ${new Date().getFullYear()} NNAud.io All rights reserved.`}</td>
                 </tr>
               </table>
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse;">
@@ -497,7 +497,7 @@ export function generateTextFromElements(elements: any[]): string {
                 .join(" | ")
             : "";
           return `\n${"─".repeat(50)}\n${socialText ? socialText + "\n" : ""}${
-            element.footerText || `© ${new Date().getFullYear()} Cymasphere Inc. All rights reserved.`
+            element.footerText || `© ${new Date().getFullYear()} NNAud.io All rights reserved.`
           }\n${element.unsubscribeText || "Unsubscribe"}: ${
             element.unsubscribeUrl || "#unsubscribe"
           } | ${element.privacyText || "Privacy Policy"}: ${

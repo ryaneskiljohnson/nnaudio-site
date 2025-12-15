@@ -18,8 +18,8 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import EnergyBall from "@/components/common/EnergyBall";
 import NextLanguageSelector from "@/components/i18n/NextLanguageSelector";
+import Image from "next/image";
 // Import translations directly to avoid hook ordering issues
 import i18next from "i18next";
 
@@ -129,41 +129,20 @@ const HeaderContent = styled.div<{ $isScrolled: boolean }>`
 const LogoText = styled.div`
   display: flex;
   align-items: center;
-  text-transform: uppercase;
-  letter-spacing: 2.5px;
-  font-size: 1.8rem;
-  font-weight: 700;
-
-  span.cyma {
-    font-family: "Montserrat", sans-serif;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  span.sphere {
-    color: white;
-    font-family: "Montserrat", sans-serif;
-  }
-
-  /* Add glow effect */
-  position: relative;
-  &:after {
-    content: "Cymasphere";
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: -1;
-    filter: blur(15px);
-    opacity: 0.5;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+  height: 40px;
+  
+  img {
+    height: 100%;
+    width: auto;
+    max-height: 40px;
   }
 
   @media (max-width: 768px) {
-    font-size: 1.5rem;
+    height: 32px;
+    
+    img {
+      max-height: 32px;
+    }
   }
 `;
 
@@ -615,13 +594,15 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
     return undefined;
   }, []);
 
-  // Define nav items using the non-hook translation function
+  // Define nav items matching nnaud.io structure
   const navItems = useMemo(
     () => [
-      { name: getTranslation("header.features"), path: "/#features" },
-      { name: getTranslation("header.howItWorks"), path: "/#how-it-works" },
-      { name: getTranslation("header.pricing"), path: "/#pricing" },
-      { name: getTranslation("header.faq"), path: "/#faq" },
+      { name: "Home", path: "/" },
+      { name: "Plugins", path: "/plugins" },
+      { name: "Packs", path: "/packs" },
+      { name: "All Products", path: "/products" },
+      { name: "Pricing", path: "/#pricing" },
+      { name: "FAQ", path: "/#faq" },
     ],
     [language]
   ); // Re-compute when language changes
@@ -746,51 +727,18 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
     <>
       <HeaderContainer $isScrolled={isScrolled} $menuOpen={menuOpen} $hasActiveBanner={hasActiveBanner}>
         <HeaderContent $isScrolled={isScrolled}>
-          <span
-            onClick={playSound}
-            style={{
-              textDecoration: "none",
-              position: "relative",
-              cursor: "pointer",
-            }}
-            onMouseDown={(e) => {
-              // Create ripple element at the body level rather than within the logo
-              const circle = document.createElement("span");
-              // Reduce the diameter to make the ripple smaller
-              const diameter =
-                Math.max(window.innerWidth, window.innerHeight) * 0.6;
-
-              // Get the click position relative to the viewport
-              const logoRect = e.currentTarget.getBoundingClientRect();
-              const clickX = logoRect.left + logoRect.width / 2;
-              const clickY = logoRect.top + logoRect.height / 2;
-
-              // Position the ripple absolutely on the page
-              circle.style.position = "fixed";
-              circle.style.top = `${clickY - diameter / 2}px`;
-              circle.style.left = `${clickX - diameter / 2}px`;
-              circle.style.width = circle.style.height = `${diameter}px`;
-              circle.style.background = "rgba(108, 99, 255, 0.05)";
-              circle.style.borderRadius = "50%";
-              circle.style.transform = "scale(0)";
-              circle.style.animation = "ripple 1.2s ease-out forwards";
-              circle.style.zIndex = "2000"; // Below header (3000) but above other content
-              circle.style.pointerEvents = "none"; // Make sure it doesn't block clicks
-
-              // Append to body instead of logo element for full-page effect
-              document.body.appendChild(circle);
-
-              setTimeout(() => {
-                circle.remove();
-              }, 1200);
-            }}
-          >
+          <Link href="/" style={{ textDecoration: "none" }}>
             <LogoText>
-              <EnergyBall size="32px" marginRight="8px" />
-              <span className="cyma">CYMA</span>
-              <span className="sphere">SPHERE</span>
+              <Image
+                src="/images/nnaud-io/NNAudio-logo-white.png"
+                alt="NNAud.io Logo"
+                width={445}
+                height={283}
+                style={{ height: "40px", width: "auto" }}
+                priority
+              />
             </LogoText>
-          </span>
+          </Link>
 
           <Nav>
             {navItems.map((item) => (

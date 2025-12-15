@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import { FaCheckCircle } from "react-icons/fa";
-import CymasphereLogo from "@/components/common/CymasphereLogo";
+import NNAudioLogo from "@/components/common/NNAudioLogo";
 import { trackUserData, hashEmail, trackEventOnce } from "@/utils/analytics";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -181,7 +181,7 @@ export default function SignupSuccess() {
     <PageContainer>
       <HeaderNav>
         <HeaderContent>
-          <CymasphereLogo
+          <NNAudioLogo
             size="40px"
             fontSize="1.8rem"
             href="/"

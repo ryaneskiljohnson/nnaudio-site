@@ -943,7 +943,7 @@ export default function VisualEditor({
         termsText: element.termsText || 'Terms of Service',
         footerText: (() => {
           const year = new Date().getFullYear();
-          return element.footerText || ('© ' + year + ' Cymasphere Inc. All rights reserved.');
+          return element.footerText || ('© ' + year + ' NNAud.io All rights reserved.');
         })()
       })
       };
@@ -1822,7 +1822,7 @@ export default function VisualEditor({
             { platform: 'youtube', url: 'https://www.youtube.com/@cymasphere' },
             { platform: 'discord', url: 'https://discord.gg/gXGqqYR47B' }
           ],
-          footerText: `© ${new Date().getFullYear()} Cymasphere Inc. All rights reserved.`,
+          footerText: `© ${new Date().getFullYear()} NNAud.io All rights reserved.`,
           unsubscribeText: 'Unsubscribe',
           unsubscribeUrl: 'https://cymasphere.com/unsubscribe?email={{email}}',
           privacyText: 'Privacy Policy',
@@ -1920,7 +1920,7 @@ export default function VisualEditor({
         let content = '';
         if (element.type === 'footer') {
           const year = new Date().getFullYear();
-          content = element.footerText || ('© ' + year + ' Cymasphere Inc. All rights reserved.');
+          content = element.footerText || ('© ' + year + ' NNAud.io All rights reserved.');
         } else {
           content = element.content || (element.type === 'header' ? 'Enter header text...' : 'Enter your text...');
         }
@@ -2012,7 +2012,7 @@ export default function VisualEditor({
       if (editingElementDOM && originalElement) {
         // Restore the original content to the DOM
         if (originalElement.type === 'footer') {
-          editingElementDOM.innerHTML = originalElement.footerText || `© ${new Date().getFullYear()} Cymasphere Inc. All rights reserved.`;
+          editingElementDOM.innerHTML = originalElement.footerText || `© ${new Date().getFullYear()} NNAud.io All rights reserved.`;
         } else {
           editingElementDOM.innerHTML = originalElement.content || '';
         }
@@ -3182,7 +3182,7 @@ export default function VisualEditor({
                 data-element-id={element.id}
                 value={(() => {
                   const year = new Date().getFullYear();
-                  return element.footerText || ('© ' + year + ' Cymasphere Inc. All rights reserved.');
+                  return element.footerText || ('© ' + year + ' NNAud.io All rights reserved.');
                 })()}
                 onChange={(e) => {
                   const newVal = e.target.value;
@@ -3209,7 +3209,7 @@ export default function VisualEditor({
                 dangerouslySetInnerHTML={{ 
                   __html: (() => {
                     const year = new Date().getFullYear();
-                    const footerText = element.footerText || ('© ' + year + ' Cymasphere Inc. All rights reserved.');
+                    const footerText = element.footerText || ('© ' + year + ' NNAud.io All rights reserved.');
                     return String(footerText).replace(/\$\{/g, '&#36;{');
                   })()
                 }}
@@ -3952,7 +3952,7 @@ export default function VisualEditor({
                                   ">
                                     ' + (() => {
                                     const year = new Date().getFullYear();
-                                    const footerText = element.footerText || ('© ' + year + ' Cymasphere Inc. All rights reserved.');
+                                    const footerText = element.footerText || ('© ' + year + ' NNAud.io All rights reserved.');
                                     return String(footerText).replace(/\$\{/g, '&#36;{');
                                   })() + '
                                   </div>`;
@@ -4012,7 +4012,7 @@ export default function VisualEditor({
                           )}
                           {/* Footer Text */}
                           <div style={{ marginBottom: '0.5rem' }}>
-                            {element.footerText || `© ${new Date().getFullYear()} Cymasphere Inc. All rights reserved.`}
+                            {element.footerText || `© ${new Date().getFullYear()} NNAud.io All rights reserved.`}
                           </div>
                           {/* Footer Links */}
                           <div>

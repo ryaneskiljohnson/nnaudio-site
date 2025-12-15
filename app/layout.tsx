@@ -11,8 +11,8 @@ import "./globals.css";
 
 // Metadata configuration
 export const metadata: Metadata = {
-  title: "Cymasphere",
-  description: "Advanced Chord Generation",
+  title: "NNAud.io – Resources for Modern Music Producers",
+  description: "Discover premium plugins, sample packs, and tools designed to elevate your music production workflow",
   icons: {
     icon: [
       {
@@ -20,19 +20,19 @@ export const metadata: Metadata = {
         sizes: "any",
       },
       {
-        url: "/images/cm-logo-icon.png",
+        url: "/images/nnaud-io/logo-icon-32x32.png",
         type: "image/png",
         sizes: "32x32",
       },
       {
-        url: "/images/cm-logo-icon.png",
+        url: "/images/nnaud-io/logo-icon-16x16.png",
         type: "image/png",
         sizes: "16x16",
       },
     ],
     apple: [
       {
-        url: "/images/cm-logo-icon.png",
+        url: "/images/nnaud-io/logo-icon.png",
         sizes: "180x180",
         type: "image/png",
       },

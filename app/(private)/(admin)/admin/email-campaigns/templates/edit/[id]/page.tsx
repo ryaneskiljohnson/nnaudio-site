@@ -1136,7 +1136,7 @@ function EditTemplatePage() {
         </div>
         
         <div class="footer">
-            <p>© {new Date().getFullYear()} Cymasphere Inc. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} NNAud.io All rights reserved.</p>
             <p>
                 <a href="#">Unsubscribe</a> | 
                 <a href="#">Privacy Policy</a> | 

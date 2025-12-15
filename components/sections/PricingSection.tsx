@@ -14,7 +14,7 @@ import { FaGift } from "react-icons/fa";
 // Removed server action imports - now using API routes
 import { PlanType } from "@/types/stripe";
 import * as Tone from "tone"; // Import Tone.js for audio playback
-// Import the CymasphereLogo component dynamically
+// Import the NNAudioLogo component dynamically
 import dynamic from "next/dynamic";
 // Import useAuth hook
 import { useAuth } from "@/contexts/AuthContext";
@@ -61,8 +61,8 @@ interface ChordCenter {
   scale: number;
 }
 
-// Type definitions for CymasphereLogo component
-interface CymasphereLogoProps {
+// Type definitions for NNAudioLogo component
+interface NNAudioLogoProps {
   size?: string;
   fontSize?: string;
   showText?: boolean;
@@ -72,9 +72,9 @@ interface CymasphereLogoProps {
 }
 
 // Use dynamic import to handle JavaScript component in TypeScript
-const CymasphereLogo = dynamic(() => import("../common/CymasphereLogo"), {
+const NNAudioLogo = dynamic(() => import("../common/NNAudioLogo"), {
   ssr: false,
-}) as React.ComponentType<CymasphereLogoProps>;
+}) as React.ComponentType<NNAudioLogoProps>;
 
 // ChordWeb component for molecular chord background
 const ChordWebCanvas = styled.canvas`
