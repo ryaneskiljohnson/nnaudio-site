@@ -22,6 +22,14 @@ export async function GET(request: NextRequest) {
           price,
           sale_price,
           active
+        ),
+        bundle_products!inner(
+          product:products!inner(
+            id,
+            name,
+            featured_image_url,
+            logo_url
+          )
         )
       `)
       .eq('status', status)
@@ -55,10 +63,24 @@ export async function GET(request: NextRequest) {
         lifetime: tiers.find(t => t.subscription_type === 'lifetime'),
       };
 
+      // Extract all products with images for mosaic
+      const allProducts = ((bundle.bundle_products || []) as any[])
+        .map((bp: any) => bp.product)
+        .filter((p: any) => p);
+      
+      const productsWithImages = allProducts
+        .filter((p: any) => p && (p.featured_image_url || p.logo_url));
+      
+      // Get total count of all products in bundle
+      const totalProductCount = allProducts.length;
+
       return {
         ...bundle,
         pricing,
+        products: productsWithImages, // All products with images for mosaic
+        totalProductCount, // Total count of all products
         bundle_subscription_tiers: undefined, // Remove nested data
+        bundle_products: undefined, // Remove nested data
       };
     });
 
