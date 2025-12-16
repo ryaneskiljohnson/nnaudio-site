@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { FaArrowRight, FaCheckCircle } from "react-icons/fa";
 import { Bundle } from "@/types/bundles";
+import BundleMosaic from "@/components/bundles/BundleMosaic";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -16,7 +17,7 @@ const Container = styled.div`
 
 const Header = styled.div`
   max-width: 1200px;
-  margin: 0 auto 4rem;
+  margin: 0 auto 2rem;
   text-align: center;
 `;
 
@@ -42,27 +43,56 @@ const BundlesGrid = styled.div`
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
   
-  @media (max-width: 768px) {
+  @media (max-width: 968px) {
     grid-template-columns: 1fr;
   }
 `;
 
-const BundleCard = styled(motion.div)`
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+const BundleCard = styled(motion.div)<{ $neonColor?: string }>`
+  background: ${props => props.$neonColor 
+    ? `rgba(${props.$neonColor}, 0.15)` 
+    : 'rgba(255, 255, 255, 0.05)'};
+  border: ${props => props.$neonColor 
+    ? `2px solid rgba(${props.$neonColor}, 0.6)` 
+    : '1px solid rgba(255, 255, 255, 0.1)'};
   border-radius: 16px;
   padding: 2rem;
   transition: all 0.3s ease;
   cursor: pointer;
+  position: relative;
+  
+  ${props => props.$neonColor && `
+    box-shadow: 0 8px 32px rgba(${props.$neonColor}, 0.3);
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(135deg, rgba(${props.$neonColor}, 0.5), rgba(${props.$neonColor}, 0.3));
+      border-radius: 16px;
+      z-index: -1;
+      opacity: 0.6;
+      filter: blur(8px);
+    }
+  `}
   
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(78, 205, 196, 0.5);
+    background: ${props => props.$neonColor 
+      ? `rgba(${props.$neonColor}, 0.2)` 
+      : 'rgba(255, 255, 255, 0.08)'};
+    border-color: ${props => props.$neonColor 
+      ? `rgba(${props.$neonColor}, 0.9)` 
+      : 'rgba(78, 205, 196, 0.5)'};
     transform: translateY(-4px);
-    box-shadow: 0 8px 32px rgba(78, 205, 196, 0.2);
+    box-shadow: ${props => props.$neonColor 
+      ? `0 12px 40px rgba(${props.$neonColor}, 0.5), 0 0 20px rgba(${props.$neonColor}, 0.3)` 
+      : '0 8px 32px rgba(78, 205, 196, 0.2)'};
   }
 `;
 
@@ -75,12 +105,20 @@ const BundleName = styled.h2`
   font-weight: 700;
   color: white;
   margin-bottom: 0.5rem;
+  text-align: center;
 `;
 
 const BundleTagline = styled.p`
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.7);
   margin-bottom: 1rem;
+  text-align: center;
+  line-height: 1.5;
+  white-space: nowrap;
+  
+  @media (max-width: 768px) {
+    white-space: normal;
+  }
 `;
 
 const BundleDescription = styled.p`
@@ -88,6 +126,12 @@ const BundleDescription = styled.p`
   color: rgba(255, 255, 255, 0.6);
   line-height: 1.6;
   margin-bottom: 1.5rem;
+  height: calc(1.6em * 3);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-align: center;
 `;
 
 const PricingSection = styled.div`
@@ -128,20 +172,28 @@ const ProductCount = styled.div`
 const ViewBundleButton = styled(Link)`
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
   color: white;
-  border-radius: 8px;
+  border: none;
+  border-radius: 50px;
   font-weight: 600;
+  font-size: 1rem;
   text-decoration: none;
-  transition: all 0.3s ease;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  margin-top: 1rem;
+  box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
   
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(78, 205, 196, 0.4);
+    box-shadow: 0 8px 30px rgba(138, 43, 226, 0.6);
   }
 `;
+
 
 interface BundleWithPricing extends Bundle {
   pricing: {
@@ -149,6 +201,13 @@ interface BundleWithPricing extends Bundle {
     annual?: { price: number; sale_price?: number };
     lifetime?: { price: number; sale_price?: number };
   };
+  products?: Array<{
+    id: string;
+    name: string;
+    featured_image_url?: string;
+    logo_url?: string;
+  }>;
+  totalProductCount?: number;
 }
 
 export default function BundlesPage() {
@@ -166,7 +225,23 @@ export default function BundlesPage() {
       const data = await response.json();
 
       if (data.success) {
-        setBundles(data.bundles);
+        // Reorder bundles: Producer's Arsenal (left), Ultimate Bundle (center), Beat Lab (right)
+        const sortedBundles = [...data.bundles].sort((a, b) => {
+          const aName = a.name.toLowerCase();
+          const bName = b.name.toLowerCase();
+          
+          // Define order: Producer's Arsenal = 0, Ultimate Bundle = 1, Beat Lab = 2
+          const getOrder = (name: string) => {
+            if (name.includes("producer's") || name.includes('producers')) return 0;
+            if (name.includes('ultimate')) return 1;
+            if (name.includes('beat lab')) return 2;
+            return 3; // Other bundles go last
+          };
+          
+          return getOrder(aName) - getOrder(bName);
+        });
+        
+        setBundles(sortedBundles);
       }
     } catch (error) {
       console.error('Error fetching bundles:', error);
@@ -210,6 +285,8 @@ export default function BundlesPage() {
         <Title>Subscription Bundles</Title>
         <Subtitle>
           Get access to curated collections of our best products with exclusive bundle pricing.
+        </Subtitle>
+        <Subtitle>
           Choose from monthly, annual, or lifetime subscriptions.
         </Subtitle>
       </Header>
@@ -217,14 +294,37 @@ export default function BundlesPage() {
       <BundlesGrid>
         {bundles.map((bundle) => {
           const bestPrice = getBestPrice(bundle);
+          const bundleName = bundle.name.toLowerCase();
+          
+          // Assign different neon colors to each bundle
+          let neonColor: string | undefined;
+          if (bundleName.includes("producer's") || bundleName.includes('producers')) {
+            // Producer's Arsenal - Cyan/Blue neon
+            neonColor = '0, 255, 255'; // Cyan
+          } else if (bundleName.includes('ultimate')) {
+            // Ultimate Bundle - Purple neon
+            neonColor = '108, 99, 255'; // Purple
+          } else if (bundleName.includes('beat lab')) {
+            // Beat Lab - Pink/Magenta neon
+            neonColor = '255, 0, 255'; // Magenta
+          }
           
           return (
             <BundleCard
               key={bundle.id}
+              $neonColor={neonColor}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
+              {/* Mosaic Image Collage */}
+              {bundle.products && bundle.products.length > 0 && (
+                <BundleMosaic 
+                  products={bundle.products} 
+                  totalCount={bundle.totalProductCount || bundle.products.length}
+                />
+              )}
+
               <BundleHeader>
                 <BundleName>{bundle.name}</BundleName>
                 {bundle.tagline && (
