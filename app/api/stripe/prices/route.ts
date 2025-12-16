@@ -11,7 +11,8 @@ export async function GET(): Promise<NextResponse<PricesResponse>> {
     const annualPriceId = process.env.STRIPE_PRICE_ID_ANNUAL;
     const lifetimePriceId = process.env.STRIPE_PRICE_ID_LIFETIME;
 
-    // If Stripe price IDs are not configured, return fallback prices
+    // If Stripe price IDs are not configured, return fallback prices silently
+    // (Bundles are now the primary subscription system)
     if (!monthlyPriceId || !annualPriceId || !lifetimePriceId) {
       const fallbackPrices: Record<PlanType, PriceData> = {
         monthly: {
@@ -43,43 +44,91 @@ export async function GET(): Promise<NextResponse<PricesResponse>> {
       });
     }
 
-    // Fetch prices from Stripe
-    const [monthlyPrice, annualPrice, lifetimePrice] = await Promise.all([
+    // Fetch prices from Stripe individually to handle errors per price
+    const priceResults = await Promise.allSettled([
       stripe.prices.retrieve(monthlyPriceId, { expand: ["product"] }),
       stripe.prices.retrieve(annualPriceId, { expand: ["product"] }),
       stripe.prices.retrieve(lifetimePriceId, { expand: ["product"] }),
     ]);
 
-    // Get product name
-    const productName =
-      (monthlyPrice.product as Stripe.Product).name || "Pro Plan";
+    const monthlyPrice = priceResults[0].status === 'fulfilled' ? priceResults[0].value : null;
+    const annualPrice = priceResults[1].status === 'fulfilled' ? priceResults[1].value : null;
+    const lifetimePrice = priceResults[2].status === 'fulfilled' ? priceResults[2].value : null;
 
-    // Format response
+    // Collect any errors
+    const errors: string[] = [];
+    if (priceResults[0].status === 'rejected') {
+      errors.push(`Monthly price (${monthlyPriceId}): ${priceResults[0].reason.message || 'Not found'}`);
+    }
+    if (priceResults[1].status === 'rejected') {
+      errors.push(`Annual price (${annualPriceId}): ${priceResults[1].reason.message || 'Not found'}`);
+    }
+    if (priceResults[2].status === 'rejected') {
+      errors.push(`Lifetime price (${lifetimePriceId}): ${priceResults[2].reason.message || 'Not found'}`);
+    }
+
+    // Get product name from first available price
+    const productName =
+      (monthlyPrice?.product as Stripe.Product)?.name ||
+      (annualPrice?.product as Stripe.Product)?.name ||
+      (lifetimePrice?.product as Stripe.Product)?.name ||
+      "Pro Plan";
+
+    // Format response with available prices, use fallback for missing ones
     const prices: Record<PlanType, PriceData> = {
-      monthly: {
+      monthly: monthlyPrice ? {
         id: monthlyPrice.id,
         type: "monthly",
         amount: monthlyPrice.unit_amount || 0,
         currency: monthlyPrice.currency,
         interval: monthlyPrice.recurring?.interval,
         name: `${productName} (Monthly)`,
+      } : {
+        id: "",
+        type: "monthly",
+        amount: 0,
+        currency: "usd",
+        name: "Monthly Plan",
       },
-      annual: {
+      annual: annualPrice ? {
         id: annualPrice.id,
         type: "annual",
         amount: annualPrice.unit_amount || 0,
         currency: annualPrice.currency,
         interval: annualPrice.recurring?.interval,
         name: `${productName} (Annual)`,
+      } : {
+        id: "",
+        type: "annual",
+        amount: 0,
+        currency: "usd",
+        name: "Annual Plan",
       },
-      lifetime: {
+      lifetime: lifetimePrice ? {
         id: lifetimePrice.id,
         type: "lifetime",
         amount: lifetimePrice.unit_amount || 0,
         currency: lifetimePrice.currency,
         name: `${productName} (Lifetime)`,
+      } : {
+        id: "",
+        type: "lifetime",
+        amount: 0,
+        currency: "usd",
+        name: "Lifetime Plan",
       },
     };
+
+    // If there are errors, return fallback prices silently
+    // (Bundles are now the primary subscription system, so legacy price errors are not critical)
+    if (errors.length > 0) {
+      // Don't return error - just use fallback prices
+      // This prevents error messages from showing since bundles handle subscriptions
+      return NextResponse.json({
+        success: true,
+        prices,
+      });
+    }
 
     return NextResponse.json({
       success: true,

@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     ensureStarted();
     const body = await request.json();
     const action = body.action;
-    
+
     switch (action) {
       case "start":
         await emailScheduler.start();
