@@ -163,7 +163,9 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     pathname?.includes("/downloads") ||
     pathname?.includes("/settings") ||
     pathname?.includes("/support") ||
-    pathname?.includes("/getting-started");
+    pathname?.includes("/getting-started") ||
+    pathname?.includes("/my-orders") ||
+    pathname?.includes("/my-products");
 
   // Check if the route is in the admin section
   const isAdminRoute = pathname?.includes("/admin");

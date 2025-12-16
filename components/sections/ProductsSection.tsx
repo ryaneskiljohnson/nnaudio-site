@@ -89,7 +89,7 @@ const ProductCardWrapper = styled.div`
 `;
 
 const NavigationButton = styled.button<{ $direction: 'left' | 'right' }>`
-  position: absolute;
+    position: absolute;
   top: 50%;
   ${props => props.$direction === 'left' ? 'left: 10px;' : 'right: 10px;'}
   transform: translateY(-50%);
@@ -113,7 +113,7 @@ const NavigationButton = styled.button<{ $direction: 'left' | 'right' }>`
     
     svg {
       font-size: 1rem;
-    }
+  }
   }
   
   &:hover {
@@ -458,7 +458,7 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
         </SectionSubtitle>
 
         {isMobile && showAll ? (
-          <ProductsGrid>
+        <ProductsGrid>
             {products.map((product, index) => {
               const productData = {
                 id: product.id,
@@ -478,8 +478,8 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
               };
 
               return (
-                <ProductCard
-                  key={product.id}
+            <ProductCard
+              key={product.id}
                   product={productData}
                   index={index}
                   showCartButton={true}

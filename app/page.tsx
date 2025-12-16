@@ -283,7 +283,7 @@ export default function Home() {
       {/* Hero section */}
       <Suspense fallback={<LoadingComponent fullScreen />}>
         <div style={{ position: 'relative', overflow: 'visible' }}>
-          <NNAudHeroSection />
+        <NNAudHeroSection />
           {!loading && featuredProducts.length > 0 && (
             <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#0a0a0a" />
           )}
@@ -297,11 +297,11 @@ export default function Home() {
           {/* Featured Products section */}
           {featuredProducts.length > 0 && (
             <div style={{ position: 'relative', overflow: 'visible' }}>
-              <FeaturedProductsSection
-                id="featured"
-                title="Featured Products"
-                products={featuredProducts}
-              />
+            <FeaturedProductsSection
+              id="featured"
+              title="Featured Products"
+              products={featuredProducts}
+            />
               {plugins.length > 0 && (
                 <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#0a0a0a" />
               )}
@@ -311,29 +311,29 @@ export default function Home() {
           {/* Plugins section */}
           {plugins.length > 0 && (
             <div style={{ position: 'relative', overflow: 'visible' }}>
-              <ProductsSection
-                id="plugins"
-                title="Premium Plugins"
-                subtitle="Professional-grade tools for modern music production"
-                products={plugins}
+            <ProductsSection
+              id="plugins"
+              title="Premium Plugins"
+              subtitle="Professional-grade tools for modern music production"
+              products={plugins}
                 fetchAllUrl="/api/products?category=plugin&status=active&limit=100"
-              />
+            />
               {packs.length > 0 && (
                 <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#1a1a2e" />
               )}
             </div>
           )}
-
+          
           {/* Packs section */}
           {packs.length > 0 && (
             <div style={{ position: 'relative', overflow: 'visible' }}>
-              <ProductsSection
-                id="packs"
-                title="Sample Packs"
-                subtitle="Curated collections of high-quality sounds and samples"
-                products={packs}
+            <ProductsSection
+              id="packs"
+              title="Sample Packs"
+              subtitle="Curated collections of high-quality sounds and samples"
+              products={packs}
                 fetchAllUrl="/api/products?category=pack&status=active&limit=100"
-              />
+            />
               <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#06070f" />
             </div>
           )}
