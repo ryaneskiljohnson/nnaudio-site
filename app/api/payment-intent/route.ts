@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { createClient } from '@/utils/supabase/server';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-02-24.acacia',
 });
 
 interface CartItem {
@@ -18,7 +18,7 @@ interface CartItem {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { items, promotionCodeId } = body;
+    const { items, promotionCodeId, savePaymentMethod } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -52,6 +52,22 @@ export async function POST(request: NextRequest) {
           },
         });
         stripeCustomerId = newCustomer.id;
+      }
+
+      // Save customer_id to user's profile if not already set
+      if (stripeCustomerId && user.id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("customer_id")
+          .eq("id", user.id)
+          .single();
+
+        if (!profile?.customer_id) {
+          await supabase
+            .from("profiles")
+            .update({ customer_id: stripeCustomerId })
+            .eq("id", user.id);
+        }
       }
     }
 
@@ -155,6 +171,7 @@ export async function POST(request: NextRequest) {
       amount: Math.round(totalAmount * 100), // Convert to cents (already discounted)
       currency: 'usd',
       customer: stripeCustomerId,
+      setup_future_usage: savePaymentMethod ? 'off_session' : undefined, // Save payment method for future use
       metadata: {
         cart_items: JSON.stringify(lineItems),
         original_total: (totalAmount + discountAmount).toFixed(2),
@@ -162,6 +179,7 @@ export async function POST(request: NextRequest) {
         total_amount: totalAmount.toFixed(2),
         user_id: user?.id || 'anonymous',
         ...(promotionCodeId && { promotion_code: promotionCodeId }),
+        ...(savePaymentMethod && { save_payment_method: 'true' }),
       },
       automatic_payment_methods: {
         enabled: true,

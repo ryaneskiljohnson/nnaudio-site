@@ -459,6 +459,46 @@ const StripeLogoImage = styled.img`
   opacity: 0.8;
 `;
 
+const SaveCardCheckbox = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(78, 205, 196, 0.3);
+  }
+
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #4ecdc4;
+  }
+
+  label {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin: 0;
+    user-select: none;
+  }
+`;
+
+const SaveCardNote = styled.div`
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  padding-left: 0.25rem;
+`;
+
 // Payment Form Component
 function PaymentForm({ 
   items, 
@@ -501,6 +541,7 @@ function PaymentForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [savePaymentMethod, setSavePaymentMethod] = useState(false);
   
   // Use billing fields from props
   const { email, billingName, billingAddress, billingCity, billingState, billingZip, billingCountry } = billingFields;
@@ -521,6 +562,7 @@ function PaymentForm({
   }, [user]);
 
   // Create payment intent on mount or when promo code changes
+  // Note: We don't recreate when savePaymentMethod changes to avoid flickering
   useEffect(() => {
     async function createPaymentIntent() {
       try {
@@ -532,6 +574,7 @@ function PaymentForm({
           body: JSON.stringify({ 
             items,
             promotionCodeId: appliedPromo ? appliedPromo.promotionCodeId : undefined,
+            savePaymentMethod: savePaymentMethod,
           }),
         });
 
@@ -555,6 +598,9 @@ function PaymentForm({
     if (items.length > 0) {
       createPaymentIntent();
     }
+    // Removed savePaymentMethod from dependencies to prevent flickering
+    // We'll update the payment intent when submitting instead
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, appliedPromo]);
 
   const finalTotal = Math.max(total - (appliedPromo?.discount.amount || 0), 0);
@@ -634,6 +680,7 @@ function PaymentForm({
         body: JSON.stringify({ 
           items,
           promotionCodeId: appliedPromo ? appliedPromo.promotionCodeId : undefined,
+          savePaymentMethod: savePaymentMethod,
         }),
       });
 
@@ -665,15 +712,25 @@ function PaymentForm({
 
       setClientSecret(piData.clientSecret);
 
-      const cardElement = elements.getElement(CardElement);
-
-      if (!cardElement) {
-        setError('Card element not found');
+      // Ensure Stripe and Elements are ready
+      if (!stripe || !elements) {
+        setError('Payment system not ready. Please wait a moment and try again.');
         setIsProcessing(false);
         return;
       }
 
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(piData.clientSecret, {
+      // Wait a brief moment for elements to be fully ready
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      const cardElement = elements.getElement(CardElement);
+
+      if (!cardElement) {
+        setError('Card element not found. Please refresh the page and try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      const confirmOptions: any = {
         payment_method: {
           card: cardElement,
           billing_details: {
@@ -688,12 +745,57 @@ function PaymentForm({
             },
           },
         },
-      });
+      };
+
+      // If saving payment method, ensure it's attached to the customer
+      if (savePaymentMethod && piData.paymentIntentId) {
+        // The payment method will be automatically attached when setup_future_usage is set
+        // But we can also explicitly set it as the default if needed
+      }
+
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(piData.clientSecret, confirmOptions);
 
       if (stripeError) {
         setError(stripeError.message || 'Payment failed');
         setIsProcessing(false);
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+        // If savePaymentMethod is enabled, verify the payment method is attached
+        // Note: With setup_future_usage: 'off_session', Stripe automatically attaches the payment method
+        // We just need to verify it worked and set it as default if needed
+        if (savePaymentMethod && paymentIntent.payment_method) {
+          try {
+            const pmId = typeof paymentIntent.payment_method === 'string' 
+              ? paymentIntent.payment_method 
+              : paymentIntent.payment_method.id;
+
+            if (pmId) {
+              // Verify and ensure payment method is properly attached
+              // The payment method should already be attached due to setup_future_usage,
+              // but we'll verify and set as default if needed
+              const verifyResponse = await fetch(`/api/payment-intent/${paymentIntent.id}/verify-payment-method`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  paymentMethodId: pmId,
+                }),
+              });
+
+              const verifyResult = await verifyResponse.json();
+              if (!verifyResult.success) {
+                console.warn('Payment method verification failed:', verifyResult.error);
+                // Don't fail the payment, just log the warning
+              } else {
+                console.log('Payment method saved and verified successfully');
+              }
+            }
+          } catch (verifyError) {
+            console.error('Error verifying payment method:', verifyError);
+            // Don't fail the payment, just log the error
+          }
+        }
+
         setSuccess(true);
         clearCart();
         onOrderComplete();
@@ -822,6 +924,23 @@ function PaymentForm({
             <CardElementContainer>
               <CardElement options={cardElementOptions} />
             </CardElementContainer>
+          </FormGroup>
+
+          <FormGroup>
+            <SaveCardCheckbox>
+              <input
+                type="checkbox"
+                id="saveCard"
+                checked={savePaymentMethod}
+                onChange={(e) => setSavePaymentMethod(e.target.checked)}
+              />
+              <label htmlFor="saveCard">
+                Save this card for future purchases
+              </label>
+            </SaveCardCheckbox>
+            <SaveCardNote>
+              Your card will be securely stored by Stripe for faster checkout next time
+            </SaveCardNote>
           </FormGroup>
         </>
       )}
@@ -1052,9 +1171,8 @@ export default function CheckoutPage() {
         <CheckoutContainer>
           <CheckoutForm>
             <SectionTitle>Payment Details</SectionTitle>
-            <Elements stripe={stripePromise}>
+            <Elements stripe={stripePromise} key="checkout-elements">
               <PaymentForm 
-                key={`${items.length}-${total}`}
                 items={items} 
                 total={total}
                 appliedPromo={appliedPromo}
