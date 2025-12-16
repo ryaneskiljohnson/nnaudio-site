@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import {
   FaShoppingBag,
   FaCheckCircle,
@@ -13,6 +14,7 @@ import {
   FaChevronUp,
   FaBox,
   FaTag,
+  FaUndo,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -106,19 +108,20 @@ const OrderHeader = styled.div`
   align-items: center;
   cursor: pointer;
   gap: 1rem;
+  flex-wrap: wrap;
 
   @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 `;
 
 const OrderInfo = styled.div`
   flex: 1;
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  min-width: 0;
 `;
 
 const OrderNumber = styled.div`
@@ -128,21 +131,25 @@ const OrderNumber = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
 `;
 
-const OrderDate = styled.div`
+const OrderDate = styled.span`
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+  white-space: nowrap;
 `;
 
 const OrderAmount = styled.div`
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--primary);
+  color: #4ECDC4;
   text-align: right;
+  flex-shrink: 0;
+  white-space: nowrap;
 
   @media (max-width: 768px) {
-    text-align: left;
     font-size: 1.3rem;
   }
 `;
@@ -155,12 +162,17 @@ const OrderStatus = styled.div<{ $status: string }>`
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 500;
+  flex-shrink: 0;
+  white-space: nowrap;
   background: ${(props) => {
     switch (props.$status) {
       case "succeeded":
         return "rgba(0, 201, 167, 0.2)";
       case "processing":
         return "rgba(255, 193, 7, 0.2)";
+      case "refunded":
+      case "partially_refunded":
+        return "rgba(255, 152, 0, 0.2)";
       case "requires_payment_method":
       case "canceled":
         return "rgba(255, 87, 51, 0.2)";
@@ -174,6 +186,9 @@ const OrderStatus = styled.div<{ $status: string }>`
         return "var(--success)";
       case "processing":
         return "var(--warning)";
+      case "refunded":
+      case "partially_refunded":
+        return "#ff9800";
       case "requires_payment_method":
       case "canceled":
         return "var(--error)";
@@ -188,6 +203,9 @@ const OrderStatus = styled.div<{ $status: string }>`
           return "rgba(0, 201, 167, 0.3)";
         case "processing":
           return "rgba(255, 193, 7, 0.3)";
+        case "refunded":
+        case "partially_refunded":
+          return "rgba(255, 152, 0, 0.3)";
         case "requires_payment_method":
         case "canceled":
           return "rgba(255, 87, 51, 0.3)";
@@ -211,15 +229,26 @@ const ItemsList = styled.div`
 
 const ItemRow = styled.div`
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 1rem;
   padding: 0.75rem;
   background: rgba(255, 255, 255, 0.03);
   border-radius: 8px;
 `;
 
+const ItemImage = styled.div`
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+`;
+
 const ItemInfo = styled.div`
   flex: 1;
+  min-width: 0;
 `;
 
 const ItemName = styled.div`
@@ -235,7 +264,9 @@ const ItemQuantity = styled.div`
 
 const ItemPrice = styled.div`
   font-weight: 600;
-  color: var(--primary);
+  color: #4ECDC4;
+  flex-shrink: 0;
+  white-space: nowrap;
 `;
 
 const OrderSummary = styled.div`
@@ -313,6 +344,8 @@ interface Order {
     price: number;
     sale_price?: number;
     quantity: number;
+    product_image?: string | null;
+    product_slug?: string | null;
   }>;
   metadata: {
     original_total?: string;
@@ -322,6 +355,16 @@ interface Order {
   };
   receiptUrl: string | null;
   invoiceId: string | null;
+  refundedAmount: number;
+  isRefunded: boolean;
+  isPartiallyRefunded: boolean;
+  refunds: Array<{
+    id: string;
+    amount: number;
+    reason: string | null;
+    status: string;
+    created: number;
+  }>;
 }
 
 export default function MyOrdersPage() {
@@ -380,7 +423,7 @@ export default function MyOrdersPage() {
     });
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIconForStatus = (status: string) => {
     switch (status) {
       case "succeeded":
         return <FaCheckCircle />;
@@ -394,7 +437,13 @@ export default function MyOrdersPage() {
     }
   };
 
-  const getStatusText = (status: string) => {
+  const getStatusText = (status: string, order: Order) => {
+    if (order.isRefunded) {
+      return t("dashboard.orders.status.refunded", "Refunded");
+    }
+    if (order.isPartiallyRefunded) {
+      return t("dashboard.orders.status.partiallyRefunded", "Partially Refunded");
+    }
     switch (status) {
       case "succeeded":
         return t("dashboard.orders.status.completed", "Completed");
@@ -407,6 +456,13 @@ export default function MyOrdersPage() {
       default:
         return status;
     }
+  };
+
+  const getStatusIcon = (status: string, order: Order) => {
+    if (order.isRefunded || order.isPartiallyRefunded) {
+      return <FaUndo />;
+    }
+    return getStatusIconForStatus(status);
   };
 
   if (loading) {
@@ -493,17 +549,25 @@ export default function MyOrdersPage() {
                       {order.orderNumber}
                     </OrderNumber>
                     <OrderDate>{formatDate(order.date)}</OrderDate>
-                    <OrderStatus $status={order.status}>
-                      {getStatusIcon(order.status)}
-                      {getStatusText(order.status)}
+                    <OrderStatus 
+                      $status={
+                        order.isRefunded 
+                          ? "refunded" 
+                          : order.isPartiallyRefunded 
+                          ? "partially_refunded" 
+                          : order.status
+                      }
+                    >
+                      {getStatusIcon(order.status, order)}
+                      {getStatusText(order.status, order)}
                     </OrderStatus>
                   </OrderInfo>
                   <div
                     style={{
                       display: "flex",
-                      flexDirection: "column",
-                      alignItems: "flex-end",
-                      gap: "0.5rem",
+                      alignItems: "center",
+                      gap: "1rem",
+                      flexShrink: 0,
                     }}
                   >
                     <OrderAmount>
@@ -525,7 +589,39 @@ export default function MyOrdersPage() {
                     >
                       <ItemsList>
                         {order.items.map((item, index) => (
-                          <ItemRow key={index}>
+                          <ItemRow 
+                            key={index}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (item.product_slug) {
+                                router.push(`/product/${item.product_slug}`);
+                              }
+                            }}
+                            style={{ cursor: item.product_slug ? 'pointer' : 'default' }}
+                          >
+                            <ItemImage>
+                              {item.product_image ? (
+                                <Image
+                                  src={item.product_image}
+                                  alt={item.name}
+                                  fill
+                                  style={{ objectFit: "cover" }}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    color: "rgba(255, 255, 255, 0.3)",
+                                  }}
+                                >
+                                  <FaBox size={24} />
+                                </div>
+                              )}
+                            </ItemImage>
                             <ItemInfo>
                               <ItemName>{item.name}</ItemName>
                               <ItemQuantity>
@@ -578,6 +674,52 @@ export default function MyOrdersPage() {
                           </span>
                           <span>${order.amount.toFixed(2)}</span>
                         </SummaryRow>
+                        {(order.isRefunded || order.isPartiallyRefunded) && (
+                          <SummaryRow style={{ color: "#ff9800", marginTop: "0.5rem" }}>
+                            <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <FaUndo /> {t("dashboard.orders.refunded", "Refunded")}:
+                            </span>
+                            <span>-${order.refundedAmount.toFixed(2)}</span>
+                          </SummaryRow>
+                        )}
+                        {(order.isRefunded || order.isPartiallyRefunded) && (
+                          <SummaryRow style={{ marginTop: "0.5rem", paddingTop: "0.5rem", borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                            <span>
+                              {t("dashboard.orders.finalAmount", "Final Amount")}:
+                            </span>
+                            <span style={{ fontWeight: 600 }}>
+                              ${(order.amount - order.refundedAmount).toFixed(2)}
+                            </span>
+                          </SummaryRow>
+                        )}
+                        {order.refunds.length > 0 && (
+                          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                            <div style={{ fontSize: "0.9rem", fontWeight: 500, marginBottom: "0.75rem", color: "rgba(255, 255, 255, 0.8)" }}>
+                              {t("dashboard.orders.refundDetails", "Refund Details")}:
+                            </div>
+                            {order.refunds.map((refund, idx) => (
+                              <div key={refund.id} style={{ 
+                                padding: "0.5rem", 
+                                background: "rgba(255, 152, 0, 0.1)", 
+                                borderRadius: "6px", 
+                                marginBottom: "0.5rem",
+                                fontSize: "0.85rem"
+                              }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
+                                  <span>${refund.amount.toFixed(2)}</span>
+                                  <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>
+                                    {new Date(refund.created * 1000).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                {refund.reason && (
+                                  <div style={{ fontSize: "0.8rem", color: "rgba(255, 255, 255, 0.6)" }}>
+                                    {t("dashboard.orders.reason", "Reason")}: {refund.reason}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </OrderSummary>
 
                       {order.receiptUrl && (
