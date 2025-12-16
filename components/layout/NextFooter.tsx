@@ -59,7 +59,7 @@ const FooterLogoLink = styled.a`
   color: var(--text);
   font-weight: 700;
   font-size: 1.8rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1.5rem;
   cursor: pointer;
 
   &:hover {
@@ -87,6 +87,7 @@ const BrandCredit = styled.a`
 
 const FooterDescription = styled.p`
   color: var(--text-secondary);
+  margin-top: 1rem;
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
   max-width: 300px;
