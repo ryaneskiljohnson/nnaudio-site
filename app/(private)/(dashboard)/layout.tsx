@@ -573,8 +573,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <LogoContainer>
           <Link href="/dashboard">
             <NNAudioLogo
-              size="32px"
-              fontSize="1.4rem"
+              size="48px"
+              fontSize="1.8rem"
               onClick={(e: React.MouseEvent<HTMLElement>) =>
                 handleNavigation(
                   e as React.MouseEvent<HTMLAnchorElement>,

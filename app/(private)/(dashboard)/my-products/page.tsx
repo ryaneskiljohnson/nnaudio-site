@@ -442,10 +442,21 @@ export default function MyProductsPage() {
     return "No Subscription";
   };
 
-  const formatCategory = (category: string) => {
-    if (category === "plugin") return "Plugin";
-    if (category === "pack") return "Pack";
-    return category.charAt(0).toUpperCase() + category.slice(1);
+  const formatCategory = (category: string, productName?: string) => {
+    // Special case for Cymasphere
+    if (productName?.toLowerCase() === 'cymasphere' && category === 'application') {
+      return 'MIDI Application / Plugin';
+    }
+    const categoryMap: Record<string, string> = {
+      'audio-fx-plugin': 'Audio FX Plugin',
+      'instrument-plugin': 'Instrument Plugin',
+      'application': 'Application',
+      'plugin': 'Plugin', // Legacy support
+      'pack': 'Pack',
+      'bundle': 'Bundle',
+      'preset': 'Preset',
+    };
+    return categoryMap[category] || category.charAt(0).toUpperCase() + category.slice(1);
   };
 
   const handleReactivate = async () => {
@@ -628,7 +639,7 @@ export default function MyProductsPage() {
                     </ProductImageCell>
                     <ProductNameCell>{product.name}</ProductNameCell>
                     <TableCell>
-                      <ProductCategoryBadge>{formatCategory(product.category)}</ProductCategoryBadge>
+                      <ProductCategoryBadge>{formatCategory(product.category, product.name)}</ProductCategoryBadge>
                     </TableCell>
                     <TableCell style={{ color: "rgba(255, 255, 255, 0.7)", maxWidth: "400px" }}>
                       {product.short_description || product.tagline ? (

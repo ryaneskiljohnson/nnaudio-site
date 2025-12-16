@@ -97,9 +97,33 @@ export async function GET(
     };
 
     // Calculate savings
-    const calculateSavings = (tier: any) => {
+    const calculateSavings = (tier: any, subscriptionType: string) => {
       if (!tier || !tier.price) return null;
       const discountPrice = tier.sale_price || tier.price;
+      
+      // For annual, compare to monthly * 12
+      if (subscriptionType === 'annual' && pricing.monthly) {
+        const monthlyPrice = pricing.monthly.sale_price || pricing.monthly.price;
+        const annualMonthlyCost = monthlyPrice * 12;
+        const savings = annualMonthlyCost - discountPrice;
+        const savingsPercent = annualMonthlyCost > 0 ? (savings / annualMonthlyCost) * 100 : 0;
+        return {
+          amount: savings,
+          percent: Math.round(savingsPercent),
+        };
+      }
+      
+      // For lifetime, compare to total value
+      if (subscriptionType === 'lifetime') {
+        const savings = totalValue - discountPrice;
+        const savingsPercent = totalValue > 0 ? (savings / totalValue) * 100 : 0;
+        return {
+          amount: savings,
+          percent: Math.round(savingsPercent),
+        };
+      }
+      
+      // For monthly, compare to total value
       const savings = totalValue - discountPrice;
       const savingsPercent = totalValue > 0 ? (savings / totalValue) * 100 : 0;
       return {
@@ -120,9 +144,9 @@ export async function GET(
         pricing,
         isSubscriptionBundle,
         savings: {
-          monthly: calculateSavings(pricing.monthly),
-          annual: calculateSavings(pricing.annual),
-          lifetime: calculateSavings(pricing.lifetime),
+          monthly: calculateSavings(pricing.monthly, 'monthly'),
+          annual: calculateSavings(pricing.annual, 'annual'),
+          lifetime: calculateSavings(pricing.lifetime, 'lifetime'),
         },
       }
     });

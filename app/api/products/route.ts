@@ -20,7 +20,13 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (category) {
-      query = query.eq('category', category);
+      // Handle comma-separated categories (e.g., "audio-fx-plugin,instrument-plugin")
+      const categories = category.split(',').map(c => c.trim());
+      if (categories.length === 1) {
+        query = query.eq('category', categories[0]);
+      } else {
+        query = query.in('category', categories);
+      }
     }
 
     if (featured === 'true') {

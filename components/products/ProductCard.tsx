@@ -310,36 +310,36 @@ export default function ProductCard({ product, index = 0, showCartButton = true 
               </ViewPricingButton>
             </Link>
           ) : (
-            <PriceRow>
-              <ProductPrice>
-                {product.sale_price && product.sale_price > 0 ? (
-                  <>
-                    <span style={{ 
-                      textDecoration: 'line-through', 
-                      fontSize: '1rem', 
-                      opacity: 0.6, 
-                      marginRight: '8px',
-                      color: 'rgba(255, 255, 255, 0.6)'
-                    }}>
-                      ${product.price}
-                    </span>
-                    ${product.sale_price}
-                  </>
-                ) : product.price === 0 || product.price === null ? (
-                  'FREE'
-                ) : (
-                  `$${product.price}`
-                )}
-              </ProductPrice>
-              {showCartButton && (
-                <CartButton
-                  onClick={handleAddToCart}
-                  aria-label={`Add ${product.name} to cart`}
-                >
-                  <FaShoppingCart />
-                </CartButton>
+          <PriceRow>
+            <ProductPrice>
+              {product.sale_price && product.sale_price > 0 ? (
+                <>
+                  <span style={{ 
+                    textDecoration: 'line-through', 
+                    fontSize: '1rem', 
+                    opacity: 0.6, 
+                    marginRight: '8px',
+                    color: 'rgba(255, 255, 255, 0.6)'
+                  }}>
+                    ${product.price}
+                  </span>
+                  ${product.sale_price}
+                </>
+              ) : product.price === 0 || product.price === null ? (
+                'FREE'
+              ) : (
+                `$${product.price}`
               )}
-            </PriceRow>
+            </ProductPrice>
+            {showCartButton && (
+              <CartButton
+                onClick={handleAddToCart}
+                aria-label={`Add ${product.name} to cart`}
+              >
+                <FaShoppingCart />
+              </CartButton>
+            )}
+          </PriceRow>
           )}
         </ProductInfo>
       </Link>

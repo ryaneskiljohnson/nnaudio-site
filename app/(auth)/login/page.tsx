@@ -440,16 +440,16 @@ function Login() {
           </ForgotPassword>
 
           <PrimaryButton type="submit" disabled={loading || !!auth.user} style={{ width: '100%' }}>
-            {loading ? (
-              <>
-                <div style={{ marginRight: "10px" }}>
-                  <LoadingComponent size="20px" />
-                </div>
-                {t("login.loggingIn", "Logging in...")}
-              </>
-            ) : (
-              t("login.loginButton", "Log In")
-            )}
+              {loading ? (
+                <>
+                  <div style={{ marginRight: "10px" }}>
+                    <LoadingComponent size="20px" />
+                  </div>
+                  {t("login.loggingIn", "Logging in...")}
+                </>
+              ) : (
+                t("login.loginButton", "Log In")
+              )}
           </PrimaryButton>
         </Form>
 

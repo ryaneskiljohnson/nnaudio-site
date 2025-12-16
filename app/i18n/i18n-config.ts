@@ -54,20 +54,26 @@ export const loadTranslations = async (locale: string) => {
     
     // Use fetch to get translations from our API with timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout (reduced from 10)
     
     let response: Response;
     try {
       response = await fetch(`/api/translations?locale=${locale}&_=${timestamp}`, {
         signal: controller.signal,
+        // Add timeout headers
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
       });
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
-        console.error(`[loadTranslations] Request timeout for locale ${locale}`);
+        // Log as warning instead of error since we have fallback
+        console.warn(`[loadTranslations] Request timeout for locale ${locale}, using fallback translations`);
       } else {
-        console.error(`[loadTranslations] Network error fetching translations for ${locale}:`, fetchError);
+        console.warn(`[loadTranslations] Network error fetching translations for ${locale}, using fallback:`, fetchError.message);
       }
+      // Don't throw - use fallback instead
       throw fetchError;
     }
     
@@ -117,7 +123,10 @@ export const loadTranslations = async (locale: string) => {
 
     return data;
   } catch (error: any) {
-    console.error(`[loadTranslations] Error loading translations for ${locale}:`, error);
+    // Only log as error if it's not a timeout (timeouts are expected and handled gracefully)
+    if (error.name !== 'AbortError') {
+      console.warn(`[loadTranslations] Error loading translations for ${locale}, using fallback:`, error.message || error);
+    }
     
     // Try to initialize i18next with fallback data if not already initialized
     if (!i18n.isInitialized) {
@@ -141,6 +150,9 @@ export const loadTranslations = async (locale: string) => {
       } catch (initError) {
         console.error(`[loadTranslations] Failed to initialize i18next with fallback:`, initError);
       }
+    } else {
+      // If already initialized, just add the fallback bundle
+      i18n.addResourceBundle(locale, 'translation', fallbackData, true, true);
     }
     
     // Return fallback data instead of empty object

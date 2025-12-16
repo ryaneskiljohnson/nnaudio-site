@@ -61,7 +61,21 @@ export default function PluginsPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/products?category=plugin&status=active&limit=100');
+      // Fetch both plugin types
+      const [fxResponse, instrumentResponse] = await Promise.all([
+        fetch('/api/products?category=audio-fx-plugin&status=active&limit=100'),
+        fetch('/api/products?category=instrument-plugin&status=active&limit=100'),
+      ]);
+      
+      const fxData = await fxResponse.json();
+      const instrumentData = await instrumentResponse.json();
+      
+      const allPlugins = [
+        ...(fxData.success ? fxData.products : []),
+        ...(instrumentData.success ? instrumentData.products : []),
+      ];
+      
+      const response = { success: true, products: allPlugins };
       const data = await response.json();
 
       if (data.success) {

@@ -190,7 +190,7 @@ const AddButton = styled.button`
 `;
 
 const SaveButton = styled(motion.button)`
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: linear-gradient(135deg, #6c63ff, #8a2be2);
   color: white;
   border: none;
   padding: 14px 32px;
@@ -205,6 +205,12 @@ const SaveButton = styled(motion.button)`
   justify-content: center;
   font-size: 1.1rem;
   margin-top: 2rem;
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4);
+  }
   
   &:disabled {
     opacity: 0.5;
@@ -264,7 +270,7 @@ export default function CreateProductPage() {
     short_description: '',
     price: '',
     sale_price: '',
-    category: 'plugin' as 'plugin' | 'pack' | 'bundle' | 'preset' | 'template',
+    category: 'audio-fx-plugin' as 'audio-fx-plugin' | 'instrument-plugin' | 'pack' | 'bundle' | 'preset' | 'template' | 'application',
     status: 'draft' as 'draft' | 'active' | 'archived',
     is_featured: false,
     featured_image_url: '',
@@ -372,28 +378,30 @@ export default function CreateProductPage() {
         <FormSection>
           <SectionTitle>Basic Information</SectionTitle>
           
-          <FormGroup>
-            <Label>Product Name *</Label>
-            <Input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-            />
-          </FormGroup>
+          <GridRow>
+            <FormGroup>
+              <Label>Product Name *</Label>
+              <Input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+              />
+            </FormGroup>
 
-          <FormGroup>
-            <Label>URL Slug *</Label>
-            <Input
-              type="text"
-              name="slug"
-              value={formData.slug}
-              onChange={handleChange}
-              required
-              placeholder="auto-generated-from-name"
-            />
-          </FormGroup>
+            <FormGroup>
+              <Label>URL Slug *</Label>
+              <Input
+                type="text"
+                name="slug"
+                value={formData.slug}
+                onChange={handleChange}
+                required
+                placeholder="auto-generated-from-name"
+              />
+            </FormGroup>
+          </GridRow>
 
           <FormGroup>
             <Label>Tagline</Label>
@@ -431,7 +439,7 @@ export default function CreateProductPage() {
         <FormSection>
           <SectionTitle>Pricing & Category</SectionTitle>
           
-          <GridRow>
+          <GridRow style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
             <FormGroup>
               <Label>Price *</Label>
               <Input
@@ -457,9 +465,7 @@ export default function CreateProductPage() {
                 placeholder="Optional sale price"
               />
             </FormGroup>
-          </GridRow>
 
-          <GridRow>
             <FormGroup>
               <Label>Category *</Label>
               <Select
@@ -468,11 +474,12 @@ export default function CreateProductPage() {
                 onChange={handleChange}
                 required
               >
-                <option value="plugin">Plugin</option>
+                <option value="audio-fx-plugin">Audio FX Plugin</option>
+                <option value="instrument-plugin">Instrument Plugin</option>
                 <option value="pack">Pack</option>
                 <option value="bundle">Bundle</option>
                 <option value="preset">Preset</option>
-                <option value="template">Template</option>
+                <option value="application">Application</option>
               </Select>
             </FormGroup>
 

@@ -115,12 +115,12 @@ export async function PUT(
     const adminSupabase = await createAdminClient();
 
     // Get existing product to check current values and Stripe IDs
-    const { data: existingProduct } = await adminSupabase
-      .from('products')
-      .select('stripe_product_id, stripe_price_id, stripe_sale_price_id, name, description, short_description, price, sale_price')
-      .eq('id', id)
-      .single();
-    
+      const { data: existingProduct } = await adminSupabase
+        .from('products')
+        .select('stripe_product_id, stripe_price_id, stripe_sale_price_id, name, description, short_description, price, sale_price')
+        .eq('id', id)
+        .single();
+      
     if (!existingProduct) {
       return NextResponse.json(
         { success: false, error: 'Product not found' },
@@ -138,10 +138,10 @@ export async function PUT(
     const shouldSyncStripe = nameChanged || priceChanged || salePriceChanged || descriptionChanged;
     
     const existingStripeIds = {
-      stripe_product_id: existingProduct.stripe_product_id,
-      stripe_price_id: existingProduct.stripe_price_id,
-      stripe_sale_price_id: existingProduct.stripe_sale_price_id,
-    };
+          stripe_product_id: existingProduct.stripe_product_id,
+          stripe_price_id: existingProduct.stripe_price_id,
+          stripe_sale_price_id: existingProduct.stripe_sale_price_id,
+        };
 
     const { data: product, error } = await adminSupabase
       .from('products')

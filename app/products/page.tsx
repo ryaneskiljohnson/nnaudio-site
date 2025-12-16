@@ -211,15 +211,26 @@ export default function ProductsPage() {
             totalCount={products.length}
           />
           <FilterBar>
-            {['all', 'plugin', 'pack', 'bundle', 'preset', 'template'].map(category => (
-              <FilterButton
-                key={category}
-                $active={selectedCategory === category}
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category === 'all' ? 'All Products' : category.charAt(0).toUpperCase() + category.slice(1) + 's'}
-              </FilterButton>
-            ))}
+            {['all', 'audio-fx-plugin', 'instrument-plugin', 'pack', 'bundle', 'preset', 'template'].map(category => {
+              const categoryLabels: Record<string, string> = {
+                'all': 'All Products',
+                'audio-fx-plugin': 'Audio FX',
+                'instrument-plugin': 'Instruments',
+                'pack': 'Packs',
+                'bundle': 'Bundles',
+                'preset': 'Presets',
+                'template': 'Templates',
+              };
+              return (
+                <FilterButton
+                  key={category}
+                  $active={selectedCategory === category}
+                  onClick={() => setSelectedCategory(category)}
+                >
+                  {categoryLabels[category] || category.charAt(0).toUpperCase() + category.slice(1) + 's'}
+                </FilterButton>
+              );
+            })}
           </FilterBar>
         </>
       )}

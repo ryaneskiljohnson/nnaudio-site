@@ -704,12 +704,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <LayoutContainer>
-      <Sidebar ref={sidebarRef} $isOpen={sidebarOpen}>
+        <Sidebar ref={sidebarRef} $isOpen={sidebarOpen}>
         <LogoContainer>
           <Link href="/admin">
             <NNAudioLogo
-              size="32px"
-              fontSize="1.4rem"
+              size="48px"
+              fontSize="1.8rem"
               onClick={(e: React.MouseEvent<HTMLElement>) =>
                 handleNavigation(
                   e as React.MouseEvent<HTMLAnchorElement>,
@@ -912,8 +912,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </LogoutButton>
         </UserInfo>
       </Sidebar>
-      <MobileOverlay $isOpen={sidebarOpen} />
-      <MobileHeader>
+          <MobileOverlay $isOpen={sidebarOpen} />
+          <MobileHeader>
         <MenuButton onClick={() => setSidebarOpen(!sidebarOpen)}>
           {sidebarOpen ? <FaTimes /> : <FaBars />}
         </MenuButton>
@@ -1167,7 +1167,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </MobileMenu>
       )}
       <Content $sidebarVisible={true}>
-        <BackButtonContainer>
+          <BackButtonContainer>
           <Link href="/dashboard">
             <BackButton>
               Back to Dashboard <FaArrowLeft />

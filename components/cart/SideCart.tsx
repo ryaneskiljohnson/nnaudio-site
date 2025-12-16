@@ -383,11 +383,11 @@ export default function SideCart({ isOpen, onClose }: SideCartProps) {
                   return (
                     <CartItemCard key={item.id}>
                       <ItemImage>
-                        <Image
+                          <Image
                           src={item.featured_image_url || item.logo_url || '/images/nnaud-io/NNPurp1.png'}
-                          alt={item.name}
-                          fill
-                          style={{ objectFit: 'cover' }}
+                            alt={item.name}
+                            fill
+                            style={{ objectFit: 'cover' }}
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             if (target.src !== '/images/nnaud-io/NNPurp1.png') {

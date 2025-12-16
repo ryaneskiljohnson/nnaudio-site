@@ -231,9 +231,11 @@ const CategoryBadge = styled.span<{ $category: string }>`
   font-weight: 600;
   background: ${props => {
     switch(props.$category) {
-      case 'plugin': return 'rgba(108, 99, 255, 0.2)';
+      case 'audio-fx-plugin': return 'rgba(108, 99, 255, 0.2)';
+      case 'instrument-plugin': return 'rgba(138, 43, 226, 0.2)';
       case 'pack': return 'rgba(78, 205, 196, 0.2)';
       case 'bundle': return 'rgba(255, 94, 98, 0.2)';
+      case 'application': return 'rgba(255, 193, 7, 0.2)';
       default: return 'rgba(255, 255, 255, 0.1)';
     }
   }};
@@ -452,7 +454,7 @@ export default function ProductsManagementPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'plugin' | 'pack' | 'bundle'>('all');
+  const [filter, setFilter] = useState<'all' | 'audio-fx-plugin' | 'instrument-plugin' | 'pack' | 'bundle'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'active' | 'archived'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortField, setSortField] = useState<SortField>('name');
@@ -630,7 +632,7 @@ export default function ProductsManagementPage() {
         const target = event.target as HTMLElement;
         // Only close if clicking outside of any menu container
         if (!target.closest('[data-menu-container]')) {
-          setOpenMenuId(null);
+        setOpenMenuId(null);
           setMenuPosition(null);
         }
       }
@@ -655,49 +657,55 @@ export default function ProductsManagementPage() {
 
       <FilterBar>
         <FilterButtonsContainer>
-          <FilterButton
-            $active={filter === 'all'}
-            onClick={() => setFilter('all')}
-          >
-            All Categories
-          </FilterButton>
-          <FilterButton
-            $active={filter === 'plugin'}
-            onClick={() => setFilter('plugin')}
-          >
-            Plugins
-          </FilterButton>
-          <FilterButton
-            $active={filter === 'pack'}
-            onClick={() => setFilter('pack')}
-          >
-            Packs
-          </FilterButton>
-          <FilterButton
-            $active={filter === 'bundle'}
-            onClick={() => setFilter('bundle')}
-          >
-            Bundles
-          </FilterButton>
-          <div style={{ width: '20px' }} />
-          <FilterButton
-            $active={statusFilter === 'all'}
-            onClick={() => setStatusFilter('all')}
-          >
-            All Status
-          </FilterButton>
-          <FilterButton
-            $active={statusFilter === 'active'}
-            onClick={() => setStatusFilter('active')}
-          >
-            Active
-          </FilterButton>
-          <FilterButton
-            $active={statusFilter === 'draft'}
-            onClick={() => setStatusFilter('draft')}
-          >
-            Draft
-          </FilterButton>
+        <FilterButton
+          $active={filter === 'all'}
+          onClick={() => setFilter('all')}
+        >
+          All Categories
+        </FilterButton>
+        <FilterButton
+          $active={filter === 'audio-fx-plugin'}
+          onClick={() => setFilter('audio-fx-plugin')}
+        >
+          Audio FX
+        </FilterButton>
+        <FilterButton
+          $active={filter === 'instrument-plugin'}
+          onClick={() => setFilter('instrument-plugin')}
+        >
+          Instruments
+        </FilterButton>
+        <FilterButton
+          $active={filter === 'pack'}
+          onClick={() => setFilter('pack')}
+        >
+          Packs
+        </FilterButton>
+        <FilterButton
+          $active={filter === 'bundle'}
+          onClick={() => setFilter('bundle')}
+        >
+          Bundles
+        </FilterButton>
+        <div style={{ width: '20px' }} />
+        <FilterButton
+          $active={statusFilter === 'all'}
+          onClick={() => setStatusFilter('all')}
+        >
+          All Status
+        </FilterButton>
+        <FilterButton
+          $active={statusFilter === 'active'}
+          onClick={() => setStatusFilter('active')}
+        >
+          Active
+        </FilterButton>
+        <FilterButton
+          $active={statusFilter === 'draft'}
+          onClick={() => setStatusFilter('draft')}
+        >
+          Draft
+        </FilterButton>
         </FilterButtonsContainer>
         <RightSideContainer>
           <SearchContainer>
@@ -709,9 +717,9 @@ export default function ProductsManagementPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </SearchContainer>
-          <ProductCount>
+        <ProductCount>
             {filteredAndSortedProducts.length} {filteredAndSortedProducts.length === 1 ? 'Product' : 'Products'}
-          </ProductCount>
+        </ProductCount>
         </RightSideContainer>
       </FilterBar>
 
@@ -794,8 +802,20 @@ export default function ProductsManagementPage() {
                         if (isEliteBundle) {
                           return 'Elite Bundle';
                         }
-                        // Capitalize first letter of category
-                        return product.category.charAt(0).toUpperCase() + product.category.slice(1);
+                        // Format category names
+                        // Special case for Cymasphere
+                        if (product.name.toLowerCase() === 'cymasphere' && product.category === 'application') {
+                          return 'MIDI Application / Plugin';
+                        }
+                        const categoryMap: Record<string, string> = {
+                          'audio-fx-plugin': 'Audio FX Plugin',
+                          'instrument-plugin': 'Instrument Plugin',
+                          'application': 'Application',
+                          'pack': 'Pack',
+                          'bundle': 'Bundle',
+                          'preset': 'Preset',
+                        };
+                        return categoryMap[product.category] || product.category.charAt(0).toUpperCase() + product.category.slice(1);
                       })()}
                     </CategoryBadge>
                   </TableCell>
@@ -830,7 +850,7 @@ export default function ProductsManagementPage() {
                     </MenuButton>
                     <AnimatePresence>
                       {openMenuId === product.id && menuPosition && (
-                        <MenuDropdown
+                    <MenuDropdown
                           $isOpen={true}
                           $top={menuPosition.top}
                           $right={menuPosition.right}
@@ -838,8 +858,8 @@ export default function ProductsManagementPage() {
                           initial={{ opacity: 0, y: menuPosition.openUpward ? 10 : -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: menuPosition.openUpward ? 10 : -10 }}
-                          transition={{ duration: 0.2 }}
-                        >
+                      transition={{ duration: 0.2 }}
+                    >
                       <MenuItem
                         href={`/product/${product.slug}`}
                         target="_blank"
@@ -876,7 +896,7 @@ export default function ProductsManagementPage() {
                         <FaTrash size={14} />
                         Delete
                       </MenuButtonItem>
-                        </MenuDropdown>
+                    </MenuDropdown>
                       )}
                     </AnimatePresence>
                   </ActionsCell>

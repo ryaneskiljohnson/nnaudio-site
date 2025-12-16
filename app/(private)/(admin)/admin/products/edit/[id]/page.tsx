@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
-import { FaSave, FaArrowLeft, FaPlus, FaTrash, FaSpinner, FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { FaSave, FaArrowLeft, FaPlus, FaTrash, FaSpinner, FaChevronDown, FaChevronUp, FaSearch } from "react-icons/fa";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
@@ -154,6 +154,79 @@ const Select = styled.select`
   }
 `;
 
+const SearchableDropdownContainer = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 12px 16px;
+  padding-right: 40px;
+  background: var(--input-bg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 1rem;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+`;
+
+const SearchIcon = styled.div`
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+`;
+
+const DropdownList = styled.div<{ $isOpen: boolean }>`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--card-bg);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: ${props => props.$isOpen ? 'block' : 'none'};
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+`;
+
+const DropdownItem = styled.div<{ $selected: boolean }>`
+  padding: 12px 16px;
+  cursor: pointer;
+  background: ${props => props.$selected ? 'rgba(108, 99, 255, 0.2)' : 'transparent'};
+  color: var(--text);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  
+  &:hover {
+    background: rgba(108, 99, 255, 0.15);
+  }
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const ProductName = styled.div`
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+`;
+
+const ProductCategory = styled.div`
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+`;
+
 const Checkbox = styled.input`
   width: 20px;
   height: 20px;
@@ -226,7 +299,7 @@ const AddButton = styled.button`
 `;
 
 const SaveButton = styled(motion.button)`
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: linear-gradient(135deg, #6c63ff, #8a2be2);
   color: white;
   border: none;
   padding: 14px 32px;
@@ -241,6 +314,12 @@ const SaveButton = styled(motion.button)`
   justify-content: center;
   font-size: 1.1rem;
   margin-top: 2rem;
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4);
+  }
   
   &:disabled {
     opacity: 0.5;
@@ -312,7 +391,7 @@ export default function EditProductPage() {
     short_description: '',
     price: '',
     sale_price: '',
-    category: 'plugin' as 'plugin' | 'pack' | 'bundle' | 'preset' | 'template',
+    category: 'audio-fx-plugin' as 'audio-fx-plugin' | 'instrument-plugin' | 'pack' | 'bundle' | 'preset' | 'template' | 'application',
     status: 'draft' as 'draft' | 'active' | 'archived',
     is_featured: false,
     featured_image_url: '',
@@ -335,6 +414,36 @@ export default function EditProductPage() {
     stripe_price_id?: string | null;
     stripe_sale_price_id?: string | null;
   }>({});
+  
+  // Bundle management state
+  const [bundleId, setBundleId] = useState<string | null>(null);
+  const [bundleProducts, setBundleProducts] = useState<any[]>([]);
+  const [availableProducts, setAvailableProducts] = useState<any[]>([]);
+  const [loadingBundleProducts, setLoadingBundleProducts] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
+  const [productSearchQuery, setProductSearchQuery] = useState<string>('');
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+
+  const formatCategory = (category: string | null | undefined, productName?: string) => {
+    if (!category) return 'N/A';
+    
+    // Special case for Cymasphere
+    if (productName?.toLowerCase() === 'cymasphere' && category === 'application') {
+      return 'MIDI Application / Plugin';
+    }
+    
+    const categoryMap: Record<string, string> = {
+      'audio-fx-plugin': 'Audio FX Plugin',
+      'instrument-plugin': 'Instrument Plugin',
+      'application': 'Application',
+      'pack': 'Pack',
+      'bundle': 'Bundle',
+      'preset': 'Preset',
+    };
+    
+    return categoryMap[category] || category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
+  };
 
   useEffect(() => {
     if (productId) {
@@ -358,7 +467,7 @@ export default function EditProductPage() {
           short_description: product.short_description || '',
           price: product.price?.toString() || '',
           sale_price: product.sale_price?.toString() || '',
-          category: product.category || 'plugin',
+          category: product.category || 'audio-fx-plugin',
           status: product.status || 'draft',
           is_featured: product.is_featured || false,
           featured_image_url: product.featured_image_url || '',
@@ -389,11 +498,357 @@ export default function EditProductPage() {
           stripe_price_id: product.stripe_price_id,
           stripe_sale_price_id: product.stripe_sale_price_id,
         });
+        
+        // If this is a bundle, fetch the bundle record and its products
+        if (product.category === 'bundle') {
+          fetchBundleData(product.name, product.slug);
+        }
       }
     } catch (error) {
       console.error('Error fetching product:', error);
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const fetchBundleData = async (productName: string, productSlug: string) => {
+    try {
+      setLoadingBundleProducts(true);
+      console.log('Fetching bundle data for:', productName, productSlug);
+      
+      // Find the bundle by matching name or slug - try both API endpoints
+      let bundle = null;
+      
+      // Try to get bundle by slug first
+      try {
+        const bundleResponse = await fetch(`/api/bundles/${productSlug}`);
+        if (bundleResponse.ok) {
+          const contentType = bundleResponse.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const bundleData = await bundleResponse.json();
+            if (bundleData.success && bundleData.bundle) {
+              bundle = bundleData.bundle;
+              console.log('Found bundle by slug:', bundle.name, bundle.id);
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Could not fetch bundle by slug, trying list:', e);
+      }
+      
+      // If that didn't work, try listing all bundles
+      if (!bundle) {
+        try {
+          const bundlesResponse = await fetch('/api/bundles');
+          if (bundlesResponse.ok) {
+            const contentType = bundlesResponse.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const bundlesData = await bundlesResponse.json();
+              if (bundlesData.success && bundlesData.bundles) {
+                bundle = bundlesData.bundles.find((b: any) => 
+                  b.slug === productSlug || 
+                  b.name.toLowerCase() === productName.toLowerCase() ||
+                  b.name.toLowerCase().includes(productName.toLowerCase()) ||
+                  productName.toLowerCase().includes(b.name.toLowerCase())
+                );
+                if (bundle) {
+                  console.log('Found bundle from list:', bundle.name, bundle.id);
+                }
+              }
+            }
+          }
+        } catch (e2) {
+          console.error('Error fetching bundles list:', e2);
+        }
+      }
+      
+      if (bundle && bundle.id) {
+        setBundleId(bundle.id);
+        
+        // Fetch products in this bundle
+        try {
+          let url = `/api/bundles/${bundle.id}/products`;
+          console.log('Fetching bundle products from:', url);
+          let productsResponse = await fetch(url, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          // If 404, try the alternative route
+          if (productsResponse.status === 404) {
+            console.log('Trying alternative GET route...');
+            url = `/api/bundles/products?bundle_id=${bundle.id}`;
+            productsResponse = await fetch(url, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
+          }
+          
+          let fetchedBundleProducts: any[] = [];
+          
+          if (!productsResponse.ok) {
+            console.error(`HTTP ${productsResponse.status} error`);
+            setBundleProducts([]);
+          } else {
+            const contentType = productsResponse.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              const text = await productsResponse.text();
+              console.error('Non-JSON response:', text.substring(0, 200));
+              setBundleProducts([]);
+            } else {
+              const productsData = await productsResponse.json();
+              
+              if (productsData.success) {
+                fetchedBundleProducts = productsData.products || [];
+                // Ensure the data structure is correct
+                console.log('Bundle products response:', JSON.stringify(fetchedBundleProducts, null, 2));
+                setBundleProducts(fetchedBundleProducts);
+                console.log(`Loaded ${fetchedBundleProducts.length} products in bundle`);
+              } else {
+                console.error('API returned success=false:', productsData);
+                setBundleProducts([]);
+              }
+            }
+          }
+          
+          // Fetch available products to add (excluding bundle products and this bundle itself)
+          // Use the fetched bundle products, not the state (which might not be updated yet)
+          try {
+            const allProductsResponse = await fetch('/api/products?status=active&limit=1000');
+            if (!allProductsResponse.ok) {
+              console.error(`Failed to fetch available products: HTTP ${allProductsResponse.status}`);
+              setAvailableProducts([]);
+            } else {
+              const contentType = allProductsResponse.headers.get('content-type');
+              if (!contentType || !contentType.includes('application/json')) {
+                console.error('Available products response is not JSON');
+                setAvailableProducts([]);
+              } else {
+                const allProductsData = await allProductsResponse.json();
+                
+                if (allProductsData.success) {
+                  // Get current bundle product IDs from the fetched data
+                  const currentProductIds = new Set([
+                    productId,
+                    ...(fetchedBundleProducts.map((bp: any) => bp.product?.id).filter(Boolean))
+                  ]);
+                  
+                  const available = allProductsData.products.filter((p: any) => 
+                    !currentProductIds.has(p.id) && p.category !== 'bundle'
+                  );
+                  
+                  setAvailableProducts(available);
+                  console.log(`Loaded ${available.length} available products to add`);
+                } else {
+                  console.error('Failed to fetch available products:', allProductsData);
+                  setAvailableProducts([]);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error fetching available products:', e);
+            setAvailableProducts([]);
+          }
+        } catch (e: any) {
+          console.error('Error fetching bundle products:', e);
+          setBundleProducts([]);
+          // Still try to fetch available products
+          try {
+            const allProductsResponse = await fetch('/api/products?status=active&limit=1000');
+            if (allProductsResponse.ok) {
+              const contentType = allProductsResponse.headers.get('content-type');
+              if (contentType && contentType.includes('application/json')) {
+                const allProductsData = await allProductsResponse.json();
+                if (allProductsData.success) {
+                  const available = allProductsData.products.filter((p: any) => 
+                    p.id !== productId && p.category !== 'bundle'
+                  );
+                  setAvailableProducts(available);
+                }
+              }
+            }
+          } catch (e2) {
+            console.error('Error fetching available products after error:', e2);
+          }
+        }
+      } else {
+        console.warn('Bundle not found for product:', productName, 'slug:', productSlug);
+        // Still try to fetch available products even if bundle not found
+        try {
+          const allProductsResponse = await fetch('/api/products?status=active&limit=1000');
+          if (allProductsResponse.ok) {
+            const contentType = allProductsResponse.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const allProductsData = await allProductsResponse.json();
+              if (allProductsData.success) {
+                const available = allProductsData.products.filter((p: any) => 
+                  p.id !== productId && p.category !== 'bundle'
+                );
+                setAvailableProducts(available);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error fetching available products when bundle not found:', e);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching bundle data:', error);
+    } finally {
+      setLoadingBundleProducts(false);
+    }
+  };
+  
+  const handleAddProductToBundle = async () => {
+    if (!bundleId || !selectedProductToAdd) return;
+    
+    try {
+      // Try the nested route first, fallback to simpler route
+      let response = await fetch(`/api/bundles/${bundleId}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: selectedProductToAdd })
+      });
+      
+      // If 404, try the alternative route
+      if (response.status === 404) {
+        console.log('Trying alternative route...');
+        response = await fetch(`/api/bundles/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bundle_id: bundleId, product_id: selectedProductToAdd })
+        });
+      }
+      
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Expected JSON but got: ${text.substring(0, 100)}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Refresh bundle products
+        try {
+          let productsResponse = await fetch(`/api/bundles/${bundleId}/products`);
+          if (productsResponse.status === 404) {
+            productsResponse = await fetch(`/api/bundles/products?bundle_id=${bundleId}`);
+          }
+          if (productsResponse.ok) {
+            const contentType = productsResponse.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const productsData = await productsResponse.json();
+              if (productsData.success) {
+                setBundleProducts(productsData.products || []);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error refreshing bundle products:', e);
+        }
+        
+        // Remove from available products
+        setAvailableProducts(prev => prev.filter(p => p.id !== selectedProductToAdd));
+        setSelectedProductToAdd('');
+        setProductSearchQuery('');
+        setShowAddProduct(false);
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (error: any) {
+      console.error('Error adding product to bundle:', error);
+      alert(`Failed to add product to bundle: ${error.message}`);
+    }
+  };
+  
+  // Filter available products based on search query
+  const filteredAvailableProducts = useMemo(() => {
+    if (!productSearchQuery.trim()) {
+      return availableProducts.slice(0, 50); // Limit to 50 for performance
+    }
+    const query = productSearchQuery.toLowerCase();
+    return availableProducts.filter((p: any) =>
+      p.name.toLowerCase().includes(query) ||
+      p.category.toLowerCase().includes(query) ||
+      (p.tagline && p.tagline.toLowerCase().includes(query))
+    ).slice(0, 50);
+  }, [availableProducts, productSearchQuery]);
+
+  const handleRemoveProductFromBundle = async (bundleProductId: string, productId: string) => {
+    if (!bundleId) return;
+    
+    if (!confirm('Are you sure you want to remove this product from the bundle?')) {
+      return;
+    }
+    
+    try {
+      // Try the nested route first, fallback to simpler route
+      let response = await fetch(`/api/bundles/${bundleId}/products?product_id=${productId}`, {
+        method: 'DELETE'
+      });
+      
+      // If 404, try the alternative route
+      if (response.status === 404) {
+        console.log('Trying alternative DELETE route...');
+        response = await fetch(`/api/bundles/products?bundle_id=${bundleId}&product_id=${productId}`, {
+          method: 'DELETE'
+        });
+      }
+      
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
+      }
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Expected JSON but got: ${text.substring(0, 100)}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Refresh bundle products
+        try {
+          let productsResponse = await fetch(`/api/bundles/${bundleId}/products`);
+          if (productsResponse.status === 404) {
+            productsResponse = await fetch(`/api/bundles/products?bundle_id=${bundleId}`);
+          }
+          if (productsResponse.ok) {
+            const contentType = productsResponse.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const productsData = await productsResponse.json();
+              if (productsData.success) {
+                setBundleProducts(productsData.products || []);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error refreshing bundle products:', e);
+        }
+        
+        // Add back to available products
+        const removedProduct = bundleProducts.find(bp => bp.product?.id === productId)?.product;
+        if (removedProduct) {
+          setAvailableProducts(prev => [...prev, removedProduct]);
+        }
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (error: any) {
+      console.error('Error removing product from bundle:', error);
+      alert(`Failed to remove product from bundle: ${error.message}`);
     }
   };
 
@@ -523,27 +978,29 @@ export default function EditProductPage() {
         <FormSection>
           <SectionTitle>Basic Information</SectionTitle>
           
-          <FormGroup>
-            <Label>Product Name *</Label>
-            <Input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-            />
-          </FormGroup>
+          <GridRow>
+            <FormGroup>
+              <Label>Product Name *</Label>
+              <Input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+              />
+            </FormGroup>
 
-          <FormGroup>
-            <Label>URL Slug *</Label>
-            <Input
-              type="text"
-              name="slug"
-              value={formData.slug}
-              onChange={handleChange}
-              required
-            />
-          </FormGroup>
+            <FormGroup>
+              <Label>URL Slug *</Label>
+              <Input
+                type="text"
+                name="slug"
+                value={formData.slug}
+                onChange={handleChange}
+                required
+              />
+            </FormGroup>
+          </GridRow>
 
           <FormGroup>
             <Label>Tagline</Label>
@@ -581,7 +1038,7 @@ export default function EditProductPage() {
         <FormSection>
           <SectionTitle>Pricing & Category</SectionTitle>
           
-          <GridRow>
+          <GridRow style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
             <FormGroup>
               <Label>Price *</Label>
               <Input
@@ -607,9 +1064,7 @@ export default function EditProductPage() {
                 placeholder="Optional sale price"
               />
             </FormGroup>
-          </GridRow>
 
-          <GridRow>
             <FormGroup>
               <Label>Category *</Label>
               <Select
@@ -618,11 +1073,12 @@ export default function EditProductPage() {
                 onChange={handleChange}
                 required
               >
-                <option value="plugin">Plugin</option>
+                <option value="audio-fx-plugin">Audio FX Plugin</option>
+                <option value="instrument-plugin">Instrument Plugin</option>
                 <option value="pack">Pack</option>
                 <option value="bundle">Bundle</option>
                 <option value="preset">Preset</option>
-                <option value="template">Template</option>
+                <option value="application">Application</option>
               </Select>
             </FormGroup>
 
@@ -640,30 +1096,290 @@ export default function EditProductPage() {
             </FormGroup>
           </GridRow>
 
+          {/* Bundle Products Management */}
+          {formData.category === 'bundle' && (
+            <FormSection>
+              <SectionTitle>Bundle Products</SectionTitle>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                Manage which products are included in this bundle.
+              </p>
+              
+              {loadingBundleProducts ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <FaSpinner style={{ animation: 'spin 1s linear infinite', fontSize: '1.5rem' }} />
+                  <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Loading bundle products...</p>
+                </div>
+              ) : (
+                <>
+                  {bundleProducts && bundleProducts.length > 0 ? (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      {bundleProducts.map((bp: any) => {
+                        const product = bp.product || bp;
+                        const thumbnailUrl = product.featured_image_url || product.logo_url;
+                        return (
+                          <div
+                            key={bp.id || product.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '1rem',
+                              padding: '1rem',
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              borderRadius: '8px',
+                              marginBottom: '0.5rem'
+                            }}
+                          >
+                            {thumbnailUrl && (
+                              <div style={{
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                flexShrink: 0,
+                                background: 'rgba(0, 0, 0, 0.3)',
+                                position: 'relative'
+                              }}>
+                                <Image
+                                  src={thumbnailUrl}
+                                  alt={product.name || 'Product thumbnail'}
+                                  fill
+                                  style={{ objectFit: 'cover' }}
+                                  unoptimized
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            )}
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                                {product.name || 'Unknown Product'}
+                              </div>
+                              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                {formatCategory(product.category, product.name)}
+                              </div>
+                            </div>
+                            <button
+                            type="button"
+                            onClick={() => handleRemoveProductFromBundle(bp.id, product.id)}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              background: 'rgba(255, 94, 98, 0.2)',
+                              border: '1px solid rgba(255, 94, 98, 0.4)',
+                              borderRadius: '6px',
+                              color: '#ff5e62',
+                              cursor: 'pointer',
+                              fontSize: '0.9rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem'
+                            }}
+                          >
+                            <FaTrash /> Remove
+                          </button>
+                        </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ 
+                      padding: '2rem', 
+                      textAlign: 'center', 
+                      background: 'rgba(255, 255, 255, 0.05)', 
+                      borderRadius: '8px',
+                      marginBottom: '1.5rem',
+                      color: 'var(--text-secondary)'
+                    }}>
+                      No products in this bundle yet.
+                    </div>
+                  )}
+                  
+                  {!bundleId ? (
+                    <div style={{
+                      padding: '1.5rem',
+                      background: 'rgba(255, 193, 7, 0.1)',
+                      border: '1px solid rgba(255, 193, 7, 0.3)',
+                      borderRadius: '8px',
+                      color: 'var(--text)'
+                    }}>
+                      <p style={{ margin: 0, fontWeight: 600, marginBottom: '0.5rem' }}>
+                        Bundle not found
+                      </p>
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        Could not find the corresponding bundle record. Make sure a bundle with matching name or slug exists in the bundles table.
+                      </p>
+                    </div>
+                  ) : !showAddProduct ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddProduct(true)}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        background: 'linear-gradient(135deg, #6c63ff, #8a2be2)',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontSize: '1rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <FaPlus /> Add Product to Bundle
+                    </button>
+                  ) : (
+                    <div style={{
+                      padding: '1.5rem',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: '8px'
+                    }}>
+                      <FormGroup>
+                        <Label>Select Product to Add</Label>
+                        <SearchableDropdownContainer>
+                          <SearchInput
+                            type="text"
+                            placeholder="Search products..."
+                            value={productSearchQuery}
+                            onChange={(e) => {
+                              setProductSearchQuery(e.target.value);
+                              setShowProductDropdown(true);
+                            }}
+                            onFocus={() => setShowProductDropdown(true)}
+                            onBlur={() => {
+                              // Delay to allow click on dropdown item
+                              setTimeout(() => setShowProductDropdown(false), 200);
+                            }}
+                            style={{ marginBottom: '1rem' }}
+                          />
+                          <SearchIcon>
+                            <FaSearch />
+                          </SearchIcon>
+                          <DropdownList $isOpen={showProductDropdown && filteredAvailableProducts.length > 0}>
+                            {filteredAvailableProducts.map((product) => (
+                              <DropdownItem
+                                key={product.id}
+                                $selected={selectedProductToAdd === product.id}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setSelectedProductToAdd(product.id);
+                                  setProductSearchQuery(product.name);
+                                  setShowProductDropdown(false);
+                                }}
+                              >
+                                <ProductName>{product.name}</ProductName>
+                                <ProductCategory>{formatCategory(product.category, product.name)}</ProductCategory>
+                              </DropdownItem>
+                            ))}
+                          </DropdownList>
+                        </SearchableDropdownContainer>
+                        {availableProducts.length === 0 && (
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                            {loadingBundleProducts ? 'Loading products...' : 'No products available to add'}
+                          </p>
+                        )}
+                        {selectedProductToAdd && (
+                          <div style={{
+                            marginTop: '0.5rem',
+                            padding: '0.75rem',
+                            background: 'rgba(108, 99, 255, 0.1)',
+                            borderRadius: '6px',
+                            fontSize: '0.9rem',
+                            color: 'var(--text)'
+                          }}>
+                            Selected: {availableProducts.find(p => p.id === selectedProductToAdd)?.name || 'Unknown'}
+                          </div>
+                        )}
+                      </FormGroup>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={handleAddProductToBundle}
+                          disabled={!selectedProductToAdd || !bundleId}
+                          style={{
+                            padding: '0.75rem 1.5rem',
+                            background: (selectedProductToAdd && bundleId)
+                              ? 'linear-gradient(135deg, #6c63ff, #8a2be2)' 
+                              : 'rgba(255, 255, 255, 0.1)',
+                            border: 'none',
+                            borderRadius: '8px',
+                            color: 'white',
+                            cursor: (selectedProductToAdd && bundleId) ? 'pointer' : 'not-allowed',
+                            fontSize: '1rem',
+                            fontWeight: 600
+                          }}
+                        >
+                          Add Product
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddProduct(false);
+                            setSelectedProductToAdd('');
+                          }}
+                          style={{
+                            padding: '0.75rem 1.5rem',
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            borderRadius: '8px',
+                            color: 'var(--text)',
+                            cursor: 'pointer',
+                            fontSize: '1rem'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </FormSection>
+          )}
+
           {/* Stripe Integration Info */}
-          {(stripeIds.stripe_product_id || stripeIds.stripe_price_id) && (
+          {(stripeIds.stripe_product_id || stripeIds.stripe_price_id || stripeIds.stripe_sale_price_id) && (
             <FormSection>
               <SectionTitle>Stripe Integration</SectionTitle>
-              <FormGroup>
-                <Label>Stripe Product ID</Label>
-                <Input
-                  type="text"
-                  value={stripeIds.stripe_product_id || ''}
-                  readOnly
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
-                />
-              </FormGroup>
-              <FormGroup>
-                <Label>Stripe Price ID</Label>
-                <Input
-                  type="text"
-                  value={stripeIds.stripe_price_id || ''}
-                  readOnly
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
-                />
-              </FormGroup>
+              <GridRow style={{ gridTemplateColumns: stripeIds.stripe_sale_price_id ? '1fr 1fr 1fr' : '1fr 1fr' }}>
+                {stripeIds.stripe_product_id && (
+                  <FormGroup>
+                    <Label>Stripe Product ID</Label>
+                    <Input
+                      type="text"
+                      value={stripeIds.stripe_product_id || ''}
+                      readOnly
+                      style={{ background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
+                    />
+                  </FormGroup>
+                )}
+                {stripeIds.stripe_price_id && (
+                  <FormGroup>
+                    <Label>Stripe Price ID</Label>
+                    <Input
+                      type="text"
+                      value={stripeIds.stripe_price_id || ''}
+                      readOnly
+                      style={{ background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
+                    />
+                  </FormGroup>
+                )}
+                {stripeIds.stripe_sale_price_id && (
+                  <FormGroup>
+                    <Label>Stripe Sale Price ID</Label>
+                    <Input
+                      type="text"
+                      value={stripeIds.stripe_sale_price_id || ''}
+                      readOnly
+                      style={{ background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
+                    />
+                  </FormGroup>
+                )}
+              </GridRow>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                Stripe products and prices are automatically synced when you save changes to the price field. 
+                Stripe products and prices are automatically synced when you save changes to the price field.
                 Sale prices are for display/marketing purposes only and are not synced to Stripe.
               </p>
             </FormSection>

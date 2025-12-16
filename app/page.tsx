@@ -220,7 +220,21 @@ export default function Home() {
         }
 
             // Fetch plugins (limit to 4 for mobile, will load all when "Show All" is clicked)
-            const pluginsResponse = await fetch('/api/products?category=plugin&status=active&limit=4');
+            // Fetch both plugin types
+            const [fxResponse, instrumentResponse] = await Promise.all([
+              fetch('/api/products?category=audio-fx-plugin&status=active&limit=4'),
+              fetch('/api/products?category=instrument-plugin&status=active&limit=4'),
+            ]);
+            
+            const fxData = await fxResponse.json();
+            const instrumentData = await instrumentResponse.json();
+            
+            const allPlugins = [
+              ...(fxData.success ? fxData.products : []),
+              ...(instrumentData.success ? instrumentData.products : []),
+            ];
+            
+            const pluginsResponse = { success: true, products: allPlugins };
         const pluginsData = await pluginsResponse.json();
         
         if (pluginsData.success) {
@@ -316,7 +330,7 @@ export default function Home() {
               title="Premium Plugins"
               subtitle="Professional-grade tools for modern music production"
               products={plugins}
-                fetchAllUrl="/api/products?category=plugin&status=active&limit=100"
+                fetchAllUrl="/api/products?category=audio-fx-plugin,instrument-plugin&status=active&limit=100"
             />
               {packs.length > 0 && (
                 <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#1a1a2e" />

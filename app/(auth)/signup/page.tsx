@@ -743,16 +743,16 @@ function SignUp() {
             disabled={loadingState || !!user}
             style={{ width: '100%' }}
           >
-            {loadingState ? (
-              <>
-                <div style={{ marginRight: "10px" }}>
-                  <LoadingComponent size="20px" />
-                </div>
-                {t("signup.creatingAccount", "Creating Account...")}
-              </>
-            ) : (
-              t("signup.createAccount", "Create Account")
-            )}
+              {loadingState ? (
+                <>
+                  <div style={{ marginRight: "10px" }}>
+                    <LoadingComponent size="20px" />
+                  </div>
+                  {t("signup.creatingAccount", "Creating Account...")}
+                </>
+              ) : (
+                t("signup.createAccount", "Create Account")
+              )}
           </PrimaryButton>
         </Form>
 

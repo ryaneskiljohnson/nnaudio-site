@@ -101,133 +101,284 @@ const BundleDescription = styled.p`
 `;
 
 const PricingSection = styled.div`
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 2rem;
-  margin-bottom: 3rem;
+  margin-bottom: 4rem;
 `;
 
 const PricingTitle = styled.h2`
-  font-size: 2rem;
+  font-size: 2.5rem;
   color: white;
-  margin-bottom: 1.5rem;
+  margin-bottom: 3rem;
   text-align: center;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 `;
 
 const PricingGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  
+  @media (max-width: 968px) {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    max-width: 500px;
+  }
 `;
 
-const PricingCard = styled(motion.div)<{ featured?: boolean }>`
-  background: ${props => props.featured 
-    ? 'linear-gradient(135deg, rgba(78, 205, 196, 0.2), rgba(68, 160, 141, 0.2))'
-    : 'rgba(255, 255, 255, 0.05)'};
-  border: 2px solid ${props => props.featured 
-    ? 'rgba(78, 205, 196, 0.5)'
-    : 'rgba(255, 255, 255, 0.1)'};
-  border-radius: 12px;
-  padding: 1.5rem;
+const PricingCard = styled(motion.div)<{ $featured?: boolean }>`
+  background: ${props => props.$featured 
+    ? 'linear-gradient(135deg, rgba(108, 99, 255, 0.15), rgba(138, 43, 226, 0.15))'
+    : 'rgba(255, 255, 255, 0.03)'};
+  border: ${props => props.$featured 
+    ? '2px solid rgba(108, 99, 255, 0.6)'
+    : '1px solid rgba(255, 255, 255, 0.1)'};
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
   text-align: center;
   position: relative;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   
-  ${props => props.featured && `
+  ${props => props.$featured && `
     transform: scale(1.05);
+    box-shadow: 0 20px 60px rgba(108, 99, 255, 0.3),
+                0 0 40px rgba(138, 43, 226, 0.2);
     
     &::before {
       content: 'BEST VALUE';
       position: absolute;
-      top: -12px;
+      top: -14px;
       left: 50%;
       transform: translateX(-50%);
-      background: linear-gradient(135deg, #4ECDC4, #44A08D);
+      background: linear-gradient(135deg, #6c63ff, #8a2be2);
       color: white;
-      padding: 4px 16px;
-      border-radius: 20px;
-      font-size: 0.75rem;
+      padding: 6px 20px;
+      border-radius: 25px;
+      font-size: 0.7rem;
       font-weight: 700;
+      letter-spacing: 1px;
+      box-shadow: 0 4px 15px rgba(108, 99, 255, 0.5);
+      z-index: 1;
+    }
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(135deg, rgba(108, 99, 255, 0.4), rgba(138, 43, 226, 0.4));
+      border-radius: 20px;
+      z-index: -1;
+      opacity: 0.6;
+      filter: blur(12px);
     }
   `}
+  
+  &:hover {
+    transform: ${props => props.$featured ? 'scale(1.08)' : 'translateY(-5px)'};
+    border-color: ${props => props.$featured 
+      ? 'rgba(108, 99, 255, 0.9)'
+      : 'rgba(255, 255, 255, 0.2)'};
+    box-shadow: ${props => props.$featured
+      ? '0 25px 70px rgba(108, 99, 255, 0.4), 0 0 50px rgba(138, 43, 226, 0.3)'
+      : '0 15px 40px rgba(0, 0, 0, 0.3)'};
+  }
 `;
 
 const PricingType = styled.h3`
-  font-size: 1.2rem;
-  color: white;
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+`;
+
+const PriceContainer = styled.div`
   margin-bottom: 1rem;
 `;
 
 const Price = styled.div`
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #4ECDC4;
+  font-size: 3rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #6c63ff, #8a2be2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 0.5rem;
+  line-height: 1.2;
 `;
 
 const SalePrice = styled.div`
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #4ECDC4;
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #6c63ff, #8a2be2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 0.5rem;
+  line-height: 1.2;
 `;
 
 const OriginalPrice = styled.div`
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.4);
   text-decoration: line-through;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
 `;
 
 const SubscribeButton = styled.button`
   width: 100%;
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #4ECDC4, #44A08D);
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #6c63ff, #8a2be2);
   color: white;
   border: none;
-  border-radius: 8px;
-  font-weight: 600;
+  border-radius: 50px;
+  font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  margin-top: 1rem;
+  margin-top: auto;
+  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.4);
+  letter-spacing: 0.5px;
   
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(78, 205, 196, 0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(108, 99, 255, 0.6);
+    background: linear-gradient(135deg, #7c73ff, #9a3bf2);
+  }
+  
+  &:active {
+    transform: translateY(-1px);
   }
   
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none;
   }
 `;
 
+const TopSection = styled.div`
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 4rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const BundleImageContainer = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+`;
+
+const ImageOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4));
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
 const ValueSection = styled.div`
-  background: rgba(78, 205, 196, 0.1);
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 3rem;
+  position: relative;
+  z-index: 3;
   text-align: center;
+  padding: 3rem 2.5rem;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+`;
+
+const ProductCountBadge = styled.div`
+  background: linear-gradient(135deg, #ffd700, #ffb300);
+  color: #000;
+  padding: 0.75rem 1.5rem;
+  border-radius: 50px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  box-shadow: 0 4px 20px rgba(255, 215, 0, 0.5),
+              0 0 30px rgba(255, 215, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    padding: 0.6rem 1.25rem;
+  }
 `;
 
 const ValueTitle = styled.h2`
-  font-size: 1.5rem;
-  color: white;
+  font-size: 1.3rem;
+  color: rgba(255, 255, 255, 0.8);
   margin-bottom: 1rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 2px;
 `;
 
 const ValueAmount = styled.div`
-  font-size: 3rem;
-  font-weight: 700;
-  color: #4ECDC4;
-  margin-bottom: 0.5rem;
+  font-size: 3.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #6c63ff, #8a2be2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.75rem;
+  line-height: 1.2;
 `;
 
 const SavingsText = styled.p`
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  color: rgba(108, 99, 255, 1);
+  font-weight: 700;
+  margin-top: 0.75rem;
+  padding: 8px 16px;
+  background: rgba(108, 99, 255, 0.2);
+  border: 1px solid rgba(108, 99, 255, 0.4);
+  border-radius: 25px;
+  display: inline-block;
+  letter-spacing: 0.5px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const Spacer = styled.div`
+  margin-top: 0.75rem;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const ProductsSection = styled.div`
@@ -276,10 +427,18 @@ const ProductInfo = styled.div`
   padding: 1.5rem;
 `;
 
+const ProductNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+`;
+
 const ProductName = styled.h3`
   font-size: 1.2rem;
   color: white;
-  margin-bottom: 0.5rem;
+  margin: 0;
 `;
 
 const ProductCategory = styled.span`
@@ -290,7 +449,6 @@ const ProductCategory = styled.span`
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 600;
-  margin-bottom: 0.5rem;
   text-transform: uppercase;
 `;
 
@@ -306,6 +464,26 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
   const [loading, setLoading] = useState(true);
   const [selectedTier, setSelectedTier] = useState<'monthly' | 'annual' | 'lifetime'>('lifetime');
   const [slug, setSlug] = useState<string>('');
+
+  const formatCategory = (category: string | null | undefined, productName?: string) => {
+    if (!category) return 'Product';
+    
+    // Special case for Cymasphere
+    if (productName?.toLowerCase() === 'cymasphere' && category === 'application') {
+      return 'MIDI Application / Plugin';
+    }
+    
+    const categoryMap: Record<string, string> = {
+      'audio-fx-plugin': 'Audio FX Plugin',
+      'instrument-plugin': 'Instrument Plugin',
+      'application': 'Application',
+      'pack': 'Pack',
+      'bundle': 'Bundle',
+      'preset': 'Preset',
+    };
+    
+    return categoryMap[category] || category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
+  };
 
   useEffect(() => {
     params.then(({ slug }) => {
@@ -392,28 +570,53 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
           </BreadcrumbList>
         </BreadcrumbContainer>
 
-        <Header>
-          {(bundle as any).isSubscriptionBundle && (
-            <BundleCategory>Elite Bundle</BundleCategory>
-          )}
-          <BundleName>{bundle.name}</BundleName>
-          {bundle.tagline && (
-            <BundleTagline>{bundle.tagline}</BundleTagline>
-          )}
-          {bundle.description && (
-            <BundleDescription>{bundle.description}</BundleDescription>
-          )}
-        </Header>
-
-        <ValueSection>
-          <ValueTitle>Total Bundle Value</ValueTitle>
-          <ValueAmount>{formatPrice(bundle.totalValue)}</ValueAmount>
-          {selectedSavings && selectedSavings.amount > 0 && (
-            <SavingsText>
-              Save {formatPrice(selectedSavings.amount)} ({selectedSavings.percent}% off)
-            </SavingsText>
-          )}
-        </ValueSection>
+        <TopSection>
+          <BundleImageContainer>
+            {bundle.featured_image_url ? (
+              <Image
+                src={bundle.featured_image_url}
+                alt={bundle.name}
+                fill
+                style={{ objectFit: 'cover', objectPosition: 'center' }}
+                unoptimized
+              />
+            ) : (
+              <Image
+                src="/images/nnaud-io/NNPurp1.png"
+                alt={bundle.name}
+                fill
+                style={{ objectFit: 'contain', padding: '40px' }}
+                unoptimized
+              />
+            )}
+          </BundleImageContainer>
+          <ImageOverlay>
+            <ValueSection>
+              {(bundle as any).isSubscriptionBundle && (
+                <BundleCategory style={{ marginBottom: '1rem' }}>Elite Bundle</BundleCategory>
+              )}
+              <BundleName style={{ marginBottom: '0.75rem', fontSize: '2.5rem' }}>{bundle.name}</BundleName>
+              {bundle.tagline && (
+                <BundleTagline style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>{bundle.tagline}</BundleTagline>
+              )}
+              {bundle.description && (
+                <BundleDescription style={{ marginBottom: '1.5rem', fontSize: '0.95rem', maxWidth: '100%' }}>
+                  {bundle.description}
+                </BundleDescription>
+              )}
+              <ProductCountBadge>
+                {bundle.products?.length || 0} {bundle.products?.length === 1 ? 'Product' : 'Products'}
+              </ProductCountBadge>
+              <ValueTitle>Total Bundle Value</ValueTitle>
+              <ValueAmount>{formatPrice(bundle.totalValue)}</ValueAmount>
+              {selectedSavings && selectedSavings.amount > 0 && (
+                <SavingsText>
+                  Save {formatPrice(selectedSavings.amount)} ({selectedSavings.percent}% off)
+                </SavingsText>
+              )}
+            </ValueSection>
+          </ImageOverlay>
+        </TopSection>
 
         <PricingSection>
           <PricingTitle>Choose Your Subscription</PricingTitle>
@@ -421,17 +624,20 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
             {bundle.pricing.monthly && (
               <PricingCard
                 onClick={() => setSelectedTier('monthly')}
-                featured={selectedTier === 'monthly' ? true : undefined}
+                $featured={false}
               >
                 <PricingType>Monthly</PricingType>
-                {bundle.pricing.monthly.sale_price ? (
-                  <>
-                    <SalePrice>{formatPrice(bundle.pricing.monthly.sale_price)}</SalePrice>
-                    <OriginalPrice>{formatPrice(bundle.pricing.monthly.price)}</OriginalPrice>
-                  </>
-                ) : (
-                  <Price>{formatPrice(bundle.pricing.monthly.price)}</Price>
-                )}
+                <PriceContainer>
+                  {bundle.pricing.monthly.sale_price ? (
+                    <>
+                      <SalePrice>{formatPrice(bundle.pricing.monthly.sale_price)}</SalePrice>
+                      <OriginalPrice>{formatPrice(bundle.pricing.monthly.price)}</OriginalPrice>
+                    </>
+                  ) : (
+                    <Price>{formatPrice(bundle.pricing.monthly.price)}</Price>
+                  )}
+                </PriceContainer>
+                <Spacer />
                 <SubscribeButton onClick={() => handleSubscribe('monthly')}>
                   Subscribe Monthly
                 </SubscribeButton>
@@ -441,17 +647,19 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
             {bundle.pricing.annual && (
               <PricingCard
                 onClick={() => setSelectedTier('annual')}
-                featured={selectedTier === 'annual' ? true : undefined}
+                $featured={false}
               >
                 <PricingType>Annual</PricingType>
-                {bundle.pricing.annual.sale_price ? (
-                  <>
-                    <SalePrice>{formatPrice(bundle.pricing.annual.sale_price)}</SalePrice>
-                    <OriginalPrice>{formatPrice(bundle.pricing.annual.price)}</OriginalPrice>
-                  </>
-                ) : (
-                  <Price>{formatPrice(bundle.pricing.annual.price)}</Price>
-                )}
+                <PriceContainer>
+                  {bundle.pricing.annual.sale_price ? (
+                    <>
+                      <SalePrice>{formatPrice(bundle.pricing.annual.sale_price)}</SalePrice>
+                      <OriginalPrice>{formatPrice(bundle.pricing.annual.price)}</OriginalPrice>
+                    </>
+                  ) : (
+                    <Price>{formatPrice(bundle.pricing.annual.price)}</Price>
+                  )}
+                </PriceContainer>
                 {bundle.savings.annual && bundle.savings.annual.percent > 0 && (
                   <SavingsText>
                     Save {bundle.savings.annual.percent}%
@@ -466,17 +674,19 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
             {bundle.pricing.lifetime && (
               <PricingCard
                 onClick={() => setSelectedTier('lifetime')}
-                featured={selectedTier === 'lifetime' ? true : undefined}
+                $featured={true}
               >
                 <PricingType>Lifetime</PricingType>
-                {bundle.pricing.lifetime.sale_price ? (
-                  <>
-                    <SalePrice>{formatPrice(bundle.pricing.lifetime.sale_price)}</SalePrice>
-                    <OriginalPrice>{formatPrice(bundle.pricing.lifetime.price)}</OriginalPrice>
-                  </>
-                ) : (
-                  <Price>{formatPrice(bundle.pricing.lifetime.price)}</Price>
-                )}
+                <PriceContainer>
+                  {bundle.pricing.lifetime.sale_price ? (
+                    <>
+                      <SalePrice>{formatPrice(bundle.pricing.lifetime.sale_price)}</SalePrice>
+                      <OriginalPrice>{formatPrice(bundle.pricing.lifetime.price)}</OriginalPrice>
+                    </>
+                  ) : (
+                    <Price>{formatPrice(bundle.pricing.lifetime.price)}</Price>
+                  )}
+                </PriceContainer>
                 {bundle.savings.lifetime && bundle.savings.lifetime.percent > 0 && (
                   <SavingsText>
                     Save {bundle.savings.lifetime.percent}%
@@ -528,8 +738,10 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                     )}
                   </ProductImage>
                   <ProductInfo>
-                    <ProductCategory>{product.category}</ProductCategory>
-                    <ProductName>{product.name}</ProductName>
+                    <ProductNameRow>
+                      <ProductName>{product.name}</ProductName>
+                      <ProductCategory>{formatCategory(product.category || '', product.name)}</ProductCategory>
+                    </ProductNameRow>
                     {product.tagline && (
                       <p style={{ 
                         fontSize: '0.9rem', 

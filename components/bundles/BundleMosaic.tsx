@@ -164,11 +164,11 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
             const fallbackImg = new window.Image();
             fallbackImg.crossOrigin = 'anonymous';
             fallbackImg.onload = () => {
-              const col = index % cols;
-              const row = Math.floor(index / cols);
-              const x = col * cellWidth;
-              const y = row * cellHeight;
-              
+          const col = index % cols;
+          const row = Math.floor(index / cols);
+          const x = col * cellWidth;
+          const y = row * cellHeight;
+          
               const size = Math.min(fallbackImg.width, fallbackImg.height);
               const sx = (fallbackImg.width - size) / 2;
               const sy = (fallbackImg.height - size) / 2;
@@ -183,7 +183,7 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
             fallbackImg.src = NNAUDIO_LOGO;
           } else {
             // Logo already failed, just skip it
-            resolve();
+          resolve();
           }
         };
         
