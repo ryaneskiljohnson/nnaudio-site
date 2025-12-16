@@ -17,6 +17,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { getVideos } from "@/app/actions/tutorials";
+import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
 
 // Animation variants
 const fadeIn = {
@@ -632,19 +633,7 @@ export default function VideosPage() {
         </ResultsInfo>
 
         {loading ? (
-          <LoadingContainer>
-            <div
-              style={{
-                width: "32px",
-                height: "32px",
-                borderRadius: "50%",
-                border: "3px solid var(--primary)",
-                borderTop: "3px solid transparent",
-                animation: "spin 1s linear infinite",
-              }}
-            />
-            Loading videos...
-          </LoadingContainer>
+          <NNAudioLoadingSpinner text="Loading videos..." size={40} />
         ) : videos.length === 0 ? (
           <EmptyState>
             <FaVideo />

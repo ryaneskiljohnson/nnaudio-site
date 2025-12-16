@@ -13,6 +13,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import styled from "styled-components";
 import { motion } from "framer-motion";
+import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
 import {
   getUserManagementRecords,
   createUserManagementRecord,
@@ -314,19 +315,6 @@ const EmptyState = styled.div`
   font-style: italic;
 `;
 
-const LoadingSpinner = styled.div`
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top: 2px solid white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
 
 // Modal Components
 const ModalOverlay = styled(motion.div)`
@@ -792,7 +780,7 @@ export default function UserManagementPage() {
                   {loading ? (
                     <tr>
                       <TableCell colSpan={4} style={{ textAlign: 'center', padding: '3rem' }}>
-                        <LoadingSpinner />
+                        <NNAudioLoadingSpinner size={40} />
                       </TableCell>
                     </tr>
                   ) : records.length === 0 ? (
@@ -809,7 +797,7 @@ export default function UserManagementPage() {
                         </EmailCell>
                         <TableCell>
                           {updatingEmail === record.user_email ? (
-                            <LoadingSpinner />
+                            <NNAudioLoadingSpinner size={20} />
                           ) : (
                             <ToggleSwitch $checked={record.pro}>
                               <input
@@ -823,7 +811,7 @@ export default function UserManagementPage() {
                         </TableCell>
                         <TableCell>
                           {updatingEmail === record.user_email ? (
-                            <LoadingSpinner />
+                            <NNAudioLoadingSpinner size={20} />
                           ) : (
                             <NotesCellContainer>
                               <NotesInput
@@ -1009,7 +997,7 @@ export default function UserManagementPage() {
                   <Button type="submit" variant="primary" disabled={createLoading}>
                     {createLoading ? (
                       <>
-                        <LoadingSpinner />
+                        <NNAudioLoadingSpinner size={20} />
                         Creating...
                       </>
                     ) : (

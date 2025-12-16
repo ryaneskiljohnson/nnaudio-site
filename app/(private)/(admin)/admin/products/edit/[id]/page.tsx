@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import { FaSave, FaArrowLeft, FaPlus, FaTrash, FaSpinner, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 
 const Container = styled.div`
@@ -245,6 +246,47 @@ const SaveButton = styled(motion.button)`
     opacity: 0.5;
     cursor: not-allowed;
   }
+`;
+
+const ImagePreviewContainer = styled.div`
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+`;
+
+const ImagePreview = styled.div`
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const VideoPreview = styled.div`
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 16/9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const PreviewPlaceholder = styled.div`
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 2rem;
 `;
 
 const LoadingContainer = styled.div`
@@ -652,6 +694,22 @@ export default function EditProductPage() {
               onChange={handleChange}
               placeholder="https://..."
             />
+            {formData.featured_image_url && (
+              <ImagePreviewContainer>
+                <ImagePreview>
+                  <Image
+                    src={formData.featured_image_url}
+                    alt="Featured image preview"
+                    fill
+                    style={{ objectFit: 'contain' }}
+                    unoptimized
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </ImagePreview>
+              </ImagePreviewContainer>
+            )}
           </FormGroup>
 
           <FormGroup>
@@ -663,6 +721,21 @@ export default function EditProductPage() {
               onChange={handleChange}
               placeholder="https://..."
             />
+            {formData.logo_url && (
+              <ImagePreviewContainer>
+                <ImagePreview>
+                  <Image
+                    src={formData.logo_url}
+                    alt="Logo preview"
+                    fill
+                    style={{ objectFit: 'contain' }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </ImagePreview>
+              </ImagePreviewContainer>
+            )}
           </FormGroup>
 
           <FormGroup>
@@ -674,6 +747,21 @@ export default function EditProductPage() {
               onChange={handleChange}
               placeholder="https://..."
             />
+            {formData.background_image_url && (
+              <ImagePreviewContainer>
+                <ImagePreview>
+                  <Image
+                    src={formData.background_image_url}
+                    alt="Background image preview"
+                    fill
+                    style={{ objectFit: 'contain' }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </ImagePreview>
+              </ImagePreviewContainer>
+            )}
           </FormGroup>
 
           <FormGroup>
@@ -685,6 +773,33 @@ export default function EditProductPage() {
               onChange={handleChange}
               placeholder="https://..."
             />
+            {formData.background_video_url && (
+              <ImagePreviewContainer>
+                <VideoPreview>
+                  {formData.background_video_url.match(/\.(gif|webp)$/i) ? (
+                    <Image
+                      src={formData.background_video_url}
+                      alt="Background video/GIF preview"
+                      fill
+                      style={{ objectFit: 'contain' }}
+                      unoptimized
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <video
+                      src={formData.background_video_url}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      controls
+                      onError={(e) => {
+                        (e.target as HTMLVideoElement).style.display = 'none';
+                      }}
+                    />
+                  )}
+                </VideoPreview>
+              </ImagePreviewContainer>
+            )}
           </FormGroup>
 
           <FormGroup>

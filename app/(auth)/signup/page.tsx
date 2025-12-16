@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { FaArrowLeft } from "react-icons/fa";
 import NNAudioLogo from "@/components/common/NNAudioLogo";
 import LoadingComponent from "@/components/common/LoadingComponent";
+import PrimaryButton from "@/components/common/PrimaryButton";
 import { useTranslation } from "react-i18next";
 import useLanguage from "@/hooks/useLanguage";
 
@@ -29,18 +30,18 @@ const AuthContainer = styled.div`
     bottom: 0;
     background: radial-gradient(
         circle at 30% 50%,
-        rgba(108, 99, 255, 0.15),
-        transparent 50%
+        rgba(108, 99, 255, 0.25),
+        transparent 60%
       ),
       radial-gradient(
         circle at 70% 30%,
-        rgba(78, 205, 196, 0.15),
-        transparent 50%
+        rgba(108, 99, 255, 0.2),
+        transparent 60%
       ),
       radial-gradient(
-        circle at 40% 70%,
-        rgba(108, 99, 255, 0.1),
-        transparent 40%
+        circle at 50% 70%,
+        rgba(138, 43, 226, 0.15),
+        transparent 50%
       );
     z-index: 0;
   }
@@ -95,13 +96,13 @@ const FormCard = styled(motion.div)`
     bottom: -5px;
     background: linear-gradient(
       135deg,
-      rgba(108, 99, 255, 0.5) 0%,
-      rgba(108, 99, 255, 0) 50%,
-      rgba(78, 205, 196, 0.5) 100%
+      rgba(108, 99, 255, 0.6) 0%,
+      rgba(108, 99, 255, 0.2) 50%,
+      rgba(138, 43, 226, 0.5) 100%
     );
     border-radius: 18px;
     z-index: -1;
-    opacity: 0.4;
+    opacity: 0.5;
     filter: blur(8px);
   }
 
@@ -118,9 +119,10 @@ const Title = styled(motion.h2)`
   font-size: 1.4rem;
 
   span {
-    background: linear-gradient(90deg, var(--primary), var(--accent));
+    background: linear-gradient(90deg, #6c63ff, #8a2be2);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 `;
 
@@ -573,8 +575,8 @@ function SignUp() {
           }}
         >
           <NNAudioLogo
-            size="40px"
-            fontSize="1.8rem"
+            size="120px"
+            fontSize="3.5rem"
             showText={true}
             href={""}
             onClick={() => {}}
@@ -736,26 +738,22 @@ function SignUp() {
             </CheckboxLabel>
           </CheckboxContainer>
 
-          <Button
+          <PrimaryButton
             type="submit"
             disabled={loadingState || !!user}
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
+            style={{ width: '100%' }}
           >
-            <ButtonContent>
-              {loadingState ? (
-                <>
-                  <div style={{ marginRight: "10px" }}>
-                    <LoadingComponent size="20px" />
-                  </div>
-                  {t("signup.creatingAccount", "Creating Account...")}
-                </>
-              ) : (
-                t("signup.createAccount", "Create Account")
-              )}
-            </ButtonContent>
-          </Button>
+            {loadingState ? (
+              <>
+                <div style={{ marginRight: "10px" }}>
+                  <LoadingComponent size="20px" />
+                </div>
+                {t("signup.creatingAccount", "Creating Account...")}
+              </>
+            ) : (
+              t("signup.createAccount", "Create Account")
+            )}
+          </PrimaryButton>
         </Form>
 
         <LinkText>

@@ -383,26 +383,18 @@ export default function SideCart({ isOpen, onClose }: SideCartProps) {
                   return (
                     <CartItemCard key={item.id}>
                       <ItemImage>
-                        {(item.featured_image_url || item.logo_url) ? (
-                          <Image
-                            src={item.featured_image_url || item.logo_url}
-                            alt={item.name}
-                            fill
-                            style={{ objectFit: 'cover' }}
-                          />
-                        ) : (
-                          <div style={{
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '1.5rem',
-                            color: 'rgba(255, 255, 255, 0.3)'
-                          }}>
-                            {item.name[0]}
-                          </div>
-                        )}
+                        <Image
+                          src={item.featured_image_url || item.logo_url || '/images/nnaud-io/NNPurp1.png'}
+                          alt={item.name}
+                          fill
+                          style={{ objectFit: 'cover' }}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            if (target.src !== '/images/nnaud-io/NNPurp1.png') {
+                              target.src = '/images/nnaud-io/NNPurp1.png';
+                            }
+                          }}
+                        />
                       </ItemImage>
                       
                       <ItemDetails>

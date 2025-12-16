@@ -147,6 +147,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Sync to Stripe if product has a price
+    if (product && product.price !== null && product.price !== undefined) {
+      try {
+        const { syncProductToStripe } = await import('@/utils/stripe/product-sync');
+        
+        const syncResult = await syncProductToStripe(
+          product.id,
+          product.name,
+          product.description || product.short_description || '',
+          product.price,
+          product.sale_price,
+          null, // No existing Stripe product
+          null, // No existing Stripe price
+          null  // No existing Stripe sale price
+        );
+
+        if (syncResult.success) {
+          // Update product with Stripe IDs
+          await adminSupabase
+            .from('products')
+            .update({
+              stripe_product_id: syncResult.stripe_product_id,
+              stripe_price_id: syncResult.stripe_price_id,
+              stripe_sale_price_id: null,
+            })
+            .eq('id', product.id);
+          
+          // Refresh product data to include Stripe IDs
+          const { data: updatedProduct } = await adminSupabase
+            .from('products')
+            .select('*')
+            .eq('id', product.id)
+            .single();
+          
+          return NextResponse.json({
+            success: true,
+            product: updatedProduct || product,
+            stripe_synced: true,
+          });
+        } else {
+          console.error('Stripe sync failed:', syncResult.error);
+          // Still return success for product creation, but log Stripe error
+          return NextResponse.json({
+            success: true,
+            product,
+            stripe_synced: false,
+            stripe_error: syncResult.error,
+          });
+        }
+      } catch (stripeError: any) {
+        console.error('Error syncing to Stripe:', stripeError);
+        // Still return success for product creation
+        return NextResponse.json({
+          success: true,
+          product,
+          stripe_synced: false,
+          stripe_error: stripeError.message,
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       product

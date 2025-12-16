@@ -95,12 +95,12 @@ export async function POST(request: NextRequest) {
         
         // If not found by ID, try looking up by code string
         if (!promotionCode) {
-          const promotionCodes = await stripe.promotionCodes.list({
-            code: promotionCodeId.toUpperCase(),
-            active: true,
-            limit: 1,
-          });
-          if (promotionCodes.data.length > 0) {
+        const promotionCodes = await stripe.promotionCodes.list({
+          code: promotionCodeId.toUpperCase(),
+          active: true,
+          limit: 1,
+        });
+        if (promotionCodes.data.length > 0) {
             promotionCode = promotionCodes.data[0];
           }
         }

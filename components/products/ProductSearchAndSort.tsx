@@ -10,11 +10,11 @@ const SearchAndSortContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  align-items: center;
 
   @media (min-width: 768px) {
     flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
+    justify-content: center;
   }
 `;
 
@@ -66,7 +66,7 @@ const SortContainer = styled.div`
 
   @media (max-width: 768px) {
     width: 100%;
-    justify-content: space-between;
+    justify-content: center;
   }
 `;
 

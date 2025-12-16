@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
-import { motion } from "framer-motion";
-import { FaPlus, FaEdit, FaTrash, FaEye, FaStar, FaImage, FaSort, FaSortUp, FaSortDown, FaEllipsisV } from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import { FaPlus, FaEdit, FaTrash, FaEye, FaStar, FaImage, FaSort, FaSortUp, FaSortDown, FaEllipsisV, FaSearch } from "react-icons/fa";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import PrimaryButton from "@/components/common/PrimaryButton";
+import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
 
 const Container = styled.div`
   padding: 2rem;
@@ -27,24 +29,6 @@ const Title = styled.h1`
   font-weight: 700;
 `;
 
-const CreateButton = styled(motion.button)`
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  border: none;
-  padding: 14px 28px;
-  border-radius: 50px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4);
-  }
-`;
 
 const FilterBar = styled.div`
   display: flex;
@@ -52,10 +36,62 @@ const FilterBar = styled.div`
   margin-bottom: 2rem;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
+`;
+
+const FilterButtonsContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+`;
+
+const RightSideContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+const SearchContainer = styled.div`
+  position: relative;
+  min-width: 500px;
+  max-width: 800px;
+  flex: 1;
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 10px 16px 10px 40px;
+  background: var(--input-bg);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: rgba(108, 99, 255, 0.1);
+  }
+  
+  &::placeholder {
+    color: var(--text-secondary);
+  }
+`;
+
+const SearchIcon = styled(FaSearch)`
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  pointer-events: none;
 `;
 
 const ProductCount = styled.div`
-  margin-left: auto;
   padding: 10px 20px;
   background: rgba(108, 99, 255, 0.1);
   border-radius: 50px;
@@ -63,6 +99,7 @@ const ProductCount = styled.div`
   font-weight: 600;
   font-size: 0.9rem;
   border: 1px solid rgba(108, 99, 255, 0.3);
+  white-space: nowrap;
 `;
 
 const FilterButton = styled.button<{ $active?: boolean }>`
@@ -84,8 +121,10 @@ const FilterButton = styled.button<{ $active?: boolean }>`
 const TableContainer = styled.div`
   background: var(--card-bg);
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
 `;
 
 const Table = styled.table`
@@ -224,15 +263,13 @@ const StatusBadge = styled.span<{ $status: string }>`
   display: inline-block;
 `;
 
-const StatsCell = styled(TableCell)`
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  white-space: nowrap;
-`;
 
 const ActionsCell = styled(TableCell)`
   width: 60px;
   position: relative;
+  
+  /* Allow overflow for menu dropdown */
+  overflow: visible;
 `;
 
 const MenuButton = styled.button`
@@ -253,19 +290,29 @@ const MenuButton = styled.button`
   }
 `;
 
-const MenuDropdown = styled(motion.div)<{ $isOpen: boolean }>`
-  position: absolute;
-  right: 0;
-  top: 100%;
-  margin-top: 4px;
+const MenuDropdown = styled(motion.div)<{ $isOpen: boolean; $top?: number; $right?: number; $openUpward?: boolean }>`
+  position: fixed;
+  top: ${props => props.$top !== undefined ? `${props.$top}px` : 'auto'};
+  right: ${props => props.$right !== undefined ? `${props.$right}px` : 'auto'};
   background: var(--card-bg);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   min-width: 180px;
-  z-index: 1000;
-  overflow: hidden;
+  max-height: 80vh;
+  z-index: 99999;
+  overflow-y: auto;
+  overflow-x: visible;
   display: ${props => props.$isOpen ? 'block' : 'none'};
+  backdrop-filter: blur(10px);
+  transform-origin: ${props => props.$openUpward ? 'bottom right' : 'top right'};
+  
+  /* Handle edge cases where dropdown might go off-screen */
+  @media (max-width: 768px) {
+    right: auto;
+    left: ${props => props.$right !== undefined ? `calc(100vw - ${props.$right}px - 180px)` : 'auto'};
+    min-width: 160px;
+  }
 `;
 
 const MenuItem = styled.a<{ $variant?: 'edit' | 'delete' | 'view' }>`
@@ -354,18 +401,19 @@ const MenuDivider = styled.div`
   margin: 4px 0;
 `;
 
-const FeaturedIcon = styled.span`
+const FeaturedBadge = styled.span`
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(255, 215, 0, 0.2);
   color: #ffd700;
-  margin-left: 4px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
-const LoadingContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
-  color: var(--text-secondary);
-`;
 
 const EmptyState = styled.div`
   text-align: center;
@@ -397,7 +445,7 @@ interface Product {
   review_count?: number;
 }
 
-type SortField = 'name' | 'tagline' | 'category' | 'price' | 'status' | 'view_count' | 'average_rating' | 'created_at';
+type SortField = 'name' | 'tagline' | 'category' | 'price' | 'status' | 'created_at';
 type SortDirection = 'asc' | 'desc';
 
 export default function ProductsManagementPage() {
@@ -406,9 +454,11 @@ export default function ProductsManagementPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'plugin' | 'pack' | 'bundle'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'active' | 'archived'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number; openUpward?: boolean } | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -451,8 +501,23 @@ export default function ProductsManagementPage() {
     }
   };
 
-  const sortedProducts = useMemo(() => {
-    return [...products].sort((a, b) => {
+  const filteredAndSortedProducts = useMemo(() => {
+    // First filter by search query
+    let filtered = [...products];
+    
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(product => {
+        const nameMatch = product.name.toLowerCase().includes(query);
+        const taglineMatch = (product.tagline || '').toLowerCase().includes(query);
+        const categoryMatch = product.category.toLowerCase().includes(query);
+        const slugMatch = product.slug.toLowerCase().includes(query);
+        return nameMatch || taglineMatch || categoryMatch || slugMatch;
+      });
+    }
+    
+    // Then sort
+    return filtered.sort((a, b) => {
       let aValue: any;
       let bValue: any;
 
@@ -477,14 +542,6 @@ export default function ProductsManagementPage() {
           aValue = a.status.toLowerCase();
           bValue = b.status.toLowerCase();
           break;
-        case 'view_count':
-          aValue = a.view_count ?? 0;
-          bValue = b.view_count ?? 0;
-          break;
-        case 'average_rating':
-          aValue = a.average_rating ?? 0;
-          bValue = b.average_rating ?? 0;
-          break;
         case 'created_at':
           // Assuming products have created_at, if not, we'll skip this
           aValue = 0;
@@ -498,7 +555,7 @@ export default function ProductsManagementPage() {
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [products, sortField, sortDirection]);
+  }, [products, searchQuery, sortField, sortDirection]);
 
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) {
@@ -541,15 +598,41 @@ export default function ProductsManagementPage() {
     }
   };
 
-  const toggleMenu = (productId: string) => {
-    setOpenMenuId(openMenuId === productId ? null : productId);
+  const toggleMenu = (productId: string, event?: React.MouseEvent) => {
+    if (openMenuId === productId) {
+      setOpenMenuId(null);
+      setMenuPosition(null);
+    } else {
+      if (event) {
+        const button = event.currentTarget as HTMLElement;
+        const rect = button.getBoundingClientRect();
+        const menuHeight = 200; // Approximate menu height
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        
+        // If not enough space below but enough space above, open upward
+        const openUpward = spaceBelow < menuHeight && spaceAbove > menuHeight;
+        
+        setMenuPosition({
+          top: openUpward ? rect.top - menuHeight - 4 : rect.bottom + 4,
+          right: window.innerWidth - rect.right,
+          openUpward,
+        });
+      }
+      setOpenMenuId(productId);
+    }
   };
 
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (openMenuId) {
-        setOpenMenuId(null);
+        const target = event.target as HTMLElement;
+        // Only close if clicking outside of any menu container
+        if (!target.closest('[data-menu-container]')) {
+          setOpenMenuId(null);
+          setMenuPosition(null);
+        }
       }
     };
 
@@ -563,71 +646,81 @@ export default function ProductsManagementPage() {
     <Container>
       <Header>
         <Title>Product Management</Title>
-        <Link href="/admin/products/create">
-          <CreateButton
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
+        <Link href="/admin/products/create" style={{ textDecoration: 'none' }}>
+          <PrimaryButton>
             <FaPlus /> Create Product
-          </CreateButton>
+          </PrimaryButton>
         </Link>
       </Header>
 
       <FilterBar>
-        <FilterButton
-          $active={filter === 'all'}
-          onClick={() => setFilter('all')}
-        >
-          All Categories
-        </FilterButton>
-        <FilterButton
-          $active={filter === 'plugin'}
-          onClick={() => setFilter('plugin')}
-        >
-          Plugins
-        </FilterButton>
-        <FilterButton
-          $active={filter === 'pack'}
-          onClick={() => setFilter('pack')}
-        >
-          Packs
-        </FilterButton>
-        <FilterButton
-          $active={filter === 'bundle'}
-          onClick={() => setFilter('bundle')}
-        >
-          Bundles
-        </FilterButton>
-        <div style={{ width: '20px' }} />
-        <FilterButton
-          $active={statusFilter === 'all'}
-          onClick={() => setStatusFilter('all')}
-        >
-          All Status
-        </FilterButton>
-        <FilterButton
-          $active={statusFilter === 'active'}
-          onClick={() => setStatusFilter('active')}
-        >
-          Active
-        </FilterButton>
-        <FilterButton
-          $active={statusFilter === 'draft'}
-          onClick={() => setStatusFilter('draft')}
-        >
-          Draft
-        </FilterButton>
-        <ProductCount>
-          {sortedProducts.length} {sortedProducts.length === 1 ? 'Product' : 'Products'}
-        </ProductCount>
+        <FilterButtonsContainer>
+          <FilterButton
+            $active={filter === 'all'}
+            onClick={() => setFilter('all')}
+          >
+            All Categories
+          </FilterButton>
+          <FilterButton
+            $active={filter === 'plugin'}
+            onClick={() => setFilter('plugin')}
+          >
+            Plugins
+          </FilterButton>
+          <FilterButton
+            $active={filter === 'pack'}
+            onClick={() => setFilter('pack')}
+          >
+            Packs
+          </FilterButton>
+          <FilterButton
+            $active={filter === 'bundle'}
+            onClick={() => setFilter('bundle')}
+          >
+            Bundles
+          </FilterButton>
+          <div style={{ width: '20px' }} />
+          <FilterButton
+            $active={statusFilter === 'all'}
+            onClick={() => setStatusFilter('all')}
+          >
+            All Status
+          </FilterButton>
+          <FilterButton
+            $active={statusFilter === 'active'}
+            onClick={() => setStatusFilter('active')}
+          >
+            Active
+          </FilterButton>
+          <FilterButton
+            $active={statusFilter === 'draft'}
+            onClick={() => setStatusFilter('draft')}
+          >
+            Draft
+          </FilterButton>
+        </FilterButtonsContainer>
+        <RightSideContainer>
+          <SearchContainer>
+            <SearchIcon />
+            <SearchInput
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </SearchContainer>
+          <ProductCount>
+            {filteredAndSortedProducts.length} {filteredAndSortedProducts.length === 1 ? 'Product' : 'Products'}
+          </ProductCount>
+        </RightSideContainer>
       </FilterBar>
 
       {loading ? (
-        <LoadingContainer>Loading products...</LoadingContainer>
-      ) : sortedProducts.length === 0 ? (
+        <NNAudioLoadingSpinner text="Loading products..." />
+      ) : filteredAndSortedProducts.length === 0 ? (
         <EmptyState>
           <h3>No products found</h3>
-          <p>Create your first product to get started</p>
+          <p>{searchQuery ? 'Try adjusting your search query' : 'Create your first product to get started'}</p>
         </EmptyState>
       ) : (
         <TableContainer>
@@ -650,14 +743,11 @@ export default function ProductsManagementPage() {
                 <TableHeaderCell $sortable onClick={() => handleSort('status')}>
                   Status{renderSortIcon('status')}
                 </TableHeaderCell>
-                <TableHeaderCell $sortable onClick={() => handleSort('view_count')}>
-                  Stats{renderSortIcon('view_count')}
-                </TableHeaderCell>
                 <TableHeaderCell>Actions</TableHeaderCell>
               </TableHeaderRow>
             </TableHeader>
             <TableBody>
-              {sortedProducts.map((product, index) => (
+              {filteredAndSortedProducts.map((product, index) => (
                 <TableRow
                   key={product.id}
                   $clickable
@@ -685,9 +775,7 @@ export default function ProductsManagementPage() {
                   <ProductNameCell>
                     {product.name}
                     {product.is_featured && (
-                      <FeaturedIcon>
-                        <FaStar size={14} />
-                      </FeaturedIcon>
+                      <FeaturedBadge>Featured</FeaturedBadge>
                     )}
                   </ProductNameCell>
                   
@@ -697,7 +785,18 @@ export default function ProductsManagementPage() {
                   
                   <TableCell>
                     <CategoryBadge $category={product.category}>
-                      {product.category}
+                      {(() => {
+                        // Check if this is one of the 3 elite bundles
+                        const eliteBundleNames = ['ultimate bundle', "producer's arsenal", 'beat lab'];
+                        const isEliteBundle = product.category === 'bundle' && 
+                          eliteBundleNames.some(name => product.name.toLowerCase().includes(name));
+                        
+                        if (isEliteBundle) {
+                          return 'Elite Bundle';
+                        }
+                        // Capitalize first letter of category
+                        return product.category.charAt(0).toUpperCase() + product.category.slice(1);
+                      })()}
                     </CategoryBadge>
                   </TableCell>
                   
@@ -716,41 +815,31 @@ export default function ProductsManagementPage() {
                   
                   <TableCell>
                     <StatusBadge $status={product.status}>
-                      {product.status}
+                      {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
                     </StatusBadge>
                   </TableCell>
                   
-                  <StatsCell>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <FaEye size={12} /> {product.view_count}
-                      </div>
-                      {product.review_count !== undefined && product.review_count > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <FaStar size={12} /> {product.average_rating?.toFixed(1)} ({product.review_count})
-                        </div>
-                      )}
-                    </div>
-                  </StatsCell>
-                  
-                  <ActionsCell onClick={(e) => e.stopPropagation()}>
+                  <ActionsCell onClick={(e) => e.stopPropagation()} data-menu-container>
                     <MenuButton
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleMenu(product.id);
+                        toggleMenu(product.id, e);
                       }}
                     >
                       <FaEllipsisV size={16} />
                     </MenuButton>
-                    <MenuDropdown
-                      $isOpen={openMenuId === product.id}
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ 
-                        opacity: openMenuId === product.id ? 1 : 0,
-                        y: openMenuId === product.id ? 0 : -10
-                      }}
-                      transition={{ duration: 0.2 }}
-                    >
+                    <AnimatePresence>
+                      {openMenuId === product.id && menuPosition && (
+                        <MenuDropdown
+                          $isOpen={true}
+                          $top={menuPosition.top}
+                          $right={menuPosition.right}
+                          $openUpward={menuPosition.openUpward}
+                          initial={{ opacity: 0, y: menuPosition.openUpward ? 10 : -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: menuPosition.openUpward ? 10 : -10 }}
+                          transition={{ duration: 0.2 }}
+                        >
                       <MenuItem
                         href={`/product/${product.slug}`}
                         target="_blank"
@@ -787,7 +876,9 @@ export default function ProductsManagementPage() {
                         <FaTrash size={14} />
                         Delete
                       </MenuButtonItem>
-                    </MenuDropdown>
+                        </MenuDropdown>
+                      )}
+                    </AnimatePresence>
                   </ActionsCell>
                 </TableRow>
               ))}

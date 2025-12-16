@@ -152,11 +152,16 @@ export default function PacksPage() {
       )}
 
       {loading ? (
-        <LoadingContainer>Loading packs...</LoadingContainer>
+        <LoadingComponent text="Loading packs..." />
       ) : filteredAndSortedProducts.length === 0 ? (
-        <LoadingContainer>
+        <div style={{
+          textAlign: 'center',
+          padding: '4rem 2rem',
+          color: 'rgba(255, 255, 255, 0.7)',
+          fontSize: '1.2rem'
+        }}>
           {searchQuery ? `No packs found matching "${searchQuery}"` : 'No packs available'}
-        </LoadingContainer>
+        </div>
       ) : (
         <ProductsGrid>
           {filteredAndSortedProducts.map((product, index) => (

@@ -585,7 +585,7 @@ function PaymentForm({
           if (data.isFreeOrder) {
             setClientSecret(null); // No payment needed
           } else {
-            setClientSecret(data.clientSecret);
+          setClientSecret(data.clientSecret);
           }
         } else {
           setError(data.error || 'Failed to initialize payment');

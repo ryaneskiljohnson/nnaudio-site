@@ -200,7 +200,7 @@ const TableRow = styled(motion.tr)<{ $clickable?: boolean }>`
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   transition: background 0.2s ease;
   cursor: ${props => props.$clickable ? 'pointer' : 'default'};
-  
+
   &:hover {
     background: ${props => props.$clickable ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.03)'};
   }
@@ -343,7 +343,7 @@ const CTAButton = styled.a`
 
   @media (max-width: 768px) {
     width: 100%;
-    justify-content: center;
+  justify-content: center;
     padding: 0.875rem 1.5rem;
   }
 `;
@@ -592,38 +592,38 @@ export default function MyProductsPage() {
                 </tr>
               </TableHeader>
               <TableBody>
-                {products.map((product, index) => (
+            {products.map((product, index) => (
                   <TableRow
-                    key={product.id}
+                key={product.id}
                     $clickable={true}
                     initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.02 }}
-                    onClick={() => router.push(`/product/${product.slug}`)}
-                  >
+                onClick={() => router.push(`/product/${product.slug}`)}
+              >
                     <ProductImageCell>
                       <ProductImageWrapper>
-                        {product.featured_image_url ? (
-                          <Image
-                            src={product.featured_image_url}
-                            alt={product.name}
-                            fill
-                            style={{ objectFit: "cover" }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              color: "rgba(255, 255, 255, 0.3)",
-                            }}
-                          >
+                  {product.featured_image_url ? (
+                    <Image
+                      src={product.featured_image_url}
+                      alt={product.name}
+                      fill
+                      style={{ objectFit: "cover" }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "rgba(255, 255, 255, 0.3)",
+                      }}
+                    >
                             <FaBox size={24} />
-                          </div>
-                        )}
+                    </div>
+                  )}
                       </ProductImageWrapper>
                     </ProductImageCell>
                     <ProductNameCell>{product.name}</ProductNameCell>
@@ -638,19 +638,19 @@ export default function MyProductsPage() {
                           whiteSpace: "nowrap"
                         }}>
                           {cleanHtmlText(product.short_description || product.tagline || "")}
-                        </div>
+                  </div>
                       ) : (
                         <span style={{ color: "rgba(255, 255, 255, 0.4)" }}>—</span>
-                      )}
+                  )}
                     </TableCell>
                     <TableCell style={{ textAlign: "center" }}>
-                      <AccessBadge>
-                        <FaCheckCircle />
+                    <AccessBadge>
+                      <FaCheckCircle />
                         Access
-                      </AccessBadge>
+                    </AccessBadge>
                     </TableCell>
                   </TableRow>
-                ))}
+            ))}
               </TableBody>
             </Table>
           </TableContainer>

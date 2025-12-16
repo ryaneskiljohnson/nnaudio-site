@@ -7,7 +7,8 @@ import Link from "next/link";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import { FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
-import EnergyBall from "@/components/common/EnergyBall";
+import NNAudioLogo from "@/components/common/NNAudioLogo";
+import PrimaryButton from "@/components/common/PrimaryButton";
 import { useTranslation } from "react-i18next";
 import useLanguage from "@/hooks/useLanguage";
 import LoadingComponent from "@/components/common/LoadingComponent";
@@ -30,18 +31,18 @@ const AuthContainer = styled.div`
     bottom: 0;
     background: radial-gradient(
         circle at 30% 50%,
-        rgba(108, 99, 255, 0.15),
-        transparent 50%
+        rgba(108, 99, 255, 0.25),
+        transparent 60%
       ),
       radial-gradient(
         circle at 70% 30%,
-        rgba(78, 205, 196, 0.15),
-        transparent 50%
+        rgba(108, 99, 255, 0.2),
+        transparent 60%
       ),
       radial-gradient(
-        circle at 40% 70%,
-        rgba(108, 99, 255, 0.1),
-        transparent 40%
+        circle at 50% 70%,
+        rgba(138, 43, 226, 0.15),
+        transparent 50%
       );
     z-index: 0;
   }
@@ -96,22 +97,17 @@ const FormCard = styled(motion.div)`
     bottom: -5px;
     background: linear-gradient(
       135deg,
-      rgba(108, 99, 255, 0.5) 0%,
-      rgba(108, 99, 255, 0) 50%,
-      rgba(78, 205, 196, 0.5) 100%
+      rgba(108, 99, 255, 0.6) 0%,
+      rgba(108, 99, 255, 0.2) 50%,
+      rgba(138, 43, 226, 0.5) 100%
     );
     border-radius: 18px;
     z-index: -1;
-    opacity: 0.4;
+    opacity: 0.5;
     filter: blur(8px);
   }
 `;
 
-const LogoContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  margin-bottom: 2rem;
-`;
 
 const Title = styled(motion.h2)`
   text-align: center;
@@ -255,59 +251,6 @@ const buttonVariants = {
   },
 };
 
-const customStyles = `
-  /* Override any possible styling for the SPHERE text */
-  .sphere, span:contains("SPHERE"), [class*="sphere"] {
-    color: #FFFFFF !important;
-    -webkit-text-fill-color: #FFFFFF !important;
-    background: none !important;
-    background-clip: unset !important;
-    -webkit-background-clip: unset !important;
-    text-fill-color: #FFFFFF !important;
-    opacity: 1 !important;
-    font-weight: 700 !important;
-  }
-`;
-
-// Custom logo component
-const CustomLogo = () => {
-  return (
-    <div style={{ display: "flex", alignItems: "center" }}>
-      <div style={{ marginRight: "10px" }}>
-        <EnergyBall size="48px" />
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          textTransform: "uppercase",
-          letterSpacing: "2.5px",
-          fontSize: "1.8rem",
-          fontWeight: 700,
-          fontFamily: "var(--font-montserrat), sans-serif",
-        }}
-      >
-        <span
-          style={{
-            background: "linear-gradient(90deg, var(--primary), var(--accent))",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
-        >
-          CYMA
-        </span>
-        <span
-          style={{
-            color: "#FFFFFF",
-            WebkitTextFillColor: "#FFFFFF",
-          }}
-        >
-          SPHERE
-        </span>
-      </div>
-    </div>
-  );
-};
 
 function ResetPasswordClient() {
   const [email, setEmail] = useState("");
@@ -510,7 +453,6 @@ function ResetPasswordClient() {
 
   return (
     <AuthContainer>
-      <style dangerouslySetInnerHTML={{ __html: customStyles }} />
       <Link href="/login">
         <BackButton>
           <FaArrowLeft /> {t("resetPassword.backToLogin", "Back to Login")}
@@ -521,11 +463,22 @@ function ResetPasswordClient() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <LogoContainer>
-          <Link href="/">
-            <CustomLogo />
-          </Link>
-        </LogoContainer>
+        <div
+          style={{
+            marginBottom: "2rem",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <NNAudioLogo
+            size="120px"
+            fontSize="3.5rem"
+            showText={true}
+            href={""}
+            onClick={() => {}}
+            className={""}
+          />
+        </div>
 
         <Title
           initial={{ opacity: 0 }}
@@ -613,15 +566,13 @@ function ResetPasswordClient() {
                   </PasswordToggle>
                 </FormGroup>
 
-                <Button
+                <PrimaryButton
                   type="submit"
                   disabled={loading || message != null}
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
+                  style={{ width: '100%' }}
                 >
                   {loading ? "Updating..." : "Update Password"}
-                </Button>
+                </PrimaryButton>
               </Form>
             ) : (
               <Form onSubmit={handleResetRequest}>
@@ -637,15 +588,13 @@ function ResetPasswordClient() {
                   />
                 </FormGroup>
 
-                <Button
+                <PrimaryButton
                   type="submit"
                   disabled={loading}
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
+                  style={{ width: '100%' }}
                 >
                   {loading ? "Sending..." : "Send Reset Instructions"}
-                </Button>
+                </PrimaryButton>
               </Form>
             )}
           </>

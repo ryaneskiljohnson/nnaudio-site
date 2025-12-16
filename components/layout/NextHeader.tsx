@@ -426,22 +426,24 @@ const AuthButton = styled.a<{ $isPrimary?: boolean; $isMobile?: boolean }>`
   ${(props) =>
     props.$isPrimary
       ? `
-    background: linear-gradient(90deg, var(--primary), var(--accent));
+    background: linear-gradient(135deg, #6c63ff, #8a2be2);
     color: white;
     box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
     
     &:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(108, 99, 255, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(108, 99, 255, 0.5);
+      background: linear-gradient(135deg, #7c73ff, #9a3bf2);
     }
   `
       : `
     background: transparent;
     color: white;
-    border: 2px solid var(--primary);
+    border: 2px solid #6c63ff;
     
     &:hover {
       background: rgba(108, 99, 255, 0.1);
+      border-color: #7c73ff;
     }
   `}
 

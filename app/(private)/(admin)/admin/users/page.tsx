@@ -35,6 +35,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import StatLoadingSpinner from "@/components/common/StatLoadingSpinner";
+import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
 import {
   getAllUsersForCRMAdmin,
   getUsersForCRMCountAdmin,
@@ -2896,22 +2897,7 @@ export default function AdminCRM() {
             <TableContainer>
               {loading && (
                 <LoadingOverlay>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 1,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                    style={{
-                      width: "20px",
-                      height: "20px",
-                      border: "3px solid rgba(108, 99, 255, 0.3)",
-                      borderTop: "3px solid var(--primary)",
-                      borderRadius: "50%",
-                    }}
-                  />
-                  Loading users...
+                  <NNAudioLoadingSpinner text="Loading users..." size={40} />
                 </LoadingOverlay>
               )}
               <Table>

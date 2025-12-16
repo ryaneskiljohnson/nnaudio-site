@@ -5,7 +5,7 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { FaShoppingCart } from "react-icons/fa";
+import { FaShoppingCart, FaArrowRight } from "react-icons/fa";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
 import { cleanHtmlText } from "@/utils/stringUtils";
@@ -129,6 +129,39 @@ const CartButton = styled(motion.button)`
   }
 `;
 
+const ViewPricingButton = styled(motion.button)`
+  width: 100%;
+  padding: 12px 24px;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #6c63ff, #8a2be2);
+  border: none;
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+  transition: all 0.3s ease;
+  margin-top: 0.5rem;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(108, 99, 255, 0.5);
+    background: linear-gradient(135deg, #7c73ff, #9a3bf2);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  svg {
+    font-size: 0.9rem;
+  }
+`;
+
 interface ProductCardProps {
   product: {
     id: string | number;
@@ -166,15 +199,42 @@ function getDefaultSubtitle(name: string, category?: string): string {
 export default function ProductCard({ product, index = 0, showCartButton = true }: ProductCardProps) {
   const { addItem } = useCart();
   const { success } = useToast();
+  const [imageError, setImageError] = React.useState(false);
+
+  // NNAudio logo fallback
+  const NNAUDIO_LOGO = '/images/nnaud-io/NNPurp1.png';
 
   // Handle both API product format and landing page format
-  const imageUrl = product.featured_image_url || product.logo_url || product.image || '';
+  // Check for truthy values (not null, undefined, or empty string)
+  const featuredImg = product.featured_image_url?.trim() || null;
+  const logoImg = product.logo_url?.trim() || null;
+  const imageImg = product.image?.trim() || null;
+  const primaryImageUrl = featuredImg || logoImg || imageImg;
+  const shouldUseLogo = imageError || !primaryImageUrl;
   const displayPrice = product.sale_price && product.sale_price > 0 ? product.sale_price : product.price;
   // Card views should ONLY use tagline or short_description, never the full description
   // Clean HTML entities and truncate to 100 characters max for card display
   const rawTagline = product.tagline || product.short_description || '';
   const cleanedTagline = cleanHtmlText(rawTagline);
   const tagline = cleanedTagline.length > 100 ? cleanedTagline.substring(0, 100).trim() + '...' : cleanedTagline;
+  
+  // Check if this is an elite bundle and get the correct slug
+  const getEliteBundleSlug = (name: string): string | null => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes("producer's") || lowerName.includes('producers')) {
+      return 'producers-arsenal';
+    }
+    if (lowerName.includes('ultimate')) {
+      return 'ultimate-bundle';
+    }
+    if (lowerName.includes('beat lab')) {
+      return 'beat-lab';
+    }
+    return null;
+  };
+  
+  const bundleSlug = getEliteBundleSlug(product.name);
+  const isEliteBundle = bundleSlug !== null;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -203,26 +263,30 @@ export default function ProductCard({ product, index = 0, showCartButton = true 
         style={{ textDecoration: 'none', color: 'inherit', display: 'block', width: '100%', height: '100%' }}
       >
         <ProductImageContainer>
-          {imageUrl ? (
+          {shouldUseLogo ? (
+            // Use regular img tag for logo to avoid Next.js placeholder
+            <img
+              src={NNAUDIO_LOGO}
+              alt={product.name}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            />
+          ) : (
             <ProductImage
-              src={imageUrl}
+              src={primaryImageUrl}
               alt={product.name}
               fill
               style={{ objectFit: 'cover' }}
+              onError={() => {
+                // If image fails to load, use NNAudio logo
+                if (!imageError) {
+                  setImageError(true);
+                }
+              }}
             />
-          ) : (
-            <div style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '3rem',
-              color: 'rgba(255, 255, 255, 0.3)',
-              background: 'linear-gradient(135deg, rgba(138, 43, 226, 0.2), rgba(75, 0, 130, 0.2))'
-            }}>
-              {product.name[0]}
-            </div>
           )}
         </ProductImageContainer>
         
@@ -231,36 +295,52 @@ export default function ProductCard({ product, index = 0, showCartButton = true 
           <ProductTagline>
             {tagline || getDefaultSubtitle(product.name, product.category)}
           </ProductTagline>
-          <PriceRow>
-            <ProductPrice>
-              {product.sale_price && product.sale_price > 0 ? (
-                <>
-                  <span style={{ 
-                    textDecoration: 'line-through', 
-                    fontSize: '1rem', 
-                    opacity: 0.6, 
-                    marginRight: '8px',
-                    color: 'rgba(255, 255, 255, 0.6)'
-                  }}>
-                    ${product.price}
-                  </span>
-                  ${product.sale_price}
-                </>
-              ) : product.price === 0 || product.price === null ? (
-                'FREE'
-              ) : (
-                `$${product.price}`
-              )}
-            </ProductPrice>
-            {showCartButton && (
-              <CartButton
-                onClick={handleAddToCart}
-                aria-label={`Add ${product.name} to cart`}
+          {isEliteBundle ? (
+            <Link 
+              href={`/bundles/${bundleSlug}`}
+              onClick={(e) => e.stopPropagation()}
+              style={{ textDecoration: 'none', marginTop: '0.5rem' }}
+            >
+              <ViewPricingButton
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <FaShoppingCart />
-              </CartButton>
-            )}
-          </PriceRow>
+                View Pricing
+                <FaArrowRight />
+              </ViewPricingButton>
+            </Link>
+          ) : (
+            <PriceRow>
+              <ProductPrice>
+                {product.sale_price && product.sale_price > 0 ? (
+                  <>
+                    <span style={{ 
+                      textDecoration: 'line-through', 
+                      fontSize: '1rem', 
+                      opacity: 0.6, 
+                      marginRight: '8px',
+                      color: 'rgba(255, 255, 255, 0.6)'
+                    }}>
+                      ${product.price}
+                    </span>
+                    ${product.sale_price}
+                  </>
+                ) : product.price === 0 || product.price === null ? (
+                  'FREE'
+                ) : (
+                  `$${product.price}`
+                )}
+              </ProductPrice>
+              {showCartButton && (
+                <CartButton
+                  onClick={handleAddToCart}
+                  aria-label={`Add ${product.name} to cart`}
+                >
+                  <FaShoppingCart />
+                </CartButton>
+              )}
+            </PriceRow>
+          )}
         </ProductInfo>
       </Link>
     </ProductCardContainer>

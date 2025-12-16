@@ -64,9 +64,18 @@ export async function GET(
       console.error('Error fetching bundle products:', productsError);
     }
 
+    // Check if this is an elite bundle (has subscription tiers)
+    const isEliteBundle = (tiers || []).length > 0;
+
     // Filter out products that don't exist or are inactive
+    // For elite bundles, also filter out bundle products (only include plugins, packs, etc.)
     const validProducts = (bundleProducts || [])
-      .filter((bp: any) => bp.product && bp.product.status === 'active')
+      .filter((bp: any) => {
+        if (!bp.product || bp.product.status !== 'active') return false;
+        // Elite bundles should not include other bundle products
+        if (isEliteBundle && bp.product.category === 'bundle') return false;
+        return true;
+      })
       .map((bp: any) => ({
         ...bp.product,
         display_order: bp.display_order,
@@ -99,6 +108,9 @@ export async function GET(
       };
     };
 
+    // Check if this is an elite bundle (has subscription tiers)
+    const isSubscriptionBundle = (tiers || []).length > 0;
+
     return NextResponse.json({
       success: true,
       bundle: {
@@ -106,6 +118,7 @@ export async function GET(
         products: validProducts,
         totalValue,
         pricing,
+        isSubscriptionBundle,
         savings: {
           monthly: calculateSavings(pricing.monthly),
           annual: calculateSavings(pricing.annual),

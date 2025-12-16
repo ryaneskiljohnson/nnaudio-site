@@ -108,6 +108,19 @@ const BundleName = styled.h2`
   text-align: center;
 `;
 
+const BundleCategory = styled.span`
+  display: inline-block;
+  padding: 6px 16px;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.3), rgba(68, 160, 141, 0.3));
+  color: #4ECDC4;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
 const BundleTagline = styled.p`
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.7);
@@ -208,6 +221,8 @@ interface BundleWithPricing extends Bundle {
     logo_url?: string;
   }>;
   totalProductCount?: number;
+  isSubscriptionBundle?: boolean;
+  bundle_type?: string;
 }
 
 export default function BundlesPage() {
@@ -225,23 +240,23 @@ export default function BundlesPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Reorder bundles: Producer's Arsenal (left), Ultimate Bundle (center), Beat Lab (right)
-        const sortedBundles = [...data.bundles].sort((a, b) => {
+        // Reorder bundles: Producer's Arsenal (left), Ultimate Bundle (middle), Beat Lab (right)
+        const reorderedBundles = [...data.bundles].sort((a, b) => {
           const aName = a.name.toLowerCase();
           const bName = b.name.toLowerCase();
           
-          // Define order: Producer's Arsenal = 0, Ultimate Bundle = 1, Beat Lab = 2
+          // Define order: Producer's Arsenal (0), Ultimate Bundle (1), Beat Lab (2)
           const getOrder = (name: string) => {
             if (name.includes("producer's") || name.includes('producers')) return 0;
             if (name.includes('ultimate')) return 1;
             if (name.includes('beat lab')) return 2;
-            return 3; // Other bundles go last
+            return 999; // Other bundles go to the end
           };
           
           return getOrder(aName) - getOrder(bName);
         });
         
-        setBundles(sortedBundles);
+        setBundles(reorderedBundles);
       }
     } catch (error) {
       console.error('Error fetching bundles:', error);
@@ -251,9 +266,10 @@ export default function BundlesPage() {
   };
 
   const formatPrice = (price: number | undefined) => {
-    if (!price) return 'N/A';
+    if (!price && price !== 0) return 'N/A';
     if (price === 0) return 'FREE';
-    return `$${price.toFixed(2)}`;
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    return `$${numPrice.toFixed(2)}`;
   };
 
   const getBestPrice = (bundle: BundleWithPricing) => {
@@ -282,7 +298,7 @@ export default function BundlesPage() {
   return (
     <Container>
       <Header>
-        <Title>Subscription Bundles</Title>
+        <Title>Elite Bundles</Title>
         <Subtitle>
           Get access to curated collections of our best products with exclusive bundle pricing.
         </Subtitle>
@@ -317,13 +333,55 @@ export default function BundlesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              {/* Mosaic Image Collage */}
-              {bundle.products && bundle.products.length > 0 && (
+              {/* Bundle Featured Image */}
+              {bundle.featured_image_url ? (
+                <div style={{
+                  width: '100%',
+                  aspectRatio: '1',
+                  marginBottom: '1.5rem',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  background: 'rgba(0, 0, 0, 0.3)'
+                }}>
+                  <Image
+                    src={bundle.featured_image_url}
+                    alt={bundle.name}
+                    fill
+                    style={{ objectFit: 'cover' }}
+                    unoptimized
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    background: 'linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent)',
+                    padding: '1rem',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'flex-end'
+                  }}>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                      color: '#000',
+                      padding: '0.6rem 1.2rem',
+                      borderRadius: '25px',
+                      fontSize: '0.95rem',
+                      fontWeight: 700,
+                      boxShadow: '0 4px 12px rgba(255, 215, 0, 0.4)',
+                      letterSpacing: '0.5px'
+                    }}>
+                      {bundle.totalProductCount || 0} {bundle.totalProductCount === 1 ? 'Product' : 'Products'} Included
+                    </div>
+                  </div>
+                </div>
+              ) : bundle.products && bundle.products.length > 0 ? (
                 <BundleMosaic 
                   products={bundle.products} 
                   totalCount={bundle.totalProductCount || bundle.products.length}
                 />
-              )}
+              ) : null}
 
               <BundleHeader>
                 <BundleName>{bundle.name}</BundleName>

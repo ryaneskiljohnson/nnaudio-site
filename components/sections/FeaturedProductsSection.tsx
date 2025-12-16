@@ -212,14 +212,16 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
                     />
                   </ThumbnailBadge>
                 )}
-                <ProductLogo>
-                  <Image
-                    src={product.logo}
-                    alt={product.name}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                  />
-                </ProductLogo>
+                {product.logo && (
+                  <ProductLogo>
+                    <Image
+                      src={product.logo}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                    />
+                  </ProductLogo>
+                )}
                 <ProductTitle>{product.name}</ProductTitle>
                 <ProductDescription>{cleanHtmlText(product.tagline || product.description || '')}</ProductDescription>
                 <ProductActions>

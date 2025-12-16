@@ -19,6 +19,7 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import StatLoadingSpinner from "@/components/common/StatLoadingSpinner";
+import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
 import { getTemplates } from "@/app/actions/email-campaigns";
 
 const TemplatesContainer = styled.div`
@@ -672,20 +673,7 @@ function TemplatesPage() {
                 <tr>
                   <TableCell colSpan={7}>
                     <EmptyState>
-                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: 'var(--text-secondary)' }}>
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          style={{ 
-                            width: '20px', 
-                            height: '20px', 
-                            border: '3px solid rgba(108, 99, 255, 0.3)', 
-                            borderTop: '3px solid var(--primary)', 
-                            borderRadius: '50%' 
-                          }}
-                        />
-                        Loading templates...
-                      </span>
+                      <NNAudioLoadingSpinner text="Loading templates..." size={40} />
                     </EmptyState>
                   </TableCell>
                 </tr>

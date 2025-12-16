@@ -23,10 +23,11 @@ export async function GET(request: NextRequest) {
           sale_price,
           active
         ),
-        bundle_products!inner(
-          product:products!inner(
+        bundle_products(
+          product:products(
             id,
             name,
+            category,
             featured_image_url,
             logo_url
           )
@@ -63,10 +64,21 @@ export async function GET(request: NextRequest) {
         lifetime: tiers.find(t => t.subscription_type === 'lifetime'),
       };
 
+      // Check if this is a subscription bundle (has subscription tiers)
+      const isSubscriptionBundle = tiers.length > 0;
+
       // Extract all products with images for mosaic
+      // For elite bundles, filter out bundle products (only include plugins, packs, etc.)
+      // For regular bundles, show all products including bundle products
       const allProducts = ((bundle.bundle_products || []) as any[])
         .map((bp: any) => bp.product)
-        .filter((p: any) => p);
+        .filter((p: any) => {
+          if (!p) return false;
+          // Only filter out bundle products for elite bundles (subscription bundles)
+          // Regular bundles should show all products
+          if (isSubscriptionBundle && p.category === 'bundle') return false;
+          return true;
+        });
       
       const productsWithImages = allProducts
         .filter((p: any) => p && (p.featured_image_url || p.logo_url));
@@ -79,15 +91,31 @@ export async function GET(request: NextRequest) {
         pricing,
         products: productsWithImages, // All products with images for mosaic
         totalProductCount, // Total count of all products
+        isSubscriptionBundle, // Flag to identify elite bundles (bundles with subscription tiers)
         bundle_subscription_tiers: undefined, // Remove nested data
         bundle_products: undefined, // Remove nested data
       };
     });
 
+    // Sort: elite bundles first, then by display_order
+    const sortedBundles = transformedBundles?.sort((a, b) => {
+      // Elite bundles (with subscription tiers) come first
+      if (a.isSubscriptionBundle && !b.isSubscriptionBundle) return -1;
+      if (!a.isSubscriptionBundle && b.isSubscriptionBundle) return 1;
+      
+      // If both are elite bundles or both are not, sort by display_order
+      const aOrder = a.display_order ?? 999;
+      const bOrder = b.display_order ?? 999;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      
+      // Fallback to created_at
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    });
+
     return NextResponse.json({
       success: true,
-      bundles: transformedBundles,
-      count: transformedBundles?.length || 0
+      bundles: sortedBundles,
+      count: sortedBundles?.length || 0
     });
   } catch (error: any) {
     console.error('Unexpected error in GET /api/bundles:', error);

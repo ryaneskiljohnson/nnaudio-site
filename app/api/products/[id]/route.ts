@@ -114,31 +114,34 @@ export async function PUT(
     const body = await request.json();
     const adminSupabase = await createAdminClient();
 
-    // Check if price or sale_price changed - if so, sync to Stripe
-    const shouldSyncStripe = body.price !== undefined || body.sale_price !== undefined;
+    // Get existing product to check current values and Stripe IDs
+    const { data: existingProduct } = await adminSupabase
+      .from('products')
+      .select('stripe_product_id, stripe_price_id, stripe_sale_price_id, name, description, short_description, price, sale_price')
+      .eq('id', id)
+      .single();
     
-    // Get existing product to check current Stripe IDs
-    let existingStripeIds: {
-      stripe_product_id?: string | null;
-      stripe_price_id?: string | null;
-      stripe_sale_price_id?: string | null;
-    } = {};
-    
-    if (shouldSyncStripe) {
-      const { data: existingProduct } = await adminSupabase
-        .from('products')
-        .select('stripe_product_id, stripe_price_id, stripe_sale_price_id, name, description, short_description, price, sale_price')
-        .eq('id', id)
-        .single();
-      
-      if (existingProduct) {
-        existingStripeIds = {
-          stripe_product_id: existingProduct.stripe_product_id,
-          stripe_price_id: existingProduct.stripe_price_id,
-          stripe_sale_price_id: existingProduct.stripe_sale_price_id,
-        };
-      }
+    if (!existingProduct) {
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      );
     }
+
+    // Check if name, price, sale_price, or description changed - if so, sync to Stripe
+    const nameChanged = body.name !== undefined && body.name !== existingProduct.name;
+    const priceChanged = body.price !== undefined && body.price !== existingProduct.price;
+    const salePriceChanged = body.sale_price !== undefined && body.sale_price !== existingProduct.sale_price;
+    const descriptionChanged = (body.description !== undefined && body.description !== existingProduct.description) ||
+                               (body.short_description !== undefined && body.short_description !== existingProduct.short_description);
+    
+    const shouldSyncStripe = nameChanged || priceChanged || salePriceChanged || descriptionChanged;
+    
+    const existingStripeIds = {
+      stripe_product_id: existingProduct.stripe_product_id,
+      stripe_price_id: existingProduct.stripe_price_id,
+      stripe_sale_price_id: existingProduct.stripe_sale_price_id,
+    };
 
     const { data: product, error } = await adminSupabase
       .from('products')
@@ -155,8 +158,8 @@ export async function PUT(
       );
     }
 
-    // Sync to Stripe if prices changed
-    if (shouldSyncStripe && product) {
+    // Sync to Stripe if name, price, or description changed
+    if (shouldSyncStripe && product && product.price !== null && product.price !== undefined) {
       try {
         const { syncProductToStripe } = await import('@/utils/stripe/product-sync');
         
@@ -264,6 +267,64 @@ export async function DELETE(
     const { id } = params;
     const adminSupabase = await createAdminClient();
 
+    // Get product to check for Stripe IDs before deletion
+    const { data: product } = await adminSupabase
+      .from('products')
+      .select('stripe_product_id, stripe_price_id, stripe_sale_price_id')
+      .eq('id', id)
+      .single();
+
+    // Delete from Stripe if product exists there
+    if (product?.stripe_product_id) {
+      try {
+        const Stripe = (await import('stripe')).default;
+        if (!process.env.STRIPE_SECRET_KEY) {
+          throw new Error('STRIPE_SECRET_KEY not configured');
+        }
+        
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+          apiVersion: '2024-12-18.acacia',
+        });
+
+        // Archive prices first (can't delete prices that have been used)
+        if (product.stripe_price_id) {
+          try {
+            await stripe.prices.update(product.stripe_price_id, {
+              active: false,
+            });
+          } catch (error: any) {
+            console.error('Error archiving Stripe price:', error);
+            // Continue even if price archiving fails
+          }
+        }
+
+        if (product.stripe_sale_price_id) {
+          try {
+            await stripe.prices.update(product.stripe_sale_price_id, {
+              active: false,
+            });
+          } catch (error: any) {
+            console.error('Error archiving Stripe sale price:', error);
+            // Continue even if sale price archiving fails
+          }
+        }
+
+        // Archive the product (can't delete products that have been used)
+        try {
+          await stripe.products.update(product.stripe_product_id, {
+            active: false,
+          });
+        } catch (error: any) {
+          console.error('Error archiving Stripe product:', error);
+          // Continue even if product archiving fails
+        }
+      } catch (stripeError: any) {
+        console.error('Error deleting from Stripe:', stripeError);
+        // Continue with database deletion even if Stripe deletion fails
+      }
+    }
+
+    // Delete from database
     const { error } = await adminSupabase
       .from('products')
       .delete()
@@ -279,7 +340,8 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: 'Product deleted successfully'
+      message: 'Product deleted successfully',
+      stripe_deleted: !!product?.stripe_product_id
     });
   } catch (error: any) {
     console.error('Unexpected error in DELETE /api/products/[id]:', error);

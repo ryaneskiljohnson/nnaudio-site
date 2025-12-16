@@ -73,6 +73,19 @@ const BundleName = styled.h1`
   }
 `;
 
+const BundleCategory = styled.span`
+  display: inline-block;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.3), rgba(68, 160, 141, 0.3));
+  color: #4ECDC4;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
 const BundleTagline = styled.p`
   font-size: 1.3rem;
   color: rgba(255, 255, 255, 0.8);
@@ -320,9 +333,10 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
   };
 
   const formatPrice = (price: number | undefined) => {
-    if (!price) return 'N/A';
+    if (!price && price !== 0) return 'N/A';
     if (price === 0) return 'FREE';
-    return `$${price.toFixed(2)}`;
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    return `$${numPrice.toFixed(2)}`;
   };
 
   const handleSubscribe = (tier: 'monthly' | 'annual' | 'lifetime') => {
@@ -379,6 +393,9 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
         </BreadcrumbContainer>
 
         <Header>
+          {(bundle as any).isSubscriptionBundle && (
+            <BundleCategory>Elite Bundle</BundleCategory>
+          )}
           <BundleName>{bundle.name}</BundleName>
           {bundle.tagline && (
             <BundleTagline>{bundle.tagline}</BundleTagline>
@@ -404,7 +421,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
             {bundle.pricing.monthly && (
               <PricingCard
                 onClick={() => setSelectedTier('monthly')}
-                featured={selectedTier === 'monthly'}
+                featured={selectedTier === 'monthly' ? true : undefined}
               >
                 <PricingType>Monthly</PricingType>
                 {bundle.pricing.monthly.sale_price ? (
@@ -424,7 +441,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
             {bundle.pricing.annual && (
               <PricingCard
                 onClick={() => setSelectedTier('annual')}
-                featured={selectedTier === 'annual'}
+                featured={selectedTier === 'annual' ? true : undefined}
               >
                 <PricingType>Annual</PricingType>
                 {bundle.pricing.annual.sale_price ? (
@@ -449,7 +466,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
             {bundle.pricing.lifetime && (
               <PricingCard
                 onClick={() => setSelectedTier('lifetime')}
-                featured={selectedTier === 'lifetime'}
+                featured={selectedTier === 'lifetime' ? true : undefined}
               >
                 <PricingType>Lifetime</PricingType>
                 {bundle.pricing.lifetime.sale_price ? (
@@ -485,24 +502,29 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
               >
                 <Link href={`/product/${product.slug}`} style={{ textDecoration: 'none' }}>
                   <ProductImage>
-                    {product.featured_image_url ? (
+                    {product.featured_image_url || product.logo_url ? (
                       <Image
-                        src={product.featured_image_url}
+                        src={product.featured_image_url || product.logo_url || ''}
                         alt={product.name}
                         fill
                         style={{ objectFit: 'cover' }}
+                        unoptimized
+                        onError={(e) => {
+                          // Fallback to NNAudio logo if image fails
+                          const target = e.target as HTMLImageElement;
+                          if (target.src !== '/images/nnaud-io/NNPurp1.png') {
+                            target.src = '/images/nnaud-io/NNPurp1.png';
+                          }
+                        }}
                       />
                     ) : (
-                      <div style={{ 
-                        width: '100%', 
-                        height: '100%', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        color: 'rgba(255, 255, 255, 0.3)'
-                      }}>
-                        No Image
-                      </div>
+                      <Image
+                        src="/images/nnaud-io/NNPurp1.png"
+                        alt={product.name}
+                        fill
+                        style={{ objectFit: 'contain', padding: '20px' }}
+                        unoptimized
+                      />
                     )}
                   </ProductImage>
                   <ProductInfo>

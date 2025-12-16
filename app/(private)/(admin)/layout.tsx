@@ -22,7 +22,6 @@ import {
   FaChevronDown,
   FaChevronRight,
   FaUser,
-  FaFacebook,
   FaBullhorn,
   FaChartLine,
   FaPlus,
@@ -561,7 +560,6 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [emailCampaignsExpanded, setEmailCampaignsExpanded] = useState(false);
-  const [adManagerExpanded, setAdManagerExpanded] = useState(false);
   const { user, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -628,23 +626,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return pathname.startsWith("/admin/email-campaigns");
   };
 
-  // Helper function to check if any ad manager sub-routes are active
-  const isAdManagerActive = () => {
-    return pathname.startsWith("/admin/ad-manager");
-  };
 
-  // Helper function to check if user is on tutorial center pages
-  const isTutorialCenter = () => {
-    return pathname.startsWith("/admin/tutorial-center");
-  };
 
   // Auto-expand email campaigns section if any sub-route is active
   useEffect(() => {
     if (isEmailCampaignsActive()) {
       setEmailCampaignsExpanded(true);
-    }
-    if (isAdManagerActive()) {
-      setAdManagerExpanded(true);
     }
   }, [pathname]);
 
@@ -717,8 +704,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <LayoutContainer>
-      {!isTutorialCenter() && (
-        <Sidebar ref={sidebarRef} $isOpen={sidebarOpen}>
+      <Sidebar ref={sidebarRef} $isOpen={sidebarOpen}>
         <LogoContainer>
           <Link href="/admin">
             <NNAudioLogo
@@ -795,14 +781,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onClick={(e) => handleNavigation(e, "/admin/support-tickets")}
             >
               <FaTicketAlt /> Support Tickets
-            </NavItem>
-          </Link>
-          <Link href="/admin/tutorial-center">
-            <NavItem
-              $active={pathname === "/admin/tutorial-center" || pathname.startsWith("/admin/tutorial-center/") ? "true" : "false"}
-              onClick={(e) => handleNavigation(e, "/admin/tutorial-center")}
-            >
-              <FaPlay /> Tutorial Center
             </NavItem>
           </Link>
 
@@ -922,98 +900,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             )}
           </NavSection>
 
-          <NavSection>
-            <NavSectionHeader
-              $expanded={adManagerExpanded}
-              onClick={() => setAdManagerExpanded(!adManagerExpanded)}
-              style={{ cursor: "pointer" }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.75rem",
-                }}
-              >
-                <FaFacebook />
-                Ad Manager
-              </div>
-              {adManagerExpanded ? <FaChevronDown /> : <FaChevronRight />}
-            </NavSectionHeader>
-            {adManagerExpanded && (
-              <SubNavItems
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-              >
-                <Link href="/admin/ad-manager">
-                  <SubNavItem
-                    $active={pathname === "/admin/ad-manager" ? "true" : "false"}
-                    onClick={(e) => handleNavigation(e, "/admin/ad-manager")}
-                  >
-                    <FaChartBar /> Dashboard
-                  </SubNavItem>
-                </Link>
-                <Link href="/admin/ad-manager/campaigns">
-                  <SubNavItem
-                    $active={
-                      pathname === "/admin/ad-manager/campaigns" ||
-                      pathname.startsWith("/admin/ad-manager/campaigns/")
-                        ? "true"
-                        : "false"
-                    }
-                    onClick={(e) => handleNavigation(e, "/admin/ad-manager/campaigns")}
-                  >
-                    <FaBullhorn /> Campaigns
-                  </SubNavItem>
-                </Link>
-                <Link href="/admin/ad-manager/ads/create">
-                  <SubNavItem
-                    $active={
-                      pathname === "/admin/ad-manager/ads/create" ||
-                      pathname.startsWith("/admin/ad-manager/ads/")
-                        ? "true"
-                        : "false"
-                    }
-                    onClick={(e) => handleNavigation(e, "/admin/ad-manager/ads/create")}
-                  >
-                    <FaImage /> Create Ad
-                  </SubNavItem>
-                </Link>
-                <Link href="/admin/ad-manager/audiences">
-                  <SubNavItem
-                    $active={
-                      pathname === "/admin/ad-manager/audiences" ? "true" : "false"
-                    }
-                    onClick={(e) => handleNavigation(e, "/admin/ad-manager/audiences")}
-                  >
-                    <FaBullseye /> Audiences
-                  </SubNavItem>
-                </Link>
-                <Link href="/admin/ad-manager/analytics">
-                  <SubNavItem
-                    $active={
-                      pathname === "/admin/ad-manager/analytics" ? "true" : "false"
-                    }
-                    onClick={(e) => handleNavigation(e, "/admin/ad-manager/analytics")}
-                  >
-                    <FaChartLine /> Analytics
-                  </SubNavItem>
-                </Link>
-                <Link href="/admin/ad-manager/settings">
-                  <SubNavItem
-                    $active={
-                      pathname === "/admin/ad-manager/settings" ? "true" : "false"
-                    }
-                    onClick={(e) => handleNavigation(e, "/admin/ad-manager/settings")}
-                  >
-                    <FaCog /> Settings
-                  </SubNavItem>
-                </Link>
-              </SubNavItems>
-            )}
-          </NavSection>
         </nav>
 
         <UserInfo>
@@ -1026,12 +912,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </LogoutButton>
         </UserInfo>
       </Sidebar>
-      )}
-      {!isTutorialCenter() && (
-        <>
-          <MobileOverlay $isOpen={sidebarOpen} />
-
-          <MobileHeader>
+      <MobileOverlay $isOpen={sidebarOpen} />
+      <MobileHeader>
         <MenuButton onClick={() => setSidebarOpen(!sidebarOpen)}>
           {sidebarOpen ? <FaTimes /> : <FaBars />}
         </MenuButton>
@@ -1053,9 +935,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         <div style={{ width: "24px" }} />
       </MobileHeader>
-        </>
-      )}
-      {sidebarOpen && !isTutorialCenter() && (
+      {sidebarOpen && (
         <MobileMenu initial="hidden" animate="visible" variants={fadeIn}>
           <MobileNavTitle>Admin Console</MobileNavTitle>
 
@@ -1141,18 +1021,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </MobileNavItem>
           </Link>
 
-          <Link href="/admin/tutorial-center">
-            <MobileNavItem
-              $active={pathname === "/admin/tutorial-center" || pathname.startsWith("/admin/tutorial-center/") ? "true" : "false"}
-              variants={menuItemVariants}
-              custom={4}
-              initial="hidden"
-              animate="visible"
-              onClick={(e) => handleNavigation(e, "/admin/tutorial-center")}
-            >
-              <FaPlay /> Tutorial Center
-            </MobileNavItem>
-          </Link>
 
           <Link href="/admin/email-campaigns/subscribers">
             <MobileNavItem
@@ -1268,99 +1136,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </MobileNavItem>
           </Link>
 
-          <Link href="/admin/ad-manager">
-            <MobileNavItem
-              $active={pathname === "/admin/ad-manager" ? "true" : "false"}
-              variants={menuItemVariants}
-              custom={11}
-              initial="hidden"
-              animate="visible"
-              onClick={(e) => handleNavigation(e, "/admin/ad-manager")}
-            >
-              <FaChartBar /> Ad Dashboard
-            </MobileNavItem>
-          </Link>
-
-          <Link href="/admin/ad-manager/campaigns">
-            <MobileNavItem
-              $active={
-                pathname === "/admin/ad-manager/campaigns" ||
-                pathname.startsWith("/admin/ad-manager/campaigns/")
-                  ? "true"
-                  : "false"
-              }
-              variants={menuItemVariants}
-              custom={12}
-              initial="hidden"
-              animate="visible"
-              onClick={(e) => handleNavigation(e, "/admin/ad-manager/campaigns")}
-            >
-              <FaBullhorn /> Ad Campaigns
-            </MobileNavItem>
-          </Link>
-
-          <Link href="/admin/ad-manager/ads/create">
-            <MobileNavItem
-              $active={
-                pathname === "/admin/ad-manager/ads/create" ||
-                pathname.startsWith("/admin/ad-manager/ads/")
-                  ? "true"
-                  : "false"
-              }
-              variants={menuItemVariants}
-              custom={13}
-              initial="hidden"
-              animate="visible"
-              onClick={(e) => handleNavigation(e, "/admin/ad-manager/ads/create")}
-            >
-              <FaImage /> Create Ad
-            </MobileNavItem>
-          </Link>
-
-          <Link href="/admin/ad-manager/audiences">
-            <MobileNavItem
-              $active={
-                pathname === "/admin/ad-manager/audiences" ? "true" : "false"
-              }
-              variants={menuItemVariants}
-              custom={14}
-              initial="hidden"
-              animate="visible"
-              onClick={(e) => handleNavigation(e, "/admin/ad-manager/audiences")}
-            >
-              <FaBullseye /> Ad Audiences
-            </MobileNavItem>
-          </Link>
-
-          <Link href="/admin/ad-manager/analytics">
-            <MobileNavItem
-              $active={
-                pathname === "/admin/ad-manager/analytics" ? "true" : "false"
-              }
-              variants={menuItemVariants}
-              custom={15}
-              initial="hidden"
-              animate="visible"
-              onClick={(e) => handleNavigation(e, "/admin/ad-manager/analytics")}
-            >
-              <FaChartLine /> Ad Analytics
-            </MobileNavItem>
-          </Link>
-
-          <Link href="/admin/ad-manager/settings">
-            <MobileNavItem
-              $active={
-                pathname === "/admin/ad-manager/settings" ? "true" : "false"
-              }
-              variants={menuItemVariants}
-              custom={16}
-              initial="hidden"
-              animate="visible"
-              onClick={(e) => handleNavigation(e, "/admin/ad-manager/settings")}
-            >
-              <FaCog /> Ad Settings
-            </MobileNavItem>
-          </Link>
 
           <Link href="/">
             <MobileNavItem
@@ -1391,16 +1166,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </MobileFooterSection>
         </MobileMenu>
       )}
-      <Content $sidebarVisible={!isTutorialCenter()}>
-        {!isTutorialCenter() && (
-          <BackButtonContainer>
+      <Content $sidebarVisible={true}>
+        <BackButtonContainer>
           <Link href="/dashboard">
             <BackButton>
               Back to Dashboard <FaArrowLeft />
             </BackButton>
           </Link>
         </BackButtonContainer>
-        )}
 
         <PageTransition
           initial="hidden"

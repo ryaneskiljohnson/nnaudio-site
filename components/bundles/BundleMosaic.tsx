@@ -6,7 +6,7 @@ import styled from 'styled-components';
 
 const MosaicContainer = styled.div`
   width: 100%;
-  height: 300px;
+  aspect-ratio: 1;
   margin-bottom: 1.5rem;
   border-radius: 12px;
   overflow: hidden;
@@ -14,7 +14,7 @@ const MosaicContainer = styled.div`
   background: rgba(0, 0, 0, 0.3);
   
   @media (max-width: 768px) {
-    height: 250px;
+    aspect-ratio: 1;
   }
 `;
 
@@ -70,6 +70,9 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // NNAudio logo fallback
+  const NNAUDIO_LOGO = '/images/nnaud-io/NNPurp1.png';
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || products.length === 0) {
@@ -84,78 +87,107 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
       return;
     }
 
-    // Set canvas size
+    // Set canvas size - use high resolution (4x for retina/HD displays)
     const containerWidth = canvas.offsetWidth || 400;
     const containerHeight = canvas.offsetHeight || 300;
-    canvas.width = containerWidth;
-    canvas.height = containerHeight;
+    const scale = 4; // 4x resolution multiplier
+    const canvasSize = Math.max(containerWidth, containerHeight); // Keep it square
+    canvas.width = canvasSize * scale;
+    canvas.height = canvasSize * scale;
+    
+    // Scale the context to match the high resolution
+    ctx.scale(scale, scale);
+
+    // Randomize the order of products
+    const shuffledProducts = [...products].sort(() => Math.random() - 0.5);
 
     // Calculate grid dimensions
     // Try to make it as square as possible
     // Use all products, no limit
-    const productCount = products.length;
+    const productCount = shuffledProducts.length;
     const cols = Math.ceil(Math.sqrt(productCount));
     const rows = Math.ceil(productCount / cols);
     
-    const cellWidth = containerWidth / cols;
-    const cellHeight = containerHeight / rows;
-
+    // Use the square canvas size for calculations (already scaled)
+    const cellWidth = canvasSize / cols;
+    const cellHeight = canvasSize / rows;
+    
+    // Track seen featured images to detect duplicates
+    const seenFeaturedImages = new Map<string, boolean>();
+    
     // Load and draw images
-    const imagePromises = products.map((product, index) => {
-      return new Promise<void>((resolve, reject) => {
+    const imagePromises = shuffledProducts.map((product, index) => {
+      return new Promise<void>((resolve) => {
+        const featuredImageUrl = product.featured_image_url;
+        const logoUrl = product.logo_url;
+        
+        // Check if this featured image has been seen before
+        const isDuplicate = featuredImageUrl && seenFeaturedImages.has(featuredImageUrl);
+        
+        // If duplicate, use logo instead; otherwise use featured image, then logo as fallback
+        let imageUrl: string | undefined;
+        if (isDuplicate && logoUrl) {
+          imageUrl = logoUrl;
+        } else {
+          imageUrl = featuredImageUrl || logoUrl;
+          if (featuredImageUrl) {
+            seenFeaturedImages.set(featuredImageUrl, true);
+          }
+        }
+        
+        // If no image at all, use NNAudio logo as fallback
+        if (!imageUrl) {
+          imageUrl = NNAUDIO_LOGO;
+        }
+        
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         
         img.onload = () => {
+          // Draw the image
           const col = index % cols;
           const row = Math.floor(index / cols);
-          
           const x = col * cellWidth;
           const y = row * cellHeight;
           
-          // Draw square crop (center crop)
           const size = Math.min(img.width, img.height);
           const sx = (img.width - size) / 2;
           const sy = (img.height - size) / 2;
           
-          ctx.drawImage(
-            img,
-            sx, sy, size, size, // Source: square crop from center
-            x, y, cellWidth, cellHeight // Destination: grid cell
-          );
-          
+          ctx.drawImage(img, sx, sy, size, size, x, y, cellWidth, cellHeight);
           resolve();
         };
         
         img.onerror = () => {
-          // Draw placeholder for failed images
-          const col = index % cols;
-          const row = Math.floor(index / cols);
-          const x = col * cellWidth;
-          const y = row * cellHeight;
-          
-          ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
-          ctx.fillRect(x, y, cellWidth, cellHeight);
-          
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-          ctx.font = 'bold 24px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(
-            product.name.charAt(0).toUpperCase(),
-            x + cellWidth / 2,
-            y + cellHeight / 2
-          );
-          
-          resolve();
+          // If image fails to load, try NNAudio logo as fallback
+          if (imageUrl !== NNAUDIO_LOGO) {
+            const fallbackImg = new window.Image();
+            fallbackImg.crossOrigin = 'anonymous';
+            fallbackImg.onload = () => {
+              const col = index % cols;
+              const row = Math.floor(index / cols);
+              const x = col * cellWidth;
+              const y = row * cellHeight;
+              
+              const size = Math.min(fallbackImg.width, fallbackImg.height);
+              const sx = (fallbackImg.width - size) / 2;
+              const sy = (fallbackImg.height - size) / 2;
+              
+              ctx.drawImage(fallbackImg, sx, sy, size, size, x, y, cellWidth, cellHeight);
+              resolve();
+            };
+            fallbackImg.onerror = () => {
+              // If even the logo fails, just skip it
+              resolve();
+            };
+            fallbackImg.src = NNAUDIO_LOGO;
+          } else {
+            // Logo already failed, just skip it
+            resolve();
+          }
         };
         
-        const imageUrl = product.featured_image_url || product.logo_url;
-        if (imageUrl) {
-          img.src = imageUrl;
-        } else {
-          img.onerror(new Event('error'));
-        }
+        img.src = imageUrl;
       });
     });
 
