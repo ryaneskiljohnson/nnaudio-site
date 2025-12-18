@@ -1136,6 +1136,21 @@ export default function ProductPage() {
         return;
       }
 
+      // Connect audio to analyser if not already connected
+      if (audio && audioContextRef.current && analyserRef.current) {
+        try {
+          if (!(audio as any).__sourceConnected) {
+            const source = audioContextRef.current.createMediaElementSource(audio);
+            source.connect(analyserRef.current);
+            analyserRef.current.connect(audioContextRef.current.destination);
+            (audio as any).__sourceConnected = true;
+          }
+        } catch (e) {
+          // Already connected or error, ignore
+          console.warn('Audio context connection:', e);
+        }
+      }
+
       audio.pause();
       audio.src = audioUrl;
       audio.load();
@@ -1760,10 +1775,8 @@ export default function ProductPage() {
       )}
 
       <ContentSection>
+        <SectionTitle>Overview</SectionTitle>
         <OverviewSection>
-          <OverviewBanner>
-            <OverviewTitle>Overview</OverviewTitle>
-          </OverviewBanner>
           <OverviewContent>
             <OverviewFeaturesList>
               <OverviewFeatureItem>10 Complete Effect Chains</OverviewFeatureItem>
@@ -1924,23 +1937,7 @@ export default function ProductPage() {
               </Playlist>
               
               <audio
-                ref={(audio) => {
-                  mainAudioRef.current = audio;
-                  if (audio && audioContextRef.current && analyserRef.current) {
-                    // Connect audio to analyser (only once)
-                    try {
-                      if (!(audio as any).__sourceConnected) {
-                        const source = audioContextRef.current.createMediaElementSource(audio);
-                        source.connect(analyserRef.current);
-                        analyserRef.current.connect(audioContextRef.current.destination);
-                        (audio as any).__sourceConnected = true;
-                      }
-                    } catch (e) {
-                      // Already connected or error, ignore
-                      console.warn('Audio context connection:', e);
-                    }
-                  }
-                }}
+                ref={mainAudioRef}
                 src={product.audio_samples[currentTrackIndex]?.url}
                 crossOrigin={product.audio_samples[currentTrackIndex]?.url?.includes('supabase.co') ? 'anonymous' : undefined}
                 preload="metadata"
