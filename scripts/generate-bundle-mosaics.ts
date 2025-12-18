@@ -149,18 +149,18 @@ async function generateMosaic(
       
       // Validate image has valid dimensions
       if (!img || img.width === 0 || img.height === 0) {
-        // If image failed and it's not already the logo, try logo as fallback
+      // If image failed and it's not already the logo, try logo as fallback
         if (imageUrl !== NNAUDIO_LOGO) {
-          const logoPath = path.join(process.cwd(), 'public', NNAUDIO_LOGO);
-          if (fs.existsSync(logoPath)) {
-            try {
-              const logoImg = await loadImage(logoPath);
-              if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
-                img = logoImg;
-              }
-            } catch {
-              // Ignore
+        const logoPath = path.join(process.cwd(), 'public', NNAUDIO_LOGO);
+        if (fs.existsSync(logoPath)) {
+          try {
+            const logoImg = await loadImage(logoPath);
+            if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
+              img = logoImg;
             }
+          } catch {
+            // Ignore
+          }
           }
         }
       }
@@ -201,9 +201,9 @@ async function generateMosaic(
           }
         } else {
           // Draw placeholder if logo file doesn't exist
-          ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
-          ctx.fillRect(x, y, cellWidth, cellHeight);
-          failedCount++;
+        ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
+        ctx.fillRect(x, y, cellWidth, cellHeight);
+        failedCount++;
           failedProducts.push(`${product.name}`);
         }
       }
@@ -236,13 +236,13 @@ async function generateMosaic(
           failedProducts.push(`${product.name}`);
         }
       } else {
-        ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
-        ctx.fillRect(x, y, cellWidth, cellHeight);
-        failedCount++;
+      ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
+      ctx.fillRect(x, y, cellWidth, cellHeight);
+      failedCount++;
         failedProducts.push(`${product.name}`);
       }
       if (failedCount <= 5) {
-        console.warn(`    ⚠️  Error loading image for ${product.name}: ${error.message}`);
+      console.warn(`    ⚠️  Error loading image for ${product.name}: ${error.message}`);
       }
     }
   });

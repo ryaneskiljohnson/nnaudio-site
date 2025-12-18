@@ -596,25 +596,25 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                 <BundleCategory style={{ marginBottom: '1rem' }}>Elite Bundle</BundleCategory>
               )}
               <BundleName style={{ marginBottom: '0.75rem', fontSize: '2.5rem' }}>{bundle.name}</BundleName>
-              {bundle.tagline && (
+          {bundle.tagline && (
                 <BundleTagline style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>{bundle.tagline}</BundleTagline>
-              )}
-              {bundle.description && (
+          )}
+          {bundle.description && (
                 <BundleDescription style={{ marginBottom: '1.5rem', fontSize: '0.95rem', maxWidth: '100%' }}>
                   {bundle.description}
                 </BundleDescription>
-              )}
+          )}
               <ProductCountBadge>
                 {bundle.products?.length || 0} {bundle.products?.length === 1 ? 'Product' : 'Products'}
               </ProductCountBadge>
-              <ValueTitle>Total Bundle Value</ValueTitle>
-              <ValueAmount>{formatPrice(bundle.totalValue)}</ValueAmount>
-              {selectedSavings && selectedSavings.amount > 0 && (
-                <SavingsText>
-                  Save {formatPrice(selectedSavings.amount)} ({selectedSavings.percent}% off)
-                </SavingsText>
-              )}
-            </ValueSection>
+          <ValueTitle>Total Bundle Value</ValueTitle>
+          <ValueAmount>{formatPrice(bundle.totalValue)}</ValueAmount>
+          {selectedSavings && selectedSavings.amount > 0 && (
+            <SavingsText>
+              Save {formatPrice(selectedSavings.amount)} ({selectedSavings.percent}% off)
+            </SavingsText>
+          )}
+        </ValueSection>
           </ImageOverlay>
         </TopSection>
 
@@ -628,14 +628,14 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
               >
                 <PricingType>Monthly</PricingType>
                 <PriceContainer>
-                  {bundle.pricing.monthly.sale_price ? (
-                    <>
-                      <SalePrice>{formatPrice(bundle.pricing.monthly.sale_price)}</SalePrice>
-                      <OriginalPrice>{formatPrice(bundle.pricing.monthly.price)}</OriginalPrice>
-                    </>
-                  ) : (
-                    <Price>{formatPrice(bundle.pricing.monthly.price)}</Price>
-                  )}
+                {bundle.pricing.monthly.sale_price ? (
+                  <>
+                    <SalePrice>{formatPrice(bundle.pricing.monthly.sale_price)}</SalePrice>
+                    <OriginalPrice>{formatPrice(bundle.pricing.monthly.price)}</OriginalPrice>
+                  </>
+                ) : (
+                  <Price>{formatPrice(bundle.pricing.monthly.price)}</Price>
+                )}
                 </PriceContainer>
                 <Spacer />
                 <SubscribeButton onClick={() => handleSubscribe('monthly')}>
@@ -651,14 +651,14 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
               >
                 <PricingType>Annual</PricingType>
                 <PriceContainer>
-                  {bundle.pricing.annual.sale_price ? (
-                    <>
-                      <SalePrice>{formatPrice(bundle.pricing.annual.sale_price)}</SalePrice>
-                      <OriginalPrice>{formatPrice(bundle.pricing.annual.price)}</OriginalPrice>
-                    </>
-                  ) : (
-                    <Price>{formatPrice(bundle.pricing.annual.price)}</Price>
-                  )}
+                {bundle.pricing.annual.sale_price ? (
+                  <>
+                    <SalePrice>{formatPrice(bundle.pricing.annual.sale_price)}</SalePrice>
+                    <OriginalPrice>{formatPrice(bundle.pricing.annual.price)}</OriginalPrice>
+                  </>
+                ) : (
+                  <Price>{formatPrice(bundle.pricing.annual.price)}</Price>
+                )}
                 </PriceContainer>
                 {bundle.savings.annual && bundle.savings.annual.percent > 0 && (
                   <SavingsText>
@@ -678,14 +678,14 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
               >
                 <PricingType>Lifetime</PricingType>
                 <PriceContainer>
-                  {bundle.pricing.lifetime.sale_price ? (
-                    <>
-                      <SalePrice>{formatPrice(bundle.pricing.lifetime.sale_price)}</SalePrice>
-                      <OriginalPrice>{formatPrice(bundle.pricing.lifetime.price)}</OriginalPrice>
-                    </>
-                  ) : (
-                    <Price>{formatPrice(bundle.pricing.lifetime.price)}</Price>
-                  )}
+                {bundle.pricing.lifetime.sale_price ? (
+                  <>
+                    <SalePrice>{formatPrice(bundle.pricing.lifetime.sale_price)}</SalePrice>
+                    <OriginalPrice>{formatPrice(bundle.pricing.lifetime.price)}</OriginalPrice>
+                  </>
+                ) : (
+                  <Price>{formatPrice(bundle.pricing.lifetime.price)}</Price>
+                )}
                 </PriceContainer>
                 {bundle.savings.lifetime && bundle.savings.lifetime.percent > 0 && (
                   <SavingsText>
@@ -739,7 +739,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                   </ProductImage>
                   <ProductInfo>
                     <ProductNameRow>
-                      <ProductName>{product.name}</ProductName>
+                    <ProductName>{product.name}</ProductName>
                       <ProductCategory>{formatCategory(product.category || '', product.name)}</ProductCategory>
                     </ProductNameRow>
                     {product.tagline && (

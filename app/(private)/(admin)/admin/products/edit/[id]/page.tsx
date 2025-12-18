@@ -979,27 +979,27 @@ export default function EditProductPage() {
           <SectionTitle>Basic Information</SectionTitle>
           
           <GridRow>
-            <FormGroup>
-              <Label>Product Name *</Label>
-              <Input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-            </FormGroup>
+          <FormGroup>
+            <Label>Product Name *</Label>
+            <Input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+          </FormGroup>
 
-            <FormGroup>
-              <Label>URL Slug *</Label>
-              <Input
-                type="text"
-                name="slug"
-                value={formData.slug}
-                onChange={handleChange}
-                required
-              />
-            </FormGroup>
+          <FormGroup>
+            <Label>URL Slug *</Label>
+            <Input
+              type="text"
+              name="slug"
+              value={formData.slug}
+              onChange={handleChange}
+              required
+            />
+          </FormGroup>
           </GridRow>
 
           <FormGroup>
@@ -1345,26 +1345,26 @@ export default function EditProductPage() {
               <SectionTitle>Stripe Integration</SectionTitle>
               <GridRow style={{ gridTemplateColumns: stripeIds.stripe_sale_price_id ? '1fr 1fr 1fr' : '1fr 1fr' }}>
                 {stripeIds.stripe_product_id && (
-                  <FormGroup>
-                    <Label>Stripe Product ID</Label>
-                    <Input
-                      type="text"
-                      value={stripeIds.stripe_product_id || ''}
-                      readOnly
-                      style={{ background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
-                    />
-                  </FormGroup>
+              <FormGroup>
+                <Label>Stripe Product ID</Label>
+                <Input
+                  type="text"
+                  value={stripeIds.stripe_product_id || ''}
+                  readOnly
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
+                />
+              </FormGroup>
                 )}
                 {stripeIds.stripe_price_id && (
-                  <FormGroup>
-                    <Label>Stripe Price ID</Label>
-                    <Input
-                      type="text"
-                      value={stripeIds.stripe_price_id || ''}
-                      readOnly
-                      style={{ background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
-                    />
-                  </FormGroup>
+              <FormGroup>
+                <Label>Stripe Price ID</Label>
+                <Input
+                  type="text"
+                  value={stripeIds.stripe_price_id || ''}
+                  readOnly
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
+                />
+              </FormGroup>
                 )}
                 {stripeIds.stripe_sale_price_id && (
                   <FormGroup>
@@ -1379,7 +1379,7 @@ export default function EditProductPage() {
                 )}
               </GridRow>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                Stripe products and prices are automatically synced when you save changes to the price field.
+                Stripe products and prices are automatically synced when you save changes to the price field. 
                 Sale prices are for display/marketing purposes only and are not synced to Stripe.
               </p>
             </FormSection>

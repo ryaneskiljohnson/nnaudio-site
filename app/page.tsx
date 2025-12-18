@@ -234,8 +234,7 @@ export default function Home() {
               ...(instrumentData.success ? instrumentData.products : []),
             ];
             
-            const pluginsResponse = { success: true, products: allPlugins };
-        const pluginsData = await pluginsResponse.json();
+            const pluginsData = { success: true, products: allPlugins };
         
         if (pluginsData.success) {
           const mappedPlugins = pluginsData.products.map((p: any) => ({

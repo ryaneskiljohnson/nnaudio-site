@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import HeroMosaic from "./HeroMosaic";
 
 const HeroContainer = styled.section`
   min-height: 100vh;
@@ -32,7 +33,7 @@ const HeroContainer = styled.section`
     background: 
       radial-gradient(circle at 20% 30%, rgba(138, 43, 226, 0.2), transparent 50%),
       radial-gradient(circle at 80% 70%, rgba(75, 0, 130, 0.2), transparent 50%);
-    z-index: 0;
+    z-index: 1;
   }
 `;
 
@@ -40,7 +41,8 @@ const HeroContent = styled.div`
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  z-index: 1;
+  z-index: 2;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -140,8 +142,47 @@ const SecondaryButton = styled(motion.a)`
 `;
 
 const NNAudHeroSection = () => {
+  const [allProducts, setAllProducts] = useState<Array<{
+    id: string;
+    name: string;
+    featured_image_url?: string;
+    logo_url?: string;
+  }>>([]);
+
+  useEffect(() => {
+    const fetchAllProducts = async () => {
+      try {
+        // Fetch all active products (excluding bundles)
+        const response = await fetch('/api/products?status=active&limit=100');
+        const data = await response.json();
+        
+        if (data.success && data.products) {
+          // Filter out bundles and map to the format we need
+          const products = data.products
+            .filter((p: any) => p.category !== 'bundle')
+            .map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              featured_image_url: p.featured_image_url,
+              logo_url: p.logo_url,
+            }));
+          setAllProducts(products);
+        }
+      } catch (error) {
+        console.error('Error fetching products for hero mosaic:', error);
+      }
+    };
+
+    fetchAllProducts();
+  }, []);
+
   return (
     <HeroContainer id="home">
+      {/* Product Mosaic Background */}
+      {allProducts.length > 0 && (
+        <HeroMosaic products={allProducts} />
+      )}
+      
       <HeroContent>
         <LogoContainer
           initial={{ opacity: 0, y: -20 }}

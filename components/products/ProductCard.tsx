@@ -5,6 +5,7 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FaShoppingCart, FaArrowRight } from "react-icons/fa";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
@@ -199,6 +200,7 @@ function getDefaultSubtitle(name: string, category?: string): string {
 export default function ProductCard({ product, index = 0, showCartButton = true }: ProductCardProps) {
   const { addItem } = useCart();
   const { success } = useToast();
+  const router = useRouter();
   const [imageError, setImageError] = React.useState(false);
 
   // NNAudio logo fallback
@@ -296,19 +298,18 @@ export default function ProductCard({ product, index = 0, showCartButton = true 
             {tagline || getDefaultSubtitle(product.name, product.category)}
           </ProductTagline>
           {isEliteBundle ? (
-            <Link 
-              href={`/bundles/${bundleSlug}`}
-              onClick={(e) => e.stopPropagation()}
-              style={{ textDecoration: 'none', marginTop: '0.5rem' }}
+            <ViewPricingButton
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                router.push(`/bundles/${bundleSlug}`);
+              }}
             >
-              <ViewPricingButton
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                View Pricing
-                <FaArrowRight />
-              </ViewPricingButton>
-            </Link>
+              View Pricing
+              <FaArrowRight />
+            </ViewPricingButton>
           ) : (
           <PriceRow>
             <ProductPrice>
