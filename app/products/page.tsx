@@ -210,7 +210,7 @@ export default function ProductsPage() {
             resultsCount={filteredAndSortedProducts.length}
             totalCount={products.length}
           />
-          <FilterBar>
+        <FilterBar>
             {['all', 'audio-fx-plugin', 'instrument-plugin', 'pack', 'bundle', 'preset', 'template'].map(category => {
               const categoryLabels: Record<string, string> = {
                 'all': 'All Products',
@@ -222,16 +222,16 @@ export default function ProductsPage() {
                 'template': 'Templates',
               };
               return (
-                <FilterButton
-                  key={category}
-                  $active={selectedCategory === category}
-                  onClick={() => setSelectedCategory(category)}
-                >
+            <FilterButton
+              key={category}
+              $active={selectedCategory === category}
+              onClick={() => setSelectedCategory(category)}
+            >
                   {categoryLabels[category] || category.charAt(0).toUpperCase() + category.slice(1) + 's'}
-                </FilterButton>
+            </FilterButton>
               );
             })}
-          </FilterBar>
+        </FilterBar>
         </>
       )}
 

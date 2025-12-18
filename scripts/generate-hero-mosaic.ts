@@ -97,7 +97,7 @@ async function generateHeroMosaic(
     logo_url?: string;
   }>,
   width: number = 3000,
-  height: number = 1000
+  height: number = 1500
 ): Promise<Buffer> {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
@@ -289,11 +289,11 @@ async function generateHeroMosaicImage() {
   }
 
   console.log(`Found ${products.length} active products (excluding bundles)`);
-  console.log('Generating hero mosaic (3000x1000, randomized order)...\n');
+  console.log('Generating hero mosaic (3000x1500, 12x6 grid with square cells, randomized order)...\n');
 
   try {
-    // Generate wide format mosaic (3:1 aspect ratio)
-    const mosaicBuffer = await generateHeroMosaic(products, 3000, 1000);
+    // Generate mosaic with square cells (12x6 grid = 2:1 aspect ratio)
+    const mosaicBuffer = await generateHeroMosaic(products, 3000, 1500);
     
     // Save to public folder
     const outputPath = path.join(process.cwd(), 'public', 'images', 'nnaud-io', 'hero-mosaic.webp');

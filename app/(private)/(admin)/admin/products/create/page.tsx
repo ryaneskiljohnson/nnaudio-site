@@ -379,28 +379,28 @@ export default function CreateProductPage() {
           <SectionTitle>Basic Information</SectionTitle>
           
           <GridRow>
-            <FormGroup>
-              <Label>Product Name *</Label>
-              <Input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-            </FormGroup>
+          <FormGroup>
+            <Label>Product Name *</Label>
+            <Input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+          </FormGroup>
 
-            <FormGroup>
-              <Label>URL Slug *</Label>
-              <Input
-                type="text"
-                name="slug"
-                value={formData.slug}
-                onChange={handleChange}
-                required
-                placeholder="auto-generated-from-name"
-              />
-            </FormGroup>
+          <FormGroup>
+            <Label>URL Slug *</Label>
+            <Input
+              type="text"
+              name="slug"
+              value={formData.slug}
+              onChange={handleChange}
+              required
+              placeholder="auto-generated-from-name"
+            />
+          </FormGroup>
           </GridRow>
 
           <FormGroup>

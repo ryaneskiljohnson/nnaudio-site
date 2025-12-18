@@ -48,18 +48,15 @@ const HeroContent = styled.div`
   align-items: center;
   text-align: center;
   padding: 3rem 2rem;
-  background: rgba(138, 43, 226, 0.4);
-  border-radius: 24px;
   
   @media (max-width: 768px) {
     padding: 2rem 1.5rem;
-    border-radius: 16px;
   }
 `;
 
 const LogoContainer = styled(motion.div)`
   margin-bottom: 2rem;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.9)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.8)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7));
   
   img {
     max-width: 400px;
@@ -81,7 +78,7 @@ const HeroTitle = styled(motion.h1)`
   -webkit-text-fill-color: transparent;
   background-clip: text;
   line-height: 1.2;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.9)) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.8)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
   
   @media (max-width: 768px) {
     font-size: 2.5rem;
@@ -94,10 +91,20 @@ const HeroSubtitle = styled(motion.p)`
   margin-bottom: 3rem;
   max-width: 700px;
   line-height: 1.6;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 1px 4px rgba(0, 0, 0, 0.4);
+  padding: 0.75rem 1.25rem;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 12px;
+  text-shadow: 
+    0 0 40px rgba(0, 0, 0, 0.9),
+    0 0 30px rgba(0, 0, 0, 0.8),
+    0 0 20px rgba(0, 0, 0, 0.7),
+    0 0 10px rgba(0, 0, 0, 0.6),
+    0 4px 16px rgba(0, 0, 0, 0.9),
+    0 2px 8px rgba(0, 0, 0, 0.8);
   
   @media (max-width: 768px) {
     font-size: 1.1rem;
+    padding: 0.5rem 1rem;
   }
 `;
 
@@ -222,7 +229,8 @@ const NNAudHeroSection = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
         >
-          Discover premium plugins, sample packs, and tools designed to elevate your music production workflow
+          Discover premium plugins, sample packs, MIDI tools, and more<br />
+          designed to elevate your music production workflow
         </HeroSubtitle>
 
         <ButtonGroup
