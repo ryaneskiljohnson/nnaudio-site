@@ -24,22 +24,9 @@ const MosaicCanvas = styled.canvas`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.4;
+  opacity: 0.6;
 `;
 
-const MosaicOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: 
-    linear-gradient(135deg, rgba(10, 10, 10, 0.7) 0%, rgba(26, 26, 46, 0.6) 50%, rgba(22, 33, 62, 0.7) 100%),
-    radial-gradient(circle at 20% 30%, rgba(138, 43, 226, 0.15), transparent 50%),
-    radial-gradient(circle at 80% 70%, rgba(75, 0, 130, 0.15), transparent 50%);
-  pointer-events: none;
-  z-index: 1;
-`;
 
 const ProductCountBadge = styled(motion.div)`
   position: absolute;
@@ -123,22 +110,33 @@ export default function HeroMosaic({ products }: HeroMosaicProps) {
     // Scale the context to match
     ctx.scale(scale, scale);
 
-    // Shuffle products for variety
-    const shuffledProducts = [...products].sort(() => Math.random() - 0.5);
+    // Filter out specific products
+    const filteredProducts = products.filter(product => {
+      const name = product.name.toLowerCase();
+      return !name.includes('nnaudio access') && 
+             !name.includes('mutahad');
+    });
+    
+    // Remove duplicate "Mai Tai MIDI" - keep only one
+    const maiTaiSeen = new Set();
+    const deduplicatedProducts = filteredProducts.filter(product => {
+      const name = product.name.toLowerCase();
+      if (name.includes('mai tai')) {
+        if (maiTaiSeen.has('mai tai')) {
+          return false; // Skip duplicate
+        }
+        maiTaiSeen.add('mai tai');
+      }
+      return true;
+    });
 
-    // Calculate optimal grid layout for wide format
-    // We want more columns than rows for the wide aspect ratio
-    const productCount = shuffledProducts.length;
-    const aspectRatio = containerWidth / containerHeight;
-    
-    // Calculate optimal rows/cols based on aspect ratio
-    let rows = Math.max(2, Math.round(Math.sqrt(productCount / aspectRatio)));
-    let cols = Math.ceil(productCount / rows);
-    
-    // Ensure we fill the space nicely
-    while (rows * cols < productCount) {
-      cols++;
-    }
+    // Shuffle products for variety
+    const shuffledProducts = [...deduplicatedProducts].sort(() => Math.random() - 0.5);
+
+    // Fixed grid: 12 columns x 6 rows = 72 products
+    const rows = 6;
+    const cols = 12;
+    const maxProducts = rows * cols; // 72 products
     
     const cellWidth = containerWidth / cols;
     const cellHeight = containerHeight / rows;
@@ -146,8 +144,8 @@ export default function HeroMosaic({ products }: HeroMosaicProps) {
     // Track seen images to handle duplicates
     const seenImages = new Map<string, boolean>();
     
-    // Load and draw images
-    const imagePromises = shuffledProducts.slice(0, rows * cols).map((product, index) => {
+    // Load and draw images (limit to 72 for 12x6 grid)
+    const imagePromises = shuffledProducts.slice(0, maxProducts).map((product, index) => {
       return new Promise<void>((resolve) => {
         const featuredImageUrl = product.featured_image_url;
         const logoUrl = product.logo_url;
@@ -256,7 +254,6 @@ export default function HeroMosaic({ products }: HeroMosaicProps) {
         </LoadingOverlay>
       )}
       <MosaicCanvas ref={canvasRef} />
-      <MosaicOverlay />
       <ProductCountBadge
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}

@@ -39,7 +39,7 @@ const HeroContainer = styled.section`
 
 const HeroContent = styled.div`
   width: 100%;
-  max-width: 1400px;
+  max-width: 1100px;
   margin: 0 auto;
   z-index: 2;
   position: relative;
@@ -47,10 +47,19 @@ const HeroContent = styled.div`
   flex-direction: column;
   align-items: center;
   text-align: center;
+  padding: 3rem 2rem;
+  background: rgba(138, 43, 226, 0.4);
+  border-radius: 24px;
+  
+  @media (max-width: 768px) {
+    padding: 2rem 1.5rem;
+    border-radius: 16px;
+  }
 `;
 
 const LogoContainer = styled(motion.div)`
   margin-bottom: 2rem;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
   
   img {
     max-width: 400px;
@@ -72,6 +81,7 @@ const HeroTitle = styled(motion.h1)`
   -webkit-text-fill-color: transparent;
   background-clip: text;
   line-height: 1.2;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
   
   @media (max-width: 768px) {
     font-size: 2.5rem;
@@ -84,6 +94,7 @@ const HeroSubtitle = styled(motion.p)`
   margin-bottom: 3rem;
   max-width: 700px;
   line-height: 1.6;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 1px 4px rgba(0, 0, 0, 0.4);
   
   @media (max-width: 768px) {
     font-size: 1.1rem;

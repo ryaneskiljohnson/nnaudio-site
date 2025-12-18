@@ -102,21 +102,33 @@ async function generateHeroMosaic(
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // Randomize the order of products - use a better shuffle algorithm
-  const shuffledProducts = [...products].sort(() => Math.random() - 0.5);
+  // Filter out specific products
+  const filteredProducts = products.filter(product => {
+    const name = product.name.toLowerCase();
+    return !name.includes('nnaudio access') && 
+           !name.includes('mutahad');
+  });
+  
+  // Remove duplicate "Mai Tai MIDI" - keep only one
+  const maiTaiSeen = new Set();
+  const deduplicatedProducts = filteredProducts.filter(product => {
+    const name = product.name.toLowerCase();
+    if (name.includes('mai tai')) {
+      if (maiTaiSeen.has('mai tai')) {
+        return false; // Skip duplicate
+      }
+      maiTaiSeen.add('mai tai');
+    }
+    return true;
+  });
 
-  // Calculate optimal grid layout for wide format (more columns than rows)
-  const productCount = shuffledProducts.length;
-  const aspectRatio = width / height;
-  
-  // Calculate optimal rows/cols based on aspect ratio
-  let rows = Math.max(2, Math.round(Math.sqrt(productCount / aspectRatio)));
-  let cols = Math.ceil(productCount / rows);
-  
-  // Ensure we fill the space nicely
-  while (rows * cols < productCount) {
-    cols++;
-  }
+  // Randomize the order of products
+  const shuffledProducts = [...deduplicatedProducts].sort(() => Math.random() - 0.5);
+
+  // Fixed grid: 12 columns x 6 rows = 72 products
+  const rows = 6;
+  const cols = 12;
+  const maxProducts = rows * cols; // 72 products
   
   const cellWidth = width / cols;
   const cellHeight = height / rows;
@@ -124,13 +136,13 @@ async function generateHeroMosaic(
   // Track seen images to handle duplicates
   const seenImages = new Map<string, boolean>();
   
-  console.log(`  Loading ${shuffledProducts.length} images for hero mosaic (${cols}x${rows} grid)...`);
+  console.log(`  Loading ${Math.min(shuffledProducts.length, maxProducts)} images for hero mosaic (${cols}x${rows} grid)...`);
   let loadedCount = 0;
   let failedCount = 0;
   const failedProducts: string[] = [];
   
-  // Load all images first, then draw them
-  const imageLoadPromises = shuffledProducts.slice(0, rows * cols).map(async (product, index) => {
+  // Load all images first, then draw them (limit to 72 for 12x6 grid)
+  const imageLoadPromises = shuffledProducts.slice(0, maxProducts).map(async (product, index) => {
     const featuredImageUrl = product.featured_image_url;
     const logoUrl = product.logo_url;
     

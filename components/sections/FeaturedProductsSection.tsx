@@ -51,7 +51,7 @@ const FeaturedCard = styled(motion.div)<{ $bgImage?: string }>`
   overflow: hidden;
   min-height: 500px;
   background: ${props => props.$bgImage 
-    ? `linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.8) 100%), url(${props.$bgImage})`
+    ? `url(${props.$bgImage})`
     : 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'};
   background-size: cover;
   background-position: center;
@@ -59,7 +59,6 @@ const FeaturedCard = styled(motion.div)<{ $bgImage?: string }>`
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   
   &::before {
     content: "";
@@ -68,7 +67,7 @@ const FeaturedCard = styled(motion.div)<{ $bgImage?: string }>`
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(180deg, transparent 0%, rgba(138, 43, 226, 0.2) 50%, rgba(0,0,0,0.9) 100%);
+    background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%);
     z-index: 1;
     transition: opacity 0.3s ease;
   }
@@ -79,7 +78,7 @@ const FeaturedCard = styled(motion.div)<{ $bgImage?: string }>`
     box-shadow: 0 30px 60px rgba(138, 43, 226, 0.3);
     
     &::before {
-      background: linear-gradient(180deg, transparent 0%, rgba(138, 43, 226, 0.4) 50%, rgba(0,0,0,0.95) 100%);
+      background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.8) 100%);
     }
   }
 `;
@@ -88,19 +87,22 @@ const CardContent = styled.div`
   padding: 2.5rem;
   position: relative;
   z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 `;
 
-const ThumbnailBadge = styled.div`
-  position: absolute;
-  top: -28px;
-  right: 24px;
-  width: 96px;
-  height: 96px;
-  border-radius: 18px;
-  overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.4);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+const ProductImageContainer = styled.div`
+  position: relative;
+  width: 100%;
+  height: 300px;
+  flex-shrink: 0;
+  z-index: 2;
+  
+  img {
+    object-fit: cover;
+  }
 `;
 
 const ProductLogo = styled.div`
@@ -200,18 +202,18 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
               transition={{ duration: 0.6, delay: index * 0.15 }}
               whileHover={{ scale: 1.02 }}
             >
+              {product.thumbnail && (
+                <ProductImageContainer>
+                  <Image
+                    src={product.thumbnail}
+                    alt={`${product.name}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    style={{ objectFit: "cover" }}
+                  />
+                </ProductImageContainer>
+              )}
               <CardContent>
-                {product.thumbnail && (
-                  <ThumbnailBadge>
-                    <Image
-                      src={product.thumbnail}
-                      alt={`${product.name} thumbnail`}
-                      fill
-                      sizes="120px"
-                      style={{ objectFit: "cover" }}
-                    />
-                  </ThumbnailBadge>
-                )}
                 {product.logo && (
                   <ProductLogo>
                     <Image
