@@ -406,7 +406,7 @@ export default function EditProductPage() {
     meta_keywords: '',
   });
   
-  const [features, setFeatures] = useState<string[]>(['']);
+  const [features, setFeatures] = useState<Array<{ title: string; description?: string; image_url?: string; gif_url?: string }>>([{ title: '' }]);
   const [audioSamples, setAudioSamples] = useState<{url: string, name: string}[]>([]);
   const [audioSamplesExpanded, setAudioSamplesExpanded] = useState(true);
   const [stripeIds, setStripeIds] = useState<{
@@ -482,9 +482,14 @@ export default function EditProductPage() {
           meta_keywords: product.meta_keywords || '',
         });
         
+        // Handle both old format (string[]) and new format (object[])
         setFeatures(product.features && Array.isArray(product.features) 
-          ? product.features 
-          : ['']);
+          ? product.features.map((f: any) => 
+              typeof f === 'string' 
+                ? { title: f, description: '', image_url: '' }
+                : { title: f.title || f.name || '', description: f.description || '', image_url: f.image_url || f.gif_url || f.image || '' }
+            )
+          : [{ title: '' }]);
         setAudioSamples(product.audio_samples && Array.isArray(product.audio_samples)
           ? product.audio_samples.map((audio: any) => ({
               url: audio.url || audio.src || '',
@@ -865,14 +870,17 @@ export default function EditProductPage() {
     }
   };
 
-  const handleFeatureChange = (index: number, value: string) => {
+  const handleFeatureChange = (index: number, field: 'title' | 'description' | 'image_url' | 'gif_url', value: string) => {
     const newFeatures = [...features];
-    newFeatures[index] = value;
+    newFeatures[index] = {
+      ...newFeatures[index],
+      [field]: value
+    };
     setFeatures(newFeatures);
   };
 
   const addFeature = () => {
-    setFeatures([...features, '']);
+    setFeatures([...features, { title: '', description: '', image_url: '' }]);
   };
 
   const removeFeature = (index: number) => {
@@ -911,7 +919,14 @@ export default function EditProductPage() {
         ...formData,
         price: parseFloat(formData.price),
         sale_price: formData.sale_price ? parseFloat(formData.sale_price) : null,
-        features: features.filter(f => f.trim() !== ''),
+        features: features
+          .filter(f => f.title && f.title.trim() !== '')
+          .map(f => ({
+            title: f.title.trim(),
+            description: f.description?.trim() || undefined,
+            image_url: f.image_url?.trim() || f.gif_url?.trim() || undefined,
+            gif_url: f.gif_url?.trim() || undefined
+          })),
         audio_samples: audioSamples
           .filter(s => s.url.trim() !== '')
           .map(s => ({
@@ -1535,22 +1550,56 @@ export default function EditProductPage() {
           
           <FeaturesList>
             {features.map((feature, index) => (
-              <FeatureItem key={index}>
-                <FeatureInput
-                  type="text"
-                  value={feature}
-                  onChange={(e) => handleFeatureChange(index, e.target.value)}
-                  placeholder="Enter feature"
-                />
+              <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                <FeatureItem>
+                  <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Feature Title</Label>
+                  <FeatureInput
+                    type="text"
+                    value={feature.title}
+                    onChange={(e) => handleFeatureChange(index, 'title', e.target.value)}
+                    placeholder="Enter feature title"
+                  />
+                </FeatureItem>
+                <FeatureItem>
+                  <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Description</Label>
+                  <FeatureInput
+                    type="text"
+                    value={feature.description || ''}
+                    onChange={(e) => handleFeatureChange(index, 'description', e.target.value)}
+                    placeholder="Enter feature description"
+                  />
+                </FeatureItem>
+                <FeatureItem>
+                  <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Image/GIF URL</Label>
+                  <FeatureInput
+                    type="url"
+                    value={feature.image_url || feature.gif_url || ''}
+                    onChange={(e) => handleFeatureChange(index, 'image_url', e.target.value)}
+                    placeholder="https://...supabase.co/storage/.../feature-image.jpg or .gif"
+                  />
+                </FeatureItem>
+                {feature.image_url && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <Image
+                      src={feature.image_url}
+                      alt={feature.title}
+                      width={200}
+                      height={112}
+                      style={{ borderRadius: '8px', objectFit: 'cover' }}
+                      unoptimized={feature.image_url.endsWith('.gif')}
+                    />
+                  </div>
+                )}
                 {features.length > 1 && (
                   <RemoveButton
                     type="button"
                     onClick={() => removeFeature(index)}
+                    style={{ marginTop: '0.5rem' }}
                   >
-                    <FaTrash />
+                    <FaTrash /> Remove Feature
                   </RemoveButton>
                 )}
-              </FeatureItem>
+              </div>
             ))}
           </FeaturesList>
           

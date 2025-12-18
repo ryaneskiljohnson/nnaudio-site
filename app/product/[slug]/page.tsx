@@ -5,7 +5,7 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { FaStar, FaShoppingCart, FaDownload, FaCheck, FaPlay, FaPause, FaMusic, FaVideo, FaChevronRight, FaHome, FaVolumeUp } from "react-icons/fa";
+import { FaStar, FaShoppingCart, FaDownload, FaCheck, FaPlay, FaPause, FaMusic, FaVideo, FaChevronRight, FaHome, FaVolumeUp, FaCheckCircle, FaDesktop, FaCog } from "react-icons/fa";
 import { useParams } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
@@ -16,7 +16,9 @@ const Container = styled.div`
   background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
 `;
 
-const HeroSection = styled.section<{ $bgImage?: string }>`
+const HeroSection = styled.section.attrs<{ $bgImage?: string }>((props) => ({
+  as: 'section'
+}))<{ $bgImage?: string }>`
   padding: 140px 20px 40px;
   background: ${props => props.$bgImage 
     ? `linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.9) 100%), url(${props.$bgImage})`
@@ -192,32 +194,481 @@ const Description = styled.div`
 `;
 
 const FeaturesGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
   margin-top: 2rem;
 `;
 
-const FeatureCard = styled(motion.div)`
+const FeatureCard = styled(motion.div)<{ $imageOnLeft?: boolean }>`
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: ${props => props.$imageOnLeft ? 'row' : 'row-reverse'};
+  align-items: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(138, 43, 226, 0.3);
+  }
+`;
+
+const FeatureImageContainer = styled.div`
+  position: relative;
+  width: 50%;
+  min-width: 300px;
+  aspect-ratio: 16 / 9;
+  background: rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  flex-shrink: 0;
+  
+  @media (max-width: 768px) {
+    width: 100%;
+    min-width: unset;
+  }
+`;
+
+const FeatureContent = styled.div`
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+  
+  @media (max-width: 768px) {
+    padding: 1.5rem;
+  }
+`;
+
+const FeatureTitle = styled.h3`
+  color: rgba(255, 255, 255, 1);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  
+  svg {
+    color: #4ecdc4;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+  }
+`;
+
+const FeatureDescription = styled.p`
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+  margin: 0;
+  font-size: 0.95rem;
+`;
+
+const OverviewSection = styled.section`
+  margin-top: 2rem;
+  border-radius: 16px;
+  overflow: hidden;
+`;
+
+const OverviewBanner = styled.div`
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+  padding: 1.5rem 2rem;
+  text-align: center;
+`;
+
+const OverviewTitle = styled.h2`
+  font-size: 2rem;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+`;
+
+const OverviewContent = styled.div`
+  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(42, 42, 70, 0.95) 100%);
+  padding: 2.5rem;
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 3rem;
+  align-items: center;
+  min-height: 500px;
+  
+  @media (max-width: 968px) {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    min-height: auto;
+  }
+`;
+
+const OverviewFeaturesList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+`;
+
+const OverviewFeatureItem = styled.li`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1rem;
+  line-height: 1.7;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  
+  &::before {
+    content: '✓';
+    color: #8a2be2;
+    font-weight: bold;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+    line-height: 1;
+  }
+`;
+
+const OverviewImageContainer = styled.div`
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+  border: 1px solid rgba(138, 43, 226, 0.2);
+`;
+
+const CompatibilitySection = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+`;
+
+const CompatibilityCard = styled.div`
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 1.5rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
+  transition: all 0.3s ease;
   
-  svg {
-    color: #4ecdc4;
-    font-size: 1.5rem;
-    flex-shrink: 0;
-    margin-top: 4px;
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(138, 43, 226, 0.3);
+    transform: translateY(-2px);
   }
 `;
 
-const FeatureText = styled.div`
-  color: rgba(255, 255, 255, 0.9);
+const CompatibilityTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const CompatibilityList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+`;
+
+const CompatibilityItem = styled.li`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  
+  &::before {
+    content: '•';
+    color: #8a2be2;
+    font-weight: bold;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin-top: -2px;
+  }
+`;
+
+const CompatibilityKey = styled.span`
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin-right: 0.5rem;
+`;
+
+const CompatibilityValue = styled.span`
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const ReviewsSection = styled.div`
+  margin-top: 1.5rem;
+`;
+
+const ReviewsHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+`;
+
+const ReviewsSummary = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+`;
+
+const AverageRating = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const RatingNumber = styled.div`
+  font-size: 3rem;
+  font-weight: 700;
+  color: #ffd700;
+  line-height: 1;
+`;
+
+const RatingStars = styled.div`
+  display: flex;
+  gap: 0.25rem;
+  font-size: 1.5rem;
+`;
+
+const ReviewsCount = styled.div`
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+`;
+
+const ReviewsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-height: 600px; /* Approximately 3 reviews (each ~180px with padding/gap) */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.5rem;
+  
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(138, 43, 226, 0.5);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+    
+    &:hover {
+      background: rgba(138, 43, 226, 0.7);
+    }
+  }
+  
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(138, 43, 226, 0.5) rgba(255, 255, 255, 0.05);
+`;
+
+const ReviewCard = styled(motion.div)`
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(138, 43, 226, 0.3);
+  }
+`;
+
+const ReviewHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+`;
+
+const ReviewAuthor = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+`;
+
+const ReviewName = styled.div`
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const ReviewDate = styled.div`
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+`;
+
+const ReviewTitle = styled.h4`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 0.75rem 0;
+`;
+
+const ReviewText = styled.p`
+  color: rgba(255, 255, 255, 0.75);
   line-height: 1.6;
+  margin: 0;
+  font-size: 0.95rem;
+`;
+
+const VerifiedBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(138, 43, 226, 0.2);
+  color: #8a2be2;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+`;
+
+const NoReviewsMessage = styled.div`
+  text-align: center;
+  padding: 3rem 2rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 1rem;
+`;
+
+const StickyAddToCartButton = styled(motion.div)`
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(138, 43, 226, 0.5);
+  border-radius: 50px;
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+  
+  @keyframes pulse {
+    0%, 100% {
+      box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+    }
+    50% {
+      box-shadow: 0 8px 40px rgba(138, 43, 226, 0.7);
+    }
+  }
+  
+  animation: pulse 2s ease-in-out infinite;
+`;
+
+const StickyButtonContent = styled.div`
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+`;
+
+const StickyProductImage = styled.div`
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const StickyProductInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  justify-content: center;
+`;
+
+const StickyProductName = styled.div`
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1;
+  margin-bottom: -2px;
+`;
+
+const StickyPrice = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+`;
+
+const StickyPriceMain = styled.div`
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #8a2be2;
+`;
+
+const StickyPriceOriginal = styled.div`
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: line-through;
+`;
+
+const StickyButton = styled(motion.button)`
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 40px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(138, 43, 226, 0.6);
+  }
 `;
 
 const GalleryGrid = styled.div`
@@ -363,7 +814,7 @@ const StaticWaveform = styled.div`
   width: 100%;
   height: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   padding: 10px;
   gap: 2px;
@@ -375,9 +826,17 @@ const WaveformBar = styled.div<{ $height: number; $isActive?: boolean }>`
     ? 'linear-gradient(180deg, #8a2be2 0%, #4b0082 100%)'
     : 'rgba(138, 43, 226, 0.3)'};
   border-radius: 2px;
-  min-height: 4px;
-  height: ${props => Math.max(props.$height * 100, 10)}%;
-  transition: background 0.2s ease;
+  min-height: 12px;
+  height: ${props => {
+    // Ensure minimum height for visibility, scale based on waveform data
+    // Height ranges from 20% (min) to 100% (max) based on waveform data
+    const minHeightPercent = 20;
+    const maxHeightPercent = 100;
+    const heightPercent = minHeightPercent + (props.$height * (maxHeightPercent - minHeightPercent));
+    return `${Math.max(heightPercent, minHeightPercent)}%`;
+  }};
+  align-self: flex-end;
+  transition: background 0.2s ease, height 0.1s ease;
 `;
 
 const ProgressContainer = styled.div`
@@ -434,6 +893,28 @@ const Playlist = styled.div`
   margin-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 1rem;
+  max-height: 320px; /* Approximately 5 items (each ~64px with padding) */
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(138, 43, 226, 0.5);
+    border-radius: 3px;
+    
+    &:hover {
+      background: rgba(138, 43, 226, 0.7);
+    }
+  }
 `;
 
 const PlaylistTitle = styled.h3`
@@ -594,17 +1075,37 @@ export default function ProductPage() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [waveformData, setWaveformData] = useState<number[]>([]);
+  const [showStickyButton, setShowStickyButton] = useState(false);
   const mainAudioRef = useRef<HTMLAudioElement | null>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const heroSectionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (slug) {
       fetchProduct();
     }
   }, [slug]);
+
+  // Handle scroll to show/hide sticky button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!heroSectionRef.current) return;
+      
+      const heroBottom = heroSectionRef.current.offsetTop + heroSectionRef.current.offsetHeight;
+      const scrollPosition = window.scrollY;
+      
+      // Show sticky button when scrolled past the hero section
+      setShowStickyButton(scrollPosition > heroBottom - 100);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Check initial position
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [product]);
 
   // Initialize audio context and analyser
   useEffect(() => {
@@ -644,16 +1145,61 @@ export default function ProductPage() {
       setWaveformData([]);
 
       // Generate waveform when audio loads
-      const handleLoadedData = () => {
-        generateWaveform(audio);
+      const handleLoadedData = async () => {
+        try {
+          await generateWaveform(audio);
+        } catch (error) {
+          console.warn('Error generating waveform in handleLoadedData:', error);
+          // Ensure we have some waveform data even if generation fails
+          if (waveformData.length === 0) {
+            const fallbackData = Array.from({ length: 200 }, (_, i) => {
+              return 0.25 + Math.sin(i / 10) * 0.2 + Math.random() * 0.15;
+            });
+            setWaveformData(fallbackData);
+          }
+        }
       };
+      
+      // Also try to generate waveform if audio is already loaded
+      if (audio.readyState >= 2) {
+        handleLoadedData();
+      }
       
       audio.addEventListener('loadeddata', handleLoadedData);
       
       // Handle errors
       const handleError = (e: any) => {
-        console.error('Audio load error:', e);
-        console.error('Audio URL:', audioUrl);
+        const audioElement = e.target || e.currentTarget || audio;
+        const error = audioElement?.error;
+        if (error && error.code !== undefined) {
+          let errorMessage = 'Unknown error';
+          switch (error.code) {
+            case error.MEDIA_ERR_ABORTED:
+              errorMessage = 'Audio loading aborted';
+              break;
+            case error.MEDIA_ERR_NETWORK:
+              errorMessage = 'Network error loading audio (may be CORS issue)';
+              break;
+            case error.MEDIA_ERR_DECODE:
+              errorMessage = 'Audio decode error';
+              break;
+            case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+              errorMessage = 'Audio format not supported';
+              break;
+          }
+          console.error('Audio error:', errorMessage, {
+            code: error.code,
+            message: error.message,
+            url: audioUrl
+          });
+        } else {
+          // Empty error object often indicates CORS issue
+          console.warn('Audio error (likely CORS):', {
+            url: audioUrl,
+            readyState: audioElement?.readyState,
+            networkState: audioElement?.networkState
+          });
+        }
       };
       
       audio.addEventListener('error', handleError);
@@ -678,9 +1224,69 @@ export default function ProductPage() {
 
   const generateWaveform = async (audio: HTMLAudioElement) => {
     try {
+      // Check if audio is ready
+      if (!audio || !audio.src) {
+        console.warn('Audio element not ready for waveform generation');
+        // Create a visible fallback pattern
+        const fallbackData = Array.from({ length: 200 }, (_, i) => {
+          return 0.2 + Math.sin(i / 10) * 0.15 + Math.random() * 0.1;
+        });
+        setWaveformData(fallbackData);
+        return;
+      }
+
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const response = await fetch(audio.src);
-      const arrayBuffer = await response.arrayBuffer();
+      
+      // Try to fetch the audio file
+      let arrayBuffer: ArrayBuffer;
+      try {
+        const response = await fetch(audio.src, {
+          mode: 'cors',
+          credentials: 'omit'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        arrayBuffer = await response.arrayBuffer();
+      } catch (fetchError) {
+        // If fetch fails (CORS), try using the audio element's source directly
+        console.warn('Fetch failed, trying alternative method:', fetchError);
+        
+        // Create a new audio context and try to decode from the audio element
+        // This might work if the audio has already loaded
+        if (audio.readyState >= 2) {
+          // Audio has loaded enough data
+          try {
+            // Use the existing audio context if available, or create a new one
+            const source = audioContext.createMediaElementSource(audio);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048;
+            source.connect(analyser);
+            
+            // For static waveform, we'll use a fallback pattern
+            // The animated waveform will work when playing
+            const fallbackData = Array.from({ length: 200 }, (_, i) => {
+              // Create a simple wave pattern so it's visible
+              return 0.25 + Math.sin(i / 10) * 0.2 + Math.random() * 0.15;
+            });
+            setWaveformData(fallbackData);
+            return;
+          } catch (e) {
+            console.warn('Alternative waveform method failed:', e);
+          }
+        }
+        
+        // Final fallback: create a simple waveform pattern with variation
+        const fallbackData = Array.from({ length: 200 }, (_, i) => {
+          // Create a simple wave pattern so it's visible
+          return 0.2 + Math.sin(i / 10) * 0.15 + Math.random() * 0.1;
+        });
+        setWaveformData(fallbackData);
+        return;
+      }
+
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
       
       const rawData = audioBuffer.getChannelData(0);
@@ -698,12 +1304,19 @@ export default function ProductPage() {
 
       // Normalize the data
       const max = Math.max(...filteredData);
-      const normalized = filteredData.map(n => n / max);
-      setWaveformData(normalized);
+      if (max > 0) {
+        const normalized = filteredData.map(n => n / max);
+        setWaveformData(normalized);
+      } else {
+        setWaveformData(new Array(200).fill(0.1));
+      }
     } catch (error) {
       console.warn('Error generating waveform:', error);
-      // Fallback: create empty waveform
-      setWaveformData(new Array(200).fill(0.1));
+      // Fallback: create a visible waveform pattern with variation
+      const fallbackData = Array.from({ length: 200 }, (_, i) => {
+        return 0.2 + Math.sin(i / 10) * 0.15 + Math.random() * 0.1;
+      });
+      setWaveformData(fallbackData);
     }
   };
 
@@ -967,7 +1580,10 @@ export default function ProductPage() {
 
   return (
     <Container>
-      <HeroSection $bgImage={product.background_image_url || product.background_video_url}>
+      <HeroSection 
+        ref={heroSectionRef as any} 
+        $bgImage={product.background_image_url || product.background_video_url}
+      >
         <HeroContent>
           <BreadcrumbContainer>
             <BreadcrumbList>
@@ -1143,12 +1759,68 @@ export default function ProductPage() {
         </ContentSection>
       )}
 
-      {product.audio_samples && product.audio_samples.length > 0 && (
+      <ContentSection>
+        <OverviewSection>
+          <OverviewBanner>
+            <OverviewTitle>Overview</OverviewTitle>
+          </OverviewBanner>
+          <OverviewContent>
+            <OverviewFeaturesList>
+              <OverviewFeatureItem>10 Complete Effect Chains</OverviewFeatureItem>
+              <OverviewFeatureItem>Generate Infinite Effects With The "Magic Button" & Never Run Short On Ideas.</OverviewFeatureItem>
+              <OverviewFeatureItem>Transform Any Audio Into A Modern Masterpiece.</OverviewFeatureItem>
+              <OverviewFeatureItem>Easily Undo/Redo Any Change, Including The "Magic Button" Generator.</OverviewFeatureItem>
+              <OverviewFeatureItem>MIDI CC + MIDI Learn Capable.</OverviewFeatureItem>
+              <OverviewFeatureItem>Easy-To-Use Preset Browser for Searching & Creating your own presets.</OverviewFeatureItem>
+              <OverviewFeatureItem>250 included Factory Presets</OverviewFeatureItem>
+              <OverviewFeatureItem>Tooltip To Help Learn & Understand The Plugin</OverviewFeatureItem>
+              <OverviewFeatureItem>Intuitive single window interface & parameters.</OverviewFeatureItem>
+            </OverviewFeaturesList>
+            <OverviewImageContainer>
+              <Image
+                src={product.background_image_url || product.featured_image_url || 'https://nnaud.io/wp-content/uploads/2024/06/CrystalBall-GUI.jpg'}
+                alt={`${product.name} Interface`}
+                fill
+                style={{ objectFit: 'contain', padding: '10px' }}
+                priority
+              />
+            </OverviewImageContainer>
+          </OverviewContent>
+        </OverviewSection>
+      </ContentSection>
+
+      {product.demo_video_url && (
         <ContentSection>
           <SectionTitle>
-            <FaMusic style={{ marginRight: '10px', display: 'inline' }} />
-            Audio Samples
+            <FaVideo style={{ marginRight: '10px', display: 'inline' }} />
+            Demo Video
           </SectionTitle>
+          <VideoContainer>
+            {product.demo_video_url.includes('youtube') || product.demo_video_url.includes('youtu.be') ? (
+              <VideoIframe
+                src={product.demo_video_url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            ) : product.demo_video_url.includes('vimeo') ? (
+              <VideoIframe
+                src={product.demo_video_url.replace('vimeo.com/', 'player.vimeo.com/video/')}
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
+              />
+            ) : (
+              <video controls style={{ width: '100%', height: '100%' }}>
+                <source src={product.demo_video_url} />
+                Your browser does not support the video tag.
+              </video>
+            )}
+          </VideoContainer>
+        </ContentSection>
+      )}
+
+      {product.audio_samples && product.audio_samples.length > 0 && (
+        <ContentSection>
+          <SectionTitle>Audio Samples</SectionTitle>
           <AudioSection>
             <PlaylistContainer>
               <PlaylistHeader>
@@ -1270,12 +1942,40 @@ export default function ProductPage() {
                   }
                 }}
                 src={product.audio_samples[currentTrackIndex]?.url}
-                crossOrigin="anonymous"
+                crossOrigin={product.audio_samples[currentTrackIndex]?.url?.includes('supabase.co') ? 'anonymous' : undefined}
                 preload="metadata"
                 onTimeUpdate={handleTimeUpdate}
                 onError={(e) => {
-                  console.error('Audio error:', e);
-                  console.error('Audio src:', product.audio_samples[currentTrackIndex]?.url);
+                  const audioElement = e?.currentTarget || e?.target;
+                  const error = audioElement?.error;
+                  if (error) {
+                    let errorMessage = 'Unknown error';
+                    switch (error.code) {
+                      case error.MEDIA_ERR_ABORTED:
+                        errorMessage = 'Audio loading aborted';
+                        break;
+                      case error.MEDIA_ERR_NETWORK:
+                        errorMessage = 'Network error loading audio (may be CORS issue)';
+                        break;
+                      case error.MEDIA_ERR_DECODE:
+                        errorMessage = 'Audio decode error';
+                        break;
+                      case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                        errorMessage = 'Audio format not supported';
+                        break;
+                    }
+                    console.error('Audio error:', errorMessage, {
+                      code: error.code,
+                      message: error.message,
+                      url: product.audio_samples[currentTrackIndex]?.url
+                    });
+                  } else {
+                    console.error('Audio error (no error details):', {
+                      event: e,
+                      url: product.audio_samples[currentTrackIndex]?.url,
+                      readyState: audioElement?.readyState
+                    });
+                  }
                 }}
                 onLoadedMetadata={(e) => {
                   try {
@@ -1287,9 +1987,17 @@ export default function ProductPage() {
                     console.warn('Error loading audio metadata:', error);
                   }
                 }}
-                onLoadedData={(e) => {
+                onLoadedData={async (e) => {
                   if (e.currentTarget) {
-                    generateWaveform(e.currentTarget);
+                    try {
+                      await generateWaveform(e.currentTarget);
+                    } catch (error) {
+                      console.warn('Error in onLoadedData waveform generation:', error);
+                      // Ensure we have some waveform data even if generation fails
+                      if (waveformData.length === 0) {
+                        setWaveformData(new Array(200).fill(0.15));
+                      }
+                    }
                   }
                 }}
                 onEnded={async () => {
@@ -1385,54 +2093,193 @@ export default function ProductPage() {
         </ContentSection>
       )}
 
-      {product.demo_video_url && (
-        <ContentSection>
-          <SectionTitle>
-            <FaVideo style={{ marginRight: '10px', display: 'inline' }} />
-            Demo Video
-          </SectionTitle>
-          <VideoContainer>
-            {product.demo_video_url.includes('youtube') || product.demo_video_url.includes('youtu.be') ? (
-              <VideoIframe
-                src={product.demo_video_url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            ) : product.demo_video_url.includes('vimeo') ? (
-              <VideoIframe
-                src={product.demo_video_url.replace('vimeo.com/', 'player.vimeo.com/video/')}
-                allow="autoplay; fullscreen; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
-              <video controls style={{ width: '100%', height: '100%' }}>
-                <source src={product.demo_video_url} />
-                Your browser does not support the video tag.
-              </video>
-            )}
-          </VideoContainer>
-        </ContentSection>
-      )}
-
       {product.features && product.features.length > 0 && (
         <ContentSection>
           <SectionTitle>Features</SectionTitle>
           <FeaturesGrid>
-            {product.features.map((feature: string, index: number) => (
-              <FeatureCard
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-              >
-                <FaCheck />
-                <FeatureText>{feature}</FeatureText>
-              </FeatureCard>
-            ))}
+            {product.features.map((feature: any, index: number) => {
+              // Support both old format (string) and new format (object)
+              const featureTitle = typeof feature === 'string' ? feature : (feature.title || feature.name || 'Feature');
+              const featureDescription = typeof feature === 'object' ? feature.description : null;
+              const featureImage = typeof feature === 'object' ? (feature.image_url || feature.gif_url || feature.image) : null;
+              // Alternate image position: even index = left, odd index = right
+              const imageOnLeft = index % 2 === 0;
+              
+              return (
+                <FeatureCard
+                  key={index}
+                  $imageOnLeft={imageOnLeft}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                >
+                  {featureImage && (
+                    <FeatureImageContainer>
+                      <Image
+                        src={featureImage}
+                        alt={featureTitle}
+                        fill
+                        style={{ objectFit: 'cover' }}
+                        unoptimized={featureImage.endsWith('.gif')}
+                      />
+                    </FeatureImageContainer>
+                  )}
+                  <FeatureContent>
+                    <FeatureTitle>
+                      <FaCheck />
+                      {featureTitle}
+                    </FeatureTitle>
+                    {featureDescription && (
+                      <FeatureDescription>{featureDescription}</FeatureDescription>
+                    )}
+                  </FeatureContent>
+                </FeatureCard>
+              );
+            })}
           </FeaturesGrid>
         </ContentSection>
       )}
+
+      {(product.requirements || product.specifications) && (
+        <ContentSection>
+          <SectionTitle>Compatibility & System Requirements</SectionTitle>
+          <CompatibilitySection>
+            {product.requirements && (
+              <CompatibilityCard>
+                <CompatibilityTitle>
+                  <FaDesktop />
+                  System Requirements
+                </CompatibilityTitle>
+                <CompatibilityList>
+                  {Object.entries(product.requirements).map(([key, value]: [string, any]) => {
+                    // Format key: capitalize first letter, replace underscores, handle special cases
+                    let formattedKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+                    // Capitalize RAM if it appears in the key
+                    formattedKey = formattedKey.replace(/\bram\b/gi, 'RAM');
+                    // Format value: capitalize RAM if it appears
+                    let formattedValue = typeof value === 'string' ? value : String(value);
+                    formattedValue = formattedValue.replace(/\bram\b/gi, 'RAM');
+                    
+                    return (
+                      <CompatibilityItem key={key}>
+                        <CompatibilityKey>{formattedKey}:</CompatibilityKey>
+                        <CompatibilityValue>{formattedValue}</CompatibilityValue>
+                      </CompatibilityItem>
+                    );
+                  })}
+                </CompatibilityList>
+              </CompatibilityCard>
+            )}
+            {product.specifications && (
+              <CompatibilityCard>
+                <CompatibilityTitle>
+                  <FaCog />
+                  Technical Specifications
+                </CompatibilityTitle>
+                <CompatibilityList>
+                  {Object.entries(product.specifications).map(([key, value]: [string, any]) => {
+                    // Format value: capitalize RAM if it appears
+                    let formattedValue = typeof value === 'string' ? value : String(value);
+                    formattedValue = formattedValue.replace(/\bram\b/gi, 'RAM');
+                    
+                    return (
+                      <CompatibilityItem key={key}>
+                        <CompatibilityKey>{key}:</CompatibilityKey>
+                        <CompatibilityValue>{formattedValue}</CompatibilityValue>
+                      </CompatibilityItem>
+                    );
+                  })}
+                </CompatibilityList>
+              </CompatibilityCard>
+            )}
+          </CompatibilitySection>
+        </ContentSection>
+      )}
+
+      <ContentSection>
+        <SectionTitle>Reviews</SectionTitle>
+        <ReviewsSection>
+          {product.reviews && product.reviews.length > 0 ? (
+            <>
+              <ReviewsHeader>
+                <ReviewsSummary>
+                  <AverageRating>
+                    <RatingNumber>{product.average_rating?.toFixed(1) || '0.0'}</RatingNumber>
+                    <RatingStars>
+                      {[...Array(5)].map((_, i) => (
+                        <FaStar
+                          key={i}
+                          style={{
+                            color: i < Math.round(product.average_rating || 0) ? '#ffd700' : 'rgba(255, 255, 255, 0.2)',
+                            fontSize: '1.5rem'
+                          }}
+                        />
+                      ))}
+                    </RatingStars>
+                    <ReviewsCount>
+                      Based on {product.review_count || product.reviews.length} {product.review_count === 1 ? 'review' : 'reviews'}
+                    </ReviewsCount>
+                  </AverageRating>
+                </ReviewsSummary>
+              </ReviewsHeader>
+              <ReviewsList>
+                {product.reviews.map((review: any, index: number) => (
+                  <ReviewCard
+                    key={review.id || index}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: index * 0.1 }}
+                  >
+                    <ReviewHeader>
+                      <ReviewAuthor>
+                        <ReviewName>
+                          {review.customer_name || 'Anonymous'}
+                          {review.is_verified_purchase && (
+                            <VerifiedBadge>
+                              <FaCheckCircle size={12} />
+                              Verified Purchase
+                            </VerifiedBadge>
+                          )}
+                        </ReviewName>
+                        <ReviewDate>
+                          {review.created_at ? new Date(review.created_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          }) : ''}
+                        </ReviewDate>
+                      </ReviewAuthor>
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        {[...Array(5)].map((_, i) => (
+                          <FaStar
+                            key={i}
+                            style={{
+                              color: i < review.rating ? '#ffd700' : 'rgba(255, 255, 255, 0.2)',
+                              fontSize: '1rem'
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </ReviewHeader>
+                    {review.title && (
+                      <ReviewTitle>{review.title}</ReviewTitle>
+                    )}
+                    {review.review_text && (
+                      <ReviewText>{review.review_text}</ReviewText>
+                    )}
+                  </ReviewCard>
+                ))}
+              </ReviewsList>
+            </>
+          ) : (
+            <NoReviewsMessage>
+              No reviews yet. Be the first to review this product!
+            </NoReviewsMessage>
+          )}
+        </ReviewsSection>
+      </ContentSection>
 
       {product.related_products && product.related_products.length > 0 && (
         <RelatedProducts>
@@ -1470,6 +2317,57 @@ export default function ProductPage() {
             </RelatedGrid>
           </ContentSection>
         </RelatedProducts>
+      )}
+
+      {showStickyButton && product && (
+        <StickyAddToCartButton
+          initial={{ opacity: 0, y: 100, x: '-50%' }}
+          animate={{ opacity: 1, y: 0, x: '-50%' }}
+          exit={{ opacity: 0, y: 100, x: '-50%' }}
+          transition={{ duration: 0.3 }}
+        >
+          <StickyButtonContent>
+            <StickyProductImage>
+              <Image
+                src={product.featured_image_url || product.logo_url || ''}
+                alt={product.name}
+                fill
+                style={{ objectFit: 'cover' }}
+              />
+            </StickyProductImage>
+            <StickyProductInfo>
+              <StickyProductName>{product.name}</StickyProductName>
+              <StickyPrice>
+                <StickyPriceMain>
+                  {isFree ? 'FREE' : `$${displayPrice}`}
+                </StickyPriceMain>
+                {hasDiscount && !isFree && (
+                  <StickyPriceOriginal>${product.price}</StickyPriceOriginal>
+                )}
+              </StickyPrice>
+            </StickyProductInfo>
+            <StickyButton
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                if (product) {
+                  addItem({
+                    id: product.id,
+                    name: product.name,
+                    slug: product.slug,
+                    price: product.price,
+                    sale_price: product.sale_price,
+                    featured_image_url: product.featured_image_url,
+                    logo_url: product.logo_url,
+                  });
+                  success(`${product.name} added to cart!`, 3000);
+                }
+              }}
+            >
+              <FaShoppingCart /> Add to Cart
+            </StickyButton>
+          </StickyButtonContent>
+        </StickyAddToCartButton>
       )}
     </Container>
   );
