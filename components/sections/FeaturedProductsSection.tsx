@@ -10,7 +10,7 @@ import { cleanHtmlText } from "@/utils/stringUtils";
 import ProductCard from "@/components/products/ProductCard";
 
 const SectionContainer = styled.section`
-  padding: 120px 20px;
+  padding: 70px 20px;
   background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
   position: relative;
   overflow: visible;
@@ -102,8 +102,8 @@ const SpotlightBeam = styled.div<{ $side: 'left' | 'right' }>`
 // Premier Product Section (Centered Design)
 const PremierProductContainer = styled(motion.div)`
   position: relative;
-  margin-top: 4rem;
-  margin-bottom: 4rem;
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -271,7 +271,7 @@ const PremierButton = styled(motion.button)`
 // Slider Section (for remaining products)
 const SliderWrapper = styled.div`
   position: relative;
-  margin-top: 3rem;
+  margin-top: 2rem;
   overflow: hidden;
   padding: 0;
   width: 100%;
@@ -582,6 +582,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
                       product={productData}
                       index={0}
                       showCartButton={true}
+                      showPluginType={false}
                     />
                   </ProductCardWrapper>
                 );

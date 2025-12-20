@@ -5,7 +5,7 @@ import styled from "styled-components";
 import ProductCardSkeleton from "@/components/common/ProductCardSkeleton";
 
 const SectionContainer = styled.section`
-  padding: 100px 20px;
+  padding: 60px 20px;
   background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
   position: relative;
   overflow: visible;
@@ -83,7 +83,7 @@ const SectionSubtitle = styled.div`
 
 const SliderWrapper = styled.div`
   position: relative;
-  margin-top: 3rem;
+  margin-top: 2rem;
   overflow: hidden;
   padding: 0;
 `;

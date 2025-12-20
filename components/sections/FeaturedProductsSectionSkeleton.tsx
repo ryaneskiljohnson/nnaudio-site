@@ -5,7 +5,7 @@ import styled from "styled-components";
 import ProductCardSkeleton from "@/components/common/ProductCardSkeleton";
 
 const SectionContainer = styled.section`
-  padding: 120px 20px;
+  padding: 70px 20px;
   background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 100%);
   position: relative;
   overflow: visible;
@@ -32,8 +32,8 @@ const SectionTitle = styled.h2`
 `;
 
 const PremierSkeleton = styled.div`
-  margin-top: 4rem;
-  margin-bottom: 4rem;
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
   border-radius: 32px;
   overflow: hidden;
   min-height: 600px;
@@ -63,7 +63,7 @@ const PremierSkeleton = styled.div`
 
 const SliderWrapper = styled.div`
   position: relative;
-  margin-top: 3rem;
+  margin-top: 2rem;
   overflow: hidden;
   padding: 0;
   width: 100%;

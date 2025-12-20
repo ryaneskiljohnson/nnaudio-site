@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const featured = searchParams.get('featured');
     const status = searchParams.get('status') || 'active';
     const limitParam = searchParams.get('limit');
+    const free = searchParams.get('free'); // Filter for free products (price = 0 or sale_price = 0)
     // If limit is provided, use it; otherwise fetch all (Supabase default is 1000, but we'll set a high limit)
     const limit = limitParam ? parseInt(limitParam) : 10000;
 
@@ -37,6 +38,11 @@ export async function GET(request: NextRequest) {
 
     if (featured === 'true') {
       query = query.eq('is_featured', true);
+    }
+
+    // Filter for free products (price = 0 or sale_price = 0)
+    if (free === 'true') {
+      query = query.or('price.eq.0,sale_price.eq.0');
     }
 
     // Only filter by status if explicitly provided

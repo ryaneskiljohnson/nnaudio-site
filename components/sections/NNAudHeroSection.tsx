@@ -239,7 +239,7 @@ const NNAudHeroSection = () => {
           transition={{ duration: 0.8, delay: 0.6 }}
         >
           <PrimaryButton
-            href="#plugins"
+            href="/plugins"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

@@ -208,26 +208,29 @@ export default function Home() {
   const [instrumentPlugins, setInstrumentPlugins] = useState<any[]>([]);
   const [audioFxPlugins, setAudioFxPlugins] = useState<any[]>([]);
   const [packs, setPacks] = useState<any[]>([]);
+  const [freeProducts, setFreeProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         // Fetch ALL products in parallel for better performance
-        const [featuredResponse, bundlesResponse, fxResponse, instrumentResponse, packsResponse] = await Promise.all([
+        const [featuredResponse, bundlesResponse, fxResponse, instrumentResponse, packsResponse, freeResponse] = await Promise.all([
           fetch('/api/products?featured=true&status=active&limit=6'),
           fetch('/api/products?category=bundle&status=active&limit=10000'),
           fetch('/api/products?category=audio-fx-plugin&status=active&limit=10000'),
           fetch('/api/products?category=instrument-plugin&status=active&limit=10000'),
           fetch('/api/products?category=pack&status=active&limit=10000'),
+          fetch('/api/products?free=true&status=active&limit=10000'),
         ]);
         
-        const [featuredData, bundlesData, fxData, instrumentData, packsData] = await Promise.all([
+        const [featuredData, bundlesData, fxData, instrumentData, packsData, freeData] = await Promise.all([
           featuredResponse.json(),
           bundlesResponse.json(),
           fxResponse.json(),
           instrumentResponse.json(),
           packsResponse.json(),
+          freeResponse.json(),
         ]);
         
         // Map featured products
@@ -330,6 +333,26 @@ export default function Home() {
           }));
           setPacks(mappedPacks);
         }
+
+        // Map free products
+        if (freeData.success) {
+          const mappedFree = freeData.products.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+            tagline: p.tagline || p.short_description || '',
+            short_description: p.short_description,
+            description: p.description,
+            category: p.category,
+            image: p.logo_url || p.featured_image_url || '',
+            featured_image_url: p.featured_image_url,
+            logo_url: p.logo_url,
+            backgroundImage: p.background_image_url || p.background_video_url || '',
+            price: typeof p.sale_price === 'number' ? p.sale_price : (typeof p.price === 'number' ? p.price : 0),
+            sale_price: p.sale_price,
+          }));
+          setFreeProducts(mappedFree);
+        }
       } catch (error) {
         console.error('Error fetching products:', error);
         // Fall back to hardcoded products if API fails
@@ -338,6 +361,7 @@ export default function Home() {
         setInstrumentPlugins(staticPlugins.filter((p: any) => p.name.includes('Curio') || p.name.includes('Weaknd')));
         setAudioFxPlugins(staticPlugins.filter((p: any) => !p.name.includes('Curio') && !p.name.includes('Weaknd')));
         setPacks(staticPacks);
+        setFreeProducts([]);
       } finally {
         setLoading(false);
       }
@@ -460,7 +484,29 @@ export default function Home() {
             fetchAllUrl="/api/products?category=pack&status=active&limit=10000"
           />
         ) : null}
-        {!loading && <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#06070f" />}
+        {!loading && freeProducts.length > 0 && (
+          <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#06070f" />
+        )}
+      </div>
+      
+      {/* Free Products section */}
+      <div style={{ position: 'relative', overflow: 'visible' }}>
+        {loading ? (
+          <ProductsSectionSkeleton 
+            title="Free Tools"
+            subtitle="High-quality plugins and samples available at no cost"
+            cardCount={4}
+          />
+        ) : freeProducts.length > 0 ? (
+          <ProductsSection
+            id="free-products"
+            title="Free Tools"
+            subtitle="High-quality plugins and samples available at no cost"
+            products={freeProducts}
+            fetchAllUrl="/api/products?free=true&status=active&limit=10000"
+          />
+        ) : null}
+        {!loading && <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#06070f" />}
       </div>
       
       {/* Pricing section */}

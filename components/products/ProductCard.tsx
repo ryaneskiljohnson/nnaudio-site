@@ -70,6 +70,17 @@ const ProductTagline = styled.p`
   text-align: center;
 `;
 
+const PluginType = styled.div`
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ff8c42;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+`;
+
 const ProductPrice = styled.div`
   font-size: 1.3rem;
   font-weight: 700;
@@ -181,6 +192,7 @@ interface ProductCardProps {
   };
   index?: number;
   showCartButton?: boolean;
+  showPluginType?: boolean; // Show plugin type label (default: true)
 }
 
 // Generate a default subtitle based on product name and category
@@ -197,7 +209,7 @@ function getDefaultSubtitle(name: string, category?: string): string {
   return categoryText;
 }
 
-function ProductCard({ product, index = 0, showCartButton = true }: ProductCardProps) {
+function ProductCard({ product, index = 0, showCartButton = true, showPluginType = true }: ProductCardProps) {
   const { addItem } = useCart();
   const { success } = useToast();
   const router = useRouter();
@@ -311,6 +323,12 @@ function ProductCard({ product, index = 0, showCartButton = true }: ProductCardP
           <ProductTagline>
             {tagline || getDefaultSubtitle(product.name, product.category)}
           </ProductTagline>
+          {showPluginType && product.category === 'instrument-plugin' && (
+            <PluginType>Instrument</PluginType>
+          )}
+          {showPluginType && product.category === 'audio-fx-plugin' && (
+            <PluginType>Audio FX</PluginType>
+          )}
           {isEliteBundle ? (
             <ViewPricingButton
               whileHover={{ scale: 1.02 }}
