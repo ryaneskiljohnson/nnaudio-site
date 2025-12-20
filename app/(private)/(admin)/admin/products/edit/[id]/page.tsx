@@ -399,8 +399,6 @@ export default function EditProductPage() {
     background_image_url: '',
     background_video_url: '',
     demo_video_url: '',
-    download_url: '',
-    download_version: '',
     meta_title: '',
     meta_description: '',
     meta_keywords: '',
@@ -409,6 +407,14 @@ export default function EditProductPage() {
   const [features, setFeatures] = useState<Array<{ title: string; description?: string; image_url?: string; gif_url?: string }>>([{ title: '' }]);
   const [audioSamples, setAudioSamples] = useState<{url: string, name: string}[]>([]);
   const [audioSamplesExpanded, setAudioSamplesExpanded] = useState(true);
+  const [downloads, setDownloads] = useState<Array<{
+    path: string;
+    name: string;
+    type: string;
+    version?: string | null;
+    file_size?: number | null;
+  }>>([]);
+  const [downloadsExpanded, setDownloadsExpanded] = useState(true);
   const [stripeIds, setStripeIds] = useState<{
     stripe_product_id?: string | null;
     stripe_price_id?: string | null;
@@ -475,8 +481,6 @@ export default function EditProductPage() {
           background_image_url: product.background_image_url || '',
           background_video_url: product.background_video_url || '',
           demo_video_url: product.demo_video_url || '',
-          download_url: product.download_url || '',
-          download_version: product.download_version || '',
           meta_title: product.meta_title || '',
           meta_description: product.meta_description || '',
           meta_keywords: product.meta_keywords || '',
@@ -494,6 +498,17 @@ export default function EditProductPage() {
           ? product.audio_samples.map((audio: any) => ({
               url: audio.url || audio.src || '',
               name: audio.name || audio.title || ''
+            }))
+          : []);
+        
+        // Load downloads array
+        setDownloads(product.downloads && Array.isArray(product.downloads)
+          ? product.downloads.map((d: any) => ({
+              path: d.path || '',
+              name: d.name || '',
+              type: d.type || 'plugin',
+              version: d.version || null,
+              file_size: d.file_size || null,
             }))
           : []);
         
@@ -904,6 +919,23 @@ export default function EditProductPage() {
     setAudioSamples(audioSamples.filter((_, i) => i !== index));
   };
 
+  const handleDownloadChange = (index: number, field: 'path' | 'name' | 'type' | 'version' | 'file_size', value: string | number | null) => {
+    const newDownloads = [...downloads];
+    newDownloads[index] = {
+      ...newDownloads[index],
+      [field]: value
+    };
+    setDownloads(newDownloads);
+  };
+
+  const addDownload = () => {
+    setDownloads([...downloads, { path: '', name: '', type: 'plugin', version: null, file_size: null }]);
+  };
+
+  const removeDownload = (index: number) => {
+    setDownloads(downloads.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -932,6 +964,15 @@ export default function EditProductPage() {
           .map(s => ({
             url: s.url.trim(),
             name: s.name.trim() || s.url.split('/').pop() || 'Audio Sample'
+          })),
+        downloads: downloads
+          .filter(d => d.path.trim() !== '')
+          .map(d => ({
+            path: d.path.trim(),
+            name: d.name.trim() || d.path.split('/').pop() || 'Download',
+            type: d.type || 'plugin',
+            version: d.version || null,
+            file_size: d.file_size || null,
           })),
       };
 
@@ -1659,29 +1700,83 @@ export default function EditProductPage() {
         </FormSection>
 
         <FormSection>
-          <SectionTitle>Download & Version</SectionTitle>
-          
-          <FormGroup>
-            <Label>Download URL</Label>
-            <Input
-              type="url"
-              name="download_url"
-              value={formData.download_url}
-              onChange={handleChange}
-              placeholder="https://..."
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label>Version</Label>
-            <Input
-              type="text"
-              name="download_version"
-              value={formData.download_version}
-              onChange={handleChange}
-              placeholder="1.0.0"
-            />
-          </FormGroup>
+          <CollapsibleSectionTitle onClick={() => setDownloadsExpanded(!downloadsExpanded)}>
+            <SectionTitle>Downloads</SectionTitle>
+            {downloadsExpanded ? <FaChevronUp /> : <FaChevronDown />}
+          </CollapsibleSectionTitle>
+          <CollapsibleContent $isOpen={downloadsExpanded}>
+            {downloads.length > 0 && (
+              <FeaturesList>
+                {downloads.map((download, index) => (
+                  <div key={index} style={{ marginBottom: '1rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px' }}>
+                    <FeatureItem>
+                      <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Storage Path *</Label>
+                      <FeatureInput
+                        type="text"
+                        value={download.path}
+                        onChange={(e) => handleDownloadChange(index, 'path', e.target.value)}
+                        placeholder="products/apache-flute/plugin_Apache.zip"
+                      />
+                    </FeatureItem>
+                    <FeatureItem>
+                      <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Display Name *</Label>
+                      <FeatureInput
+                        type="text"
+                        value={download.name}
+                        onChange={(e) => handleDownloadChange(index, 'name', e.target.value)}
+                        placeholder="Apache Flute Plugin"
+                      />
+                    </FeatureItem>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                      <FeatureItem>
+                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Type</Label>
+                        <Select
+                          value={download.type}
+                          onChange={(e) => handleDownloadChange(index, 'type', e.target.value)}
+                        >
+                          <option value="plugin">Plugin</option>
+                          <option value="samples">Samples</option>
+                          <option value="docs">Documentation</option>
+                          <option value="midi">MIDI Pack</option>
+                          <option value="loops">Loops</option>
+                          <option value="kit">Construction Kit</option>
+                        </Select>
+                      </FeatureItem>
+                      <FeatureItem>
+                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Version</Label>
+                        <FeatureInput
+                          type="text"
+                          value={download.version || ''}
+                          onChange={(e) => handleDownloadChange(index, 'version', e.target.value || null)}
+                          placeholder="1.0.0"
+                        />
+                      </FeatureItem>
+                      <FeatureItem>
+                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>File Size (bytes)</Label>
+                        <FeatureInput
+                          type="number"
+                          value={download.file_size || ''}
+                          onChange={(e) => handleDownloadChange(index, 'file_size', e.target.value ? parseInt(e.target.value) : null)}
+                          placeholder="37811823"
+                        />
+                      </FeatureItem>
+                    </div>
+                    <RemoveButton
+                      type="button"
+                      onClick={() => removeDownload(index)}
+                      style={{ marginTop: '0.5rem' }}
+                    >
+                      <FaTrash /> Remove Download
+                    </RemoveButton>
+                  </div>
+                ))}
+              </FeaturesList>
+            )}
+            
+            <AddButton type="button" onClick={addDownload}>
+              <FaPlus /> Add Download
+            </AddButton>
+          </CollapsibleContent>
         </FormSection>
 
         <FormSection>

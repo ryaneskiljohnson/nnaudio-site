@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="sQfdlN" name="NNAudio Access" projectType="guiapp" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="0" displaySplashScreen="1" jucerFormatVersion="1"
+              companyName="Neural Network Audio" companyCopyright="Neural Network Audio"
+              companyWebsite="www.neuralnetworkaudio.com" companyEmail="support@neuralnetworkaudio.com"
+              cppLanguageStandard="20" binaryDataNamespace="BinaryData">
+  <MAINGROUP id="H9Ss4V" name="NNAudio Access">
+    <GROUP id="{96C414E1-0F2A-5744-F4B1-9FA6B4FB9F6A}" name="Assets">
+      <FILE id="AppIcon" name="AppIcon.icns" compile="0" resource="1" file="Assets/AppIcon.icns"/>
+      <GROUP id="{A6C414E1-0F2A-5744-F4B1-9FA6B4FB9F6B}" name="Images">
+        <FILE id="YbvR7q" name="background_03.png" compile="0" resource="1"
+              file="Assets/Images/background_03.png"/>
+        <FILE id="ZbvR8q" name="downloads.png" compile="0" resource="1" file="Assets/Images/downloads.png"/>
+        <FILE id="WbvR9q" name="refresh.png" compile="0" resource="1" file="Assets/Images/refresh.png"/>
+        <FILE id="XbvR0q" name="logo.png" compile="0" resource="1" file="Assets/Images/logo.png"/>
+        <FILE id="UserImg" name="user.png" compile="0" resource="1" file="Assets/Images/user.png"/>
+        <FILE id="FolderImg" name="folder.png" compile="0" resource="1" file="Assets/Images/folder.png"/>
+      </GROUP>
+    </GROUP>
+    <GROUP id="{39417FE6-8795-B5B0-0B49-8EBAE89C4661}" name="Source">
+      <GROUP id="{8F88C948-A037-5D44-0981-5C8B6B9F3D42}" name="Source">
+        <GROUP id="{8F88C948-A037-5D44-0981-5C8B6B9F3D44}" name="Common">
+          <FILE id="ModelsH" name="Models.h" compile="0" resource="0" file="Source/Common/Models.h"/>
+        </GROUP>
+        <GROUP id="{8F88C948-A037-5D44-0981-5C8B6B9F3D45}" name="Backend">
+          <FILE id="AuthMgrH" name="AuthManager.h" compile="0" resource="0" file="Source/Backend/AuthManager.h"/>
+          <FILE id="AuthMgrC" name="AuthManager.cpp" compile="1" resource="0"
+                file="Source/Backend/AuthManager.cpp"/>
+          <FILE id="ProdMgrH" name="ProductManager.h" compile="0" resource="0"
+                file="Source/Backend/ProductManager.h"/>
+          <FILE id="ProdMgrC" name="ProductManager.cpp" compile="1" resource="0"
+                file="Source/Backend/ProductManager.cpp"/>
+          <FILE id="SetMgrH" name="SettingsManager.h" compile="0" resource="0"
+                file="Source/Backend/SettingsManager.h"/>
+        </GROUP>
+        <GROUP id="{8F88C948-A037-5D44-0981-5C8B6B9F3D43}" name="Frontend">
+          <GROUP id="{8F88C948-A037-5D44-0981-5C8B6B9F3D46}" name="Services">
+            <FILE id="AuthSrvH" name="AuthService.h" compile="0" resource="0" file="Source/Frontend/Services/AuthService.h"/>
+            <FILE id="AuthSrvC" name="AuthService.cpp" compile="1" resource="0"
+                  file="Source/Frontend/Services/AuthService.cpp"/>
+          </GROUP>
+          <FILE id="tR6PIj" name="Main.cpp" compile="1" resource="0" file="Source/Frontend/Main.cpp"/>
+          <FILE id="MainWinH" name="MainWindow.h" compile="0" resource="0" file="Source/Frontend/MainWindow.h"/>
+          <FILE id="MainWinC" name="MainWindow.cpp" compile="1" resource="0"
+                file="Source/Frontend/MainWindow.cpp"/>
+          <FILE id="MainCmpH" name="MainComponent.h" compile="0" resource="0"
+                file="Source/Frontend/MainComponent.h"/>
+          <FILE id="MainCmpC" name="MainComponent.cpp" compile="1" resource="0"
+                file="Source/Frontend/MainComponent.cpp"/>
+          <FILE id="LogCmpH" name="LoginComponent.h" compile="0" resource="0"
+                file="Source/Frontend/LoginComponent.h"/>
+          <FILE id="LogCmpC" name="LoginComponent.cpp" compile="1" resource="0"
+                file="Source/Frontend/LoginComponent.cpp"/>
+          <FILE id="ProdLstH" name="ProductListComponent.h" compile="0" resource="0"
+                file="Source/Frontend/ProductListComponent.h"/>
+          <FILE id="ProdLstC" name="ProductListComponent.cpp" compile="1" resource="0"
+                file="Source/Frontend/ProductListComponent.cpp"/>
+          <FILE id="DwnMgrH" name="DownloadManagerComponent.h" compile="0" resource="0"
+                file="Source/Frontend/DownloadManagerComponent.h"/>
+          <FILE id="DwnMgrC" name="DownloadManagerComponent.cpp" compile="1"
+                resource="0" file="Source/Frontend/DownloadManagerComponent.cpp"/>
+          <FILE id="ProdCmpH" name="ProductComponent.h" compile="0" resource="0"
+                file="Source/Frontend/ProductComponent.h"/>
+          <FILE id="ProdCmpC" name="ProductComponent.cpp" compile="1" resource="0"
+                file="Source/Frontend/ProductComponent.cpp"/>
+          <FILE id="DwnPrgH" name="DownloadProgressComponent.h" compile="0" resource="0"
+                file="Source/Frontend/DownloadProgressComponent.h"/>
+          <FILE id="DwnPrgC" name="DownloadProgressComponent.cpp" compile="1"
+                resource="0" file="Source/Frontend/DownloadProgressComponent.cpp"/>
+          <FILE id="SmpLocH" name="SampleLocationDialog.h" compile="0" resource="0"
+                file="Source/Frontend/SampleLocationDialog.h"/>
+          <FILE id="SmpLocC" name="SampleLocationDialog.cpp" compile="1" resource="0"
+                file="Source/Frontend/SampleLocationDialog.cpp"/>
+          <FILE id="Hn8Yvx" name="SampleLocationDialog.h" compile="0" resource="0"
+                file="Source/Frontend/SampleLocationDialog.h"/>
+          <FILE id="YtR9Kp" name="SampleLocationDialog.cpp" compile="1" resource="0"
+                file="Source/Frontend/SampleLocationDialog.cpp"/>
+          <FILE id="UnD1lg" name="UninstallDialog.h" compile="0" resource="0"
+                file="Source/Frontend/UninstallDialog.h"/>
+          <FILE id="UnD2lg" name="UninstallDialog.cpp" compile="1" resource="0"
+                file="Source/Frontend/UninstallDialog.cpp"/>
+          <FILE id="CntPckH" name="ContentPackLocationDialog.h" compile="0" resource="0"
+                file="Source/Frontend/ContentPackLocationDialog.h"/>
+          <FILE id="CntPckC" name="ContentPackLocationDialog.cpp" compile="1"
+                resource="0" file="Source/Frontend/ContentPackLocationDialog.cpp"/>
+          <FILE id="RdmPrdH" name="RedeemProductDialog.h" compile="0" resource="0"
+                file="Source/Frontend/RedeemProductDialog.h"/>
+          <FILE id="RdmPrdC" name="RedeemProductDialog.cpp" compile="1" resource="0"
+                file="Source/Frontend/RedeemProductDialog.cpp"/>
+        </GROUP>
+      </GROUP>
+    </GROUP>
+  </MAINGROUP>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_WEB_BROWSER="1" JUCE_USE_CURL="1"/>
+  <EXPORTFORMATS>
+    <XCODE_MAC targetFolder="Builds/MacOSX" extraDefs="" xcodeValidArchs="arm64,arm64e,x86_64"
+               customXcodeResourceFolders="Assets" icon="AppIcon" smallIcon="XbvR0q"
+               bigIcon="XbvR0q">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="NNAudio Access" optimisation="1"
+                       osxCompatibility="10.13 SDK" macOSDeploymentTarget="10.13"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="NNAudio Access" optimisation="3"
+                       osxCompatibility="10.13 SDK" macOSDeploymentTarget="10.13"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_core" path="JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="JUCE/modules"/>
+        <MODULEPATH id="juce_cryptography" path="JUCE/modules"/>
+        <MODULEPATH id="juce_opengl" path="JUCE/modules"/>
+        <MODULEPATH id="gin" path="modules"/>
+        <MODULEPATH id="gin_webp" path="modules"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
+    <VS2022 targetFolder="Builds/VisualStudio2022">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug"/>
+        <CONFIGURATION isDebug="0" name="Release"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="gin" path="modules"/>
+        <MODULEPATH id="gin_webp" path="modules"/>
+        <MODULEPATH id="juce_core" path="../../juce"/>
+        <MODULEPATH id="juce_cryptography" path="../../juce"/>
+        <MODULEPATH id="juce_data_structures" path="../../juce"/>
+        <MODULEPATH id="juce_events" path="../../juce"/>
+        <MODULEPATH id="juce_graphics" path="../../juce"/>
+        <MODULEPATH id="juce_gui_basics" path="../../juce"/>
+        <MODULEPATH id="juce_gui_extra" path="../../juce"/>
+        <MODULEPATH id="juce_opengl" path="../../juce"/>
+      </MODULEPATHS>
+    </VS2022>
+  </EXPORTFORMATS>
+  <MODULES>
+    <MODULE id="gin" showAllCode="1" useLocalCopy="1" useGlobalPath="0"/>
+    <MODULE id="gin_webp" showAllCode="1" useLocalCopy="1" useGlobalPath="0"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="1" useGlobalPath="1"/>
+    <MODULE id="juce_cryptography" showAllCode="1" useLocalCopy="1" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="1" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="1" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="1" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="1" useGlobalPath="1"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="1" useGlobalPath="1"/>
+    <MODULE id="juce_opengl" showAllCode="1" useLocalCopy="1" useGlobalPath="1"/>
+  </MODULES>
+  <LIVE_SETTINGS>
+    <OSX/>
+  </LIVE_SETTINGS>
+  <JUCEOPTIONS/>
+  <GLOBAL_SETTINGS>
+    <BINARYDATA generateCppFile="1" binaryDataNamespace="BinaryData"/>
+  </GLOBAL_SETTINGS>
+</JUCERPROJECT>
