@@ -353,6 +353,11 @@ export async function POST(request: NextRequest) {
       );
 
       formattedProduct.downloads = downloadsWithUrls;
+      
+      // Extract version from downloads array (preferred method)
+      if (downloadsWithUrls.length > 0 && downloadsWithUrls[0].version) {
+        formattedProduct.version = downloadsWithUrls[0].version;
+      }
     } else if (product.download_url) {
       // Legacy format: single download_url field
       formattedProduct.downloads.push({
@@ -361,8 +366,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // If product has version, extract it
-    if (product.download_version) {
+    // If version not found in downloads array, fall back to deprecated download_version field
+    if (!formattedProduct.version && product.download_version) {
       formattedProduct.version = product.download_version;
     }
 
