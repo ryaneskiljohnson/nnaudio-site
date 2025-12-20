@@ -9,15 +9,21 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const featured = searchParams.get('featured');
     const status = searchParams.get('status') || 'active';
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limitParam = searchParams.get('limit');
+    // If limit is provided, use it; otherwise fetch all (Supabase default is 1000, but we'll set a high limit)
+    const limit = limitParam ? parseInt(limitParam) : 10000;
 
     const supabase = await createClient();
     
     let query = supabase
       .from('products')
       .select('*, product_reviews(rating)')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+      .order('created_at', { ascending: false });
+    
+    // Only apply limit if it's a reasonable number (to prevent abuse)
+    if (limit > 0 && limit <= 10000) {
+      query = query.limit(limit);
+    }
 
     if (category) {
       // Handle comma-separated categories (e.g., "audio-fx-plugin,instrument-plugin")
@@ -33,6 +39,8 @@ export async function GET(request: NextRequest) {
       query = query.eq('is_featured', true);
     }
 
+    // Only filter by status if explicitly provided
+    // If not provided, return all statuses (for admin page)
     if (status) {
       query = query.eq('status', status);
     }

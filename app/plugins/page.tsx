@@ -75,12 +75,7 @@ export default function PluginsPage() {
         ...(instrumentData.success ? instrumentData.products : []),
       ];
       
-      const response = { success: true, products: allPlugins };
-      const data = await response.json();
-
-      if (data.success) {
-        setProducts(data.products);
-      }
+      setProducts(allPlugins);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {

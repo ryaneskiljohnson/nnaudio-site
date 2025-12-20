@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -197,7 +197,7 @@ function getDefaultSubtitle(name: string, category?: string): string {
   return categoryText;
 }
 
-export default function ProductCard({ product, index = 0, showCartButton = true }: ProductCardProps) {
+function ProductCard({ product, index = 0, showCartButton = true }: ProductCardProps) {
   const { addItem } = useCart();
   const { success } = useToast();
   const router = useRouter();
@@ -221,7 +221,16 @@ export default function ProductCard({ product, index = 0, showCartButton = true 
   const tagline = cleanedTagline.length > 100 ? cleanedTagline.substring(0, 100).trim() + '...' : cleanedTagline;
   
   // Check if this is an elite bundle and get the correct slug
-  const getEliteBundleSlug = (name: string): string | null => {
+  const getEliteBundleSlug = (name: string, slug?: string): string | null => {
+    // First check slug directly (most reliable)
+    if (slug) {
+      const lowerSlug = slug.toLowerCase();
+      if (lowerSlug === 'producers-arsenal' || lowerSlug === 'ultimate-bundle' || lowerSlug === 'beat-lab') {
+        return lowerSlug;
+      }
+    }
+    
+    // Fallback to checking name
     const lowerName = name.toLowerCase();
     if (lowerName.includes("producer's") || lowerName.includes('producers')) {
       return 'producers-arsenal';
@@ -235,8 +244,13 @@ export default function ProductCard({ product, index = 0, showCartButton = true 
     return null;
   };
   
-  const bundleSlug = getEliteBundleSlug(product.name);
+  const bundleSlug = getEliteBundleSlug(product.name, product.slug);
   const isEliteBundle = bundleSlug !== null;
+  
+  // Determine the correct route - elite bundles go to bundle pages
+  const productUrl = product.slug 
+    ? (isEliteBundle ? `/bundles/${bundleSlug}` : `/product/${product.slug}`)
+    : '#';
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -261,7 +275,7 @@ export default function ProductCard({ product, index = 0, showCartButton = true 
       whileHover={{ scale: 1.02 }}
     >
       <Link 
-        href={product.slug ? `/product/${product.slug}` : '#'} 
+        href={productUrl} 
         style={{ textDecoration: 'none', color: 'inherit', display: 'block', width: '100%', height: '100%' }}
       >
         <ProductImageContainer>
@@ -347,4 +361,6 @@ export default function ProductCard({ product, index = 0, showCartButton = true 
     </ProductCardContainer>
   );
 }
+
+export default memo(ProductCard);
 

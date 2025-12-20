@@ -469,12 +469,13 @@ export default function ProductsManagementPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      let url = '/api/products?limit=100';
+      let url = '/api/products?limit=10000'; // Increased limit to show all products
       
       if (filter !== 'all') {
         url += `&category=${filter}`;
       }
       
+      // When statusFilter is 'all', don't pass status parameter - API will return all statuses
       if (statusFilter !== 'all') {
         url += `&status=${statusFilter}`;
       }

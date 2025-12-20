@@ -52,6 +52,9 @@ const LayoutWrapper = styled.div`
   flex-direction: column;
   min-height: 100vh;
   background-color: var(--background);
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 `;
 
 // Use simple div by default, upgrade to motion.main when animations are needed
@@ -60,11 +63,14 @@ const Main = styled.main`
   display: flex;
   flex-direction: column;
   width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
 
   /* Content within can set their own max-width if needed */
   > * {
     margin: 0 auto;
     width: 100%;
+    max-width: 100%;
   }
 `;
 

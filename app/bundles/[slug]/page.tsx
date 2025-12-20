@@ -619,7 +619,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
         </TopSection>
 
         <PricingSection>
-          <PricingTitle>Choose Your Subscription</PricingTitle>
+          <PricingTitle>Choose Your Plan</PricingTitle>
           <PricingGrid>
             {bundle.pricing.monthly && (
               <PricingCard

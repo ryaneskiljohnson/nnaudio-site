@@ -313,6 +313,8 @@ interface Device {
 
 function Settings() {
   const { t } = useTranslation();
+  const { user, session, signOut, refreshUser, updateProfile, resetPassword } = useAuth();
+  
   const [settings, setSettings] = useState<SettingsState>({
     // Remove the language: "en" entry
   });
@@ -327,8 +329,6 @@ function Settings() {
     text: string;
     type: "error" | "success" | "";
   }>({ text: "", type: "" });
-
-  const { user, session, signOut, refreshUser, updateProfile, resetPassword } = useAuth();
 
   // Refresh pro status on mount (same as login)
   useEffect(() => {

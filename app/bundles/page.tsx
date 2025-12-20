@@ -303,7 +303,7 @@ export default function BundlesPage() {
           Get access to curated collections of our best products with exclusive bundle pricing.
         </Subtitle>
         <Subtitle>
-          Choose from monthly, annual, or lifetime subscriptions.
+          Choose from monthly, annual, or lifetime plans.
         </Subtitle>
       </Header>
 
