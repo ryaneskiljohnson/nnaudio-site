@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your NNAudio Email</title>
+    <style type="text/css">
+        /* Reset styles */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: #f7f7f7;
+            color: #333333;
+            line-height: 1.6;
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        /* Container styling */
+        .email-container {
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+            background-color: #121212;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            box-sizing: border-box;
+        }
+        
+        /* Header styling */
+        .header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%);
+            padding: 30px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(138, 43, 226, 0.2);
+        }
+        
+        .logo {
+            width: 250px;
+            margin: 0 auto;
+            display: block;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+        
+        /* Content styling */
+        .content {
+            padding: 30px;
+            color: #ffffff;
+            background-color: #121212;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #ffffff;
+        }
+        
+        .title span {
+            background: linear-gradient(90deg, #6c63ff, #8a2be2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .message {
+            margin-bottom: 30px;
+            font-size: 16px;
+            color: #b3b3b3;
+        }
+        
+        .verification-button {
+            display: block;
+            width: 70%;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #6c63ff, #8a2be2);
+            color: white;
+            text-decoration: none;
+            text-align: center;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            transition: transform 0.3s;
+            box-sizing: border-box;
+        }
+        
+        .verification-link {
+            display: block;
+            margin-top: 20px;
+            word-break: break-all;
+            font-size: 12px;
+            color: #8a2be2;
+            text-align: center;
+        }
+        
+        /* Footer styling */
+        .footer {
+            padding: 15px;
+            text-align: center;
+            font-size: 12px;
+            background-color: #0a0a0a;
+            color: #666666;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .footer a {
+            color: #8a2be2;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .footer-link {
+            margin-bottom: 10px;
+        }
+        
+        .copyright {
+            margin: 0;
+            color: #666666;
+        }
+        
+        .divider {
+            height: 3px;
+            background: linear-gradient(90deg, #6c63ff, #8a2be2);
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* MOBILE FIX: Button becomes fully responsive */
+        @media only screen and (max-width: 600px) {
+            body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+            }
+            
+            .email-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                border-radius: 0;
+                margin: 0;
+            }
+            
+            .content {
+                padding: 20px 15px !important;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            
+            .verification-button {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 18px 15px !important;
+                font-size: 15px !important;
+                box-sizing: border-box;
+                display: block;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+            
+            .verification-link {
+                word-break: break-all;
+                padding: 0 5px;
+                box-sizing: border-box;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="divider"></div>
+        <div class="header">
+            <div class="logo-container">
+                <img src="https://nnaud.io/images/nnaud-io/NNAudio-logo-white.png" alt="NNAudio Logo" class="logo">
+            </div>
+        </div>
+        
+        <div class="content">
+            <h1 class="title">Verify Your <span>Account</span></h1>
+            
+            <p class="message">Thanks for joining NNAudio. Please verify your email address by clicking the button below.</p>
+            
+            <a href="{{ .ConfirmationURL }}" class="verification-button">Verify Account</a>
+            
+            <p class="message" style="margin-top: 30px; font-size: 14px;">
+                This link will expire in 24 hours. If you didn't create this account, you can ignore this email.
+            </p>
+            
+            <p class="message" style="font-size: 14px;">
+                If the button doesn't work, copy and paste this link:
+            </p>
+            
+            <a href="{{ .ConfirmationURL }}" class="verification-link">{{ .ConfirmationURL }}</a>
+        </div>
+        
+        <div class="footer">
+            <div class="footer-link">
+                <a href="https://nnaud.io">NNAudio</a>
+            </div>
+            
+            <p class="copyright">© NNAudio. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+
