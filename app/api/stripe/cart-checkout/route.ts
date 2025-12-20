@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
 
     // Build line items for Stripe checkout
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = items.map((item: CartItem) => {
-      const price = item.sale_price || item.price;
+      // Use sale_price if it exists (including 0), otherwise use regular price
+      const price = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
       
       return {
         price_data: {
@@ -68,7 +69,8 @@ export async function POST(request: NextRequest) {
 
     // Calculate total
     const total = items.reduce((sum: number, item: CartItem) => {
-      const price = item.sale_price || item.price;
+      // Use sale_price if it exists (including 0), otherwise use regular price
+      const price = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
       return sum + price * item.quantity;
     }, 0);
 

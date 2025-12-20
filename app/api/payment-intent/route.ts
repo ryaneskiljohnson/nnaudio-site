@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
 
     // Calculate total amount
     let totalAmount = items.reduce((sum: number, item: CartItem) => {
-      const price = item.sale_price || item.price;
+      // Use sale_price if it exists (including 0), otherwise use regular price
+      const price = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
       return sum + price * item.quantity;
     }, 0);
 
@@ -152,7 +153,8 @@ export async function POST(request: NextRequest) {
       totalAmount = STRIPE_MINIMUM_AMOUNT;
       // Adjust discount amount to reflect the minimum charge
       discountAmount = Math.max(0, (items.reduce((sum: number, item: CartItem) => {
-        const price = item.sale_price || item.price;
+        // Use sale_price if it exists (including 0), otherwise use regular price
+        const price = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
         return sum + price * item.quantity;
       }, 0)) - totalAmount);
     }
@@ -162,7 +164,8 @@ export async function POST(request: NextRequest) {
       id: item.id,
       name: item.name,
       quantity: item.quantity,
-      price: item.sale_price || item.price,
+      // Use sale_price if it exists (including 0), otherwise use regular price
+      price: (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price,
     }));
 
     // Create Payment Intent with discounted amount

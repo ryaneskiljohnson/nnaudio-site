@@ -94,7 +94,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const getTotal = useCallback(() => {
     return items.reduce((total, item) => {
-      const price = item.sale_price || item.price;
+      // Use sale_price if it exists (including 0), otherwise use regular price
+      const price = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
       return total + price * item.quantity;
     }, 0);
   }, [items]);

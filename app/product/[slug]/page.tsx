@@ -152,12 +152,12 @@ const FreeBadge = styled.div`
   display: inline-flex;
   align-items: center;
   padding: 0.5rem 1.25rem;
-  background: linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%);
+  background: linear-gradient(135deg, #4ecdc4 0%, #44a5a0 100%);
   color: white;
   border-radius: 50px;
   font-size: 1.5rem;
   font-weight: 700;
-  box-shadow: 0 4px 20px rgba(255, 140, 66, 0.4);
+  box-shadow: 0 4px 20px rgba(78, 205, 196, 0.4);
   text-transform: uppercase;
   letter-spacing: 1px;
 `;
@@ -1603,9 +1603,11 @@ export default function ProductPage() {
     return <LoadingContainer>Product not found</LoadingContainer>;
   }
 
-  const displayPrice = product.sale_price || product.price;
-  const hasDiscount = product.sale_price && product.sale_price < product.price;
-  const isFree = displayPrice === 0 || displayPrice === null;
+  // Use sale_price if it exists (including 0), otherwise use regular price
+  const displayPrice = (product.sale_price !== null && product.sale_price !== undefined) ? product.sale_price : product.price;
+  const hasDiscount = product.sale_price !== null && product.sale_price !== undefined && product.sale_price > 0 && product.sale_price < product.price;
+  // Product is free if sale_price is 0, or if both price and sale_price are 0/null
+  const isFree = product.sale_price === 0 || (product.price === 0 && (product.sale_price === null || product.sale_price === undefined));
 
   return (
     <Container>
@@ -1706,10 +1708,10 @@ export default function ProductPage() {
             <PriceContainer>
               {isFree ? (
                 <>
-                  <FreeBadge>FREE</FreeBadge>
-                  {product.price > 0 && (
+                  {(product.sale_price === 0 && product.price > 0) && (
                     <OriginalPrice>${product.price}</OriginalPrice>
                   )}
+                  <FreeBadge>FREE</FreeBadge>
                 </>
               ) : (
                 <>
@@ -2360,19 +2362,23 @@ export default function ProductPage() {
             <StickyProductInfo>
               <StickyProductName>{product.name}</StickyProductName>
               <StickyPrice>
+                {(product.sale_price === 0 && product.price > 0) && (
+                  <StickyPriceOriginal>${product.price}</StickyPriceOriginal>
+                )}
                 <StickyPriceMain>
                   {isFree ? (
                     <span style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      padding: '0.25rem 0.75rem',
-                      background: 'linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%)',
+                      padding: '0.15rem 0.6rem',
+                      background: 'linear-gradient(135deg, #4ecdc4 0%, #44a5a0 100%)',
                       color: 'white',
-                      borderRadius: '20px',
-                      fontSize: '0.9rem',
+                      borderRadius: '16px',
+                      fontSize: '0.8rem',
                       fontWeight: 700,
                       textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
+                      letterSpacing: '0.5px',
+                      lineHeight: '1.2'
                     }}>
                       FREE
                     </span>
@@ -2381,9 +2387,6 @@ export default function ProductPage() {
                   )}
                 </StickyPriceMain>
                 {hasDiscount && !isFree && (
-                  <StickyPriceOriginal>${product.price}</StickyPriceOriginal>
-                )}
-                {isFree && product.price > 0 && (
                   <StickyPriceOriginal>${product.price}</StickyPriceOriginal>
                 )}
               </StickyPrice>

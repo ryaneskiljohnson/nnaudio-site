@@ -528,7 +528,7 @@ export default function MyOrdersPage() {
           {orders.map((order) => {
             const isExpanded = expandedOrders.has(order.id);
             const subtotal = order.items.reduce(
-              (sum, item) => sum + (item.sale_price || item.price) * item.quantity,
+              (sum, item) => sum + ((item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price) * item.quantity,
               0
             );
             const discount = order.metadata.discount_amount
@@ -632,7 +632,7 @@ export default function MyOrdersPage() {
                             <ItemPrice>
                               $
                               {(
-                                (item.sale_price || item.price) * item.quantity
+                                ((item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price) * item.quantity
                               ).toFixed(2)}
                             </ItemPrice>
                           </ItemRow>
