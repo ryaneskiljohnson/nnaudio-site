@@ -14,7 +14,6 @@ async function validateToken(token: string): Promise<{ valid: boolean; userId?: 
   try {
     if (!token) return { valid: false };
 
-    // Create a client with the token in Authorization header
     const { createServerClient } = await import("@supabase/ssr");
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,9 +54,13 @@ export async function POST(request: NextRequest) {
     const body = await request.formData();
     const token = body.get("token")?.toString() || "";
     const productId = body.get("product_id")?.toString() || "";
+    const downloadPath = body.get("path")?.toString() || "";
 
-    if (!productId) {
-      return new Response(formatError("product_id is required"), { status: 400 });
+    if (!productId || !downloadPath) {
+      return new Response(
+        formatError("product_id and path are required"),
+        { status: 400 }
+      );
     }
 
     // Validate token
@@ -134,14 +137,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check NFR license
+    if (!hasAccess) {
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", userId)
+        .single();
+
+      if (userProfile?.email) {
+        const { data: nfrLicense } = await supabase
+          .from("user_management")
+          .select("pro")
+          .eq("user_email", userProfile.email.toLowerCase())
+          .single();
+
+        if (nfrLicense?.pro) {
+          hasAccess = true;
+        }
+      }
+    }
+
     if (!hasAccess) {
       return new Response(formatError("Access denied"), { status: 403 });
     }
 
-    // Fetch product details
+    // Verify the download path belongs to this product
     const { data: product, error: productError } = await supabase
       .from("products")
-      .select("*")
+      .select("downloads")
       .eq("id", productId)
       .single();
 
@@ -149,102 +173,57 @@ export async function POST(request: NextRequest) {
       return new Response(formatError("Product not found"), { status: 404 });
     }
 
-    // Format response to match WooCommerce format expected by desktop app
-    const formattedProduct: any = {
-      id: product.id,
-      name: product.name,
-      images: [],
-      downloads: [],
-    };
+    // Check if download path exists in product's downloads
+    const downloads = product.downloads || [];
+    const downloadExists = downloads.some(
+      (d: any) => d.path === downloadPath
+    );
 
-    // Add image if available
-    if (product.featured_image_url) {
-      formattedProduct.images.push({
-        src: product.featured_image_url,
-        alt: product.name,
+    if (!downloadExists) {
+      return new Response(formatError("Download not found for this product"), {
+        status: 404,
       });
     }
 
-    // Add downloads from the downloads JSON field
-    // Support both new downloads array and legacy download_url field
-    if (product.downloads && Array.isArray(product.downloads) && product.downloads.length > 0) {
-      // New format: downloads array with path, name, type, etc.
-      // Generate signed URLs for storage paths
-      const adminSupabase = createAdminClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-          },
-        }
-      );
+    // Generate signed URL using admin client (has service role key)
+    const adminSupabase = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
+    );
 
-      const downloadsWithUrls = await Promise.all(
-        product.downloads.map(async (download: any) => {
-          // If path looks like a storage path (doesn't start with http), generate signed URL
-          if (download.path && !download.path.startsWith("http")) {
-            try {
-              const { data: signedUrlData } = await adminSupabase.storage
-                .from("product-downloads")
-                .createSignedUrl(download.path, 3600); // 1 hour expiry
+    // Generate signed URL valid for 1 hour
+    const { data: signedUrlData, error: signedUrlError } =
+      await adminSupabase.storage
+        .from("product-downloads")
+        .createSignedUrl(downloadPath, 3600); // 1 hour expiry
 
-              return {
-                file: signedUrlData?.signedUrl || download.path,
-                name: download.name || product.name,
-                type: download.type || "plugin",
-                version: download.version || product.download_version || null,
-                file_size: download.file_size || null,
-              };
-            } catch (error) {
-              console.error(
-                `Error generating signed URL for ${download.path}:`,
-                error
-              );
-              // Fallback to path if signed URL generation fails
-              return {
-                file: download.path,
-                name: download.name || product.name,
-                type: download.type || "plugin",
-                version: download.version || product.download_version || null,
-                file_size: download.file_size || null,
-              };
-            }
-          } else {
-            // Already a full URL (legacy or external)
-            return {
-              file: download.path || download.url,
-              name: download.name || product.name,
-              type: download.type || "plugin",
-              version: download.version || product.download_version || null,
-              file_size: download.file_size || null,
-            };
-          }
-        })
-      );
-
-      formattedProduct.downloads = downloadsWithUrls;
-    } else if (product.download_url) {
-      // Legacy format: single download_url field
-      formattedProduct.downloads.push({
-        file: product.download_url,
-        name: product.name,
+    if (signedUrlError || !signedUrlData) {
+      console.error("Error generating signed URL:", signedUrlError);
+      return new Response(formatError("Unable to generate download URL"), {
+        status: 500,
       });
     }
 
-    // If product has version, extract it
-    if (product.download_version) {
-      formattedProduct.version = product.download_version;
-    }
-
-    return new Response(JSON.stringify(formattedProduct), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        url: signedUrlData.signedUrl,
+        expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   } catch (error: any) {
-    console.error("[NNAudio Access Product] Error:", error);
-    return new Response(formatError("Unable to handle product request"), {
+    console.error("[NNAudio Access Download] Error:", error);
+    return new Response(formatError("Unable to handle download request"), {
       status: 500,
     });
   }
