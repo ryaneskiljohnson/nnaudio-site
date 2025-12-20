@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate average rating for each product
-    const productsWithRatings = products?.map(product => {
+    let productsWithRatings = products?.map(product => {
       const reviews = product.product_reviews || [];
       const avgRating = reviews.length > 0
         ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
@@ -74,7 +74,16 @@ export async function GET(request: NextRequest) {
         review_count: reviews.length,
         product_reviews: undefined // Remove from response
       };
-    });
+    }) || [];
+
+    // Exclude "nnaudio access" from free products
+    if (free === 'true') {
+      productsWithRatings = productsWithRatings.filter(product => {
+        const name = (product.name || '').toLowerCase();
+        const slug = (product.slug || '').toLowerCase();
+        return !name.includes('nnaudio access') && !slug.includes('nnaudio-access');
+      });
+    }
 
     return NextResponse.json({
       success: true,

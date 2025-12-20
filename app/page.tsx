@@ -348,7 +348,7 @@ export default function Home() {
             featured_image_url: p.featured_image_url,
             logo_url: p.logo_url,
             backgroundImage: p.background_image_url || p.background_video_url || '',
-            price: typeof p.sale_price === 'number' ? p.sale_price : (typeof p.price === 'number' ? p.price : 0),
+            price: typeof p.price === 'number' ? p.price : 0, // Preserve original price
             sale_price: p.sale_price,
           }));
           setFreeProducts(mappedFree);

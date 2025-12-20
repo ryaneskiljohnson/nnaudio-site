@@ -358,8 +358,21 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
                   </span>
                   ${product.sale_price}
                 </>
-              ) : product.price === 0 || product.price === null ? (
-                'FREE'
+              ) : (product.price === 0 || product.sale_price === 0 || (product.sale_price === null && product.price === 0)) ? (
+                <>
+                  {(product.sale_price === 0 && product.price > 0) && (
+                    <span style={{ 
+                      textDecoration: 'line-through', 
+                      fontSize: '1rem', 
+                      opacity: 0.6, 
+                      marginRight: '8px',
+                      color: 'rgba(255, 255, 255, 0.6)'
+                    }}>
+                      ${product.price}
+                    </span>
+                  )}
+                  FREE
+                </>
               ) : (
                 `$${product.price}`
               )}

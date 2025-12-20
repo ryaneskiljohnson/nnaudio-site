@@ -148,6 +148,20 @@ const OriginalPrice = styled.div`
   text-decoration: line-through;
 `;
 
+const FreeBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1.25rem;
+  background: linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%);
+  color: white;
+  border-radius: 50px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  box-shadow: 0 4px 20px rgba(255, 140, 66, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+`;
+
 const BuyButton = styled(motion.button)`
   background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
   color: white;
@@ -1690,9 +1704,20 @@ export default function ProductPage() {
             )}
 
             <PriceContainer>
-              <Price>{isFree ? 'FREE' : `$${displayPrice}`}</Price>
-              {hasDiscount && !isFree && (
-                <OriginalPrice>${product.price}</OriginalPrice>
+              {isFree ? (
+                <>
+                  <FreeBadge>FREE</FreeBadge>
+                  {product.price > 0 && (
+                    <OriginalPrice>${product.price}</OriginalPrice>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Price>${displayPrice}</Price>
+                  {hasDiscount && (
+                    <OriginalPrice>${product.price}</OriginalPrice>
+                  )}
+                </>
               )}
             </PriceContainer>
 
@@ -2336,9 +2361,29 @@ export default function ProductPage() {
               <StickyProductName>{product.name}</StickyProductName>
               <StickyPrice>
                 <StickyPriceMain>
-                  {isFree ? 'FREE' : `$${displayPrice}`}
+                  {isFree ? (
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '0.25rem 0.75rem',
+                      background: 'linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%)',
+                      color: 'white',
+                      borderRadius: '20px',
+                      fontSize: '0.9rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      FREE
+                    </span>
+                  ) : (
+                    `$${displayPrice}`
+                  )}
                 </StickyPriceMain>
                 {hasDiscount && !isFree && (
+                  <StickyPriceOriginal>${product.price}</StickyPriceOriginal>
+                )}
+                {isFree && product.price > 0 && (
                   <StickyPriceOriginal>${product.price}</StickyPriceOriginal>
                 )}
               </StickyPrice>

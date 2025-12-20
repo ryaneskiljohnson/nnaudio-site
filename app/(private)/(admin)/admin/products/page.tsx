@@ -248,6 +248,20 @@ const PriceCell = styled(TableCell)`
   color: var(--primary);
 `;
 
+const FreeBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.3);
+`;
+
 const StatusBadge = styled.span<{ $status: string }>`
   padding: 4px 12px;
   border-radius: 20px;
@@ -822,12 +836,27 @@ export default function ProductsManagementPage() {
                   </TableCell>
                   
                   <PriceCell>
-                    {product.sale_price ? (
+                    {product.sale_price && product.sale_price > 0 ? (
                       <>
                         <span style={{ textDecoration: 'line-through', fontSize: '0.85rem', opacity: 0.6, marginRight: '8px' }}>
                           ${product.price}
                         </span>
                         ${product.sale_price}
+                      </>
+                    ) : (product.price === 0 || product.sale_price === 0 || (product.sale_price === null && product.price === 0)) ? (
+                      <>
+                        {(product.sale_price === 0 && product.price > 0) && (
+                          <span style={{ 
+                            textDecoration: 'line-through', 
+                            fontSize: '0.85rem', 
+                            opacity: 0.6, 
+                            marginRight: '8px',
+                            color: 'rgba(255, 255, 255, 0.6)'
+                          }}>
+                            ${product.price}
+                          </span>
+                        )}
+                        <FreeBadge>FREE</FreeBadge>
                       </>
                     ) : (
                       `$${product.price}`
