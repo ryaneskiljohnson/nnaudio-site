@@ -549,7 +549,7 @@ const DownloadButtonStyled = styled.a`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: linear-gradient(135deg, #6c63ff, #8b5cf6);
   color: white;
   border: none;
   border-radius: 6px;

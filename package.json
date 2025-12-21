@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@apple/app-store-server-library": "^2.0.0",
+    "@aws-sdk/client-s3": "^3.956.0",
     "@aws-sdk/client-ses": "^3.545.0",
     "@aws-sdk/client-sesv2": "^3.840.0",
     "@aws-sdk/client-sns": "^3.840.0",
@@ -60,7 +61,8 @@
     "stripe": "^17.7.0",
     "styled-components": "^6.1.17",
     "tone": "^15.0.4",
-    "tsparticles": "^3.8.1"
+    "tsparticles": "^3.8.1",
+    "whatwg-url": "^15.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

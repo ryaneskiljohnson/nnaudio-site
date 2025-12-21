@@ -14,6 +14,7 @@ export interface UserManagementRecord {
   user_email: string;
   pro: boolean;
   notes: string | null;
+  active: boolean;
 }
 
 // Helper to check if user is admin
@@ -75,7 +76,8 @@ export async function getUserManagementRecords(): Promise<{
 export async function createUserManagementRecord(
   user_email: string,
   pro: boolean,
-  notes?: string | null
+  notes?: string | null,
+  active?: boolean
 ): Promise<{
   data: UserManagementRecord | null;
   error: string | null;
@@ -173,6 +175,7 @@ export async function updateUserManagementRecord(
   updates: {
     pro?: boolean;
     notes?: string | null;
+    active?: boolean;
   }
 ): Promise<{
   data: UserManagementRecord | null;
@@ -266,7 +269,8 @@ export async function createUserManagementWithInvite(
   pro: boolean,
   notes?: string | null,
   first_name?: string | null,
-  last_name?: string | null
+  last_name?: string | null,
+  active?: boolean
 ): Promise<{
   data: UserManagementRecord | null;
   warning?: string;
@@ -303,6 +307,7 @@ export async function createUserManagementWithInvite(
           user_email,
           pro,
           notes: notes || null,
+          active: active !== undefined ? active : true,
         },
       ])
       .select()

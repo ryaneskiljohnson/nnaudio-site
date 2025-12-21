@@ -352,6 +352,9 @@ interface Order {
     discount_amount?: string;
     total_amount?: string;
     promotion_code?: string;
+    grant_id?: string;
+    grant_type?: string;
+    notes?: string | null;
   };
   receiptUrl: string | null;
   invoiceId: string | null;
@@ -372,6 +375,7 @@ export default function MyOrdersPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [productGrants, setProductGrants] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
 
@@ -387,11 +391,14 @@ export default function MyOrdersPage() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/orders");
-      const data = await response.json();
+      const { getOrders } = await import("@/app/actions/orders");
+      const result = await getOrders();
 
-      if (data.success && data.orders) {
-        setOrders(data.orders);
+      if (result.success) {
+        setOrders(result.orders);
+        setProductGrants(result.productGrants);
+      } else {
+        console.error("[My Orders] Failed to fetch orders:", result.error);
       }
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -508,7 +515,7 @@ export default function MyOrdersPage() {
         </Subtitle>
       </Header>
 
-      {orders.length === 0 ? (
+      {orders.length === 0 && productGrants.length === 0 ? (
         <EmptyState>
           <EmptyStateIcon>
             <FaShoppingBag />
@@ -524,7 +531,9 @@ export default function MyOrdersPage() {
           </EmptyStateText>
         </EmptyState>
       ) : (
-        <OrdersList>
+        <>
+          {orders.length > 0 && (
+            <OrdersList>
           {orders.map((order) => {
             const isExpanded = expandedOrders.has(order.id);
             const subtotal = order.items.reduce(
@@ -571,7 +580,13 @@ export default function MyOrdersPage() {
                     }}
                   >
                     <OrderAmount>
-                      ${order.amount.toFixed(2)} {order.currency}
+                      {order.amount === 0 && order.metadata?.grant_type ? (
+                        <span style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.6)', fontWeight: 400 }}>
+                          {t("dashboard.orders.freeLicense", "Free License")}
+                        </span>
+                      ) : (
+                        <>${order.amount.toFixed(2)} {order.currency}</>
+                      )}
                     </OrderAmount>
                     <ExpandButton>
                       {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
@@ -668,11 +683,25 @@ export default function MyOrdersPage() {
                             <span>{order.metadata.promotion_code}</span>
                           </SummaryRow>
                         )}
+                        {order.metadata?.grant_type && order.metadata?.notes && (
+                          <SummaryRow style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)', fontStyle: 'italic' }}>
+                            <span>{t("dashboard.orders.notes", "Notes")}:</span>
+                            <span>{order.metadata.notes}</span>
+                          </SummaryRow>
+                        )}
                         <SummaryRow className="total">
                           <span>
                             {t("dashboard.orders.total", "Total")}:
                           </span>
-                          <span>${order.amount.toFixed(2)}</span>
+                          <span>
+                            {order.amount === 0 && order.metadata?.grant_type ? (
+                              <span style={{ color: 'var(--success)' }}>
+                                {t("dashboard.orders.free", "Free")}
+                              </span>
+                            ) : (
+                              <>${order.amount.toFixed(2)}</>
+                            )}
+                          </span>
                         </SummaryRow>
                         {(order.isRefunded || order.isPartiallyRefunded) && (
                           <SummaryRow style={{ color: "#ff9800", marginTop: "0.5rem" }}>
@@ -736,7 +765,260 @@ export default function MyOrdersPage() {
               </OrderCard>
             );
           })}
-        </OrdersList>
+            </OrdersList>
+          )}
+          
+          {productGrants.length > 0 && (
+            <>
+              <div style={{ 
+                marginTop: orders.length > 0 ? '3rem' : '0',
+                marginBottom: '1.5rem',
+                paddingBottom: '1rem',
+                borderBottom: '2px solid rgba(108, 99, 255, 0.3)'
+              }}>
+                <Title style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>
+                  <FaTag /> {t("dashboard.orders.productGrants", "Product Grants")}
+                </Title>
+                <Subtitle style={{ fontSize: '0.95rem', marginBottom: 0 }}>
+                  {t("dashboard.orders.productGrantsSubtitle", "Free licenses granted to your account")}
+                </Subtitle>
+              </div>
+              <OrdersList>
+                {productGrants.map((order) => {
+                  const isExpanded = expandedOrders.has(order.id);
+                  const subtotal = order.items.reduce(
+                    (sum, item) => sum + ((item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price) * item.quantity,
+                    0
+                  );
+                  const discount = order.metadata.discount_amount
+                    ? parseFloat(order.metadata.discount_amount)
+                    : 0;
+
+                  return (
+                    <OrderCard
+                      key={order.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <OrderHeader onClick={() => toggleOrder(order.id)}>
+                        <OrderInfo>
+                          <OrderNumber>
+                            <FaBox /> {t("dashboard.orders.order", "Order")}{" "}
+                            {order.orderNumber}
+                          </OrderNumber>
+                          <OrderDate>{formatDate(order.date)}</OrderDate>
+                          <OrderStatus 
+                            $status={
+                              order.isRefunded 
+                                ? "refunded" 
+                                : order.isPartiallyRefunded 
+                                ? "partially_refunded" 
+                                : order.status
+                            }
+                          >
+                            {getStatusIcon(order.status, order)}
+                            {getStatusText(order.status, order)}
+                          </OrderStatus>
+                        </OrderInfo>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "1rem",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <OrderAmount>
+                            {order.amount === 0 && order.metadata?.grant_type ? (
+                              <span style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.6)', fontWeight: 400 }}>
+                                {t("dashboard.orders.freeLicense", "Free License")}
+                              </span>
+                            ) : (
+                              <>${order.amount.toFixed(2)} {order.currency}</>
+                            )}
+                          </OrderAmount>
+                          <ExpandButton>
+                            {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+                          </ExpandButton>
+                        </div>
+                      </OrderHeader>
+
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <OrderDetails
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <ItemsList>
+                              {order.items.map((item, index) => (
+                                <ItemRow 
+                                  key={index}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (item.product_slug) {
+                                      router.push(`/product/${item.product_slug}`);
+                                    }
+                                  }}
+                                  style={{ cursor: item.product_slug ? 'pointer' : 'default' }}
+                                >
+                                  <ItemImage>
+                                    {item.product_image ? (
+                                      <Image
+                                        src={item.product_image}
+                                        alt={item.name}
+                                        fill
+                                        style={{ objectFit: "cover" }}
+                                      />
+                                    ) : (
+                                      <div
+                                        style={{
+                                          width: "100%",
+                                          height: "100%",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          color: "rgba(255, 255, 255, 0.3)",
+                                        }}
+                                      >
+                                        <FaBox size={24} />
+                                      </div>
+                                    )}
+                                  </ItemImage>
+                                  <ItemInfo>
+                                    <ItemName>{item.name}</ItemName>
+                                    <ItemQuantity>
+                                      {t("dashboard.orders.quantity", "Quantity")}:{" "}
+                                      {item.quantity}
+                                    </ItemQuantity>
+                                  </ItemInfo>
+                                  <ItemPrice>
+                                    $
+                                    {(
+                                      ((item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price) * item.quantity
+                                    ).toFixed(2)}
+                                  </ItemPrice>
+                                </ItemRow>
+                              ))}
+                            </ItemsList>
+
+                            <OrderSummary>
+                              {order.metadata.original_total &&
+                                parseFloat(order.metadata.original_total) !==
+                                  subtotal && (
+                                  <SummaryRow>
+                                    <span>
+                                      {t("dashboard.orders.subtotal", "Subtotal")}:
+                                    </span>
+                                    <span>${subtotal.toFixed(2)}</span>
+                                  </SummaryRow>
+                                )}
+                              {discount > 0 && (
+                                <SummaryRow>
+                                  <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                    <FaTag /> {t("dashboard.orders.discount", "Discount")}:
+                                  </span>
+                                  <span style={{ color: "var(--success)" }}>
+                                    -${discount.toFixed(2)}
+                                  </span>
+                                </SummaryRow>
+                              )}
+                              {order.metadata.promotion_code && (
+                                <SummaryRow>
+                                  <span>
+                                    {t("dashboard.orders.promoCode", "Promo Code")}:
+                                  </span>
+                                  <span>{order.metadata.promotion_code}</span>
+                                </SummaryRow>
+                              )}
+                              {order.metadata?.grant_type && order.metadata?.notes && (
+                                <SummaryRow style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)', fontStyle: 'italic' }}>
+                                  <span>{t("dashboard.orders.notes", "Notes")}:</span>
+                                  <span>{order.metadata.notes}</span>
+                                </SummaryRow>
+                              )}
+                              <SummaryRow className="total">
+                                <span>
+                                  {t("dashboard.orders.total", "Total")}:
+                                </span>
+                                <span>
+                                  {order.amount === 0 && order.metadata?.grant_type ? (
+                                    <span style={{ color: 'var(--success)' }}>
+                                      {t("dashboard.orders.free", "Free")}
+                                    </span>
+                                  ) : (
+                                    <>${order.amount.toFixed(2)}</>
+                                  )}
+                                </span>
+                              </SummaryRow>
+                              {(order.isRefunded || order.isPartiallyRefunded) && (
+                                <SummaryRow style={{ color: "#ff9800", marginTop: "0.5rem" }}>
+                                  <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                    <FaUndo /> {t("dashboard.orders.refunded", "Refunded")}:
+                                  </span>
+                                  <span>-${order.refundedAmount.toFixed(2)}</span>
+                                </SummaryRow>
+                              )}
+                              {(order.isRefunded || order.isPartiallyRefunded) && (
+                                <SummaryRow style={{ marginTop: "0.5rem", paddingTop: "0.5rem", borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                                  <span>
+                                    {t("dashboard.orders.finalAmount", "Final Amount")}:
+                                  </span>
+                                  <span style={{ fontWeight: 600 }}>
+                                    ${(order.amount - order.refundedAmount).toFixed(2)}
+                                  </span>
+                                </SummaryRow>
+                              )}
+                              {order.refunds.length > 0 && (
+                                <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                                  <div style={{ fontSize: "0.9rem", fontWeight: 500, marginBottom: "0.75rem", color: "rgba(255, 255, 255, 0.8)" }}>
+                                    {t("dashboard.orders.refundDetails", "Refund Details")}:
+                                  </div>
+                                  {order.refunds.map((refund, idx) => (
+                                    <div key={refund.id} style={{ 
+                                      padding: "0.5rem", 
+                                      background: "rgba(255, 152, 0, 0.1)", 
+                                      borderRadius: "6px", 
+                                      marginBottom: "0.5rem",
+                                      fontSize: "0.85rem"
+                                    }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
+                                        <span>${refund.amount.toFixed(2)}</span>
+                                        <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>
+                                          {new Date(refund.created * 1000).toLocaleDateString()}
+                                        </span>
+                                      </div>
+                                      {refund.reason && (
+                                        <div style={{ fontSize: "0.8rem", color: "rgba(255, 255, 255, 0.6)" }}>
+                                          {t("dashboard.orders.reason", "Reason")}: {refund.reason}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </OrderSummary>
+
+                            {order.receiptUrl && (
+                              <ActionButton
+                                onClick={() => window.open(order.receiptUrl!, "_blank")}
+                              >
+                                <FaExternalLinkAlt />
+                                {t("dashboard.orders.viewReceipt", "View Receipt")}
+                              </ActionButton>
+                            )}
+                          </OrderDetails>
+                        )}
+                      </AnimatePresence>
+                    </OrderCard>
+                  );
+                })}
+              </OrdersList>
+            </>
+          )}
+        </>
       )}
     </Container>
   );

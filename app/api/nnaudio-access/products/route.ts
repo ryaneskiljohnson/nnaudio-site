@@ -2,6 +2,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -67,114 +68,137 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Get user profile to check subscription
+    // Get user profile
     const { data: profile } = await supabase
       .from("profiles")
-      .select("subscription, customer_id, email")
+      .select("customer_id, email")
       .eq("id", userId)
       .single();
 
     console.log(`[NNAudio Access Products] User ${userId} profile:`, {
-      subscription: profile?.subscription,
       customer_id: profile?.customer_id,
       email: profile?.email,
     });
 
-    const hasActiveSubscription =
-      profile?.subscription && profile.subscription !== "none";
-
     let productIds = new Set<string>();
 
-    // Check NFR (Not For Resale) licenses first (highest priority)
+    // Check individual product grants
     if (profile?.email) {
-      const { data: nfrLicense } = await supabase
-        .from("user_management")
-        .select("pro")
-        .eq("user_email", profile.email.toLowerCase())
-        .single();
+      console.log(`[NNAudio Access Products] Checking product grants for email: ${profile.email.toLowerCase()}`);
+      // Use service role client to bypass RLS for product_grants query
+      const adminSupabase = await createSupabaseServiceRole();
+      const { data: productGrants, error: grantsError } = await adminSupabase
+        .from("product_grants")
+        .select("product_id")
+        .eq("user_email", profile.email.toLowerCase());
 
-      if (nfrLicense?.pro) {
-        console.log(`[NNAudio Access Products] User has NFR license, granting all products`);
-        const { data: allProducts } = await supabase
-          .from("products")
-          .select("id")
-          .eq("status", "active");
+      if (grantsError) {
+        console.error(`[NNAudio Access Products] Error fetching product grants:`, grantsError);
+      }
 
-        if (allProducts) {
-          allProducts.forEach((p) => productIds.add(p.id));
-        }
-        // NFR grants all products, but continue to also check individual purchases
+      if (productGrants && productGrants.length > 0) {
+        console.log(`[NNAudio Access Products] User has ${productGrants.length} product grants`);
+        productGrants.forEach((grant) => {
+          if (grant.product_id) {
+            productIds.add(grant.product_id);
+            console.log(`[NNAudio Access Products] Added granted product: ${grant.product_id}`);
+          }
+        });
+      } else {
+        console.log(`[NNAudio Access Products] No product grants found for ${profile.email.toLowerCase()}`);
       }
     }
 
-    // If user has active subscription, they get access to all products
-    if (hasActiveSubscription) {
-      console.log(`[NNAudio Access Products] User has active subscription: ${profile?.subscription}`);
-      const { data: allProducts } = await supabase
-        .from("products")
-        .select("id")
-        .eq("status", "active");
-
-      if (allProducts) {
-        allProducts.forEach((p) => productIds.add(p.id));
-      }
-    }
+    // Note: Subscriptions no longer grant all products automatically
+    // Users must have individual product grants or purchases
 
     // Also get individually purchased products
-    // Use multiple methods to find payment intents (same as my-products endpoint)
+    // Add timeout to prevent hanging on slow Stripe calls
     let paymentIntents: Stripe.PaymentIntent[] = [];
     const allPaymentIntents = new Map<string, Stripe.PaymentIntent>();
 
-    // Method 1: Try to fetch by customer_id from profile
+    // Helper to add timeout to promises
+    const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+      return Promise.race([
+        promise,
+        new Promise<T>((_, reject) => 
+          setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
+        )
+      ]);
+    };
+
+    const stripePromises: Promise<any>[] = [];
+
+    // Method 1: Try to fetch by customer_id from profile (5 second timeout)
     if (profile?.customer_id) {
-      try {
-        const customerPayments = await stripe.paymentIntents.list({
-          customer: profile.customer_id,
+      stripePromises.push(
+        withTimeout(
+          stripe.paymentIntents.list({
+            customer: profile.customer_id,
+            limit: 100,
+          }),
+          5000
+        ).then(customerPayments => {
+          customerPayments.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
+          console.log(`[NNAudio Access Products] Found ${customerPayments.data.length} payment intents by customer_id`);
+        }).catch(error => {
+          console.error("[NNAudio Access Products] Error/timeout fetching by customer_id:", error.message);
+        })
+      );
+    }
+
+    // Method 2: Search by user_id in metadata (5 second timeout)
+    stripePromises.push(
+      withTimeout(
+        stripe.paymentIntents.search({
+          query: `metadata['user_id']:'${userId}'`,
           limit: 100,
-        });
-        customerPayments.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
-        console.log(`[NNAudio Access Products] Found ${customerPayments.data.length} payment intents by customer_id`);
-      } catch (error) {
-        console.error("Error fetching by customer_id:", error);
-      }
-    }
+        }),
+        5000
+      ).then(searchResult => {
+        searchResult.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
+        console.log(`[NNAudio Access Products] Found ${searchResult.data.length} payment intents by user_id metadata`);
+      }).catch(error => {
+        console.log("[NNAudio Access Products] Search API not available or error/timeout:", error.message);
+      })
+    );
 
-    // Method 2: Search by user_id in metadata
-    try {
-      const searchResult = await stripe.paymentIntents.search({
-        query: `metadata['user_id']:'${userId}'`,
-        limit: 100,
-      });
-      searchResult.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
-      console.log(`[NNAudio Access Products] Found ${searchResult.data.length} payment intents by user_id metadata`);
-    } catch (error) {
-      console.log("[NNAudio Access Products] Search API not available or error:", error);
-    }
-
-    // Method 3: Search by email
+    // Method 3: Search by email (5 second timeout)
     if (profile?.email) {
-      try {
-        const customers = await stripe.customers.list({
-          email: profile.email,
-          limit: 10,
-        });
-        
-        for (const customer of customers.data) {
-          try {
-            const customerPayments = await stripe.paymentIntents.list({
-              customer: customer.id,
-              limit: 100,
-            });
-            customerPayments.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
-            console.log(`[NNAudio Access Products] Found ${customerPayments.data.length} payment intents for customer ${customer.id}`);
-          } catch (error) {
-            console.error("Error fetching payment intents:", error);
+      stripePromises.push(
+        withTimeout(
+          stripe.customers.list({
+            email: profile.email,
+            limit: 10,
+          }),
+          5000
+        ).then(customers => {
+          const customerPromises: Promise<any>[] = [];
+          for (const customer of customers.data) {
+            customerPromises.push(
+              withTimeout(
+                stripe.paymentIntents.list({
+                  customer: customer.id,
+                  limit: 100,
+                }),
+                5000
+              ).then(customerPayments => {
+                customerPayments.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
+                console.log(`[NNAudio Access Products] Found ${customerPayments.data.length} payment intents for customer ${customer.id}`);
+              }).catch(error => {
+                console.error("[NNAudio Access Products] Error/timeout fetching payment intents:", error.message);
+              })
+            );
           }
-        }
-      } catch (error) {
-        console.error("Error searching customers:", error);
-      }
+          return Promise.allSettled(customerPromises);
+        }).catch(error => {
+          console.error("[NNAudio Access Products] Error/timeout searching customers:", error.message);
+        })
+      );
     }
+
+    // Wait for all Stripe calls to complete (with timeouts)
+    await Promise.allSettled(stripePromises);
 
     paymentIntents = Array.from(allPaymentIntents.values());
     console.log(`[NNAudio Access Products] Total unique payment intents found: ${paymentIntents.length}`);
@@ -185,22 +209,32 @@ export async function POST(request: NextRequest) {
     );
     console.log(`[NNAudio Access Products] Successful payments: ${successfulPayments.length}`);
 
-    for (const pi of successfulPayments) {
-      // Check if refunded
-      let isRefunded = false;
-      if (pi.latest_charge) {
-        try {
-          const charge = await stripe.charges.retrieve(
+    // Check refund status for all payments in parallel with timeouts
+    const refundChecks = successfulPayments.map(async (pi) => {
+      if (!pi.latest_charge) return { pi, isRefunded: false };
+      
+      try {
+        const charge = await withTimeout(
+          stripe.charges.retrieve(
             typeof pi.latest_charge === "string"
               ? pi.latest_charge
               : pi.latest_charge.id
-          );
-          isRefunded = charge.refunded || charge.amount_refunded === charge.amount;
-        } catch (error) {
-          console.error("Error checking refund status:", error);
-        }
+          ),
+          3000 // 3 second timeout for charge retrieval
+        );
+        return { pi, isRefunded: charge.refunded || charge.amount_refunded === charge.amount };
+      } catch (error) {
+        console.error("[NNAudio Access Products] Error/timeout checking refund status:", error);
+        return { pi, isRefunded: false }; // Assume not refunded on error
       }
+    });
 
+    const refundResults = await Promise.allSettled(refundChecks);
+    
+    for (const result of refundResults) {
+      if (result.status === "rejected") continue;
+      const { pi, isRefunded } = result.value;
+      
       if (isRefunded) continue;
 
       // Extract product IDs from cart items
@@ -232,7 +266,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const { data: products, error: productsError } = await supabase
+    // Use service role client for products query as well
+    const adminSupabase = await createSupabaseServiceRole();
+    const { data: products, error: productsError } = await adminSupabase
       .from("products")
       .select("id, name, slug, featured_image_url")
       .in("id", productIdsArray)

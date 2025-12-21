@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -115,6 +116,38 @@ export async function GET(request: NextRequest) {
       (pi) => pi.status === "succeeded"
     );
     console.log(`[Orders API] Successful payment intents: ${successfulPayments.length}`);
+
+    // Get product grants (free licenses) to show as $0 orders
+    let grantedProducts: Array<{
+      id: string;
+      product_id: string;
+      granted_at: string;
+      notes: string | null;
+    }> = [];
+    
+    if (profile?.email) {
+      console.log(`[Orders API] Checking product grants for email: ${profile.email.toLowerCase()}`);
+      // Use service role client to bypass RLS for product_grants query
+      const adminSupabase = await createSupabaseServiceRole();
+      const { data: grants, error: grantsError } = await adminSupabase
+        .from("product_grants")
+        .select("id, product_id, granted_at, notes")
+        .eq("user_email", profile.email.toLowerCase())
+        .order("granted_at", { ascending: false });
+
+      if (grantsError) {
+        console.error(`[Orders API] Error fetching product grants:`, grantsError);
+      }
+
+      if (grants) {
+        grantedProducts = grants;
+        console.log(`[Orders API] Found ${grants.length} product grants:`, grants);
+      } else {
+        console.log(`[Orders API] No product grants found for ${profile.email.toLowerCase()}`);
+      }
+    } else {
+      console.log(`[Orders API] No profile email found, skipping product grants check`);
+    }
 
     // Transform payment intents into orders
     const orders = await Promise.all(
@@ -273,12 +306,85 @@ export async function GET(request: NextRequest) {
       })
     );
 
+    // Add product grants as $0 orders
+    console.log(`[Orders API] Processing ${grantedProducts.length} product grants`);
+    if (grantedProducts.length > 0) {
+      const grantProductIds = grantedProducts.map(g => g.product_id);
+      console.log(`[Orders API] Fetching product details for IDs:`, grantProductIds);
+      
+      // Use service role client for product query as well
+      const adminSupabaseForProducts = await createSupabaseServiceRole();
+      const { data: grantProducts, error: productsError } = await adminSupabaseForProducts
+        .from("products")
+        .select("id, name, slug, featured_image_url")
+        .in("id", grantProductIds)
+        .eq("status", "active");
+
+      if (productsError) {
+        console.error(`[Orders API] Error fetching grant products:`, productsError);
+      }
+
+      if (grantProducts) {
+        console.log(`[Orders API] Found ${grantProducts.length} products for grants`);
+        const productMap = new Map(grantProducts.map(p => [p.id, p]));
+        
+        for (const grant of grantedProducts) {
+          const product = productMap.get(grant.product_id);
+          if (product) {
+            const grantOrder = {
+              id: `grant_${grant.id}`,
+              orderNumber: `GRANT-${grant.id.substring(0, 8).toUpperCase()}`,
+              date: grant.granted_at,
+              status: "succeeded",
+              amount: 0,
+              currency: "USD",
+              items: [{
+                id: product.id,
+                name: product.name,
+                quantity: 1,
+                price: 0,
+                product_image: product.featured_image_url || null,
+                product_slug: product.slug || null,
+              }],
+              metadata: {
+                grant_id: grant.id,
+                grant_type: "free_license",
+                notes: grant.notes,
+              },
+              receiptUrl: null,
+              invoiceId: null,
+              refundedAmount: 0,
+              isRefunded: false,
+              isPartiallyRefunded: false,
+              refunds: [],
+            };
+            console.log(`[Orders API] Adding grant order:`, grantOrder.orderNumber, grantOrder.metadata);
+            orders.push(grantOrder);
+          } else {
+            console.warn(`[Orders API] Product not found for grant ${grant.id}, product_id: ${grant.product_id}`);
+          }
+        }
+        console.log(`[Orders API] Added ${orders.filter(o => o.metadata?.grant_type === "free_license").length} grant orders to orders array`);
+      } else {
+        console.warn(`[Orders API] No products found for grant product IDs`);
+      }
+    }
+
     // Sort by date (newest first)
     orders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const grantCount = orders.filter(o => o.metadata?.grant_type === "free_license").length;
+    console.log(`[Orders API] Final response: ${orders.length} total orders, ${grantCount} product grants`);
 
     return NextResponse.json({
       success: true,
       orders,
+      debug: {
+        totalOrders: orders.length,
+        grantOrders: grantCount,
+        regularOrders: orders.length - grantCount,
+        grantedProductsCount: grantedProducts.length,
+      },
     });
   } catch (error) {
     console.error("Error fetching orders:", error);

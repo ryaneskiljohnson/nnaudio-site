@@ -164,7 +164,7 @@ const DownloadButton = styled.a<{ disabled?: boolean }>`
   background: ${(props) =>
     props.disabled
       ? "linear-gradient(135deg, #666, #888)"
-      : "linear-gradient(135deg, var(--primary), var(--accent))"};
+      : "linear-gradient(135deg, #6c63ff, #8b5cf6)"};
   color: white;
   border: none;
   border-radius: 6px;

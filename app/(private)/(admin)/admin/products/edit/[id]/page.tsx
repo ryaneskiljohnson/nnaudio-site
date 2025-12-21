@@ -429,6 +429,7 @@ export default function EditProductPage() {
     meta_title: '',
     meta_description: '',
     meta_keywords: '',
+    legacy_product_id: '',
   });
   
   const [features, setFeatures] = useState<Array<{ title: string; description?: string; image_url?: string; gif_url?: string }>>([{ title: '' }]);
@@ -511,6 +512,7 @@ export default function EditProductPage() {
           meta_title: product.meta_title || '',
           meta_description: product.meta_description || '',
           meta_keywords: product.meta_keywords || '',
+          legacy_product_id: product.legacy_product_id || '',
         });
         
         // Handle both old format (string[]) and new format (object[])
@@ -1084,6 +1086,20 @@ export default function EditProductPage() {
             />
           </FormGroup>
           </GridRow>
+
+          <FormGroup>
+            <Label>Legacy Product ID</Label>
+            <Input
+              type="text"
+              name="legacy_product_id"
+              value={formData.legacy_product_id}
+              onChange={handleChange}
+              placeholder="e.g., 3822 (from old WooCommerce system)"
+            />
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+              Numeric product ID from the old system. Used by plugins for authorization. Leave empty if not applicable.
+            </p>
+          </FormGroup>
 
           <FormGroup>
             <Label>Tagline</Label>

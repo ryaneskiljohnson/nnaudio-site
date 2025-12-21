@@ -116,6 +116,22 @@ export async function POST(request: NextRequest) {
           allProducts.forEach((p) => productIds.add(p.id));
         }
       }
+
+      // Check individual product grants
+      const { data: productGrants } = await adminSupabase
+        .from("product_grants")
+        .select("product_id")
+        .eq("user_email", profile.email.toLowerCase());
+
+      if (productGrants && productGrants.length > 0) {
+        console.log(`[NNAudio Access Product] User has ${productGrants.length} product grants`);
+        productGrants.forEach((grant) => {
+          if (grant.product_id) {
+            productIds.add(grant.product_id);
+            console.log(`[NNAudio Access Product] Added granted product: ${grant.product_id}`);
+          }
+        });
+      }
     }
 
     // If user has active subscription, they get access to all products - SAME AS PRODUCTS ENDPOINT
@@ -256,25 +272,53 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if the requested product is in the user's accessible products
-    const hasAccess = productIds.has(productId);
-    console.log(`[NNAudio Access Product] Product ${productId} in accessible products: ${hasAccess}`);
-    console.log(`[NNAudio Access Product] Total accessible products: ${productIds.size}`);
+    // First, try to find the product by UUID or legacy_product_id
+    // This allows plugins to use either the new UUID or the old numeric ID
+    let product: any = null;
+    let actualProductId: string = productId;
 
-    if (!hasAccess) {
-      console.log(`[NNAudio Access Product] Access denied for user ${userId} (${profile?.email}) and product ${productId}`);
-      return new Response(formatError("Access denied"), { status: 403 });
-    }
-
-    // Fetch product details
-    const { data: product, error: productError } = await adminSupabase
+    // Try UUID first (most common case)
+    let { data: productByUuid, error: uuidError } = await adminSupabase
       .from("products")
       .select("*")
       .eq("id", productId)
+      .eq("status", "active")
       .single();
 
-    if (productError || !product) {
+    if (productByUuid && !uuidError) {
+      product = productByUuid;
+      actualProductId = product.id;
+      console.log(`[NNAudio Access Product] Found product by UUID: ${productId}`);
+    } else {
+      // Try legacy_product_id if UUID lookup failed
+      console.log(`[NNAudio Access Product] UUID lookup failed, trying legacy_product_id: ${productId}`);
+      const { data: productByLegacyId, error: legacyError } = await adminSupabase
+        .from("products")
+        .select("*")
+        .eq("legacy_product_id", productId)
+        .eq("status", "active")
+        .single();
+
+      if (productByLegacyId && !legacyError) {
+        product = productByLegacyId;
+        actualProductId = product.id;
+        console.log(`[NNAudio Access Product] Found product by legacy_product_id: ${productId} -> ${product.id}`);
+      }
+    }
+
+    if (!product) {
+      console.log(`[NNAudio Access Product] Product not found: ${productId} (tried UUID and legacy_product_id)`);
       return new Response(formatError("Product not found"), { status: 404 });
+    }
+
+    // Check if the user has access to this product (using the actual UUID)
+    const hasAccess = productIds.has(actualProductId);
+    console.log(`[NNAudio Access Product] Product ${actualProductId} in accessible products: ${hasAccess}`);
+    console.log(`[NNAudio Access Product] Total accessible products: ${productIds.size}`);
+
+    if (!hasAccess) {
+      console.log(`[NNAudio Access Product] Access denied for user ${userId} (${profile?.email}) and product ${actualProductId}`);
+      return new Response(formatError("Access denied"), { status: 403 });
     }
 
     // Format response to match WooCommerce format expected by desktop app

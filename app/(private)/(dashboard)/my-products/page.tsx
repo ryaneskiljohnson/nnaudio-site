@@ -322,7 +322,7 @@ const CTAButton = styled.a`
   align-items: center;
   gap: 0.75rem;
   padding: 1rem 2rem;
-  background: linear-gradient(135deg, #6c63ff, #4ecdc4);
+  background: linear-gradient(135deg, #6c63ff, #8b5cf6);
   color: white;
   border: none;
   border-radius: 12px;
@@ -336,7 +336,7 @@ const CTAButton = styled.a`
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(78, 205, 196, 0.4);
+    box-shadow: 0 8px 24px rgba(108, 99, 255, 0.4);
     text-decoration: none;
     color: white;
   }
@@ -409,17 +409,17 @@ export default function MyProductsPage() {
     try {
       setLoading(true);
       
-      // Fetch products from API (includes purchased products and subscription products)
-      const response = await fetch("/api/my-products");
-      const data = await response.json();
+      // Fetch products using server action
+      const { getMyProducts } = await import("@/app/actions/my-products");
+      const result = await getMyProducts();
 
-      if (data.success && data.products) {
-        setProducts(data.products);
-        setHasAccess(data.products.length > 0);
-        setSubscriptionStatus(data.subscriptionStatus || "none");
-        setCancelledSubscriptionId(data.cancelledSubscriptionId || null);
-        setCancelledSubscriptionType(data.cancelledSubscriptionType || null);
-        setIsScheduledToCancel(data.isScheduledToCancel || false);
+      if (result.success) {
+        setProducts(result.products);
+        setHasAccess(result.products.length > 0);
+        setSubscriptionStatus("none"); // Server action doesn't return subscription status yet
+        setCancelledSubscriptionId(null);
+        setCancelledSubscriptionType(null);
+        setIsScheduledToCancel(false);
       } else {
         setProducts([]);
         setHasAccess(false);

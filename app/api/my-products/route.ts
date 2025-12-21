@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -34,128 +35,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const hasActiveSubscription = profile?.subscription && profile.subscription !== "none";
-    
-    // Check for cancelled subscriptions
-    let subscriptionStatus: "active" | "cancelled" | "none" = hasActiveSubscription ? "active" : "none";
-    let cancelledSubscriptionId: string | null = null;
-    let cancelledSubscriptionType: "monthly" | "annual" | null = null;
-    let isScheduledToCancel = false;
-    
-    if (profile?.customer_id) {
-      try {
-        const subscriptions = await stripe.subscriptions.list({
-          customer: profile.customer_id,
-          status: "all",
-          limit: 10,
-        });
-        
-        // Find cancelled subscriptions that can be reactivated
-        for (const sub of subscriptions.data) {
-          // Check if it's a monthly or annual subscription
-          const items = sub.items.data;
-          let isMonthlyOrAnnual = false;
-          let subType: "monthly" | "annual" | null = null;
-          
-          for (const item of items) {
-            const priceId = item.price.id;
-            const monthlyPriceId = process.env.STRIPE_PRICE_ID_MONTHLY;
-            const annualPriceId = process.env.STRIPE_PRICE_ID_ANNUAL;
-            
-            if (priceId === monthlyPriceId || priceId === annualPriceId) {
-              isMonthlyOrAnnual = true;
-              subType = priceId === monthlyPriceId ? "monthly" : "annual";
-              break;
-            }
-          }
-          
-          if (!isMonthlyOrAnnual) continue;
-          
-          if (sub.status === "canceled" || sub.status === "unpaid") {
-            subscriptionStatus = "cancelled";
-            cancelledSubscriptionId = sub.id;
-            cancelledSubscriptionType = subType;
-            break;
-          } else if (sub.status === "active" && sub.cancel_at_period_end) {
-            // Scheduled to cancel but still active
-            subscriptionStatus = "active";
-            isScheduledToCancel = true;
-            cancelledSubscriptionId = sub.id;
-            cancelledSubscriptionType = subType;
-            // Don't break - continue to check for fully cancelled subscriptions
-          } else if (sub.status === "active" || sub.status === "trialing" || sub.status === "past_due") {
-            // User has an active subscription
-            if (!sub.cancel_at_period_end) {
-              subscriptionStatus = "active";
-              break;
-            }
-          }
-        }
-        
-        // If we found a cancelled subscription and no active one, set status to cancelled
-        if (subscriptionStatus === "active" && cancelledSubscriptionId && !hasActiveSubscription) {
-          // Check if the active subscription is scheduled to cancel
-          if (isScheduledToCancel) {
-            // Keep status as active but mark as scheduled to cancel
-          } else {
-            // No active subscription found, but we have a cancelled one
-            subscriptionStatus = "cancelled";
-          }
-        } else if (cancelledSubscriptionId && !hasActiveSubscription && !isScheduledToCancel) {
-          subscriptionStatus = "cancelled";
-        }
-      } catch (error) {
-        console.error("Error checking subscription status:", error);
-      }
-    }
     const purchasedProductIds = new Set<string>();
-
-    // If user has active subscription (or scheduled to cancel), they get access to all products
-    // But we still want to track individually purchased products
-    if (hasActiveSubscription || isScheduledToCancel) {
-      // Fetch all active products for subscription users
-      const { data: allProducts, error: productsError } = await supabase
-        .from("products")
-        .select("id, name, slug, category, featured_image_url, short_description, tagline")
-        .eq("status", "active");
-
-      if (productsError) {
-        console.error("Error fetching products:", productsError);
-      } else if (allProducts) {
-        // Return all products for subscription users (including those scheduled to cancel)
-        return NextResponse.json({
-          success: true,
-          products: allProducts,
-          source: "subscription",
-          subscriptionStatus: isScheduledToCancel ? "active" : "active",
-          cancelledSubscriptionId: isScheduledToCancel ? cancelledSubscriptionId : null,
-          cancelledSubscriptionType: isScheduledToCancel ? cancelledSubscriptionType : null,
-          isScheduledToCancel,
-        });
-      }
-    }
-    
-    // If subscription is cancelled, show all products so user knows what they'll lose access to
-    if (subscriptionStatus === "cancelled") {
-      const { data: allProducts, error: productsError } = await supabase
-        .from("products")
-        .select("id, name, slug, category, featured_image_url, short_description, tagline")
-        .eq("status", "active");
-
-      if (productsError) {
-        console.error("Error fetching products:", productsError);
-      } else if (allProducts) {
-        return NextResponse.json({
-          success: true,
-          products: allProducts,
-          source: "cancelled_subscription",
-          subscriptionStatus: "cancelled",
-          cancelledSubscriptionId,
-          cancelledSubscriptionType,
-          isScheduledToCancel: false,
-        });
-      }
-    }
 
     // Get purchased products from orders
     let paymentIntents: Stripe.PaymentIntent[] = [];
@@ -254,8 +134,34 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // If no purchased products and no subscription, return empty
-    if (purchasedProductIds.size === 0 && !hasActiveSubscription) {
+    // Check for product grants (free licenses)
+    if (profile?.email) {
+      console.log(`[My Products] Checking product grants for email: ${profile.email.toLowerCase()}`);
+      // Use service role client to bypass RLS for product_grants query
+      const adminSupabase = await createSupabaseServiceRole();
+      const { data: productGrants, error: grantsError } = await adminSupabase
+        .from("product_grants")
+        .select("product_id")
+        .eq("user_email", profile.email.toLowerCase());
+
+      if (grantsError) {
+        console.error(`[My Products] Error fetching product grants:`, grantsError);
+      }
+
+      if (productGrants && productGrants.length > 0) {
+        console.log(`[My Products] Found ${productGrants.length} product grants`);
+        productGrants.forEach((grant) => {
+          if (grant.product_id) {
+            purchasedProductIds.add(grant.product_id);
+          }
+        });
+      } else {
+        console.log(`[My Products] No product grants found for ${profile.email.toLowerCase()}`);
+      }
+    }
+
+    // If no purchased products, return empty
+    if (purchasedProductIds.size === 0) {
       return NextResponse.json({
         success: true,
         products: [],
@@ -265,7 +171,10 @@ export async function GET(request: NextRequest) {
 
     // Fetch product details for purchased products
     const productIdsArray = Array.from(purchasedProductIds);
-    const { data: products, error: productsError } = await supabase
+    console.log(`[My Products] Fetching ${productIdsArray.length} products (${purchasedProductIds.size} unique IDs)`);
+    // Use service role client for products query as well
+    const adminSupabase = await createSupabaseServiceRole();
+    const { data: products, error: productsError } = await adminSupabase
       .from("products")
       .select("id, name, slug, category, featured_image_url, short_description, tagline")
       .in("id", productIdsArray)
@@ -282,11 +191,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       products: products || [],
-      source: hasActiveSubscription ? "subscription" : "purchases",
-      subscriptionStatus,
-      cancelledSubscriptionId,
-      cancelledSubscriptionType,
-      isScheduledToCancel,
+      source: "purchases",
     });
   } catch (error) {
     console.error("Error fetching my products:", error);

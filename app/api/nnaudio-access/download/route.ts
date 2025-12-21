@@ -137,6 +137,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check product grants
+    if (!hasAccess && profile?.email) {
+      const { data: productGrant } = await supabase
+        .from("product_grants")
+        .select("product_id")
+        .eq("user_email", profile.email.toLowerCase())
+        .eq("product_id", productId)
+        .single();
+
+      if (productGrant) {
+        hasAccess = true;
+        console.log(`[NNAudio Access Download] User has product grant for ${productId}`);
+      }
+    }
+
     // Check NFR license
     if (!hasAccess) {
       const { data: userProfile } = await supabase
