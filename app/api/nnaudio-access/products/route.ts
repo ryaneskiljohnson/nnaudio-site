@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
     const adminSupabase = await createSupabaseServiceRole();
     const { data: products, error: productsError } = await adminSupabase
       .from("products")
-      .select("id, name, slug, featured_image_url")
+      .select("id, name, slug, featured_image_url, legacy_product_id")
       .in("id", productIdsArray)
       .eq("status", "active");
 
@@ -284,8 +284,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Format response to match WooCommerce downloads format expected by desktop app
+    // Use legacy_product_id if available, otherwise fall back to UUID
+    // This ensures plugins can check authorization using their legacy IDs
     const formattedProducts = (products || []).map((product) => ({
-      product_id: product.id,
+      product_id: product.legacy_product_id || product.id, // Prefer legacy ID for plugin compatibility
+      product_uuid: product.id, // Also include UUID for reference
       product_name: product.name,
       download_name: product.name, // For version extraction
       image_url: product.featured_image_url || null, // Include image URL for desktop app

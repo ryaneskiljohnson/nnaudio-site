@@ -96,14 +96,18 @@ export async function POST(request: NextRequest) {
       profile?.subscription && profile.subscription !== "none";
 
     let productIds = new Set<string>();
+    let nfrLicense: any = null;
+    let productGrants: any[] = [];
 
     // Check NFR (Not For Resale) licenses first (highest priority) - SAME AS PRODUCTS ENDPOINT
     if (profile?.email) {
-      const { data: nfrLicense } = await adminSupabase
+      const { data: nfrData } = await adminSupabase
         .from("user_management")
         .select("pro")
         .eq("user_email", profile.email.toLowerCase())
         .single();
+
+      nfrLicense = nfrData;
 
       if (nfrLicense?.pro) {
         console.log(`[NNAudio Access Product] User has NFR license, granting all products`);
@@ -118,12 +122,14 @@ export async function POST(request: NextRequest) {
       }
 
       // Check individual product grants
-      const { data: productGrants } = await adminSupabase
+      const { data: grantsData } = await adminSupabase
         .from("product_grants")
         .select("product_id")
         .eq("user_email", profile.email.toLowerCase());
 
-      if (productGrants && productGrants.length > 0) {
+      productGrants = grantsData || [];
+
+      if (productGrants.length > 0) {
         console.log(`[NNAudio Access Product] User has ${productGrants.length} product grants`);
         productGrants.forEach((grant) => {
           if (grant.product_id) {
@@ -315,14 +321,28 @@ export async function POST(request: NextRequest) {
     const hasAccess = productIds.has(actualProductId);
     console.log(`[NNAudio Access Product] Product ${actualProductId} in accessible products: ${hasAccess}`);
     console.log(`[NNAudio Access Product] Total accessible products: ${productIds.size}`);
-
+    console.log(`[NNAudio Access Product] Accessible product IDs:`, Array.from(productIds).slice(0, 10));
+    
     if (!hasAccess) {
       console.log(`[NNAudio Access Product] Access denied for user ${userId} (${profile?.email}) and product ${actualProductId}`);
+      console.log(`[NNAudio Access Product] Debug info:`, {
+        requestedProductId: productId,
+        actualProductId,
+        productName: product.name,
+        productIdsSize: productIds.size,
+        hasSubscription: hasActiveSubscription,
+        subscriptionType: profile?.subscription,
+        hasNFR: nfrLicense?.pro,
+        productGrantsCount: productGrants?.length || 0,
+      });
       return new Response(formatError("Access denied"), { status: 403 });
     }
+    
+    console.log(`[NNAudio Access Product] ✅ Access granted for ${product.name} (${actualProductId})`);
 
     // Format response to match WooCommerce format expected by desktop app
     const formattedProduct: any = {
+      success: true, // Explicit success flag for plugin compatibility
       id: product.id,
       name: product.name,
       images: [],
