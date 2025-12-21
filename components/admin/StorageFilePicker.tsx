@@ -693,19 +693,29 @@ export default function StorageFilePicker({
     setSelectedFile(null);
   };
 
-  const handleFileClick = (file: StorageFile) => {
+  const handleFileClick = (file: StorageFile, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (file.isFolder) {
       // Navigate into folder
       setCurrentPath([...currentPath, file.name]);
       setSearchQuery("");
       setSelectedFile(null); // Clear selection when navigating
     } else {
-      // Select file (but don't confirm yet)
+      // Select file (but don't confirm yet - user must click "Use Selected")
       setSelectedFile(file);
     }
   };
 
-  const handleConfirmSelection = () => {
+  const handleConfirmSelection = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (selectedFile && !selectedFile.isFolder) {
       onChange(selectedFile.publicUrl);
       setIsModalOpen(false);
@@ -758,7 +768,13 @@ export default function StorageFilePicker({
         </BrowseButton>
       </InputGroup>
 
-      <ModalOverlay $isOpen={isModalOpen} onClick={() => setIsModalOpen(false)}>
+      <ModalOverlay $isOpen={isModalOpen} onClick={(e) => {
+        // Only close if clicking directly on the overlay (not on modal content)
+        // And only if no file is currently selected (to prevent accidental closing)
+        if (e.target === e.currentTarget && !selectedFile) {
+          setIsModalOpen(false);
+        }
+      }}>
         <ModalContent onClick={(e) => e.stopPropagation()}>
           <ModalHeader>
             <ModalTitle>
@@ -870,7 +886,7 @@ export default function StorageFilePicker({
                   {filteredFiles.map((file) => (
                     <FileItem 
                       key={file.path} 
-                      onClick={() => handleFileClick(file)}
+                      onClick={(e) => handleFileClick(file, e)}
                       title={file.path}
                       $selected={selectedFile?.path === file.path && !file.isFolder}
                     >
@@ -914,7 +930,14 @@ export default function StorageFilePicker({
                   </FileMeta>
                 </div>
               </SelectedFileInfo>
-              <ConfirmButton onClick={handleConfirmSelection}>
+              <ConfirmButton 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleConfirmSelection(e);
+                }}
+                disabled={!selectedFile || selectedFile.isFolder}
+              >
                 Use Selected
               </ConfirmButton>
             </ModalFooter>
