@@ -7,6 +7,7 @@ import { FaSave, FaArrowLeft, FaPlus, FaTrash, FaSpinner, FaChevronDown, FaChevr
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
+import StorageFilePicker from "@/components/admin/StorageFilePicker";
 
 const Container = styled.div`
   padding: 2rem;
@@ -255,6 +256,32 @@ const FeaturesList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+`;
+
+const ScrollableList = styled.div`
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.5rem;
+  
+  /* Custom scrollbar styling */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(108, 99, 255, 0.5);
+    border-radius: 4px;
+    
+    &:hover {
+      background: rgba(108, 99, 255, 0.7);
+    }
+  }
 `;
 
 const FeatureItem = styled.div`
@@ -1459,12 +1486,12 @@ export default function EditProductPage() {
           
           <FormGroup>
             <Label>Featured Image URL</Label>
-            <Input
-              type="url"
-              name="featured_image_url"
+            <StorageFilePicker
               value={formData.featured_image_url}
-              onChange={handleChange}
-              placeholder="https://..."
+              onChange={(url) => setFormData(prev => ({ ...prev, featured_image_url: url }))}
+              bucket="product-images"
+              accept="image/*"
+              placeholder="Enter URL or browse files..."
             />
             {formData.featured_image_url && (
               <ImagePreviewContainer>
@@ -1486,12 +1513,12 @@ export default function EditProductPage() {
 
           <FormGroup>
             <Label>Logo URL</Label>
-            <Input
-              type="url"
-              name="logo_url"
+            <StorageFilePicker
               value={formData.logo_url}
-              onChange={handleChange}
-              placeholder="https://..."
+              onChange={(url) => setFormData(prev => ({ ...prev, logo_url: url }))}
+              bucket="product-images"
+              accept="image/*"
+              placeholder="Enter URL or browse files..."
             />
             {formData.logo_url && (
               <ImagePreviewContainer>
@@ -1512,12 +1539,12 @@ export default function EditProductPage() {
 
           <FormGroup>
             <Label>Background Image URL</Label>
-            <Input
-              type="url"
-              name="background_image_url"
+            <StorageFilePicker
               value={formData.background_image_url}
-              onChange={handleChange}
-              placeholder="https://..."
+              onChange={(url) => setFormData(prev => ({ ...prev, background_image_url: url }))}
+              bucket="product-images"
+              accept="image/*"
+              placeholder="Enter URL or browse files..."
             />
             {formData.background_image_url && (
               <ImagePreviewContainer>
@@ -1538,12 +1565,12 @@ export default function EditProductPage() {
 
           <FormGroup>
             <Label>Background Video/GIF URL</Label>
-            <Input
-              type="url"
-              name="background_video_url"
+            <StorageFilePicker
               value={formData.background_video_url}
-              onChange={handleChange}
-              placeholder="https://..."
+              onChange={(url) => setFormData(prev => ({ ...prev, background_video_url: url }))}
+              bucket="product-images"
+              accept="video/*"
+              placeholder="Enter URL or browse files..."
             />
             {formData.background_video_url && (
               <ImagePreviewContainer>
@@ -1612,11 +1639,12 @@ export default function EditProductPage() {
                 </FeatureItem>
                 <FeatureItem>
                   <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Image/GIF URL</Label>
-                  <FeatureInput
-                    type="url"
+                  <StorageFilePicker
                     value={feature.image_url || feature.gif_url || ''}
-                    onChange={(e) => handleFeatureChange(index, 'image_url', e.target.value)}
-                    placeholder="https://...supabase.co/storage/.../feature-image.jpg or .gif"
+                    onChange={(url) => handleFeatureChange(index, 'image_url', url)}
+                    bucket="product-images"
+                    accept="image/*"
+                    placeholder="Enter URL or browse files..."
                   />
                 </FeatureItem>
                 {feature.image_url && (
@@ -1661,36 +1689,39 @@ export default function EditProductPage() {
                 No audio samples. Click "Add Audio Sample" to add one.
               </div>
             ) : (
-              <FeaturesList>
-                {audioSamples.map((audio, index) => (
-                  <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', marginBottom: '0.5rem' }}>
-                    <FeatureItem>
-                      <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Audio URL</Label>
-                      <FeatureInput
-                        type="url"
-                        value={audio.url}
-                        onChange={(e) => handleAudioSampleChange(index, 'url', e.target.value)}
-                        placeholder="https://...supabase.co/storage/.../audio-file.mp3"
-                      />
-                    </FeatureItem>
-                    <FeatureItem>
-                      <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Audio Name</Label>
-                      <FeatureInput
-                        type="text"
-                        value={audio.name}
-                        onChange={(e) => handleAudioSampleChange(index, 'name', e.target.value)}
-                        placeholder="Sample Name"
-                      />
-                      <RemoveButton
-                        type="button"
-                        onClick={() => removeAudioSample(index)}
-                      >
-                        <FaTrash />
-                      </RemoveButton>
-                    </FeatureItem>
-                  </div>
-                ))}
-              </FeaturesList>
+              <ScrollableList>
+                <FeaturesList>
+                  {audioSamples.map((audio, index) => (
+                    <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                      <FeatureItem>
+                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Audio URL</Label>
+                        <StorageFilePicker
+                          value={audio.url}
+                          onChange={(url) => handleAudioSampleChange(index, 'url', url)}
+                          bucket="audio-samples"
+                          accept="audio/*"
+                          placeholder="Enter URL or browse files..."
+                        />
+                      </FeatureItem>
+                      <FeatureItem>
+                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Audio Name</Label>
+                        <FeatureInput
+                          type="text"
+                          value={audio.name}
+                          onChange={(e) => handleAudioSampleChange(index, 'name', e.target.value)}
+                          placeholder="Sample Name"
+                        />
+                        <RemoveButton
+                          type="button"
+                          onClick={() => removeAudioSample(index)}
+                        >
+                          <FaTrash />
+                        </RemoveButton>
+                      </FeatureItem>
+                    </div>
+                  ))}
+                </FeaturesList>
+              </ScrollableList>
             )}
             
             <AddButton type="button" onClick={addAudioSample}>

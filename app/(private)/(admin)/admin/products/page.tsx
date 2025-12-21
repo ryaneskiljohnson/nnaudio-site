@@ -443,6 +443,129 @@ const EmptyState = styled.div`
   }
 `;
 
+const ConfirmDialogOverlay = styled.div<{ $isOpen: boolean }>`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10000;
+  display: ${props => props.$isOpen ? 'flex' : 'none'};
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  visibility: ${props => props.$isOpen ? 'visible' : 'hidden'};
+  opacity: ${props => props.$isOpen ? 1 : 0};
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  backdrop-filter: blur(4px);
+`;
+
+const ConfirmDialog = styled.div`
+  background: var(--card-bg);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+`;
+
+const ConfirmDialogHeader = styled.div`
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const ConfirmDialogTitle = styled.h2`
+  font-size: 1.5rem;
+  color: #ff5e62;
+  margin: 0;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const ConfirmDialogBody = styled.div`
+  padding: 1.5rem;
+`;
+
+const ConfirmDialogMessage = styled.p`
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 1rem 0;
+`;
+
+const ConfirmDialogProductName = styled.div`
+  background: rgba(255, 94, 98, 0.1);
+  border: 1px solid rgba(255, 94, 98, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-align: center;
+`;
+
+const ConfirmDialogWarning = styled.div`
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #ffc107;
+  font-size: 0.9rem;
+  line-height: 1.5;
+`;
+
+const ConfirmDialogFooter = styled.div`
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+`;
+
+const CancelButton = styled.button`
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+`;
+
+const DeleteButton = styled.button`
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #ff5e62, #ff4757);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 94, 98, 0.4);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 interface Product {
   id: string;
   name: string;
@@ -475,6 +598,9 @@ export default function ProductsManagementPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; right: number; openUpward?: boolean } | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -594,24 +720,37 @@ export default function ProductsManagementPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    const product = products.find(p => p.id === id);
+    if (product) {
+      setProductToDelete({ id, name: product.name });
+      setDeleteConfirmOpen(true);
+      setOpenMenuId(null);
+    }
+  };
 
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
+
+    setDeleting(true);
     try {
-      const response = await fetch(`/api/products/${id}`, {
+      const response = await fetch(`/api/products/${productToDelete.id}`, {
         method: 'DELETE',
       });
 
       const data = await response.json();
 
       if (data.success) {
-        setProducts(products.filter(p => p.id !== id));
-        setOpenMenuId(null);
+        setProducts(products.filter(p => p.id !== productToDelete.id));
+        setDeleteConfirmOpen(false);
+        setProductToDelete(null);
       } else {
-        alert('Failed to delete product');
+        alert('Failed to delete product: ' + (data.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error deleting product:', error);
       alert('Error deleting product');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -936,6 +1075,62 @@ export default function ProductsManagementPage() {
           </Table>
         </TableContainer>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialogOverlay 
+        $isOpen={deleteConfirmOpen} 
+        onClick={() => !deleting && setDeleteConfirmOpen(false)}
+      >
+        <ConfirmDialog onClick={(e) => e.stopPropagation()}>
+          <ConfirmDialogHeader>
+            <ConfirmDialogTitle>
+              <FaTrash />
+              Delete Product
+            </ConfirmDialogTitle>
+          </ConfirmDialogHeader>
+          <ConfirmDialogBody>
+            <ConfirmDialogMessage>
+              Are you sure you want to delete this product? This action cannot be undone.
+            </ConfirmDialogMessage>
+            {productToDelete && (
+              <ConfirmDialogProductName>
+                {productToDelete.name}
+              </ConfirmDialogProductName>
+            )}
+            <ConfirmDialogWarning>
+              ⚠️ This will permanently delete the product from the database and archive it in Stripe. 
+              All associated data will be lost.
+            </ConfirmDialogWarning>
+          </ConfirmDialogBody>
+          <ConfirmDialogFooter>
+            <CancelButton 
+              onClick={() => {
+                setDeleteConfirmOpen(false);
+                setProductToDelete(null);
+              }}
+              disabled={deleting}
+            >
+              Cancel
+            </CancelButton>
+            <DeleteButton 
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <NNAudioLoadingSpinner size={16} style={{ marginRight: '0.5rem', display: 'inline-block' }} />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <FaTrash style={{ marginRight: '0.5rem' }} />
+                  Delete Product
+                </>
+              )}
+            </DeleteButton>
+          </ConfirmDialogFooter>
+        </ConfirmDialog>
+      </ConfirmDialogOverlay>
     </Container>
   );
 }

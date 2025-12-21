@@ -133,11 +133,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           );
           
           if (adminError) {
+            // PostgrestError objects need special handling
+            let errorMessage: string;
+            if (adminError instanceof Error) {
+              errorMessage = adminError.message;
+            } else if (typeof adminError === 'object' && adminError !== null) {
+              // Handle PostgrestError or other error objects
+              errorMessage = (adminError as any).message 
+                || (adminError as any).code 
+                || JSON.stringify(adminError, null, 2);
+            } else {
+              errorMessage = String(adminError);
+            }
             console.error(
               "[AuthContext] Error fetching admin status:",
-              adminError instanceof Error
-                ? adminError.message
-                : String(adminError)
+              errorMessage
             );
           } else {
             console.log(

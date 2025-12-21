@@ -21,3 +21,4 @@ CREATE INDEX IF NOT EXISTS idx_products_downloads ON products USING GIN (downloa
 -- The bucket should be private (not public) for security
 -- Signed URLs will be generated via API endpoint
 
+
