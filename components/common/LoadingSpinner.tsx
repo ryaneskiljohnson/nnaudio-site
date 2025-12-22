@@ -50,7 +50,7 @@ const AnimatedLogoWrapper = styled(motion.div)`
   animation: ${pulseAnimation} 1.5s ease-in-out infinite;
 `;
 
-const LoadingText = styled.div<LoadingTextProps>`
+const LoadingText = styled(motion.div)<LoadingTextProps>`
   margin-top: 20px;
   color: var(--text-secondary);
   font-size: ${(props) =>
@@ -97,7 +97,22 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
         >
           <NNAudioLogo size={logoSize} showText={false} />
         </AnimatedLogoWrapper>
-        {text && <LoadingText $size={size}>{text}</LoadingText>}
+        {text && (
+          <LoadingText
+            $size={size}
+            animate={{
+              scale: [1, 0.95, 1],
+              opacity: [1, 0.7, 1],
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            {text}
+          </LoadingText>
+        )}
       </LoadingWrapper>
     </Container>
   );

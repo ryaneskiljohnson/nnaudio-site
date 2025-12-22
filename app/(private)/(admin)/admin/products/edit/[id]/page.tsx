@@ -611,6 +611,7 @@ export default function EditProductPage() {
         }
       }
       
+      
       if (bundle && bundle.id) {
         setBundleId(bundle.id);
         
@@ -726,7 +727,9 @@ export default function EditProductPage() {
         }
       } else {
         console.warn('Bundle not found for product:', productName, 'slug:', productSlug);
-        // Still try to fetch available products even if bundle not found
+        // If this is a bundle product but no bundle record exists, try to create one
+        // or at least allow adding products (we'll create the bundle when first product is added)
+        // For now, still fetch available products so the UI can show the add button
         try {
           const allProductsResponse = await fetch('/api/products?status=active&limit=1000');
           if (allProductsResponse.ok) {
@@ -738,6 +741,34 @@ export default function EditProductPage() {
                   p.id !== productId && p.category !== 'bundle'
                 );
                 setAvailableProducts(available);
+                // Set bundleId to null but still allow UI to show - we'll create bundle on first add
+                // Actually, let's try to create the bundle now if it doesn't exist
+                if (productId && formData.category === 'bundle') {
+                  try {
+                    const createBundleResponse = await fetch('/api/bundles/create-products', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        name: productName,
+                        slug: productSlug,
+                        bundle_type: 'custom',
+                        status: 'active'
+                      })
+                    });
+                    if (createBundleResponse.ok) {
+                      const createData = await createBundleResponse.json();
+                      if (createData.success && createData.bundle) {
+                        setBundleId(createData.bundle.id);
+                        console.log('Created bundle:', createData.bundle.id);
+                        // Now fetch the bundle data again
+                        await fetchBundleData(productName, productSlug);
+                        return; // Exit early since we're re-fetching
+                      }
+                    }
+                  } catch (createError) {
+                    console.log('Could not auto-create bundle, will create on first product add:', createError);
+                  }
+                }
               }
             }
           }
@@ -753,11 +784,47 @@ export default function EditProductPage() {
   };
   
   const handleAddProductToBundle = async () => {
-    if (!bundleId || !selectedProductToAdd) return;
+    if (!selectedProductToAdd) return;
+    
+    // If no bundleId exists, create the bundle first
+    let currentBundleId = bundleId;
+    if (!currentBundleId && formData.category === 'bundle' && productId) {
+      try {
+        console.log('Creating bundle for product:', formData.name);
+        const createBundleResponse = await fetch('/api/bundles/create-products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            slug: formData.slug,
+            bundle_type: 'custom',
+            status: 'active'
+          })
+        });
+        
+        if (createBundleResponse.ok) {
+          const createData = await createBundleResponse.json();
+          if (createData.success && createData.bundle) {
+            currentBundleId = createData.bundle.id;
+            setBundleId(currentBundleId);
+            console.log('Created bundle:', currentBundleId);
+          }
+        }
+      } catch (createError) {
+        console.error('Error creating bundle:', createError);
+        alert('Failed to create bundle. Please try again.');
+        return;
+      }
+    }
+    
+    if (!currentBundleId) {
+      alert('Bundle not found. Please ensure the bundle exists in the bundles table.');
+      return;
+    }
     
     try {
       // Try the nested route first, fallback to simpler route
-      let response = await fetch(`/api/bundles/${bundleId}/products`, {
+      let response = await fetch(`/api/bundles/${currentBundleId}/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ product_id: selectedProductToAdd })
@@ -769,7 +836,7 @@ export default function EditProductPage() {
         response = await fetch(`/api/bundles/products`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bundle_id: bundleId, product_id: selectedProductToAdd })
+          body: JSON.stringify({ bundle_id: currentBundleId, product_id: selectedProductToAdd })
         });
       }
       
@@ -789,9 +856,9 @@ export default function EditProductPage() {
       if (data.success) {
         // Refresh bundle products
         try {
-          let productsResponse = await fetch(`/api/bundles/${bundleId}/products`);
+          let productsResponse = await fetch(`/api/bundles/${currentBundleId}/products`);
           if (productsResponse.status === 404) {
-            productsResponse = await fetch(`/api/bundles/products?bundle_id=${bundleId}`);
+            productsResponse = await fetch(`/api/bundles/products?bundle_id=${currentBundleId}`);
           }
           if (productsResponse.ok) {
             const contentType = productsResponse.headers.get('content-type');
@@ -1294,20 +1361,39 @@ export default function EditProductPage() {
                     </div>
                   )}
                   
-                  {!bundleId ? (
+                  {!bundleId && !showAddProduct ? (
                     <div style={{
                       padding: '1.5rem',
-                      background: 'rgba(255, 193, 7, 0.1)',
-                      border: '1px solid rgba(255, 193, 7, 0.3)',
+                      background: 'rgba(108, 99, 255, 0.1)',
+                      border: '1px solid rgba(108, 99, 255, 0.3)',
                       borderRadius: '8px',
                       color: 'var(--text)'
                     }}>
                       <p style={{ margin: 0, fontWeight: 600, marginBottom: '0.5rem' }}>
-                        Bundle not found
+                        Bundle will be created automatically
                       </p>
-                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        Could not find the corresponding bundle record. Make sure a bundle with matching name or slug exists in the bundles table.
+                      <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                        No bundle record found. A bundle will be created automatically when you add the first product.
                       </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddProduct(true)}
+                        style={{
+                          padding: '0.75rem 1.5rem',
+                          background: 'linear-gradient(135deg, #6c63ff, #8a2be2)',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: 'white',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
+                        }}
+                      >
+                        <FaPlus /> Add Product to Bundle
+                      </button>
                     </div>
                   ) : !showAddProduct ? (
                     <button

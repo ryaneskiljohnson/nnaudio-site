@@ -27,7 +27,7 @@ const AnimatedLogoWrapper = styled(motion.div)`
   justify-content: center;
 `;
 
-const LoadingText = styled.p`
+const LoadingText = styled(motion.p)`
   margin-top: 1rem;
   font-size: 1rem;
   color: white;
@@ -63,7 +63,21 @@ const LoadingComponent: React.FC<LoadingComponentProps> = ({
       >
         <NNAudioLogo size={size} showText={false} />
       </AnimatedLogoWrapper>
-      {text && <LoadingText>{text}</LoadingText>}
+      {text && (
+        <LoadingText
+          animate={{
+            scale: [1, 0.95, 1],
+            opacity: [1, 0.7, 1],
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        >
+          {text}
+        </LoadingText>
+      )}
     </LoadingContainer>
   );
 };
