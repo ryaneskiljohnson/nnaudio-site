@@ -413,10 +413,10 @@ export default function SideCart({ isOpen, onClose }: SideCartProps) {
                                   marginRight: '0.5rem',
                                   fontSize: '0.85rem'
                                 }}>
-                                  ${item.price.toFixed(2)}
+                                  ${item.price % 1 === 0 ? item.price.toFixed(0) : item.price.toFixed(2)}
                                 </span>
                               )}
-                              <span>${displayPrice.toFixed(2)}</span>
+                              <span>${displayPrice % 1 === 0 ? displayPrice.toFixed(0) : displayPrice.toFixed(2)}</span>
                             </>
                           )}
                         </ItemPrice>
@@ -452,12 +452,12 @@ export default function SideCart({ isOpen, onClose }: SideCartProps) {
               <SideCartFooter>
                 <SummaryRow>
                   <span>Subtotal ({itemCount} {itemCount === 1 ? 'item' : 'items'})</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>${total % 1 === 0 ? total.toFixed(0) : total.toFixed(2)}</span>
                 </SummaryRow>
                 
                 <SummaryTotal>
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>${total % 1 === 0 ? total.toFixed(0) : total.toFixed(2)}</span>
                 </SummaryTotal>
                 
                 <ViewCartButton href="/cart" onClick={onClose}>

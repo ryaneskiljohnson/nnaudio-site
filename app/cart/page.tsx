@@ -412,10 +412,10 @@ export default function CartPage() {
                                 color: 'rgba(255, 255, 255, 0.5)',
                                 marginRight: '0.5rem'
                               }}>
-                                ${item.price.toFixed(2)}
+                                ${item.price % 1 === 0 ? item.price.toFixed(0) : item.price.toFixed(2)}
                               </span>
                             )}
-                            <span>${displayPrice.toFixed(2)}</span>
+                            <span>${displayPrice % 1 === 0 ? displayPrice.toFixed(0) : displayPrice.toFixed(2)}</span>
                           </>
                         )}
                       </ItemPrice>
@@ -452,7 +452,7 @@ export default function CartPage() {
               
               <SummaryRow>
                 <span>Subtotal ({itemCount} {itemCount === 1 ? 'item' : 'items'})</span>
-                <span>${total.toFixed(2)}</span>
+                <span>${total % 1 === 0 ? total.toFixed(0) : total.toFixed(2)}</span>
               </SummaryRow>
               
               <SummaryRow>
@@ -462,7 +462,7 @@ export default function CartPage() {
               
               <SummaryTotal>
                 <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+                <span>${total % 1 === 0 ? total.toFixed(0) : total.toFixed(2)}</span>
               </SummaryTotal>
               
               <CheckoutButton

@@ -64,15 +64,16 @@ export async function GET(
       console.error('Error fetching bundle products:', productsError);
     }
 
-    // Check if this is an elite bundle (has subscription tiers)
-    const isEliteBundle = (tiers || []).length > 0;
+    // Check if this is an elite subscription bundle (has monthly or annual tiers)
+    // Bundles with ONLY lifetime tiers are considered regular one-time purchase bundles
+    const isEliteBundle = (tiers || []).some((t: any) => t.subscription_type === 'monthly' || t.subscription_type === 'annual');
 
     // Filter out products that don't exist or are inactive
-    // For elite bundles, also filter out bundle products (only include plugins, packs, etc.)
+    // For elite subscription bundles, also filter out bundle products (only include plugins, packs, etc.)
     const validProducts = (bundleProducts || [])
       .filter((bp: any) => {
         if (!bp.product || bp.product.status !== 'active') return false;
-        // Elite bundles should not include other bundle products
+        // Elite subscription bundles should not include other bundle products
         if (isEliteBundle && bp.product.category === 'bundle') return false;
         return true;
       })
@@ -132,8 +133,9 @@ export async function GET(
       };
     };
 
-    // Check if this is an elite bundle (has subscription tiers)
-    const isSubscriptionBundle = (tiers || []).length > 0;
+    // Check if this is an elite subscription bundle (has monthly or annual tiers)
+    // Bundles with ONLY lifetime tiers are considered regular one-time purchase bundles
+    const isSubscriptionBundle = (tiers || []).some((t: any) => t.subscription_type === 'monthly' || t.subscription_type === 'annual');
 
     return NextResponse.json({
       success: true,

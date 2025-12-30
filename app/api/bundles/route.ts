@@ -64,18 +64,19 @@ export async function GET(request: NextRequest) {
         lifetime: tiers.find(t => t.subscription_type === 'lifetime'),
       };
 
-      // Check if this is a subscription bundle (has subscription tiers)
-      const isSubscriptionBundle = tiers.length > 0;
+      // Check if this is a subscription bundle (has monthly or annual tiers)
+      // Bundles with ONLY lifetime tiers are considered regular one-time purchase bundles
+      const isSubscriptionBundle = tiers.some(t => t.subscription_type === 'monthly' || t.subscription_type === 'annual');
 
       // Extract all products with images for mosaic
-      // For elite bundles, filter out bundle products (only include plugins, packs, etc.)
-      // For regular bundles, show all products including bundle products
+      // For elite subscription bundles (with monthly/annual), filter out bundle products (only include plugins, packs, etc.)
+      // For regular one-time purchase bundles (lifetime only), show all products including bundle products
       const allProducts = ((bundle.bundle_products || []) as any[])
         .map((bp: any) => bp.product)
         .filter((p: any) => {
           if (!p) return false;
-          // Only filter out bundle products for elite bundles (subscription bundles)
-          // Regular bundles should show all products
+          // Only filter out bundle products for elite subscription bundles
+          // Regular one-time purchase bundles should show all products
           if (isSubscriptionBundle && p.category === 'bundle') return false;
           return true;
         });
@@ -91,15 +92,15 @@ export async function GET(request: NextRequest) {
         pricing,
         products: productsWithImages, // All products with images for mosaic
         totalProductCount, // Total count of all products
-        isSubscriptionBundle, // Flag to identify elite bundles (bundles with subscription tiers)
+        isSubscriptionBundle, // Flag to identify elite subscription bundles (bundles with monthly/annual tiers)
         bundle_subscription_tiers: undefined, // Remove nested data
         bundle_products: undefined, // Remove nested data
       };
     });
 
-    // Sort: elite bundles first, then by display_order
+    // Sort: elite subscription bundles first, then regular bundles, then by display_order
     const sortedBundles = transformedBundles?.sort((a, b) => {
-      // Elite bundles (with subscription tiers) come first
+      // Elite subscription bundles (with monthly/annual tiers) come first
       if (a.isSubscriptionBundle && !b.isSubscriptionBundle) return -1;
       if (!a.isSubscriptionBundle && b.isSubscriptionBundle) return 1;
       

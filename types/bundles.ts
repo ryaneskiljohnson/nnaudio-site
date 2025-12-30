@@ -63,5 +63,6 @@ export interface BundleWithProducts extends Bundle {
     annual?: { amount: number; percent: number } | null;
     lifetime?: { amount: number; percent: number } | null;
   };
+  isSubscriptionBundle?: boolean;
 }
 

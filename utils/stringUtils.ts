@@ -12,6 +12,20 @@ export const formatDate = (date: Date | string | undefined) => {
 };
 
 /**
+ * Formats a price, hiding .00 for whole dollar amounts
+ */
+export const formatPrice = (price: number | undefined | null): string => {
+  if (price === null || price === undefined) return 'N/A';
+  if (price === 0) return 'FREE';
+  const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+  // Hide .00 for whole dollar amounts
+  if (numPrice % 1 === 0) {
+    return `$${numPrice.toFixed(0)}`;
+  }
+  return `$${numPrice.toFixed(2)}`;
+};
+
+/**
  * Cleans HTML entities and tags from text
  * Converts HTML entities like &amp; to &, &#8217; to ', etc.
  * Removes HTML tags

@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { FaCheckCircle, FaArrowLeft, FaShoppingCart, FaHome } from "react-icons/fa";
 import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/contexts/ToastContext";
 import { BundleWithProducts } from "@/types/bundles";
 import { cleanHtmlText } from "@/utils/stringUtils";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -345,13 +347,17 @@ const ValueTitle = styled.h2`
   letter-spacing: 2px;
 `;
 
-const ValueAmount = styled.div`
+const ValueAmount = styled.div<{ $isStrikethrough?: boolean }>`
   font-size: 3.5rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #6c63ff, #8a2be2);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  background: ${props => props.$isStrikethrough 
+    ? 'transparent' 
+    : 'linear-gradient(135deg, #6c63ff, #8a2be2)'};
+  -webkit-background-clip: ${props => props.$isStrikethrough ? 'unset' : 'text'};
+  -webkit-text-fill-color: ${props => props.$isStrikethrough ? 'rgba(255, 255, 255, 0.4)' : 'transparent'};
+  background-clip: ${props => props.$isStrikethrough ? 'unset' : 'text'};
+  color: ${props => props.$isStrikethrough ? 'rgba(255, 255, 255, 0.4)' : 'transparent'};
+  text-decoration: ${props => props.$isStrikethrough ? 'line-through' : 'none'};
   margin-bottom: 0.75rem;
   line-height: 1.2;
 `;
@@ -371,6 +377,96 @@ const SavingsText = styled.p`
   display: flex;
   align-items: center;
   justify-content: center;
+`;
+
+const PriceAndCartContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+  }
+`;
+
+const BundlePriceContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+const BundlePriceLabel = styled.div`
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+`;
+
+const BundlePriceAmount = styled.div`
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #6c63ff, #8a2be2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+`;
+
+const BundleSalePrice = styled.span`
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #6c63ff, #8a2be2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+`;
+
+const BundleOriginalPrice = styled.span`
+  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: line-through;
+  font-weight: 500;
+`;
+
+const AddToCartButton = styled.button`
+  padding: 16px 40px;
+  background: linear-gradient(135deg, #6c63ff, #8a2be2);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.4);
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(108, 99, 255, 0.6);
+    background: linear-gradient(135deg, #7c73ff, #9a3bf2);
+  }
+  
+  &:active {
+    transform: translateY(-1px);
+  }
+  
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: center;
+  }
 `;
 
 const Spacer = styled.div`
@@ -459,11 +555,128 @@ const ProductPrice = styled.div`
   margin-top: 0.5rem;
 `;
 
+const StickyAddToCartButton = styled(motion.div)`
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(138, 43, 226, 0.5);
+  border-radius: 50px;
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+  max-width: 90%;
+  width: auto;
+  min-width: 300px;
+  
+  @keyframes pulse {
+    0%, 100% {
+      box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
+    }
+    50% {
+      box-shadow: 0 8px 40px rgba(138, 43, 226, 0.7);
+    }
+  }
+  
+  animation: pulse 2s ease-in-out infinite;
+  
+  @media (max-width: 768px) {
+    min-width: auto;
+    width: calc(100% - 40px);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+`;
+
+const StickyButtonContent = styled.div`
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+`;
+
+const StickyBundleImage = styled.div`
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const StickyBundleInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  justify-content: center;
+`;
+
+const StickyBundleName = styled.div`
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1;
+  margin-bottom: -2px;
+`;
+
+const StickyPrice = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+`;
+
+const StickyPriceMain = styled.div`
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #8a2be2;
+`;
+
+const StickyPriceOriginal = styled.div`
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: line-through;
+`;
+
+const StickyButton = styled(motion.button)`
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 40px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(138, 43, 226, 0.6);
+  }
+`;
+
 export default function BundleDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const [bundle, setBundle] = useState<BundleWithProducts | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedTier, setSelectedTier] = useState<'monthly' | 'annual' | 'lifetime'>('lifetime');
   const [slug, setSlug] = useState<string>('');
+  const [showStickyButton, setShowStickyButton] = useState(false);
+  const { addItem } = useCart();
+  const { success } = useToast();
+  const topSectionRef = useRef<HTMLDivElement>(null);
 
   const formatCategory = (category: string | null | undefined, productName?: string) => {
     if (!category) return 'Product';
@@ -494,6 +707,24 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
     });
   }, [params]);
 
+  // Handle scroll to show/hide sticky button for non-elite bundles
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!topSectionRef.current) return;
+      
+      const topBottom = topSectionRef.current.offsetTop + topSectionRef.current.offsetHeight;
+      const scrollPosition = window.scrollY;
+      
+      // Show sticky button when scrolled past the top section
+      setShowStickyButton(scrollPosition > topBottom - 100);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Check initial position
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [bundle]);
+
   const fetchBundle = async (slug: string) => {
     try {
       setLoading(true);
@@ -514,6 +745,10 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
     if (!price && price !== 0) return 'N/A';
     if (price === 0) return 'FREE';
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    // Hide .00 for whole dollar amounts
+    if (numPrice % 1 === 0) {
+      return `$${numPrice.toFixed(0)}`;
+    }
     return `$${numPrice.toFixed(2)}`;
   };
 
@@ -525,12 +760,8 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
 
   if (loading) {
     return (
-      <Container>
-        <Content>
-          <Header>
-            <BundleName>Loading...</BundleName>
-          </Header>
-        </Content>
+      <Container style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0' }}>
+        <LoadingSpinner size="medium" text="Loading Bundles" />
       </Container>
     );
   }
@@ -570,7 +801,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
           </BreadcrumbList>
         </BreadcrumbContainer>
 
-        <TopSection>
+        <TopSection ref={topSectionRef}>
           <BundleImageContainer>
             {bundle.featured_image_url ? (
               <Image
@@ -608,19 +839,60 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                 {bundle.products?.length || 0} {bundle.products?.length === 1 ? 'Product' : 'Products'}
               </ProductCountBadge>
           <ValueTitle>Total Bundle Value</ValueTitle>
-          <ValueAmount>{formatPrice(bundle.totalValue)}</ValueAmount>
+          <ValueAmount 
+            $isStrikethrough={
+              !(bundle.pricing.monthly || bundle.pricing.annual) && 
+              !!bundle.pricing.lifetime?.sale_price
+            }
+          >
+            {formatPrice(bundle.totalValue)}
+          </ValueAmount>
           {selectedSavings && selectedSavings.amount > 0 && (
             <SavingsText>
               Save {formatPrice(selectedSavings.amount)} ({selectedSavings.percent}% off)
             </SavingsText>
           )}
+          
+          {/* For regular bundles (non-elite), show price and add to cart next to total value */}
+          {!(bundle.pricing.monthly || bundle.pricing.annual) && bundle.pricing.lifetime && (
+            <PriceAndCartContainer>
+              <BundlePriceContainer>
+                <BundlePriceLabel>Bundle Price</BundlePriceLabel>
+                <BundlePriceAmount>
+                  <BundleSalePrice>
+                    {formatPrice(bundle.pricing.lifetime.sale_price || bundle.pricing.lifetime.price)}
+                  </BundleSalePrice>
+                </BundlePriceAmount>
+              </BundlePriceContainer>
+              <AddToCartButton
+                onClick={() => {
+                  if (bundle) {
+                    const price = bundle.pricing.lifetime.sale_price ?? bundle.pricing.lifetime.price ?? 0;
+                    addItem({
+                      id: bundle.id,
+                      name: bundle.name,
+                      slug: bundle.slug,
+                      price: bundle.pricing.lifetime.price ?? 0,
+                      sale_price: bundle.pricing.lifetime.sale_price ?? null,
+                      featured_image_url: bundle.featured_image_url,
+                      logo_url: bundle.logo_url,
+                    });
+                  }
+                }}
+              >
+                <FaShoppingCart /> Add to Cart
+              </AddToCartButton>
+            </PriceAndCartContainer>
+          )}
         </ValueSection>
           </ImageOverlay>
         </TopSection>
 
-        <PricingSection>
-          <PricingTitle>Choose Your Plan</PricingTitle>
-          <PricingGrid>
+        {/* Only show pricing section for elite bundles (with monthly/annual options) */}
+        {(bundle.pricing.monthly || bundle.pricing.annual) && (
+          <PricingSection>
+            <PricingTitle>Choose Your Plan</PricingTitle>
+            <PricingGrid>
             {bundle.pricing.monthly && (
               <PricingCard
                 onClick={() => setSelectedTier('monthly')}
@@ -697,8 +969,9 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                 </SubscribeButton>
               </PricingCard>
             )}
-          </PricingGrid>
-        </PricingSection>
+            </PricingGrid>
+          </PricingSection>
+        )}
 
         <ProductsSection>
           <SectionTitle>Products Included ({bundle.products.length})</SectionTitle>
@@ -774,6 +1047,70 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
           </ProductsGrid>
         </ProductsSection>
       </Content>
+
+      {/* Sticky button for non-elite bundles */}
+      {showStickyButton && bundle && !(bundle.pricing.monthly || bundle.pricing.annual) && bundle.pricing.lifetime && (
+        <StickyAddToCartButton
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+        >
+          <StickyButtonContent>
+            <StickyBundleImage>
+              {bundle.featured_image_url || bundle.logo_url ? (
+                <Image
+                  src={bundle.featured_image_url || bundle.logo_url || ''}
+                  alt={bundle.name}
+                  fill
+                  style={{ objectFit: 'cover' }}
+                  unoptimized
+                />
+              ) : (
+                <Image
+                  src="/images/nnaud-io/NNPurp1.png"
+                  alt={bundle.name}
+                  fill
+                  style={{ objectFit: 'contain', padding: '8px' }}
+                  unoptimized
+                />
+              )}
+            </StickyBundleImage>
+            <StickyBundleInfo>
+              <StickyBundleName>{bundle.name}</StickyBundleName>
+              <StickyPrice>
+                <StickyPriceMain>
+                  {formatPrice(bundle.pricing.lifetime.sale_price || bundle.pricing.lifetime.price)}
+                </StickyPriceMain>
+                {bundle.pricing.lifetime.sale_price && (
+                  <StickyPriceOriginal>
+                    {formatPrice(bundle.pricing.lifetime.price)}
+                  </StickyPriceOriginal>
+                )}
+              </StickyPrice>
+            </StickyBundleInfo>
+            <StickyButton
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                if (bundle) {
+                  addItem({
+                    id: bundle.id,
+                    name: bundle.name,
+                    slug: bundle.slug,
+                    price: bundle.pricing.lifetime.price ?? 0,
+                    sale_price: bundle.pricing.lifetime.sale_price ?? null,
+                    featured_image_url: bundle.featured_image_url,
+                    logo_url: bundle.logo_url,
+                  });
+                  success(`${bundle.name} added to cart!`, 3000);
+                }
+              }}
+            >
+              <FaShoppingCart /> Add to Cart
+            </StickyButton>
+          </StickyButtonContent>
+        </StickyAddToCartButton>
+      )}
     </Container>
   );
 }

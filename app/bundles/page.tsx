@@ -5,7 +5,9 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { FaArrowRight, FaCheckCircle } from "react-icons/fa";
+import { FaArrowRight, FaCheckCircle, FaShoppingCart } from "react-icons/fa";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/contexts/ToastContext";
 import { Bundle } from "@/types/bundles";
 import BundleMosaic from "@/components/bundles/BundleMosaic";
 
@@ -207,6 +209,66 @@ const ViewBundleButton = styled(Link)`
   }
 `;
 
+const SalePriceContainer = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
+  justify-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: rgba(78, 205, 196, 0.1);
+  border-radius: 8px;
+`;
+
+const PriceDisplay = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+`;
+
+const OriginalPrice = styled.span`
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: line-through;
+  font-weight: 500;
+  text-align: center;
+`;
+
+const SalePrice = styled.span`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #4ECDC4;
+  text-align: center;
+`;
+
+const AddToCartIconButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
+  flex-shrink: 0;
+  
+  &:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 8px 30px rgba(138, 43, 226, 0.6);
+  }
+  
+  &:active {
+    transform: translateY(0) scale(0.95);
+  }
+`;
+
 
 interface BundleWithPricing extends Bundle {
   pricing: {
@@ -226,8 +288,11 @@ interface BundleWithPricing extends Bundle {
 }
 
 export default function BundlesPage() {
-  const [bundles, setBundles] = useState<BundleWithPricing[]>([]);
+  const [eliteBundles, setEliteBundles] = useState<BundleWithPricing[]>([]);
+  const [regularBundles, setRegularBundles] = useState<BundleWithPricing[]>([]);
   const [loading, setLoading] = useState(true);
+  const { addItem } = useCart();
+  const { success } = useToast();
 
   useEffect(() => {
     fetchBundles();
@@ -240,8 +305,12 @@ export default function BundlesPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Reorder bundles: Producer's Arsenal (left), Ultimate Bundle (middle), Beat Lab (right)
-        const reorderedBundles = [...data.bundles].sort((a, b) => {
+        // Separate elite bundles (with subscription tiers) from regular bundles
+        const elite = data.bundles.filter((b: BundleWithPricing) => b.isSubscriptionBundle);
+        const regular = data.bundles.filter((b: BundleWithPricing) => !b.isSubscriptionBundle);
+        
+        // Reorder elite bundles: Producer's Arsenal (left), Ultimate Bundle (middle), Beat Lab (right)
+        const reorderedElite = [...elite].sort((a, b) => {
           const aName = a.name.toLowerCase();
           const bName = b.name.toLowerCase();
           
@@ -256,7 +325,8 @@ export default function BundlesPage() {
           return getOrder(aName) - getOrder(bName);
         });
         
-        setBundles(reorderedBundles);
+        setEliteBundles(reorderedElite);
+        setRegularBundles(regular);
       }
     } catch (error) {
       console.error('Error fetching bundles:', error);
@@ -269,6 +339,10 @@ export default function BundlesPage() {
     if (!price && price !== 0) return 'N/A';
     if (price === 0) return 'FREE';
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    // Hide .00 for whole dollar amounts
+    if (numPrice % 1 === 0) {
+      return `$${numPrice.toFixed(0)}`;
+    }
     return `$${numPrice.toFixed(2)}`;
   };
 
@@ -285,155 +359,226 @@ export default function BundlesPage() {
     return Math.min(...prices);
   };
 
-  if (loading) {
+  const renderBundleCard = (bundle: BundleWithPricing) => {
+    const bestPrice = getBestPrice(bundle);
+    const bundleName = bundle.name.toLowerCase();
+    
+    // Assign different neon colors to each bundle
+    let neonColor: string | undefined;
+    if (bundleName.includes("producer's") || bundleName.includes('producers')) {
+      // Producer's Arsenal - Cyan/Blue neon
+      neonColor = '0, 255, 255'; // Cyan
+    } else if (bundleName.includes('ultimate')) {
+      // Ultimate Bundle - Purple neon
+      neonColor = '108, 99, 255'; // Purple
+    } else if (bundleName.includes('beat lab')) {
+      // Beat Lab - Pink/Magenta neon
+      neonColor = '255, 0, 255'; // Magenta
+    }
+    
     return (
-      <Container>
-        <Header>
-          <Title>Loading bundles...</Title>
-        </Header>
-      </Container>
+      <BundleCard
+        key={bundle.id}
+        $neonColor={neonColor}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        {/* Bundle Featured Image */}
+        {bundle.featured_image_url ? (
+          <div style={{
+            width: '100%',
+            aspectRatio: '1',
+            marginBottom: '1.5rem',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            position: 'relative',
+            background: 'rgba(0, 0, 0, 0.3)'
+          }}>
+            <Image
+              src={bundle.featured_image_url}
+              alt={bundle.name}
+              fill
+              style={{ objectFit: 'cover' }}
+              unoptimized
+            />
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: 'linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent)',
+              padding: '1rem',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'flex-end'
+            }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                color: '#000',
+                padding: '0.6rem 1.2rem',
+                borderRadius: '25px',
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                boxShadow: '0 4px 12px rgba(255, 215, 0, 0.4)',
+                letterSpacing: '0.5px'
+              }}>
+                {bundle.totalProductCount || 0} {bundle.totalProductCount === 1 ? 'Product' : 'Products'} Included
+              </div>
+            </div>
+          </div>
+        ) : bundle.products && bundle.products.length > 0 ? (
+          <BundleMosaic 
+            products={bundle.products} 
+            totalCount={bundle.totalProductCount || bundle.products.length}
+          />
+        ) : null}
+
+        <BundleHeader>
+          <BundleName>{bundle.name}</BundleName>
+          {bundle.tagline && (
+            <BundleTagline>{bundle.tagline}</BundleTagline>
+          )}
+          {bundle.short_description && (
+            <BundleDescription>{bundle.short_description}</BundleDescription>
+          )}
+        </BundleHeader>
+
+        {/* For non-elite bundles, show sale price with cart icon */}
+        {!(bundle.pricing?.monthly || bundle.pricing?.annual) && bundle.pricing?.lifetime ? (
+          <>
+            <SalePriceContainer>
+              {bundle.pricing.lifetime.sale_price ? (
+                <>
+                  <OriginalPrice>{formatPrice(bundle.pricing.lifetime.price)}</OriginalPrice>
+                  <SalePrice>{formatPrice(bundle.pricing.lifetime.sale_price)}</SalePrice>
+                  <AddToCartIconButton
+                    onClick={(e) => {
+                      e.preventDefault();
+                      addItem({
+                        id: bundle.id,
+                        name: bundle.name,
+                        slug: bundle.slug,
+                        price: bundle.pricing.lifetime.price ?? 0,
+                        sale_price: bundle.pricing.lifetime.sale_price ?? null,
+                        featured_image_url: bundle.featured_image_url,
+                        logo_url: bundle.logo_url,
+                      });
+                      success(`${bundle.name} added to cart!`, 3000);
+                    }}
+                  >
+                    <FaShoppingCart />
+                  </AddToCartIconButton>
+                </>
+              ) : (
+                <>
+                  <div></div>
+                  <SalePrice>{formatPrice(bundle.pricing.lifetime.price)}</SalePrice>
+                  <AddToCartIconButton
+                    onClick={(e) => {
+                      e.preventDefault();
+                      addItem({
+                        id: bundle.id,
+                        name: bundle.name,
+                        slug: bundle.slug,
+                        price: bundle.pricing.lifetime.price ?? 0,
+                        sale_price: bundle.pricing.lifetime.sale_price ?? null,
+                        featured_image_url: bundle.featured_image_url,
+                        logo_url: bundle.logo_url,
+                      });
+                      success(`${bundle.name} added to cart!`, 3000);
+                    }}
+                  >
+                    <FaShoppingCart />
+                  </AddToCartIconButton>
+                </>
+              )}
+            </SalePriceContainer>
+            <ViewBundleButton href={`/bundles/${bundle.slug}`}>
+              View Bundle Contents
+              <FaArrowRight />
+            </ViewBundleButton>
+          </>
+        ) : (
+          <>
+            <PricingSection>
+              {bundle.pricing?.lifetime && (
+                <PricingRow>
+                  <PricingLabel>Lifetime:</PricingLabel>
+                  <PricingValue>
+                    {formatPrice(
+                      bundle.pricing.lifetime.sale_price || bundle.pricing.lifetime.price
+                    )}
+                  </PricingValue>
+                </PricingRow>
+              )}
+              {bundle.pricing?.annual && (
+                <PricingRow>
+                  <PricingLabel>Annual:</PricingLabel>
+                  <PricingValue>
+                    {formatPrice(
+                      bundle.pricing.annual.sale_price || bundle.pricing.annual.price
+                    )}
+                  </PricingValue>
+                </PricingRow>
+              )}
+              {bundle.pricing?.monthly && (
+                <PricingRow>
+                  <PricingLabel>Monthly:</PricingLabel>
+                  <PricingValue>
+                    {formatPrice(
+                      bundle.pricing.monthly.sale_price || bundle.pricing.monthly.price
+                    )}
+                  </PricingValue>
+                </PricingRow>
+              )}
+            </PricingSection>
+            <ViewBundleButton href={`/bundles/${bundle.slug}`}>
+              View Bundle Contents
+              <FaArrowRight />
+            </ViewBundleButton>
+          </>
+        )}
+      </BundleCard>
     );
-  }
+  };
 
   return (
     <Container>
-      <Header>
-        <Title>Elite Bundles</Title>
-        <Subtitle>
-          Get access to curated collections of our best products with exclusive bundle pricing.
-        </Subtitle>
-        <Subtitle>
-          Choose from monthly, annual, or lifetime plans.
-        </Subtitle>
-      </Header>
+      {/* Elite Bundles Section */}
+      {eliteBundles.length > 0 && (
+        <>
+          <Header>
+            <Title>Elite Bundles</Title>
+            <Subtitle>
+              Get access to curated collections of our best products with exclusive bundle pricing.
+            </Subtitle>
+            <Subtitle>
+              Choose from monthly, annual, or lifetime plans.
+            </Subtitle>
+          </Header>
 
-      <BundlesGrid>
-        {bundles.map((bundle) => {
-          const bestPrice = getBestPrice(bundle);
-          const bundleName = bundle.name.toLowerCase();
-          
-          // Assign different neon colors to each bundle
-          let neonColor: string | undefined;
-          if (bundleName.includes("producer's") || bundleName.includes('producers')) {
-            // Producer's Arsenal - Cyan/Blue neon
-            neonColor = '0, 255, 255'; // Cyan
-          } else if (bundleName.includes('ultimate')) {
-            // Ultimate Bundle - Purple neon
-            neonColor = '108, 99, 255'; // Purple
-          } else if (bundleName.includes('beat lab')) {
-            // Beat Lab - Pink/Magenta neon
-            neonColor = '255, 0, 255'; // Magenta
-          }
-          
-          return (
-            <BundleCard
-              key={bundle.id}
-              $neonColor={neonColor}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {/* Bundle Featured Image */}
-              {bundle.featured_image_url ? (
-                <div style={{
-                  width: '100%',
-                  aspectRatio: '1',
-                  marginBottom: '1.5rem',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  position: 'relative',
-                  background: 'rgba(0, 0, 0, 0.3)'
-                }}>
-                  <Image
-                    src={bundle.featured_image_url}
-                    alt={bundle.name}
-                    fill
-                    style={{ objectFit: 'cover' }}
-                    unoptimized
-                  />
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    background: 'linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent)',
-                    padding: '1rem',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'flex-end'
-                  }}>
-                    <div style={{
-                      background: 'linear-gradient(135deg, #FFD700, #FFA500)',
-                      color: '#000',
-                      padding: '0.6rem 1.2rem',
-                      borderRadius: '25px',
-                      fontSize: '0.95rem',
-                      fontWeight: 700,
-                      boxShadow: '0 4px 12px rgba(255, 215, 0, 0.4)',
-                      letterSpacing: '0.5px'
-                    }}>
-                      {bundle.totalProductCount || 0} {bundle.totalProductCount === 1 ? 'Product' : 'Products'} Included
-                    </div>
-                  </div>
-                </div>
-              ) : bundle.products && bundle.products.length > 0 ? (
-                <BundleMosaic 
-                  products={bundle.products} 
-                  totalCount={bundle.totalProductCount || bundle.products.length}
-                />
-              ) : null}
+          <BundlesGrid>
+            {eliteBundles.map(renderBundleCard)}
+          </BundlesGrid>
+        </>
+      )}
 
-              <BundleHeader>
-                <BundleName>{bundle.name}</BundleName>
-                {bundle.tagline && (
-                  <BundleTagline>{bundle.tagline}</BundleTagline>
-                )}
-                {bundle.short_description && (
-                  <BundleDescription>{bundle.short_description}</BundleDescription>
-                )}
-              </BundleHeader>
+      {/* Regular Bundles Section */}
+      {regularBundles.length > 0 && (
+        <>
+          <Header style={{ marginTop: eliteBundles.length > 0 ? '4rem' : '0' }}>
+            <Title>Bundle & Save</Title>
+            <Subtitle>
+              Save big with our curated product bundles - one-time purchase, yours forever.
+            </Subtitle>
+          </Header>
 
-              <PricingSection>
-                {bundle.pricing?.lifetime && (
-                  <PricingRow>
-                    <PricingLabel>Lifetime:</PricingLabel>
-                    <PricingValue>
-                      {formatPrice(
-                        bundle.pricing.lifetime.sale_price || bundle.pricing.lifetime.price
-                      )}
-                    </PricingValue>
-                  </PricingRow>
-                )}
-                {bundle.pricing?.annual && (
-                  <PricingRow>
-                    <PricingLabel>Annual:</PricingLabel>
-                    <PricingValue>
-                      {formatPrice(
-                        bundle.pricing.annual.sale_price || bundle.pricing.annual.price
-                      )}
-                    </PricingValue>
-                  </PricingRow>
-                )}
-                {bundle.pricing?.monthly && (
-                  <PricingRow>
-                    <PricingLabel>Monthly:</PricingLabel>
-                    <PricingValue>
-                      {formatPrice(
-                        bundle.pricing.monthly.sale_price || bundle.pricing.monthly.price
-                      )}
-                    </PricingValue>
-                  </PricingRow>
-                )}
-              </PricingSection>
-
-              <ViewBundleButton href={`/bundles/${bundle.slug}`}>
-                View Bundle Details
-                <FaArrowRight />
-              </ViewBundleButton>
-            </BundleCard>
-          );
-        })}
-      </BundlesGrid>
+          <BundlesGrid>
+            {regularBundles.map(renderBundleCard)}
+          </BundlesGrid>
+        </>
+      )}
     </Container>
   );
 }
