@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Product Cache Test</title>
+</head>
+<body>
+    <h1>Product Cache Test</h1>
+    <button onclick="testCache()">Test Cache</button>
+    <pre id="output"></pre>
+    <script>
+        function testCache() {
+            const cache = localStorage.getItem('nnaudio_products_cache');
+            const timestamp = localStorage.getItem('nnaudio_products_cache_timestamp');
+            const output = document.getElementById('output');
+            
+            if (!cache) {
+                output.textContent = 'No cache found';
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(cache);
+                const age = timestamp ? Math.floor((Date.now() - parseInt(timestamp)) / (60 * 1000)) : 'unknown';
+                output.textContent = JSON.stringify({
+                    hasCache: true,
+                    ageMinutes: age,
+                    featured: data.featured?.length || 0,
+                    bundles: data.bundles?.length || 0,
+                    instrumentPlugins: data.instrumentPlugins?.length || 0,
+                    audioFxPlugins: data.audioFxPlugins?.length || 0,
+                    packs: data.packs?.length || 0,
+                    freeProducts: data.freeProducts?.length || 0,
+                    allProducts: data.allProducts?.length || 0,
+                }, null, 2);
+            } catch (e) {
+                output.textContent = 'Error parsing cache: ' + e.message;
+            }
+        }
+        testCache();
+    </script>
+</body>
+</html>

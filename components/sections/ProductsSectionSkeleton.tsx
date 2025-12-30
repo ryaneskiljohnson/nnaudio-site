@@ -9,6 +9,11 @@ const SectionContainer = styled.section`
   background: linear-gradient(180deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
   position: relative;
   overflow: visible;
+  min-height: 600px;
+  
+  @media (max-width: 768px) {
+    min-height: 500px;
+  }
 `;
 
 const ContentContainer = styled.div`

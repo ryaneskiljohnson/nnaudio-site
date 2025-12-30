@@ -631,6 +631,7 @@ const MoreMenuContainer = styled.div<{ $isOpen?: boolean }>`
   position: relative;
   display: inline-block;
   z-index: ${props => props.$isOpen ? 10005 : 1};
+  overflow: visible;
 `;
 
 const MoreMenuButton = styled.button`
@@ -659,8 +660,8 @@ const MoreMenuButton = styled.button`
 
 const MoreMenuDropdown = styled(motion.div)<{ $top?: number; $right?: number }>`
   position: fixed;
-  top: ${props => props.$top ? `${props.$top}px` : 'auto'};
-  right: ${props => props.$right ? `${props.$right}px` : 'auto'};
+  top: ${props => props.$top !== undefined ? `${props.$top}px` : 'auto'};
+  right: ${props => props.$right !== undefined ? `${props.$right}px` : 'auto'};
   background-color: var(--card-bg);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
@@ -670,11 +671,14 @@ const MoreMenuDropdown = styled(motion.div)<{ $top?: number; $right?: number }>`
   overflow: visible !important;
   backdrop-filter: blur(10px);
   transform: translateZ(0);
+  pointer-events: auto;
+  visibility: visible;
+  opacity: 1;
   
   /* Handle edge cases where dropdown might go off-screen */
   @media (max-width: 768px) {
     right: auto;
-    left: ${props => props.$right ? `calc(100vw - ${props.$right}px - 160px)` : 'auto'};
+    left: ${props => props.$right !== undefined ? `calc(100vw - ${props.$right}px - 160px)` : 'auto'};
     min-width: 140px;
   }
 `;
@@ -2815,28 +2819,31 @@ function SupportTicketsPage() {
                         <FaEllipsisV />
                       </MoreMenuButton>
 
-                      {openMoreMenu === ticket.id && moreMenuPosition && (
-                        <MoreMenuDropdown
-                          $top={moreMenuPosition.top}
-                          $right={moreMenuPosition.right}
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          transition={{ duration: 0.1 }}
-                        >
-                          <MoreMenuItem onClick={() => handleMoreMenuAction('view', ticket)}>
-                            <FaEye />
-                            {t("admin.supportTickets.ticketActions.view", "View Ticket")}
-                          </MoreMenuItem>
-                          <MoreMenuItem 
-                            $variant="danger"
-                            onClick={() => handleMoreMenuAction('delete', ticket)}
+                      <AnimatePresence>
+                        {openMoreMenu === ticket.id && moreMenuPosition && (
+                          <MoreMenuDropdown
+                            key={`more-menu-${ticket.id}`}
+                            $top={moreMenuPosition.top}
+                            $right={moreMenuPosition.right}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.1 }}
                           >
-                            <FaTimes />
-                            {t("admin.supportTickets.ticketActions.delete", "Delete")}
-                          </MoreMenuItem>
-                        </MoreMenuDropdown>
-                      )}
+                            <MoreMenuItem onClick={() => handleMoreMenuAction('view', ticket)}>
+                              <FaEye />
+                              {t("admin.supportTickets.ticketActions.view", "View Ticket")}
+                            </MoreMenuItem>
+                            <MoreMenuItem 
+                              $variant="danger"
+                              onClick={() => handleMoreMenuAction('delete', ticket)}
+                            >
+                              <FaTimes />
+                              {t("admin.supportTickets.ticketActions.delete", "Delete")}
+                            </MoreMenuItem>
+                          </MoreMenuDropdown>
+                        )}
+                      </AnimatePresence>
                     </MoreMenuContainer>
                   </TableCell>
                 </TableRow>

@@ -9,25 +9,39 @@ import ProductsSectionSkeleton from "@/components/sections/ProductsSectionSkelet
 import FeaturedProductsSectionSkeleton from "@/components/sections/FeaturedProductsSectionSkeleton";
 
 // Lazy load product sections for better initial page load
-const ProductsSection = dynamic(() => import("@/components/sections/ProductsSection"), {
-  ssr: true,
-  loading: () => null, // No loading state - sections will appear when ready
-});
-const FeaturedProductsSection = dynamic(() => import("@/components/sections/FeaturedProductsSection"), {
-  ssr: true,
-  loading: () => null,
-});
+const ProductsSection = dynamic(
+  () => import("@/components/sections/ProductsSection"),
+  {
+    ssr: true,
+    loading: () => null,
+  }
+);
+
+const FeaturedProductsSection = dynamic(
+  () => import("@/components/sections/FeaturedProductsSection"),
+  {
+    ssr: true,
+    loading: () => null,
+  }
+);
+
 // Lazy load waveform transition for better initial page load
-const WaveformTransition = dynamic(() => import("@/components/sections/WaveformTransition"), {
-  ssr: false,
-  loading: () => null, // No loading state needed - it's decorative
-});
+const WaveformTransition = dynamic(
+  () => import("@/components/sections/WaveformTransition"),
+  {
+    ssr: false,
+    loading: () => null,
+  }
+);
 
 // Lazy load non-critical sections
-const PricingSection = dynamic(() => import("@/components/sections/PricingSection"), {
-  ssr: true,
-  loading: () => <LoadingComponent text="Loading pricing..." />,
-});
+const PricingSection = dynamic(
+  () => import("@/components/sections/PricingSection"),
+  {
+    ssr: true,
+    loading: () => <LoadingComponent text="Loading pricing..." />,
+  }
+);
 
 // const FAQSection = dynamic(() => import("@/components/sections/FAQSection"), {
 //   ssr: true,
@@ -384,15 +398,15 @@ export default function Home() {
       
       {/* Featured Products section */}
       <div style={{ position: 'relative', overflow: 'visible' }}>
-        {loading ? (
-          <FeaturedProductsSectionSkeleton />
-        ) : featuredProducts.length > 0 ? (
+        {!loading && featuredProducts.length > 0 ? (
           <FeaturedProductsSection
             id="featured"
             title="Spotlight"
             products={featuredProducts}
           />
-        ) : null}
+        ) : (
+          <FeaturedProductsSectionSkeleton />
+        )}
         {!loading && (bundles.length > 0 || instrumentPlugins.length > 0) && (
           <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#0a0a0a" />
         )}
@@ -400,14 +414,7 @@ export default function Home() {
       
       {/* Bundles section */}
       <div style={{ position: 'relative', overflow: 'visible' }}>
-        {loading ? (
-          <ProductsSectionSkeleton 
-            title="Elite Bundles"
-            subtitle="Complete collections of premium plugins and samples at unbeatable value"
-            cardCount={3}
-            cardWidth={400}
-          />
-        ) : bundles.length > 0 ? (
+        {!loading && bundles.length > 0 ? (
           <ProductsSection
             id="bundles"
             title="Elite Bundles"
@@ -417,7 +424,14 @@ export default function Home() {
             maxCardsPerView={3}
             cardSize="large"
           />
-        ) : null}
+        ) : (
+          <ProductsSectionSkeleton 
+            title="Elite Bundles"
+            subtitle="Complete collections of premium plugins and samples at unbeatable value"
+            cardCount={3}
+            cardWidth={400}
+          />
+        )}
         {!loading && instrumentPlugins.length > 0 && (
           <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#1a1a2e" />
         )}
@@ -425,13 +439,7 @@ export default function Home() {
       
       {/* Instrument Plugins section */}
       <div style={{ position: 'relative', overflow: 'visible' }}>
-        {loading ? (
-          <ProductsSectionSkeleton 
-            title="Instrument Plugins"
-            subtitle="Powerful synthesizers and sampled instruments for your productions"
-            cardCount={4}
-          />
-        ) : instrumentPlugins.length > 0 ? (
+        {!loading && instrumentPlugins.length > 0 ? (
           <ProductsSection
             id="instrument-plugins"
             title="Instrument Plugins"
@@ -439,7 +447,13 @@ export default function Home() {
             products={instrumentPlugins}
             fetchAllUrl="/api/products?category=instrument-plugin&status=active&limit=10000"
           />
-        ) : null}
+        ) : (
+          <ProductsSectionSkeleton 
+            title="Instrument Plugins"
+            subtitle="Powerful synthesizers and sampled instruments for your productions"
+            cardCount={4}
+          />
+        )}
         {!loading && (audioFxPlugins.length > 0 || packs.length > 0) && (
           <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#1a1a2e" />
         )}
@@ -447,13 +461,7 @@ export default function Home() {
       
       {/* Audio FX Plugins section */}
       <div style={{ position: 'relative', overflow: 'visible' }}>
-        {loading ? (
-          <ProductsSectionSkeleton 
-            title="Audio FX Plugins"
-            subtitle="Professional effects processors to shape and enhance your sound"
-            cardCount={4}
-          />
-        ) : audioFxPlugins.length > 0 ? (
+        {!loading && audioFxPlugins.length > 0 ? (
           <ProductsSection
             id="audio-fx-plugins"
             title="Audio FX Plugins"
@@ -461,7 +469,13 @@ export default function Home() {
             products={audioFxPlugins}
             fetchAllUrl="/api/products?category=audio-fx-plugin&status=active&limit=10000"
           />
-        ) : null}
+        ) : (
+          <ProductsSectionSkeleton 
+            title="Audio FX Plugins"
+            subtitle="Professional effects processors to shape and enhance your sound"
+            cardCount={4}
+          />
+        )}
         {!loading && packs.length > 0 && (
           <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#0a0a0a" />
         )}
@@ -469,13 +483,7 @@ export default function Home() {
       
       {/* Packs section */}
       <div style={{ position: 'relative', overflow: 'visible' }}>
-        {loading ? (
-          <ProductsSectionSkeleton 
-            title="Sample Packs"
-            subtitle="Curated collections of high-quality sounds and samples"
-            cardCount={4}
-          />
-        ) : packs.length > 0 ? (
+        {!loading && packs.length > 0 ? (
           <ProductsSection
             id="packs"
             title="Sample Packs"
@@ -483,7 +491,13 @@ export default function Home() {
             products={packs}
             fetchAllUrl="/api/products?category=pack&status=active&limit=10000"
           />
-        ) : null}
+        ) : (
+          <ProductsSectionSkeleton 
+            title="Sample Packs"
+            subtitle="Curated collections of high-quality sounds and samples"
+            cardCount={4}
+          />
+        )}
         {!loading && freeProducts.length > 0 && (
           <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#06070f" />
         )}
@@ -491,13 +505,7 @@ export default function Home() {
       
       {/* Free Products section */}
       <div style={{ position: 'relative', overflow: 'visible' }}>
-        {loading ? (
-          <ProductsSectionSkeleton 
-            title="Free Tools"
-            subtitle="High-quality plugins and samples available at no cost"
-            cardCount={4}
-          />
-        ) : freeProducts.length > 0 ? (
+        {!loading && freeProducts.length > 0 ? (
           <ProductsSection
             id="free-products"
             title="Free Tools"
@@ -505,11 +513,17 @@ export default function Home() {
             products={freeProducts}
             fetchAllUrl="/api/products?free=true&status=active&limit=10000"
           />
-        ) : null}
+        ) : (
+          <ProductsSectionSkeleton 
+            title="Free Tools"
+            subtitle="High-quality plugins and samples available at no cost"
+            cardCount={4}
+          />
+        )}
         {!loading && <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#06070f" />}
       </div>
       
-      {/* Pricing section */}
+      {/* Pricing section - Always render */}
       <PricingSection />
       
       {/* FAQ section */}

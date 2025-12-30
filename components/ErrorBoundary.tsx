@@ -111,5 +111,5 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// Use withNoSSR to prevent SSR issues with error boundary
-export default withNoSSR(ErrorBoundary);
+// Export directly - ErrorBoundary works fine with SSR
+export default ErrorBoundary;
