@@ -1922,14 +1922,18 @@ export default function ProductPage() {
                           );
                         })
                       ) : (
-                        <div style={{ 
-                          width: '100%', 
-                          textAlign: 'center', 
-                          color: 'rgba(255, 255, 255, 0.4)',
-                          fontSize: '0.9rem'
-                        }}>
-                          Loading waveform...
-                        </div>
+                        // Default waveform pattern while loading
+                        Array.from({ length: 200 }, (_, i) => {
+                          // Create a varied waveform pattern with sine wave and some randomness
+                          const height = 0.25 + Math.sin(i / 10) * 0.2 + Math.sin(i / 3) * 0.1 + (i % 7) * 0.02;
+                          return (
+                            <WaveformBar
+                              key={i}
+                              $height={Math.max(0.1, Math.min(1, height))}
+                              $isActive={false}
+                            />
+                          );
+                        })
                       )}
                     </StaticWaveform>
                   )}
