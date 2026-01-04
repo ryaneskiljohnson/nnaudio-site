@@ -52,3 +52,4 @@ db/universe.users.trimmed.modified.csv
 
 # Nested git repositories (not submodules)
 cymasphere/.git
+public/images/orbitals/
