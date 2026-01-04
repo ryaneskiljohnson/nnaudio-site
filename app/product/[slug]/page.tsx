@@ -10,6 +10,8 @@ import { useParams } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
 import { cleanHtmlText } from "@/utils/stringUtils";
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -204,6 +206,47 @@ const Description = styled.div`
   
   p {
     margin-bottom: 1rem;
+  }
+  
+  h2, h3, h4 {
+    color: rgba(255, 255, 255, 0.95);
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  h3 {
+    font-size: 1.25rem;
+  }
+  
+  h4 {
+    font-size: 1.1rem;
+  }
+  
+  ul, ol {
+    margin: 1rem 0;
+    padding-left: 2rem;
+  }
+  
+  li {
+    margin-bottom: 0.5rem;
+  }
+  
+  strong {
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 600;
+  }
+  
+  code {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
   }
 `;
 
@@ -1768,10 +1811,9 @@ export default function ProductPage() {
         <ContentSection>
           <SectionTitle>Description</SectionTitle>
           <Description>
-            {cleanHtmlText(product.description).split('\n').map((paragraph: string, i: number) => {
-              const cleaned = paragraph.trim();
-              return cleaned ? <p key={i}>{cleaned}</p> : null;
-            })}
+            <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+              {product.description}
+            </ReactMarkdown>
           </Description>
         </ContentSection>
       )}

@@ -230,7 +230,7 @@ export default function Home() {
     const fetchProducts = async () => {
       try {
         // Fetch ALL products in parallel for better performance
-        const orbitalsSlugs = ['tidal', 'apogee', 'lagrange', 'eclipse', 'ion', 'perihelion', 'retrograde', 'kepler'];
+        const orbitalsSlugs = ['tidal', 'apogee', 'lagrange', 'eclipse', 'ion', 'perihelion', 'retrograde', 'kepler', 'zenith'];
         const [featuredResponse, orbitalsResponse, bundlesResponse, fxResponse, instrumentResponse, packsResponse, freeResponse] = await Promise.all([
           fetch('/api/products?featured=true&status=active&limit=6'),
           fetch(`/api/products?status=active&limit=10000`).then(r => r.json()).then(data => ({
@@ -257,7 +257,7 @@ export default function Home() {
         // Map featured products - exclude Orbitals products (they have their own section)
         if (featuredData.success && featuredData.products) {
           const bundleSlugs = ['ultimate-bundle', 'producers-arsenal', 'beat-lab'];
-          const orbitalsSlugs = ['tidal', 'apogee', 'lagrange', 'eclipse', 'ion', 'perihelion', 'retrograde', 'kepler'];
+          const orbitalsSlugs = ['tidal', 'apogee', 'lagrange', 'eclipse', 'ion', 'perihelion', 'retrograde', 'kepler', 'zenith'];
           const mappedFeatured = featuredData.products
             .filter((p: any) => p && !orbitalsSlugs.includes(p.slug)) // Exclude Orbitals from featured
             .map((p: any) => {

@@ -515,7 +515,7 @@ const ProductCard = styled(motion.div)`
 const ProductImage = styled.div`
   position: relative;
   width: 100%;
-  height: 200px;
+  aspect-ratio: 1;
   background: rgba(255, 255, 255, 0.05);
 `;
 
