@@ -43,6 +43,6 @@ These product IDs are used in:
 All Mandelbrot Set plugins:
 - Regular Price: $19
 - Sale Price: $19
-- Category: MIDI FX Plugin
+- Category: Audio FX Plugin
 - Format: VST3, AU (Audio Unit)
 - Platform: Windows 10+ and macOS 10.13+

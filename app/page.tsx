@@ -319,7 +319,7 @@ export default function Home() {
             tagline: p.tagline || p.short_description || '',
             short_description: p.short_description,
             description: p.description,
-            category: p.category || 'midi-fx-plugin',
+            category: p.category || 'audio-fx-plugin',
             image: p.logo_url || p.featured_image_url || '',
             featured_image_url: p.featured_image_url,
             logo_url: p.logo_url,
@@ -487,13 +487,13 @@ export default function Home() {
         )}
       </div>
       
-      {/* Mandelbrot Set MIDI FX Series */}
+      {/* Mandelbrot Set Audio FX Series */}
       <div style={{ position: 'relative', overflow: 'visible' }}>
         {!loading && mandelbrotProducts.length > 0 ? (
           <ProductsSection
             id="mandelbrot"
             title="Mandelbrot Set"
-            subtitle="Quantum-inspired MIDI FX plugins that explore the boundaries of musical possibility"
+            subtitle="Quantum-inspired Audio FX plugins that explore the boundaries of sonic possibility"
             products={mandelbrotProducts}
             fetchAllUrl="/api/products?status=active&limit=10000"
             maxCardsPerView={4}
@@ -503,7 +503,7 @@ export default function Home() {
           mandelbrotProducts.length === 0 && !loading ? null : (
             <ProductsSectionSkeleton 
               title="Mandelbrot Set"
-              subtitle="Quantum-inspired MIDI FX plugins"
+              subtitle="Quantum-inspired Audio FX plugins"
               cardCount={4}
               cardWidth={300}
             />
