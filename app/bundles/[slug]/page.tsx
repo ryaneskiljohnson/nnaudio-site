@@ -571,9 +571,8 @@ const StickyAddToCartButton = styled(motion.div)`
   border-radius: 50px;
   padding: 0.75rem 1.5rem;
   box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
-  max-width: 90%;
+  max-width: calc(100% - 40px);
   width: auto;
-  min-width: 300px;
   
   @keyframes pulse {
     0%, 100% {
@@ -587,10 +586,8 @@ const StickyAddToCartButton = styled(motion.div)`
   animation: pulse 2s ease-in-out infinite;
   
   @media (max-width: 768px) {
-    min-width: auto;
-    width: calc(100% - 40px);
-    left: 50%;
-    transform: translateX(-50%);
+    padding: 0.6rem 1rem;
+    max-width: calc(100% - 32px);
   }
 `;
 
