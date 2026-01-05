@@ -306,10 +306,11 @@ const MenuButton = styled.button`
   }
 `;
 
-const MenuDropdown = styled(motion.div)<{ $isOpen: boolean; $top?: number; $right?: number; $openUpward?: boolean }>`
+const MenuDropdown = styled(motion.div)<{ $isOpen: boolean; $top?: number; $right?: number; $left?: number; $openUpward?: boolean }>`
   position: fixed;
   top: ${props => props.$top !== undefined ? `${props.$top}px` : 'auto'};
   right: ${props => props.$right !== undefined ? `${props.$right}px` : 'auto'};
+  left: ${props => props.$left !== undefined ? `${props.$left}px` : 'auto'};
   background: var(--card-bg);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
@@ -325,8 +326,16 @@ const MenuDropdown = styled(motion.div)<{ $isOpen: boolean; $top?: number; $righ
   
   /* Handle edge cases where dropdown might go off-screen */
   @media (max-width: 768px) {
-    right: auto;
-    left: ${props => props.$right !== undefined ? `calc(100vw - ${props.$right}px - 180px)` : 'auto'};
+    right: auto !important;
+    left: ${props => {
+      if (props.$left !== undefined) {
+        return `${props.$left}px`;
+      }
+      if (props.$right !== undefined) {
+        return `calc(100vw - ${props.$right}px - 180px)`;
+      }
+      return 'auto';
+    }};
     min-width: 160px;
   }
 `;
@@ -597,7 +606,7 @@ export default function ProductsManagementPage() {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number; openUpward?: boolean } | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number; left?: number; openUpward?: boolean } | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -763,15 +772,35 @@ export default function ProductsManagementPage() {
         const button = event.currentTarget as HTMLElement;
         const rect = button.getBoundingClientRect();
         const menuHeight = 200; // Approximate menu height
+        const menuWidth = 180; // Menu width
         const spaceBelow = window.innerHeight - rect.bottom;
         const spaceAbove = rect.top;
+        const spaceRight = window.innerWidth - rect.right;
+        const spaceLeft = rect.left;
         
         // If not enough space below but enough space above, open upward
         const openUpward = spaceBelow < menuHeight && spaceAbove > menuHeight;
         
+        // Calculate position - align menu's right edge to button's right edge
+        // If there's not enough space on the right, use left positioning
+        let rightPosition: number | undefined;
+        let leftPosition: number | undefined;
+        
+        if (spaceRight >= menuWidth) {
+          // Enough space on right - align right edge of menu to right edge of button
+          rightPosition = window.innerWidth - rect.right;
+        } else if (spaceLeft >= menuWidth) {
+          // Not enough space on right, but enough on left - align left edge of menu to left edge of button
+          leftPosition = rect.left;
+        } else {
+          // Default: align right edge, but ensure it doesn't go off-screen
+          rightPosition = Math.max(8, window.innerWidth - rect.right);
+        }
+        
         setMenuPosition({
           top: openUpward ? rect.top - menuHeight - 4 : rect.bottom + 4,
-          right: window.innerWidth - rect.right,
+          right: rightPosition,
+          left: leftPosition,
           openUpward,
         });
       }
@@ -1023,6 +1052,7 @@ export default function ProductsManagementPage() {
                           $isOpen={true}
                           $top={menuPosition.top}
                           $right={menuPosition.right}
+                          $left={menuPosition.left}
                           $openUpward={menuPosition.openUpward}
                           initial={{ opacity: 0, y: menuPosition.openUpward ? 10 : -10 }}
                           animate={{ opacity: 1, y: 0 }}
