@@ -219,6 +219,7 @@ const staticFeaturedProducts = [
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
   const [orbitalsProducts, setOrbitalsProducts] = useState<any[]>([]);
+  const [mandelbrotProducts, setMandelbrotProducts] = useState<any[]>([]);
   const [bundles, setBundles] = useState<any[]>([]);
   const [instrumentPlugins, setInstrumentPlugins] = useState<any[]>([]);
   const [audioFxPlugins, setAudioFxPlugins] = useState<any[]>([]);
@@ -231,11 +232,16 @@ export default function Home() {
       try {
         // Fetch ALL products in parallel for better performance
         const orbitalsSlugs = ['tidal', 'apogee', 'lagrange', 'eclipse', 'ion', 'perihelion', 'retrograde', 'kepler', 'zenith'];
-        const [featuredResponse, orbitalsResponse, bundlesResponse, fxResponse, instrumentResponse, packsResponse, freeResponse] = await Promise.all([
+        const mandelbrotSlugs = ['entanglement', 'fabric', 'hadron', 'mandelbrot', 'observer', 'planck', 'quarks', 'rabbithole', 'singularity'];
+        const [featuredResponse, orbitalsResponse, mandelbrotResponse, bundlesResponse, fxResponse, instrumentResponse, packsResponse, freeResponse] = await Promise.all([
           fetch('/api/products?featured=true&status=active&limit=6'),
           fetch(`/api/products?status=active&limit=10000`).then(r => r.json()).then(data => ({
             success: true,
             products: data.products?.filter((p: any) => orbitalsSlugs.includes(p.slug)) || []
+          })),
+          fetch(`/api/products?status=active&limit=10000`).then(r => r.json()).then(data => ({
+            success: true,
+            products: data.products?.filter((p: any) => mandelbrotSlugs.includes(p.slug)) || []
           })),
           fetch('/api/products?category=bundle&status=active&limit=10000'),
           fetch('/api/products?category=audio-fx-plugin&status=active&limit=10000'),
@@ -244,9 +250,10 @@ export default function Home() {
           fetch('/api/products?free=true&status=active&limit=10000'),
         ]);
         
-        const [featuredData, orbitalsData, bundlesData, fxData, instrumentData, packsData, freeData] = await Promise.all([
+        const [featuredData, orbitalsData, mandelbrotData, bundlesData, fxData, instrumentData, packsData, freeData] = await Promise.all([
           featuredResponse.json(),
           Promise.resolve(orbitalsResponse),
+          Promise.resolve(mandelbrotResponse),
           bundlesResponse.json(),
           fxResponse.json(),
           instrumentResponse.json(),
@@ -254,12 +261,13 @@ export default function Home() {
           freeResponse.json(),
         ]);
         
-        // Map featured products - exclude Orbitals products (they have their own section)
+        // Map featured products - exclude Orbitals and Mandelbrot products (they have their own sections)
         if (featuredData.success && featuredData.products) {
           const bundleSlugs = ['ultimate-bundle', 'producers-arsenal', 'beat-lab'];
           const orbitalsSlugs = ['tidal', 'apogee', 'lagrange', 'eclipse', 'ion', 'perihelion', 'retrograde', 'kepler', 'zenith'];
+          const mandelbrotSlugs = ['entanglement', 'fabric', 'hadron', 'mandelbrot', 'observer', 'planck', 'quarks', 'rabbithole', 'singularity'];
           const mappedFeatured = featuredData.products
-            .filter((p: any) => p && !orbitalsSlugs.includes(p.slug)) // Exclude Orbitals from featured
+            .filter((p: any) => p && !orbitalsSlugs.includes(p.slug) && !mandelbrotSlugs.includes(p.slug)) // Exclude Orbitals and Mandelbrot from featured
             .map((p: any) => {
               const isBundle = bundleSlugs.includes(p.slug);
               return {
@@ -300,6 +308,28 @@ export default function Home() {
           // Sort by name to ensure consistent order
           mappedOrbitals.sort((a: any, b: any) => a.name.localeCompare(b.name));
           setOrbitalsProducts(mappedOrbitals);
+        }
+
+        // Map Mandelbrot Set products
+        if (mandelbrotData.success) {
+          const mappedMandelbrot = mandelbrotData.products.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+            tagline: p.tagline || p.short_description || '',
+            short_description: p.short_description,
+            description: p.description,
+            category: p.category || 'midi-fx-plugin',
+            image: p.logo_url || p.featured_image_url || '',
+            featured_image_url: p.featured_image_url,
+            logo_url: p.logo_url,
+            backgroundImage: p.background_image_url || p.background_video_url || '',
+            price: typeof p.sale_price === 'number' ? p.sale_price : (typeof p.price === 'number' ? p.price : 0),
+            sale_price: p.sale_price,
+          }));
+          // Sort by name to ensure consistent order
+          mappedMandelbrot.sort((a: any, b: any) => a.name.localeCompare(b.name));
+          setMandelbrotProducts(mappedMandelbrot);
         }
 
         // Map bundles
@@ -453,6 +483,33 @@ export default function Home() {
           )
         )}
         {!loading && orbitalsProducts.length > 0 && (
+          <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#0a0a0a" />
+        )}
+      </div>
+      
+      {/* Mandelbrot Set MIDI FX Series */}
+      <div style={{ position: 'relative', overflow: 'visible' }}>
+        {!loading && mandelbrotProducts.length > 0 ? (
+          <ProductsSection
+            id="mandelbrot"
+            title="Mandelbrot Set"
+            subtitle="Quantum-inspired MIDI FX plugins that explore the boundaries of musical possibility"
+            products={mandelbrotProducts}
+            fetchAllUrl="/api/products?status=active&limit=10000"
+            maxCardsPerView={4}
+            cardSize="medium"
+          />
+        ) : (
+          mandelbrotProducts.length === 0 && !loading ? null : (
+            <ProductsSectionSkeleton 
+              title="Mandelbrot Set"
+              subtitle="Quantum-inspired MIDI FX plugins"
+              cardCount={4}
+              cardWidth={300}
+            />
+          )
+        )}
+        {!loading && mandelbrotProducts.length > 0 && (
           <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#0a0a0a" />
         )}
       </div>
