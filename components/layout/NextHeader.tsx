@@ -14,6 +14,7 @@ import {
   FaRegCreditCard,
   FaShieldAlt,
   FaShoppingCart,
+  FaGift,
 } from "react-icons/fa";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -773,6 +774,12 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
               <UserMenuItem onClick={() => setUserMenuOpen(false)}>
                 <FaUser />
                 {getTranslation("common.myAccount")}
+              </UserMenuItem>
+            </Link>
+            <Link href="/redeem">
+              <UserMenuItem onClick={() => setUserMenuOpen(false)}>
+                <FaGift />
+                Redeem Products
               </UserMenuItem>
             </Link>
             {user.is_admin && (

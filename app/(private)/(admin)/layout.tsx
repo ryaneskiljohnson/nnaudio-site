@@ -29,6 +29,7 @@ import {
   FaBullseye,
   FaPlay,
   FaBox,
+  FaStore,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
@@ -755,6 +756,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaTag />
               Coupons
+            </NavItem>
+          </Link>
+          <Link href="/admin/resellers">
+            <NavItem
+              $active={pathname === "/admin/resellers" ? "true" : "false"}
+              onClick={(e) => handleNavigation(e, "/admin/resellers")}
+            >
+              <FaStore />
+              Resellers
             </NavItem>
           </Link>
           <Link href="/admin/products">

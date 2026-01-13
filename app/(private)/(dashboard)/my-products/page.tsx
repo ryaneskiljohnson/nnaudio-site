@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { FaBox, FaLock, FaCheckCircle, FaExternalLinkAlt, FaUndo, FaExclamationTriangle, FaDownload, FaRocket } from "react-icons/fa";
+import { FaBox, FaLock, FaCheckCircle, FaExternalLinkAlt, FaUndo, FaExclamationTriangle, FaDownload, FaRocket, FaSearch } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { cleanHtmlText } from "@/utils/stringUtils";
@@ -264,6 +264,45 @@ const AccessBadge = styled.div`
   font-weight: 600;
 `;
 
+const SearchContainer = styled.div`
+  position: relative;
+  max-width: 500px;
+  flex: 1;
+  min-width: 250px;
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 12px 16px 12px 44px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 4px rgba(108, 99, 255, 0.1);
+  }
+
+  &::placeholder {
+    color: var(--text-secondary);
+  }
+`;
+
+const SearchIcon = styled(FaSearch)`
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  pointer-events: none;
+`;
+
 const DownloadCTABanner = styled.div`
   background: linear-gradient(135deg, rgba(108, 99, 255, 0.15), rgba(78, 205, 196, 0.15));
   border: 1px solid rgba(108, 99, 255, 0.3);
@@ -395,6 +434,7 @@ export default function MyProductsPage() {
   const [cancelledSubscriptionType, setCancelledSubscriptionType] = useState<"monthly" | "annual" | null>(null);
   const [isScheduledToCancel, setIsScheduledToCancel] = useState(false);
   const [isReactivating, setIsReactivating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -458,6 +498,23 @@ export default function MyProductsPage() {
     };
     return categoryMap[category] || category.charAt(0).toUpperCase() + category.slice(1);
   };
+
+  // Filter products based on search query
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return products;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return products.filter((product) => {
+      const nameMatch = product.name.toLowerCase().includes(query);
+      const slugMatch = product.slug.toLowerCase().includes(query);
+      const categoryMatch = formatCategory(product.category, product.name).toLowerCase().includes(query);
+      const descriptionMatch = product.short_description?.toLowerCase().includes(query);
+      
+      return nameMatch || slugMatch || categoryMatch || descriptionMatch;
+    });
+  }, [products, searchQuery]);
 
   const handleReactivate = async () => {
     if (!cancelledSubscriptionId) return;
@@ -588,8 +645,24 @@ export default function MyProductsPage() {
         </EmptyState>
       ) : (
         <>
-          <div style={{ marginBottom: "1rem", color: "rgba(255, 255, 255, 0.7)" }}>
-            You have access to <strong style={{ color: "#4ECDC4" }}>{products.length}</strong> products
+          <div style={{ marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+            <SearchContainer>
+              <SearchIcon />
+              <SearchInput
+                type="text"
+                placeholder="Search products by name, category, or description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </SearchContainer>
+            <div style={{ color: "rgba(255, 255, 255, 0.7)" }}>
+              You have access to <strong style={{ color: "#4ECDC4" }}>{products.length}</strong> products
+              {searchQuery && (
+                <span style={{ marginLeft: "0.5rem" }}>
+                  ({filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'})
+                </span>
+              )}
+            </div>
           </div>
           <TableContainer>
             <Table>
@@ -603,7 +676,14 @@ export default function MyProductsPage() {
                 </tr>
               </TableHeader>
               <TableBody>
-            {products.map((product, index) => (
+            {filteredProducts.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ padding: "3rem", textAlign: "center", color: "rgba(255, 255, 255, 0.5)" }}>
+                  No products found matching "{searchQuery}"
+                </td>
+              </tr>
+            ) : (
+              filteredProducts.map((product, index) => (
                   <TableRow
                 key={product.id}
                     $clickable={true}
@@ -661,7 +741,8 @@ export default function MyProductsPage() {
                     </AccessBadge>
                     </TableCell>
                   </TableRow>
-            ))}
+              ))
+            )}
               </TableBody>
             </Table>
           </TableContainer>

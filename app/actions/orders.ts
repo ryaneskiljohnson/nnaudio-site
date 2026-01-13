@@ -33,6 +33,8 @@ export interface Order {
     promotion_code?: string;
     grant_id?: string;
     grant_type?: string;
+    redemption_code?: string;
+    reseller_name?: string;
     notes?: string | null;
   };
   receiptUrl: string | null;
@@ -53,10 +55,12 @@ export async function getOrders(): Promise<{
   success: boolean;
   orders: Order[];
   productGrants: Order[];
+  productRedemptions: Order[];
   error?: string;
   debug?: {
     totalOrders: number;
     grantOrders: number;
+    redemptionOrders: number;
     regularOrders: number;
     grantedProductsCount: number;
   };
@@ -331,7 +335,7 @@ export async function getOrders(): Promise<{
       })
     );
 
-    // Add product grants as $0 orders
+    // Add product grants and redemptions as $0 orders
     if (grantedProducts.length > 0) {
       const grantProductIds = grantedProducts.map(g => g.product_id);
       const adminSupabase = await createSupabaseServiceRole();
@@ -344,36 +348,118 @@ export async function getOrders(): Promise<{
       if (grantProducts) {
         const productMap = new Map(grantProducts.map(p => [p.id, p]));
         
+        // Collect redemption serial codes to look up reseller info
+        const redemptionCodes: string[] = [];
+        const redemptionGrants: Array<{ grant: any; serialCode: string }> = [];
+        
+        for (const grant of grantedProducts) {
+          const isRedemption = grant.notes && grant.notes.includes("Redeemed via reseller code:");
+          if (isRedemption) {
+            const serialCodeMatch = grant.notes?.match(/Redeemed via reseller code: ([^\s]+)/);
+            const serialCode = serialCodeMatch ? serialCodeMatch[1] : null;
+            if (serialCode) {
+              redemptionCodes.push(serialCode);
+              redemptionGrants.push({ grant, serialCode });
+            }
+          }
+        }
+        
+        // Fetch reseller information for redemptions
+        const resellerMap = new Map<string, string>();
+        if (redemptionCodes.length > 0) {
+          const { data: resellerCodes } = await adminSupabase
+            .from("reseller_codes")
+            .select(`
+              serial_code,
+              resellers:reseller_id (
+                name
+              )
+            `)
+            .in("serial_code", redemptionCodes);
+          
+          if (resellerCodes) {
+            resellerCodes.forEach((code: any) => {
+              const resellerName = (code.resellers as any)?.name || null;
+              if (resellerName) {
+                resellerMap.set(code.serial_code, resellerName);
+              }
+            });
+          }
+        }
+        
         for (const grant of grantedProducts) {
           const product = productMap.get(grant.product_id);
           if (product) {
-            orders.push({
-              id: `grant_${grant.id}`,
-              orderNumber: `GRANT-${grant.id.substring(0, 8).toUpperCase()}`,
-              date: grant.granted_at,
-              status: "succeeded",
-              amount: 0,
-              currency: "USD",
-              items: [{
-                id: product.id,
-                name: product.name,
-                quantity: 1,
-                price: 0,
-                product_image: product.featured_image_url || null,
-                product_slug: product.slug || null,
-              }],
-              metadata: {
-                grant_id: grant.id,
-                grant_type: "free_license",
-                notes: grant.notes,
-              },
-              receiptUrl: null,
-              invoiceId: null,
-              refundedAmount: 0,
-              isRefunded: false,
-              isPartiallyRefunded: false,
-              refunds: [],
-            } as Order);
+            // Check if this is a redemption (from reseller code)
+            const isRedemption = grant.notes && grant.notes.includes("Redeemed via reseller code:");
+            
+            if (isRedemption) {
+              // Extract serial code and reseller name
+              const serialCodeMatch = grant.notes?.match(/Redeemed via reseller code: ([^\s]+)/);
+              const resellerMatch = grant.notes?.match(/from (.+)$/);
+              const serialCode = serialCodeMatch ? serialCodeMatch[1] : "Unknown";
+              // Try to get reseller name from notes first, then from database lookup
+              const resellerName = resellerMatch ? resellerMatch[1] : (resellerMap.get(serialCode) || null);
+              
+              orders.push({
+                id: `redemption_${grant.id}`,
+                orderNumber: `REDEEM-${grant.id.substring(0, 8).toUpperCase()}`,
+                date: grant.granted_at,
+                status: "succeeded",
+                amount: 0,
+                currency: "USD",
+                items: [{
+                  id: product.id,
+                  name: product.name,
+                  quantity: 1,
+                  price: 0,
+                  product_image: product.featured_image_url || null,
+                  product_slug: product.slug || null,
+                }],
+                metadata: {
+                  grant_id: grant.id,
+                  grant_type: "redemption",
+                  redemption_code: serialCode,
+                  reseller_name: resellerName,
+                  notes: grant.notes,
+                },
+                receiptUrl: null,
+                invoiceId: null,
+                refundedAmount: 0,
+                isRefunded: false,
+                isPartiallyRefunded: false,
+                refunds: [],
+              } as Order);
+            } else {
+              // Regular product grant
+              orders.push({
+                id: `grant_${grant.id}`,
+                orderNumber: `GRANT-${grant.id.substring(0, 8).toUpperCase()}`,
+                date: grant.granted_at,
+                status: "succeeded",
+                amount: 0,
+                currency: "USD",
+                items: [{
+                  id: product.id,
+                  name: product.name,
+                  quantity: 1,
+                  price: 0,
+                  product_image: product.featured_image_url || null,
+                  product_slug: product.slug || null,
+                }],
+                metadata: {
+                  grant_id: grant.id,
+                  grant_type: "free_license",
+                  notes: grant.notes,
+                },
+                receiptUrl: null,
+                invoiceId: null,
+                refundedAmount: 0,
+                isRefunded: false,
+                isPartiallyRefunded: false,
+                refunds: [],
+              } as Order);
+            }
           }
         }
       }
@@ -382,12 +468,15 @@ export async function getOrders(): Promise<{
     // Sort by date (newest first)
     orders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // Separate regular orders from product grants
+    // Separate regular orders, product grants, and product redemptions
     const regularOrders: Order[] = [];
     const productGrants: Order[] = [];
+    const productRedemptions: Order[] = [];
     
     orders.forEach((order) => {
-      if (order.metadata?.grant_type === "free_license") {
+      if (order.metadata?.grant_type === "redemption") {
+        productRedemptions.push(order);
+      } else if (order.metadata?.grant_type === "free_license") {
         productGrants.push(order);
       } else {
         regularOrders.push(order);
@@ -398,9 +487,11 @@ export async function getOrders(): Promise<{
       success: true,
       orders: regularOrders,
       productGrants,
+      productRedemptions,
       debug: {
         totalOrders: orders.length,
         grantOrders: productGrants.length,
+        redemptionOrders: productRedemptions.length,
         regularOrders: regularOrders.length,
         grantedProductsCount: grantedProducts.length,
       },
@@ -411,6 +502,7 @@ export async function getOrders(): Promise<{
       success: false,
       orders: [],
       productGrants: [],
+      productRedemptions: [],
       error: error instanceof Error ? error.message : "Failed to fetch orders",
     };
   }
