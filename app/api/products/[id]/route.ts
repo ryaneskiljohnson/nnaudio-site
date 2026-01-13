@@ -117,7 +117,7 @@ export async function PUT(
     // Get existing product to check current values and Stripe IDs
       const { data: existingProduct } = await adminSupabase
         .from('products')
-        .select('stripe_product_id, stripe_price_id, stripe_sale_price_id, name, description, short_description, price, sale_price')
+        .select('stripe_product_id, stripe_price_id, stripe_sale_price_id, name, description, short_description, price, sale_price, legacy_product_id')
         .eq('id', id)
         .single();
       
@@ -126,6 +126,39 @@ export async function PUT(
         { success: false, error: 'Product not found' },
         { status: 404 }
       );
+    }
+
+    // Validate legacy_product_id uniqueness if being changed
+    if (body.legacy_product_id !== undefined) {
+      const newLegacyId = body.legacy_product_id?.trim() || null;
+      const currentLegacyId = existingProduct.legacy_product_id;
+      
+      // Only check if the value is actually changing and is not empty
+      if (newLegacyId !== currentLegacyId && newLegacyId !== null && newLegacyId !== '') {
+        const { data: conflictingProduct, error: checkError } = await adminSupabase
+          .from('products')
+          .select('id, name')
+          .eq('legacy_product_id', newLegacyId)
+          .neq('id', id) // Exclude current product
+          .single();
+
+        if (conflictingProduct && !checkError) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: `A product with legacy_product_id "${newLegacyId}" already exists: ${conflictingProduct.name} (${conflictingProduct.id})` 
+            },
+            { status: 400 }
+          );
+        }
+      }
+      
+      // Normalize legacy_product_id (set to null if empty string)
+      if (body.legacy_product_id === '' || body.legacy_product_id === null) {
+        body.legacy_product_id = null;
+      } else if (body.legacy_product_id) {
+        body.legacy_product_id = body.legacy_product_id.trim();
+      }
     }
 
     // Check if name, price, sale_price, or description changed - if so, sync to Stripe

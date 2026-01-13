@@ -131,6 +131,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const adminSupabase = await createAdminClient();
 
+    // Validate legacy_product_id uniqueness if provided
+    if (body.legacy_product_id && body.legacy_product_id.trim() !== '') {
+      const { data: existingProduct, error: checkError } = await adminSupabase
+        .from('products')
+        .select('id, name')
+        .eq('legacy_product_id', body.legacy_product_id.trim())
+        .single();
+
+      if (existingProduct && !checkError) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: `A product with legacy_product_id "${body.legacy_product_id}" already exists: ${existingProduct.name} (${existingProduct.id})` 
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Create slug from name if not provided
     const slug = body.slug || body.name.toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -164,6 +183,7 @@ export async function POST(request: NextRequest) {
         meta_title: body.meta_title,
         meta_description: body.meta_description,
         meta_keywords: body.meta_keywords,
+        legacy_product_id: body.legacy_product_id?.trim() || null,
       }])
       .select()
       .single();

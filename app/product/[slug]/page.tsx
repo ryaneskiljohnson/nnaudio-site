@@ -5,7 +5,7 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { FaStar, FaShoppingCart, FaDownload, FaCheck, FaPlay, FaPause, FaMusic, FaVideo, FaChevronRight, FaHome, FaVolumeUp, FaCheckCircle, FaDesktop, FaCog } from "react-icons/fa";
+import { FaStar, FaShoppingCart, FaDownload, FaCheck, FaPlay, FaPause, FaMusic, FaVideo, FaChevronRight, FaHome, FaVolumeUp, FaCheckCircle, FaDesktop, FaCog, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { useParams } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
@@ -198,11 +198,32 @@ const SectionTitle = styled.h2`
   font-weight: 700;
 `;
 
-const Description = styled.div`
+const DescriptionContainer = styled.div`
+  position: relative;
+`;
+
+const Description = styled.div<{ $isExpanded: boolean; $needsExpansion: boolean }>`
   font-size: 1.1rem;
   line-height: 1.8;
   color: rgba(255, 255, 255, 0.8);
   margin-bottom: 0;
+  max-height: ${props => props.$isExpanded || !props.$needsExpansion ? 'none' : '400px'};
+  overflow: ${props => props.$isExpanded || !props.$needsExpansion ? 'visible' : 'hidden'};
+  position: relative;
+  transition: max-height 0.3s ease;
+  
+  ${props => !props.$isExpanded && props.$needsExpansion && `
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 100px;
+      background: linear-gradient(to bottom, transparent, rgba(10, 10, 10, 0.95));
+      pointer-events: none;
+    }
+  `}
   
   p {
     margin-bottom: 1rem;
@@ -250,6 +271,31 @@ const Description = styled.div`
   }
 `;
 
+const ExpandButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(108, 99, 255, 0.2);
+  border: 1px solid rgba(108, 99, 255, 0.4);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(108, 99, 255, 0.3);
+    border-color: rgba(108, 99, 255, 0.6);
+  }
+  
+  svg {
+    font-size: 0.9rem;
+  }
+`;
+
 const FeaturesGrid = styled.div`
   display: flex;
   flex-direction: column;
@@ -282,14 +328,19 @@ const FeatureImageContainer = styled.div`
   position: relative;
   width: 50%;
   min-width: 300px;
-  aspect-ratio: 16 / 9;
+  max-width: 600px;
   background: rgba(0, 0, 0, 0.3);
   overflow: hidden;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
   
   @media (max-width: 768px) {
     width: 100%;
     min-width: unset;
+    max-width: 100%;
   }
 `;
 
@@ -326,82 +377,6 @@ const FeatureDescription = styled.p`
   line-height: 1.6;
   margin: 0;
   font-size: 0.95rem;
-`;
-
-const OverviewSection = styled.section`
-  margin-top: 2rem;
-  border-radius: 16px;
-  overflow: hidden;
-`;
-
-const OverviewBanner = styled.div`
-  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
-  padding: 1.5rem 2rem;
-  text-align: center;
-`;
-
-const OverviewTitle = styled.h2`
-  font-size: 2rem;
-  font-weight: 700;
-  color: white;
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-`;
-
-const OverviewContent = styled.div`
-  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(42, 42, 70, 0.95) 100%);
-  padding: 2.5rem;
-  display: grid;
-  grid-template-columns: 0.9fr 1.1fr;
-  gap: 3rem;
-  align-items: center;
-  min-height: 500px;
-  
-  @media (max-width: 968px) {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    min-height: auto;
-  }
-`;
-
-const OverviewFeaturesList = styled.ul`
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-`;
-
-const OverviewFeatureItem = styled.li`
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 1rem;
-  line-height: 1.7;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-  
-  &::before {
-    content: '✓';
-    color: #8a2be2;
-    font-weight: bold;
-    font-size: 1.3rem;
-    flex-shrink: 0;
-    margin-top: 1px;
-    line-height: 1;
-  }
-`;
-
-const OverviewImageContainer = styled.div`
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.4);
-  box-shadow: 0 8px 32px rgba(138, 43, 226, 0.4);
-  border: 1px solid rgba(138, 43, 226, 0.2);
 `;
 
 const CompatibilitySection = styled.div`
@@ -733,17 +708,20 @@ const GalleryGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
   margin-top: 2rem;
+  max-width: 100%;
 `;
 
 const GalleryImage = styled(motion.div)`
   position: relative;
   width: 100%;
+  max-width: 400px;
   aspect-ratio: 1;
   border-radius: 12px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
+  margin: 0 auto;
   
   &:hover {
     border-color: rgba(138, 43, 226, 0.5);
@@ -1133,6 +1111,9 @@ export default function ProductPage() {
   const [volume, setVolume] = useState(1);
   const [waveformData, setWaveformData] = useState<number[]>([]);
   const [showStickyButton, setShowStickyButton] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [descriptionNeedsExpansion, setDescriptionNeedsExpansion] = useState(false);
+  const descriptionRef = useRef<HTMLDivElement | null>(null);
   const mainAudioRef = useRef<HTMLAudioElement | null>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -1145,6 +1126,20 @@ export default function ProductPage() {
       fetchProduct();
     }
   }, [slug]);
+
+  // Check if description needs expansion
+  useEffect(() => {
+    if (descriptionRef.current && product?.description) {
+      const element = descriptionRef.current;
+      // Temporarily remove max-height to measure full height
+      const originalMaxHeight = element.style.maxHeight;
+      element.style.maxHeight = 'none';
+      const fullHeight = element.scrollHeight;
+      element.style.maxHeight = originalMaxHeight;
+      
+      setDescriptionNeedsExpansion(fullHeight > 400);
+    }
+  }, [product?.description]);
 
   // Handle scroll to show/hide sticky button
   useEffect(() => {
@@ -1810,15 +1805,40 @@ export default function ProductPage() {
       {product.description && (
         <ContentSection>
           <SectionTitle>Description</SectionTitle>
-          <Description>
-            <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-              {product.description}
-            </ReactMarkdown>
-          </Description>
+          <DescriptionContainer>
+            <Description
+              ref={descriptionRef}
+              $isExpanded={isDescriptionExpanded}
+              $needsExpansion={descriptionNeedsExpansion}
+            >
+              <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+                {product.description}
+              </ReactMarkdown>
+            </Description>
+            {descriptionNeedsExpansion && (
+              <ExpandButton
+                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {isDescriptionExpanded ? (
+                  <>
+                    <FaChevronUp />
+                    Show Less
+                  </>
+                ) : (
+                  <>
+                    <FaChevronDown />
+                    Show More
+                  </>
+                )}
+              </ExpandButton>
+            )}
+          </DescriptionContainer>
         </ContentSection>
       )}
 
-      {product.gallery_images && product.gallery_images.length > 0 && (
+      {product.gallery_images && product.gallery_images.length > 1 && (
         <ContentSection>
           <SectionTitle>Gallery</SectionTitle>
           <GalleryGrid>
@@ -1843,33 +1863,6 @@ export default function ProductPage() {
         </ContentSection>
       )}
 
-      <ContentSection>
-        <SectionTitle>Overview</SectionTitle>
-        <OverviewSection>
-          <OverviewContent>
-            <OverviewFeaturesList>
-              <OverviewFeatureItem>10 Complete Effect Chains</OverviewFeatureItem>
-              <OverviewFeatureItem>Generate Infinite Effects With The "Magic Button" & Never Run Short On Ideas.</OverviewFeatureItem>
-              <OverviewFeatureItem>Transform Any Audio Into A Modern Masterpiece.</OverviewFeatureItem>
-              <OverviewFeatureItem>Easily Undo/Redo Any Change, Including The "Magic Button" Generator.</OverviewFeatureItem>
-              <OverviewFeatureItem>MIDI CC + MIDI Learn Capable.</OverviewFeatureItem>
-              <OverviewFeatureItem>Easy-To-Use Preset Browser for Searching & Creating your own presets.</OverviewFeatureItem>
-              <OverviewFeatureItem>250 included Factory Presets</OverviewFeatureItem>
-              <OverviewFeatureItem>Tooltip To Help Learn & Understand The Plugin</OverviewFeatureItem>
-              <OverviewFeatureItem>Intuitive single window interface & parameters.</OverviewFeatureItem>
-            </OverviewFeaturesList>
-            <OverviewImageContainer>
-              <Image
-                src={product.background_image_url || product.featured_image_url || 'https://nnaud.io/wp-content/uploads/2024/06/CrystalBall-GUI.jpg'}
-                alt={`${product.name} Interface`}
-                fill
-                style={{ objectFit: 'contain', padding: '10px' }}
-                priority
-              />
-            </OverviewImageContainer>
-          </OverviewContent>
-        </OverviewSection>
-      </ContentSection>
 
       {product.demo_video_url && (
         <ContentSection>
@@ -2186,12 +2179,17 @@ export default function ProductPage() {
                 >
                   {featureImage && (
                     <FeatureImageContainer>
-                      <Image
+                      <img
                         src={featureImage}
                         alt={featureTitle}
-                        fill
-                        style={{ objectFit: 'cover' }}
-                        unoptimized={featureImage.endsWith('.gif')}
+                        style={{ 
+                          maxWidth: '100%', 
+                          maxHeight: '100%', 
+                          width: 'auto', 
+                          height: 'auto',
+                          objectFit: 'contain',
+                          display: 'block'
+                        }}
                       />
                     </FeatureImageContainer>
                   )}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
-import { FaSave, FaArrowLeft, FaPlus, FaTrash, FaSpinner, FaChevronDown, FaChevronUp, FaSearch } from "react-icons/fa";
+import { FaSave, FaArrowLeft, FaPlus, FaTrash, FaSpinner, FaChevronDown, FaChevronUp, FaSearch, FaArrowUp, FaArrowDown, FaGripVertical, FaEye, FaExternalLinkAlt } from "react-icons/fa";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
@@ -41,6 +41,31 @@ const BackButton = styled(Link)`
   &:hover {
     color: var(--text);
     background: rgba(255, 255, 255, 0.05);
+  }
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+`;
+
+const ViewProductButton = styled(Link)`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  text-decoration: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  background: rgba(108, 99, 255, 0.2);
+  border: 1px solid rgba(108, 99, 255, 0.4);
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(108, 99, 255, 0.3);
+    border-color: rgba(108, 99, 255, 0.6);
+    transform: translateY(-1px);
   }
 `;
 
@@ -291,6 +316,81 @@ const FeatureItem = styled.div`
 
 const FeatureInput = styled(Input)`
   flex: 1;
+`;
+
+const FeatureCard = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  position: relative;
+`;
+
+const FeatureHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+`;
+
+const DragHandle = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--text-secondary);
+  cursor: grab;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+  }
+  
+  &:active {
+    cursor: grabbing;
+  }
+`;
+
+const ReorderButtons = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-left: auto;
+`;
+
+const ReorderButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    background: rgba(108, 99, 255, 0.2);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+  
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  
+  svg {
+    font-size: 0.9rem;
+  }
 `;
 
 const RemoveButton = styled.button`
@@ -998,6 +1098,20 @@ export default function EditProductPage() {
     setFeatures(features.filter((_, i) => i !== index));
   };
 
+  const moveFeatureUp = (index: number) => {
+    if (index === 0) return;
+    const newFeatures = [...features];
+    [newFeatures[index - 1], newFeatures[index]] = [newFeatures[index], newFeatures[index - 1]];
+    setFeatures(newFeatures);
+  };
+
+  const moveFeatureDown = (index: number) => {
+    if (index === features.length - 1) return;
+    const newFeatures = [...features];
+    [newFeatures[index], newFeatures[index + 1]] = [newFeatures[index + 1], newFeatures[index]];
+    setFeatures(newFeatures);
+  };
+
   const handleAudioSampleChange = (index: number, field: 'url' | 'name', value: string) => {
     const newAudioSamples = [...audioSamples];
     newAudioSamples[index] = {
@@ -1121,9 +1235,16 @@ export default function EditProductPage() {
     <Container>
       <Header>
         <Title>Edit Product</Title>
-        <BackButton href="/admin/products">
-          <FaArrowLeft /> Back to Products
-        </BackButton>
+        <HeaderActions>
+          {formData.slug && (
+            <ViewProductButton href={`/product/${formData.slug}`} target="_blank" rel="noopener noreferrer">
+              <FaEye /> View Product <FaExternalLinkAlt style={{ fontSize: '0.75rem' }} />
+            </ViewProductButton>
+          )}
+          <BackButton href="/admin/products">
+            <FaArrowLeft /> Back to Products
+          </BackButton>
+        </HeaderActions>
       </Header>
 
       <Form onSubmit={handleSubmit}>
@@ -1720,7 +1841,33 @@ export default function EditProductPage() {
           
           <FeaturesList>
             {features.map((feature, index) => (
-              <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', marginBottom: '0.5rem' }}>
+              <FeatureCard key={index}>
+                <FeatureHeader>
+                  <DragHandle>
+                    <FaGripVertical />
+                  </DragHandle>
+                  <div style={{ flex: 1, fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                    Feature {index + 1} of {features.length}
+                  </div>
+                  <ReorderButtons>
+                    <ReorderButton
+                      type="button"
+                      onClick={() => moveFeatureUp(index)}
+                      disabled={index === 0}
+                      title="Move up"
+                    >
+                      <FaArrowUp />
+                    </ReorderButton>
+                    <ReorderButton
+                      type="button"
+                      onClick={() => moveFeatureDown(index)}
+                      disabled={index === features.length - 1}
+                      title="Move down"
+                    >
+                      <FaArrowDown />
+                    </ReorderButton>
+                  </ReorderButtons>
+                </FeatureHeader>
                 <FeatureItem>
                   <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Feature Title</Label>
                   <FeatureInput
@@ -1750,13 +1897,13 @@ export default function EditProductPage() {
                   />
                 </FeatureItem>
                 {feature.image_url && (
-                  <div style={{ marginTop: '0.5rem' }}>
+                  <div style={{ marginTop: '0.5rem', maxWidth: '100%', display: 'flex', justifyContent: 'flex-start' }}>
                     <Image
                       src={feature.image_url}
                       alt={feature.title}
-                      width={200}
-                      height={112}
-                      style={{ borderRadius: '8px', objectFit: 'cover' }}
+                      width={600}
+                      height={400}
+                      style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', objectFit: 'contain' }}
                       unoptimized={feature.image_url.endsWith('.gif')}
                     />
                   </div>
@@ -1770,7 +1917,7 @@ export default function EditProductPage() {
                     <FaTrash /> Remove Feature
                   </RemoveButton>
                 )}
-              </div>
+              </FeatureCard>
             ))}
           </FeaturesList>
           
