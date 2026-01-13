@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
         email: email?.trim() || null,
         contact_info: contact_info?.trim() || null,
         notes: notes?.trim() || null,
+        status: "active",
       })
       .select()
       .single();

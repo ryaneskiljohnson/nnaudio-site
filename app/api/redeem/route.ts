@@ -84,7 +84,8 @@ export async function POST(request: NextRequest) {
         ),
         resellers:reseller_id (
           id,
-          name
+          name,
+          status
         )
       `)
       .eq("serial_code", normalizedCode)
@@ -95,6 +96,22 @@ export async function POST(request: NextRequest) {
         { error: "Invalid code" },
         { status: 400 }
       );
+    }
+
+    // Check if reseller is active (suspended or deleted resellers cannot have codes redeemed)
+    const reseller = code.resellers as any;
+    if (reseller && reseller.status && reseller.status !== 'active') {
+      if (reseller.status === 'suspended') {
+        return NextResponse.json(
+          { error: "This code cannot be redeemed because the reseller has been suspended" },
+          { status: 400 }
+        );
+      } else if (reseller.status === 'deleted') {
+        return NextResponse.json(
+          { error: "This code cannot be redeemed because the reseller has been deleted" },
+          { status: 400 }
+        );
+      }
     }
 
     // Check if already redeemed

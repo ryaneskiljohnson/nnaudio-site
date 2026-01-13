@@ -23,6 +23,8 @@ import {
   FaSpinner,
   FaEllipsisV,
   FaKey,
+  FaBan,
+  FaUndo,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import styled, { keyframes } from "styled-components";
@@ -327,6 +329,141 @@ const MoreMenuDropdown = styled(motion.div)<{ $top?: number; $right?: number }>`
   z-index: 9999;
   min-width: 200px;
   overflow: visible;
+`;
+
+const StatusBadge = styled.span<{ $status: "active" | "suspended" | "deleted" }>`
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background-color: ${props => {
+    switch (props.$status) {
+      case "active": return "rgba(46, 204, 113, 0.2)";
+      case "suspended": return "rgba(255, 193, 7, 0.2)";
+      case "deleted": return "rgba(231, 76, 60, 0.2)";
+      default: return "rgba(255, 255, 255, 0.1)";
+    }
+  }};
+  color: ${props => {
+    switch (props.$status) {
+      case "active": return "#2ecc71";
+      case "suspended": return "#ffc107";
+      case "deleted": return "#e74c3c";
+      default: return "var(--text-secondary)";
+    }
+  }};
+  border: 1px solid ${props => {
+    switch (props.$status) {
+      case "active": return "rgba(46, 204, 113, 0.3)";
+      case "suspended": return "rgba(255, 193, 7, 0.3)";
+      case "deleted": return "rgba(231, 76, 60, 0.3)";
+      default: return "rgba(255, 255, 255, 0.1)";
+    }
+  }};
+`;
+
+const ConfirmDialog = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+`;
+
+const ConfirmDialogContent = styled(motion.div)`
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+`;
+
+const ConfirmDialogTitle = styled.h3`
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 1rem;
+`;
+
+const ConfirmDialogMessage = styled.div`
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  
+  p {
+    margin: 0;
+  }
+  
+  ul {
+    margin: 0.5rem 0;
+  }
+  
+  li {
+    margin: 0.25rem 0;
+  }
+`;
+
+const ConfirmDialogActions = styled.div`
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+`;
+
+const ConfirmButton = styled.button<{ $variant?: "danger" | "primary" }>`
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  
+  ${props => {
+    if (props.$variant === "danger") {
+      return `
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        color: white;
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+        }
+      `;
+    } else if (props.$variant === "primary") {
+      return `
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        color: white;
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(108, 99, 255, 0.4);
+        }
+      `;
+    } else {
+      return `
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        &:hover {
+          background: rgba(255, 255, 255, 0.15);
+        }
+      `;
+    }
+  }}
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
 `;
 
 const MoreMenuItem = styled.div<{ $variant?: "danger" }>`
@@ -745,6 +882,7 @@ interface Reseller {
   email: string | null;
   contact_info: string | null;
   notes: string | null;
+  status: "active" | "suspended" | "deleted";
   created_at: string;
   updated_at: string;
 }
@@ -830,6 +968,9 @@ export default function ResellersPage() {
   const [productSearchQuery, setProductSearchQuery] = useState("");
   const [productQuantities, setProductQuantities] = useState<Record<string, string>>({});
   const [globalQuantity, setGlobalQuantity] = useState("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ type: "suspend" | "delete" | "reactivate"; reseller: Reseller } | null>(null);
+  const [processingAction, setProcessingAction] = useState(false);
 
   // Add reseller form state
   const [formData, setFormData] = useState({
@@ -1165,6 +1306,39 @@ export default function ResellersPage() {
       setSelectedReseller(reseller);
       setCodeActionType("add");
       setShowProductSelectModal(true);
+    } else if (action === "suspend" || action === "delete" || action === "reactivate") {
+      setConfirmAction({ type: action as "suspend" | "delete" | "reactivate", reseller });
+      setShowConfirmDialog(true);
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
+
+    setProcessingAction(true);
+    try {
+      const response = await fetch(`/api/admin/resellers/${confirmAction.reseller.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: confirmAction.type }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const actionText = confirmAction.type === "suspend" ? "suspended" : confirmAction.type === "delete" ? "deleted" : "reactivated";
+        showNotification("success", `Reseller ${actionText} successfully`);
+        fetchResellers();
+        setShowConfirmDialog(false);
+        setConfirmAction(null);
+      } else {
+        showNotification("error", data.error || `Failed to ${confirmAction.type} reseller`);
+      }
+    } catch (error: any) {
+      console.error(`Error ${confirmAction.type}ing reseller:`, error);
+      showNotification("error", `Failed to ${confirmAction.type} reseller`);
+    } finally {
+      setProcessingAction(false);
     }
   };
 
@@ -1336,10 +1510,12 @@ export default function ResellersPage() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const filteredResellers = resellers.filter((reseller) =>
-    reseller.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    reseller.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredResellers = resellers
+    .filter((reseller) => reseller.status !== "deleted") // Hide deleted resellers from main table
+    .filter((reseller) =>
+      reseller.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      reseller.email?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   if (loading) {
     return (
@@ -1383,6 +1559,7 @@ export default function ResellersPage() {
           <Thead>
             <tr>
               <Th>Name</Th>
+              <Th>Status</Th>
               <Th>Email</Th>
               <Th>Contact Info</Th>
               <Th>Created</Th>
@@ -1392,7 +1569,7 @@ export default function ResellersPage() {
           <Tbody>
             {filteredResellers.length === 0 ? (
               <tr>
-                <Td colSpan={5} style={{ textAlign: "center", padding: "3rem" }}>
+                <Td colSpan={6} style={{ textAlign: "center", padding: "3rem" }}>
                   {searchQuery
                     ? "No resellers found matching your search"
                     : "No resellers yet. Click 'Add Reseller' to get started."}
@@ -1403,6 +1580,11 @@ export default function ResellersPage() {
                 <Tr key={reseller.id} onClick={() => handleViewDetails(reseller)}>
                   <Td>
                     <strong>{reseller.name}</strong>
+                  </Td>
+                  <Td>
+                    <StatusBadge $status={reseller.status || "active"}>
+                      {reseller.status || "active"}
+                    </StatusBadge>
                   </Td>
                   <Td>{reseller.email || "—"}</Td>
                   <Td>{reseller.contact_info || "—"}</Td>
@@ -1436,6 +1618,31 @@ export default function ResellersPage() {
                             <MoreMenuItem onClick={() => handleMoreMenuAction("add-codes", reseller)}>
                               <FaPlus /> Add Product Codes
                             </MoreMenuItem>
+                            {reseller.status === "active" && (
+                              <>
+                                <MoreMenuItem onClick={() => handleMoreMenuAction("suspend", reseller)} $variant="danger">
+                                  <FaBan /> Suspend Reseller
+                                </MoreMenuItem>
+                                <MoreMenuItem onClick={() => handleMoreMenuAction("delete", reseller)} $variant="danger">
+                                  <FaTrash /> Delete Reseller
+                                </MoreMenuItem>
+                              </>
+                            )}
+                            {reseller.status === "suspended" && (
+                              <>
+                                <MoreMenuItem onClick={() => handleMoreMenuAction("reactivate", reseller)}>
+                                  <FaUndo /> Reactivate Reseller
+                                </MoreMenuItem>
+                                <MoreMenuItem onClick={() => handleMoreMenuAction("delete", reseller)} $variant="danger">
+                                  <FaTrash /> Delete Reseller
+                                </MoreMenuItem>
+                              </>
+                            )}
+                            {reseller.status === "deleted" && (
+                              <MoreMenuItem onClick={() => handleMoreMenuAction("reactivate", reseller)}>
+                                <FaUndo /> Reactivate Reseller
+                              </MoreMenuItem>
+                            )}
                           </MoreMenuDropdown>
                         )}
                       </AnimatePresence>
@@ -2234,6 +2441,134 @@ export default function ResellersPage() {
             )}
             {notification.message}
           </Notification>
+        )}
+      </AnimatePresence>
+
+      {/* Confirm Action Dialog */}
+      <AnimatePresence>
+        {showConfirmDialog && confirmAction && (
+          <ConfirmDialog
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => !processingAction && setShowConfirmDialog(false)}
+          >
+            <ConfirmDialogContent
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ConfirmDialogTitle>
+                {confirmAction.type === "suspend" && "⚠️ Suspend Reseller"}
+                {confirmAction.type === "delete" && "🗑️ Delete Reseller"}
+                {confirmAction.type === "reactivate" && "✅ Reactivate Reseller"}
+              </ConfirmDialogTitle>
+              <ConfirmDialogMessage>
+                {confirmAction.type === "suspend" && (
+                  <>
+                    <p style={{ marginBottom: "1rem", fontWeight: 600, color: "var(--text)" }}>
+                      Are you sure you want to suspend <strong>{confirmAction.reseller.name}</strong>?
+                    </p>
+                    <div style={{ 
+                      background: "rgba(255, 193, 7, 0.1)", 
+                      border: "1px solid rgba(255, 193, 7, 0.3)", 
+                      borderRadius: "8px", 
+                      padding: "1rem",
+                      marginBottom: "1rem"
+                    }}>
+                      <p style={{ marginBottom: "0.5rem", fontWeight: 600, color: "#ffc107" }}>What this means:</p>
+                      <ul style={{ margin: 0, paddingLeft: "1.5rem", color: "var(--text-secondary)", lineHeight: "1.8" }}>
+                        <li>All <strong>unredeemed codes</strong> from this reseller will <strong>no longer be redeemable</strong></li>
+                        <li>Users who try to redeem codes will see an error message</li>
+                        <li>All <strong>already redeemed codes</strong> will <strong>remain valid</strong> - users keep their products</li>
+                        <li>You can reactivate the reseller later to restore code redemption</li>
+                      </ul>
+                    </div>
+                    <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+                      This action can be reversed by reactivating the reseller.
+                    </p>
+                  </>
+                )}
+                {confirmAction.type === "delete" && (
+                  <>
+                    <p style={{ marginBottom: "1rem", fontWeight: 600, color: "var(--text)" }}>
+                      Are you sure you want to delete <strong>{confirmAction.reseller.name}</strong>?
+                    </p>
+                    <div style={{ 
+                      background: "rgba(231, 76, 60, 0.1)", 
+                      border: "1px solid rgba(231, 76, 60, 0.3)", 
+                      borderRadius: "8px", 
+                      padding: "1rem",
+                      marginBottom: "1rem"
+                    }}>
+                      <p style={{ marginBottom: "0.5rem", fontWeight: 600, color: "#e74c3c" }}>What this means:</p>
+                      <ul style={{ margin: 0, paddingLeft: "1.5rem", color: "var(--text-secondary)", lineHeight: "1.8" }}>
+                        <li>All <strong>unredeemed codes</strong> from this reseller will <strong>no longer be redeemable</strong></li>
+                        <li>Users who try to redeem codes will see an error message</li>
+                        <li>All <strong>already redeemed codes</strong> will <strong>remain valid</strong> - users keep their products</li>
+                        <li>If the reseller has redeemed codes, this will be a <strong>soft delete</strong> to preserve redemption history</li>
+                        <li>If the reseller has no redeemed codes, this will be a <strong>permanent deletion</strong></li>
+                      </ul>
+                    </div>
+                    <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+                      This action can be reversed by reactivating the reseller (if soft deleted).
+                    </p>
+                  </>
+                )}
+                {confirmAction.type === "reactivate" && (
+                  <>
+                    <p style={{ marginBottom: "1rem", fontWeight: 600, color: "var(--text)" }}>
+                      Are you sure you want to reactivate <strong>{confirmAction.reseller.name}</strong>?
+                    </p>
+                    <div style={{ 
+                      background: "rgba(46, 204, 113, 0.1)", 
+                      border: "1px solid rgba(46, 204, 113, 0.3)", 
+                      borderRadius: "8px", 
+                      padding: "1rem",
+                      marginBottom: "1rem"
+                    }}>
+                      <p style={{ marginBottom: "0.5rem", fontWeight: 600, color: "#2ecc71" }}>What this means:</p>
+                      <ul style={{ margin: 0, paddingLeft: "1.5rem", color: "var(--text-secondary)", lineHeight: "1.8" }}>
+                        <li>All codes from this reseller will be <strong>redeemable again</strong></li>
+                        <li>Users can now redeem codes that were previously blocked</li>
+                        <li>Already redeemed codes remain unchanged</li>
+                      </ul>
+                    </div>
+                  </>
+                )}
+              </ConfirmDialogMessage>
+              <ConfirmDialogActions>
+                <ConfirmButton
+                  onClick={() => {
+                    setShowConfirmDialog(false);
+                    setConfirmAction(null);
+                  }}
+                  disabled={processingAction}
+                >
+                  Cancel
+                </ConfirmButton>
+                <ConfirmButton
+                  $variant={confirmAction.type === "delete" ? "danger" : "primary"}
+                  onClick={handleConfirmAction}
+                  disabled={processingAction}
+                >
+                  {processingAction ? (
+                    <>
+                      <SpinningIcon style={{ marginRight: "0.5rem" }} />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      {confirmAction.type === "suspend" && "Suspend"}
+                      {confirmAction.type === "delete" && "Delete"}
+                      {confirmAction.type === "reactivate" && "Reactivate"}
+                    </>
+                  )}
+                </ConfirmButton>
+              </ConfirmDialogActions>
+            </ConfirmDialogContent>
+          </ConfirmDialog>
         )}
       </AnimatePresence>
     </>
