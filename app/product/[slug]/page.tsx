@@ -23,10 +23,11 @@ const HeroSection = styled.section.attrs<{ $bgImage?: string }>((props) => ({
 }))<{ $bgImage?: string }>`
   padding: 140px 20px 40px;
   background: ${props => props.$bgImage 
-    ? `linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.9) 100%), url(${props.$bgImage})`
+    ? `linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.9) 100%), url(${encodeURI(props.$bgImage)})`
     : 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%)'};
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
   position: relative;
 `;
 
@@ -1647,11 +1648,17 @@ export default function ProductPage() {
   // Product is free if sale_price is 0, or if both price and sale_price are 0/null
   const isFree = product.sale_price === 0 || (product.price === 0 && (product.sale_price === null || product.sale_price === undefined));
 
+  // Resolve hero background: use product fields, or Cymasphere default when slug is cymasphere
+  const heroBgImage =
+    product.background_image_url ||
+    product.background_video_url ||
+    (slug === 'cymasphere' ? '/images/cymasphere-features/Song View.png' : undefined);
+
   return (
     <Container>
       <HeroSection 
         ref={heroSectionRef as any} 
-        $bgImage={product.background_image_url || product.background_video_url}
+        $bgImage={heroBgImage}
       >
         <HeroContent>
           <BreadcrumbContainer>
