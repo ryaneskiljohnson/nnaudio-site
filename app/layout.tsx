@@ -9,14 +9,14 @@ import Analytics from "@/components/analytics/Analytics";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
-// Metadata configuration
+// Metadata configuration – favicon and icons use NNAud.io logo (dev and release)
 export const metadata: Metadata = {
   title: "NNAud.io – Resources for Modern Music Producers",
   description: "Discover premium plugins, sample packs, and tools designed to elevate your music production workflow",
   icons: {
     icon: [
       {
-        url: "/favicon.ico",
+        url: "/images/nnaud-io/logo-icon.png",
         sizes: "any",
       },
       {
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
         type: "image/png",
       },
     ],
-    shortcut: "/favicon.ico",
+    shortcut: "/images/nnaud-io/logo-icon.png",
   },
 };
 
