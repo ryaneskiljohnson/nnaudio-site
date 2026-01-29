@@ -126,7 +126,8 @@ export async function createUserManagementRecord(
       }
 
       console.error("Error creating user_management record:", error);
-      return { data: null, error: "Failed to create record" };
+      const detail = error.message ? `: ${error.message}` : "";
+      return { data: null, error: `Failed to create record${detail}` };
     }
 
     // If pro status is true, also update the user's profile subscription
@@ -323,7 +324,13 @@ export async function createUserManagementWithInvite(
       }
 
       console.error("Error creating user_management record:", insertError);
-      return { data: null, error: "Failed to create user_management record" };
+      const detail = insertError.message
+        ? `: ${insertError.message}`
+        : "";
+      return {
+        data: null,
+        error: `Failed to create user_management record${detail}`,
+      };
     }
 
     // Step 2: Send Supabase invite using service role client
