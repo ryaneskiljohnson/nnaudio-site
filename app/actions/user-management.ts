@@ -337,9 +337,11 @@ export async function createUserManagementWithInvite(
     try {
       const serviceSupabase = await createSupabaseServiceRole();
 
-      // Construct the redirect URL to reset password page
-      const baseUrl = "https://cymasphere.com";
-      const redirectTo = `${baseUrl}/reset-password`;
+      // Redirect to this site's reset-password page (same pattern as AuthContext and Cymasphere).
+      // NEXT_PUBLIC_SITE_URL is set per deployment (NNAudio vs Cymasphere) so invitees land on the correct domain.
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || "https://cymasphere.com";
+      const redirectTo = `${baseUrl.replace(/\/$/, "")}/reset-password`;
 
       // Build user metadata with name if provided
       const userMetadata: {
