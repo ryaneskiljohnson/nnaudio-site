@@ -49,6 +49,7 @@ interface SidebarProps {
   $isOpen: boolean;
 }
 
+/* NNAudio theme: primary #6c63ff, accent #4ecdc4 – strong gradient */
 const Sidebar = styled.div<SidebarProps>`
   position: fixed;
   top: 0;
@@ -57,16 +58,17 @@ const Sidebar = styled.div<SidebarProps>`
   width: 280px;
   background: linear-gradient(
     165deg,
-    rgba(15, 14, 23, 0.98) 0%,
-    rgba(27, 25, 40, 0.98) 50%,
-    rgba(35, 32, 52, 0.98) 100%
+    rgba(40, 35, 75, 0.97) 0%,
+    rgba(25, 22, 45, 0.98) 35%,
+    rgba(22, 42, 48, 0.98) 70%,
+    rgba(30, 65, 70, 0.95) 100%
   );
   backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
   padding: 1.5rem 0;
   z-index: 1000;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   transition: transform 0.3s ease;
 
   &::before {
@@ -77,14 +79,14 @@ const Sidebar = styled.div<SidebarProps>`
     right: 0;
     bottom: 0;
     background: radial-gradient(
-        circle at 30% 50%,
-        rgba(108, 99, 255, 0.1),
-        transparent 50%
+        circle at 20% 40%,
+        rgba(108, 99, 255, 0.28),
+        transparent 45%
       ),
       radial-gradient(
-        circle at 70% 30%,
-        rgba(78, 205, 196, 0.1),
-        transparent 50%
+        circle at 85% 70%,
+        rgba(78, 205, 196, 0.25),
+        transparent 45%
       );
     z-index: 0;
     pointer-events: none;
@@ -155,7 +157,7 @@ const MobileHeader = styled.header`
   justify-content: space-between;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(8px);
-  background-color: rgba(15, 14, 23, 0.95);
+  background-color: rgba(18, 18, 18, 0.95);
 
   @media (max-width: 768px) {
     display: flex;
@@ -292,9 +294,10 @@ const MobileMenu = styled(motion.div)`
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
   background: linear-gradient(
     165deg,
-    rgba(15, 14, 23, 0.98) 0%,
-    rgba(27, 25, 40, 0.98) 50%,
-    rgba(35, 32, 52, 0.98) 100%
+    rgba(40, 35, 75, 0.97) 0%,
+    rgba(25, 22, 45, 0.98) 35%,
+    rgba(22, 42, 48, 0.98) 70%,
+    rgba(30, 65, 70, 0.95) 100%
   );
   backdrop-filter: blur(10px);
   align-items: center;
@@ -307,14 +310,14 @@ const MobileMenu = styled(motion.div)`
     right: 0;
     bottom: 0;
     background: radial-gradient(
-        circle at 30% 50%,
-        rgba(108, 99, 255, 0.15),
-        transparent 50%
+        circle at 20% 40%,
+        rgba(108, 99, 255, 0.28),
+        transparent 45%
       ),
       radial-gradient(
-        circle at 70% 30%,
-        rgba(78, 205, 196, 0.15),
-        transparent 50%
+        circle at 85% 70%,
+        rgba(78, 205, 196, 0.25),
+        transparent 45%
       );
     z-index: -1;
     pointer-events: none;

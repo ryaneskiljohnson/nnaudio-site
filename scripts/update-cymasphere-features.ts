@@ -65,7 +65,7 @@ const features = [
   {
     title: "Chord & Scale Editor",
     description: "Comprehensive chord and scale editing with support for 30+ scale types including major modes, harmonic minor modes, melodic minor modes, harmonic major modes, symmetrical scales, and more. Edit chord roots, qualities, extensions, and view real-time chord/scale information with multiple display formats.",
-    image_url: "/images/cymasphere-features/Chord:Scale Window.png",
+    image_url: "/images/cymasphere-features/Chord-Scale Window.png",
   },
   {
     title: "Voice Channel Matrix",

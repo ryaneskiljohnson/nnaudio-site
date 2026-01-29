@@ -116,7 +116,7 @@ Experience music creation where theory and creativity unite, where every chord c
       "/images/cymasphere-features/Voicing View.png",
       "/images/cymasphere-features/Pattern View.png",
       "/images/cymasphere-features/Sequencer Window.png",
-      "/images/cymasphere-features/Chord:Scale Window.png",
+      "/images/cymasphere-features/Chord-Scale Window.png",
       "/images/cymasphere-features/Groove View.png",
       "/images/cymasphere-features/Voice Channel Matrix.png",
     ],
