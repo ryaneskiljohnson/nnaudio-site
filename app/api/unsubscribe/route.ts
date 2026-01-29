@@ -138,10 +138,11 @@ export async function POST(request: NextRequest) {
       }
 
       if (!subscriber) {
-        // Create a new unsubscribed subscriber record
+        // Create a new unsubscribed subscriber record (id required by schema - use crypto.randomUUID)
         const { error: insertError } = await supabase
           .from('subscribers')
           .insert({
+            id: crypto.randomUUID(),
             email: email.toLowerCase(),
             status: 'unsubscribed',
             unsubscribe_date: new Date().toISOString(),

@@ -486,7 +486,7 @@ function TemplatesPage() {
       try {
         setLoading(true);
         const data = await getTemplates();
-        setTemplates(data.templates || []);
+        setTemplates((data.templates || []) as unknown as Template[]);
       } catch (error) {
         console.error('Error loading templates:', error);
         setTemplates([]);

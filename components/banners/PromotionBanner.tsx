@@ -82,7 +82,7 @@ const BannerContent = styled.div<{ $textColor: string; $variant: 'sticky' | 'car
   }
 `;
 
-const BannerTitle = styled.h2<{ $accentColor: string }>`
+const BannerTitle = styled.h2<{ $accentColor: string; $variant?: 'sticky' | 'card' }>`
   font-size: 1.5rem;
   font-weight: 800;
   margin: 0;
@@ -136,7 +136,7 @@ const BannerTextContent = styled.div<{ $variant: 'sticky' | 'card' }>`
   }
 `;
 
-const BannerDescription = styled.p`
+const BannerDescription = styled.p<{ $variant?: 'sticky' | 'card' }>`
   font-size: 0.9rem;
   margin: 0;
   font-weight: 500;
@@ -495,8 +495,8 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
     }
   };
 
-  const handleEmailSubmit = async (email: string) => {
-    if (!singlePlan) return;
+  const handleEmailSubmit = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    if (!singlePlan) return { success: false, error: 'No plan selected' };
     
     setLoading(true);
     try {
@@ -506,8 +506,10 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
         willProvideCard: false,
         email,
       });
+      return { success: true };
     } catch (error) {
       console.error('Checkout error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Checkout failed' };
     } finally {
       setLoading(false);
       setShowEmailModal(false);

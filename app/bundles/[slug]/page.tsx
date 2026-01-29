@@ -863,14 +863,15 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
               </BundlePriceContainer>
               <AddToCartButton
                 onClick={() => {
-                  if (bundle) {
-                    const price = bundle.pricing.lifetime.sale_price ?? bundle.pricing.lifetime.price ?? 0;
+                  if (bundle?.pricing?.lifetime) {
+                    const lifetime = bundle.pricing.lifetime;
+                    const price = lifetime.sale_price ?? lifetime.price ?? 0;
                     addItem({
                       id: bundle.id,
                       name: bundle.name,
                       slug: bundle.slug,
-                      price: bundle.pricing.lifetime.price ?? 0,
-                      sale_price: bundle.pricing.lifetime.sale_price ?? null,
+                      price: lifetime.price ?? 0,
+                      sale_price: lifetime.sale_price ?? undefined,
                       featured_image_url: bundle.featured_image_url,
                       logo_url: bundle.logo_url,
                     });
@@ -1089,13 +1090,14 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
-                if (bundle) {
+                if (bundle?.pricing?.lifetime) {
+                  const lifetime = bundle.pricing.lifetime;
                   addItem({
                     id: bundle.id,
                     name: bundle.name,
                     slug: bundle.slug,
-                    price: bundle.pricing.lifetime.price ?? 0,
-                    sale_price: bundle.pricing.lifetime.sale_price ?? null,
+                    price: lifetime.price ?? 0,
+                    sale_price: lifetime.sale_price ?? undefined,
                     featured_image_url: bundle.featured_image_url,
                     logo_url: bundle.logo_url,
                   });

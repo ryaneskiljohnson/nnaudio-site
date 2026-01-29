@@ -216,7 +216,7 @@ interface Product {
   featured_image_url?: string;
   logo_url?: string;
   backgroundImage?: string;
-  price: number;
+  price: number | string;
   sale_price?: number | null;
 }
 
@@ -227,7 +227,7 @@ interface ProductsSectionProps {
   id: string;
   fetchAllUrl?: string;
   maxCardsPerView?: number;
-  cardSize?: 'normal' | 'large';
+  cardSize?: 'normal' | 'large' | 'medium';
 }
 
 const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, products, id, fetchAllUrl, maxCardsPerView, cardSize = 'normal' }) => {

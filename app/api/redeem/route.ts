@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Find the code
-    const { data: code, error: codeError } = await adminSupabase
+    // Find the code (reseller_codes may not be in generated DB types)
+    const { data: code, error: codeError } = await (adminSupabase as any)
       .from("reseller_codes")
       .select(`
         *,
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Redeem the code
-    const { error: redeemError } = await adminSupabase
+    const { error: redeemError } = await (adminSupabase as any)
       .from("reseller_codes")
       .update({
         redeemed_at: new Date().toISOString(),
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
 
     // Grant the product to the user (similar to product grants)
     // Check if grant already exists
-    const { data: existingGrant } = await adminSupabase
+    const { data: existingGrant } = await (adminSupabase as any)
       .from("product_grants")
       .select("id")
       .eq("user_email", profile.email.toLowerCase())
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
     if (!existingGrant) {
       // Create product grant with reseller information
       const resellerName = (code.resellers as any)?.name || "Unknown Reseller";
-      const { error: grantError } = await adminSupabase
+      const { error: grantError } = await (adminSupabase as any)
         .from("product_grants")
         .insert({
           user_email: profile.email.toLowerCase(),

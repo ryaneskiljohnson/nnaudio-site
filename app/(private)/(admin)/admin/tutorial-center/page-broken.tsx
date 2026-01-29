@@ -1022,7 +1022,7 @@ export default function TutorialCenter() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               style={{ 
-                border: `2px solid ${generatedPlaylist.isDemo ? 'var(--accent)' : 'var(--primary)}`, 
+                border: `2px solid ${generatedPlaylist.isDemo ? 'var(--accent)' : 'var(--primary)'}`, 
                 background: generatedPlaylist.isDemo ? 'rgba(78, 205, 196, 0.05)' : 'rgba(108, 99, 255, 0.05)' 
               }}
             >

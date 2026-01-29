@@ -10,8 +10,8 @@ export async function GET(
     const supabase = await createClient();
     const { slug } = params;
 
-    // Get bundle
-    const { data: bundle, error: bundleError } = await supabase
+    // Get bundle (bundles table may not be in generated DB types)
+    const { data: bundle, error: bundleError } = await (supabase as any)
       .from('bundles')
       .select('*')
       .eq('slug', slug)
@@ -26,10 +26,10 @@ export async function GET(
     }
 
     // Get subscription tiers
-    const { data: tiers, error: tiersError } = await supabase
+    const { data: tiers, error: tiersError } = await (supabase as any)
       .from('bundle_subscription_tiers')
       .select('*')
-      .eq('bundle_id', bundle.id)
+      .eq('bundle_id', (bundle as { id: string }).id)
       .eq('active', true)
       .order('subscription_type', { ascending: true });
 
@@ -38,7 +38,7 @@ export async function GET(
     }
 
     // Get products in bundle
-    const { data: bundleProducts, error: productsError } = await supabase
+    const { data: bundleProducts, error: productsError } = await (supabase as any)
       .from('bundle_products')
       .select(`
         id,
@@ -83,10 +83,10 @@ export async function GET(
       }));
 
     // Calculate total value
-    const totalValue = validProducts.reduce((sum: number, product: any) => {
-      const price = product.sale_price && product.sale_price > 0 
-        ? product.sale_price 
-        : product.price;
+    const totalValue = validProducts.reduce((sum: number, product: Record<string, unknown>) => {
+      const price = (product.sale_price as number) && (product.sale_price as number) > 0
+        ? (product.sale_price as number)
+        : (product.price as number);
       return sum + (price || 0);
     }, 0);
 

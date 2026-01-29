@@ -137,9 +137,9 @@ export async function GET(request: NextRequest) {
     // Check for product grants (free licenses)
     if (profile?.email) {
       console.log(`[My Products] Checking product grants for email: ${profile.email.toLowerCase()}`);
-      // Use service role client to bypass RLS for product_grants query
+      // Use service role client to bypass RLS for product_grants query (table not in generated DB types)
       const adminSupabase = await createSupabaseServiceRole();
-      const { data: productGrants, error: grantsError } = await adminSupabase
+      const { data: productGrants, error: grantsError } = await (adminSupabase as any)
         .from("product_grants")
         .select("product_id")
         .eq("user_email", profile.email.toLowerCase());
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
 
       if (productGrants && productGrants.length > 0) {
         console.log(`[My Products] Found ${productGrants.length} product grants`);
-        productGrants.forEach((grant) => {
+        (productGrants as { product_id: string }[]).forEach((grant) => {
           if (grant.product_id) {
             purchasedProductIds.add(grant.product_id);
           }
@@ -172,9 +172,9 @@ export async function GET(request: NextRequest) {
     // Fetch product details for purchased products
     const productIdsArray = Array.from(purchasedProductIds);
     console.log(`[My Products] Fetching ${productIdsArray.length} products (${purchasedProductIds.size} unique IDs)`);
-    // Use service role client for products query as well
+    // Use service role client for products query (products table may not be in generated DB types)
     const adminSupabase = await createSupabaseServiceRole();
-    const { data: products, error: productsError } = await adminSupabase
+    const { data: products, error: productsError } = await (adminSupabase as any)
       .from("products")
       .select("id, name, slug, category, featured_image_url, short_description, tagline")
       .in("id", productIdsArray)

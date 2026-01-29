@@ -32,7 +32,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import styled, { keyframes, css, createGlobalStyle } from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
-import { getAudience, updateAudience, deleteAudience, getAudienceSubscribers, addAudienceSubscriber, removeAudienceSubscriber } from "@/app/actions/email-campaigns";
+import { getAudience, updateAudience, deleteAudience, getAudienceSubscribers, addAudienceSubscriber, removeAudienceSubscriber, createAudience } from "@/app/actions/email-campaigns";
 
 const spin = keyframes`
   0% { transform: rotate(0deg); }

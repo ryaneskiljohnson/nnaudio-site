@@ -94,7 +94,7 @@ export async function PATCH(
       );
     }
 
-    const { data: reseller, error } = await adminSupabase
+    const { data: reseller, error } = await (adminSupabase as any)
       .from("resellers")
       .update(updateData)
       .eq("id", id)
@@ -155,7 +155,7 @@ export async function DELETE(
     );
 
     // Check if reseller has any redeemed codes
-    const { data: redeemedCodes, error: codesError } = await adminSupabase
+    const { data: redeemedCodes, error: codesError } = await (adminSupabase as any)
       .from("reseller_codes")
       .select("id")
       .eq("reseller_id", id)
@@ -189,7 +189,7 @@ export async function DELETE(
     }
 
     // If no redeemed codes, we can do a hard delete
-    const { error } = await adminSupabase
+    const { error } = await (adminSupabase as any)
       .from("resellers")
       .delete()
       .eq("id", id);

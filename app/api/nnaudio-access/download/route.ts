@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     // Verify user has access to this product
     const { data: profile } = await supabase
       .from("profiles")
-      .select("subscription, customer_id")
+      .select("subscription, customer_id, email")
       .eq("id", userId)
       .single();
 
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
 
     // Check product grants
     if (!hasAccess && profile?.email) {
-      const { data: productGrant } = await supabase
+      const { data: productGrant } = await (supabase as any)
         .from("product_grants")
         .select("product_id")
         .eq("user_email", profile.email.toLowerCase())
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (userProfile?.email) {
-        const { data: nfrLicense } = await supabase
+        const { data: nfrLicense } = await (supabase as any)
           .from("user_management")
           .select("pro")
           .eq("user_email", userProfile.email.toLowerCase())
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the download path belongs to this product
-    const { data: product, error: productError } = await supabase
+    const { data: product, error: productError } = await (supabase as any)
       .from("products")
       .select("downloads")
       .eq("id", productId)

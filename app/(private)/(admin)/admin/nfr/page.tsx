@@ -870,6 +870,29 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleUpdateActive = async (email: string, active: boolean) => {
+    try {
+      setUpdatingEmail(email);
+      const result = await updateUserManagementRecord(email, { active });
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      setRecords(prev =>
+        prev.map(record =>
+          record.user_email === email ? { ...record, active } : record
+        )
+      );
+    } catch (err: unknown) {
+      showNotification('error', err instanceof Error ? err.message : 'Failed to update active status');
+      console.error('Update active error:', err);
+      fetchRecords();
+    } finally {
+      setUpdatingEmail(null);
+    }
+  };
+
   const handleUpdateNotes = async (email: string, newNotes: string) => {
     try {
       setUpdatingEmail(email);
@@ -1812,7 +1835,7 @@ export default function UserManagementPage() {
                       {productGrants[showGrantModal]?.length || 0} product{(productGrants[showGrantModal]?.length || 0) !== 1 ? 's' : ''} granted
                     </div>
                     <Button
-                      $variant="primary"
+                      variant="primary"
                       onClick={() => setShowGrantForm(true)}
                       style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                     >
@@ -2152,7 +2175,7 @@ export default function UserManagementPage() {
                   <ModalActions>
                     <Button
                       type="button"
-                      $variant="secondary"
+                      variant="secondary"
                       onClick={() => {
                         setShowGrantForm(false);
                         setGrantFormProductId('');
@@ -2162,7 +2185,7 @@ export default function UserManagementPage() {
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" $variant="primary" disabled={grantLoading || !grantFormProductId}>
+                    <Button type="submit" variant="primary" disabled={grantLoading || !grantFormProductId}>
                       {grantLoading ? (
                         <>
                           <NNAudioLoadingSpinner size={16} />

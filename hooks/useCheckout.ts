@@ -42,6 +42,7 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
         willProvideCard?: boolean;
         hasHadTrial?: boolean;
         email?: string;
+        isPlanChange?: boolean;
       }
     ): Promise<{ success: boolean; error?: string }> => {
       // Reset error state

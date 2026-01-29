@@ -558,7 +558,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
             >
               {sliderProducts.map((product) => {
                 const bundleSlugs = ['ultimate-bundle', 'producers-arsenal', 'beat-lab'];
-                const isBundle = bundleSlugs.includes(product.slug) || product.hasMultiplePricing;
+                const isBundle = (product.slug && bundleSlugs.includes(product.slug)) || product.hasMultiplePricing;
                 const productData = {
                   id: product.id,
                   name: product.name,

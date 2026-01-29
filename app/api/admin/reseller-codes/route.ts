@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    let query = adminSupabase
+    let query = (adminSupabase as any)
       .from("reseller_codes")
       .select(`
         *,
@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Check for duplicate codes
-    const { data: existingCodes, error: checkError } = await adminSupabase
+    const { data: existingCodes, error: checkError } = await (adminSupabase as any)
       .from("reseller_codes")
       .select("serial_code")
       .in("serial_code", validCodes);
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (existingCodes && existingCodes.length > 0) {
-      const duplicates = existingCodes.map((c) => c.serial_code);
+      const duplicates = existingCodes.map((c: { serial_code: string }) => c.serial_code);
       return NextResponse.json(
         {
           error: "Some codes already exist",
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
       serial_code: code.replace(/[-\s]/g, "").trim().toUpperCase(),
     }));
 
-    const { data: insertedCodes, error: insertError } = await adminSupabase
+    const { data: insertedCodes, error: insertError } = await (adminSupabase as any)
       .from("reseller_codes")
       .insert(codesToInsert)
       .select(`

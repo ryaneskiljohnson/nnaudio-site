@@ -470,7 +470,7 @@ export default function Home() {
             products={orbitalsProducts}
             fetchAllUrl="/api/products?status=active&limit=10000"
             maxCardsPerView={4}
-            cardSize="medium"
+            cardSize="large"
           />
         ) : (
           orbitalsProducts.length === 0 && !loading ? null : (

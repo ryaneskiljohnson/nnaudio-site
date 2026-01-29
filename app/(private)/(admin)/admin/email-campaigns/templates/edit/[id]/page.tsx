@@ -873,7 +873,7 @@ function EditTemplatePage() {
       try {
         setAudiencesLoading(true);
         const data = await getAudiences({ mode: 'light' });
-        setAudiences(data.audiences || []);
+        setAudiences((data.audiences || []) as unknown as Audience[]);
       } catch (error) {
         console.error('Error loading audiences:', error);
         setAudiences([]);
@@ -897,39 +897,39 @@ function EditTemplatePage() {
         setIsLoading(true);
         console.log('Loading template data for ID:', params.id);
         console.log('Making fetch request to:', `/api/email-campaigns/templates/${params.id}`);
-        const data = await getTemplate(params.id);
+        const data = await getTemplate(typeof params.id === 'string' ? params.id : params.id?.[0] ?? '');
         console.log('Raw API response:', data);
         const template = data.template;
         
         if (template) {
           
           console.log('Loaded template data:', template);
-          console.log('Template audiences:', template.audiences);
-          console.log('Template excluded audiences:', template.excludedAudiences);
-          
+          const t = template as { audiences?: string[]; excludedAudiences?: string[]; sender_name?: string; sender_email?: string; reply_to_email?: string; preheader?: string; type?: string; html_content?: string };
+          console.log('Template audiences:', t.audiences ?? template.audienceIds);
+          console.log('Template excluded audiences:', t.excludedAudiences ?? template.excludedAudienceIds);
+
           // Update template data state
           setTemplateData({
             id: template.id,
             name: template.name || '',
             subject: template.subject || '',
-            senderName: template.sender_name || 'Cymasphere Team',
-            senderEmail: template.sender_email || 'support@cymasphere.com',
-            replyToEmail: template.reply_to_email || '',
-            preheader: template.preheader || '',
+            senderName: t.sender_name ?? (template as { senderName?: string }).senderName ?? 'Cymasphere Team',
+            senderEmail: t.sender_email ?? (template as { senderEmail?: string }).senderEmail ?? 'support@cymasphere.com',
+            replyToEmail: t.reply_to_email ?? (template as { replyToEmail?: string }).replyToEmail ?? '',
+            preheader: t.preheader ?? (template as { preheader?: string }).preheader ?? '',
             description: template.description || '',
-            type: template.type || 'custom',
+            type: t.type ?? (template as { type?: string }).type ?? 'custom',
             status: template.status || 'draft',
-            audienceIds: template.audienceIds || [],
-            excludedAudienceIds: template.excludedAudienceIds || []
+            audienceIds: template.audienceIds ?? t.audiences ?? [],
+            excludedAudienceIds: template.excludedAudienceIds ?? t.excludedAudiences ?? []
           });
 
           // Template audience IDs are already stored in templateData.audienceIds and templateData.excludedAudienceIds
           // No need to merge audience objects here since audiences are loaded separately
 
           // Parse HTML content back to email elements if available
-          if (template.htmlContent || template.html_content) {
-            const htmlContent = template.htmlContent || template.html_content;
-            
+          const htmlContent = template.htmlContent ?? t.html_content;
+            if (htmlContent) {
             // Check if template has visual_elements in variables (new format)
             if (template.variables?.visual_elements && Array.isArray(template.variables.visual_elements)) {
               console.log('🎨 Loading template with visual elements:', template.variables.visual_elements.length);

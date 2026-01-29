@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all promotions
-    const { data: promotions, error } = await supabase
+    const { data: promotions, error } = await (supabase as any)
       .from('promotions')
       .select('*')
       .order('priority', { ascending: false })
@@ -320,7 +320,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Promotion ID required' }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('promotions')
       .delete()
       .eq('id', id);

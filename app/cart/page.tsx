@@ -377,7 +377,7 @@ export default function CartPage() {
                     <ItemImage>
                       {(item.featured_image_url || item.logo_url) ? (
                         <Image
-                          src={item.featured_image_url || item.logo_url}
+                          src={(item.featured_image_url || item.logo_url) as string}
                           alt={item.name}
                           fill
                           style={{ objectFit: 'cover' }}

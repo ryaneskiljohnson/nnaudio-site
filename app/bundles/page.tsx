@@ -459,8 +459,8 @@ export default function BundlesPage() {
                         id: bundle.id,
                         name: bundle.name,
                         slug: bundle.slug,
-                        price: bundle.pricing.lifetime.price ?? 0,
-                        sale_price: bundle.pricing.lifetime.sale_price ?? null,
+                        price: bundle.pricing?.lifetime?.price ?? 0,
+                        sale_price: bundle.pricing?.lifetime?.sale_price ?? undefined,
                         featured_image_url: bundle.featured_image_url,
                         logo_url: bundle.logo_url,
                       });
@@ -473,7 +473,7 @@ export default function BundlesPage() {
               ) : (
                 <>
                   <div></div>
-                  <SalePrice>{formatPrice(bundle.pricing.lifetime.price)}</SalePrice>
+                  <SalePrice>{formatPrice(bundle.pricing?.lifetime?.price)}</SalePrice>
                   <AddToCartIconButton
                     onClick={(e) => {
                       e.preventDefault();
@@ -481,8 +481,8 @@ export default function BundlesPage() {
                         id: bundle.id,
                         name: bundle.name,
                         slug: bundle.slug,
-                        price: bundle.pricing.lifetime.price ?? 0,
-                        sale_price: bundle.pricing.lifetime.sale_price ?? null,
+                        price: bundle.pricing?.lifetime?.price ?? 0,
+                        sale_price: bundle.pricing?.lifetime?.sale_price ?? undefined,
                         featured_image_url: bundle.featured_image_url,
                         logo_url: bundle.logo_url,
                       });

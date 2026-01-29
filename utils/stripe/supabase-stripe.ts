@@ -151,7 +151,7 @@ export async function customerPurchasedProFromSupabase(
           subscriptionType = "lifetime";
           
           // If metadata is missing, log it for tracking
-          if (!hasLifetimeMetadata && hasLifetimePriceId) {
+          if (!hasLifetimeMetadata && lifetimePriceId) {
             console.warn(
               `⚠️ Lifetime purchase detected by price ID for customer ${customer_id} ` +
               `(Payment Intent: ${(paymentIntent as any).id}). ` +

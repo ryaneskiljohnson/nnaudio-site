@@ -377,7 +377,7 @@ export async function POST(request: NextRequest) {
       "[validate-receipt] Checking for existing subscription with transaction_id:",
       subscriptionInfo.transactionId
     );
-    const { data: existingSubscription, error: existingError } = await supabase
+    const { data: existingSubscription, error: existingError } = await (supabase as any)
       .from("ios_subscriptions")
       .select("*")
       .eq("transaction_id", subscriptionInfo.transactionId)
@@ -413,7 +413,7 @@ export async function POST(request: NextRequest) {
       console.log(
         "[validate-receipt] Updating existing iOS subscription in database..."
       );
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from("ios_subscriptions")
         .update({
           subscription_type: subscriptionType,
@@ -485,7 +485,7 @@ export async function POST(request: NextRequest) {
     console.log(
       "[validate-receipt] Checking for active iOS subscriptions for user..."
     );
-    const { data: activeSubscription, error: activeSubError } = await supabase
+    const { data: activeSubscription, error: activeSubError } = await (supabase as any)
       .from("ios_subscriptions")
       .select("subscription_type, expires_date")
       .eq("user_id", resolvedUserId)

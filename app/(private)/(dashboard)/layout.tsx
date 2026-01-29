@@ -561,7 +561,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   // Function to handle navigation with router
   const handleNavigation = (
-    e: React.MouseEvent<HTMLAnchorElement>,
+    e: React.MouseEvent<HTMLElement>,
     path: string
   ) => {
     e.preventDefault();

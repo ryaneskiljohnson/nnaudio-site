@@ -587,7 +587,7 @@ export default function PromotionsPage() {
       discount_type: promotion.discount_type,
       discount_value: promotion.discount_value,
       stripe_coupon_code: promotion.stripe_coupon_code,
-      create_stripe_coupon: shouldAllowCouponCreation,
+      create_stripe_coupon: Boolean(shouldAllowCouponCreation),
       priority: promotion.priority,
     });
     setShowModal(true);

@@ -695,7 +695,7 @@ function SubscriberDetailPage() {
           name: data.subscriber.name,
           email: data.subscriber.email,
           status: data.subscriber.status,
-          location: data.subscriber.location || "Unknown",
+          location: (data.subscriber as { location?: string }).location ?? "Unknown",
           engagement: data.subscriber.engagement || "Medium"
         });
         
@@ -872,7 +872,7 @@ function SubscriberDetailPage() {
           name: data.subscriber.name,
           email: data.subscriber.email,
           status: data.subscriber.status,
-          location: data.subscriber.location || "Unknown",
+          location: (data.subscriber as { location?: string }).location ?? "Unknown",
           engagement: data.subscriber.engagement || "Medium"
         });
       } catch (err) {
@@ -927,7 +927,7 @@ function SubscriberDetailPage() {
         name: subscriberData.subscriber.name,
         email: subscriberData.subscriber.email,
         status: subscriberData.subscriber.status,
-        location: subscriberData.subscriber.location || "Unknown",
+        location: (subscriberData.subscriber as { location?: string }).location ?? "Unknown",
         engagement: subscriberData.subscriber.engagement || "Medium"
       });
 
@@ -1108,7 +1108,7 @@ function SubscriberDetailPage() {
               </MetaItem>
               <MetaItem>
                 <FaMapMarkerAlt />
-                {subscriber.location || "Unknown"}
+                {(subscriber as { location?: string }).location ?? "Unknown"}
               </MetaItem>
               <MetaItem>
                 <FaChartLine />

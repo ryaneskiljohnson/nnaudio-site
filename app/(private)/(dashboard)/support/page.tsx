@@ -810,6 +810,7 @@ function SupportPage() {
     let aValue = a[sortField as keyof typeof a];
     let bValue = b[sortField as keyof typeof b];
 
+    if (aValue == null || bValue == null) return 0;
     if (typeof aValue === "string") aValue = aValue.toLowerCase();
     if (typeof bValue === "string") bValue = bValue.toLowerCase();
 
@@ -1125,7 +1126,7 @@ function SupportPage() {
             </TableHeader>
             <TableBody>
               {loadingTickets ? (
-                <TableLoadingRow colSpan={5} />
+                <TableLoadingRow colSpan={5} message="Loading..." />
               ) : filteredTickets.length === 0 ? (
                 <tr>
                   <td
@@ -1768,8 +1769,7 @@ function SupportPage() {
                                 );
                               })}
                             {(!ticketDetails.get(selectedTicketId)?.messages ||
-                              ticketDetails.get(selectedTicketId)!.messages
-                                .length === 0) && (
+                              (ticketDetails.get(selectedTicketId)?.messages?.length ?? 0) === 0) && (
                               <div
                                 style={{
                                   padding: "2rem",

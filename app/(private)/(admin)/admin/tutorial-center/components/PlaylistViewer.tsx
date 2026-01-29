@@ -259,34 +259,27 @@ export default function PlaylistViewer({ playlistId, initialVideoId, videos: pro
   const pollDatabaseProgress = useCallback(async () => {
     try {
       const userId = (typeof window !== 'undefined' && localStorage.getItem('userId')) || '900f11b8-c901-49fd-bfab-5fafe984ce72';
-      const progressData = await getVideoProgress(userId);
-      
-      // Convert array to object format
-      const prog: Record<string, any> = {};
-      if (Array.isArray(progressData)) {
-        progressData.forEach((p: any) => {
-          prog[p.video_id] = {
-            progress: p.progress_percentage || 0,
-            completed: p.completed || false,
-          };
-        });
-      } else if (progressData) {
-        prog[progressData.video_id] = {
-          progress: progressData.progress_percentage || 0,
-          completed: progressData.completed || false,
+      const result = await getVideoProgress(userId);
+      const raw = result?.progress ?? {};
+      const prog: Record<string, { progress: number; completed: boolean }> = {};
+      for (const [vid, p] of Object.entries(raw)) {
+        const entry = p as { progress_percentage?: number; progress?: number; completed?: boolean };
+        prog[vid] = {
+          progress: entry.progress_percentage ?? entry.progress ?? 0,
+          completed: entry.completed ?? false,
         };
       }
-        
+
         // Update progress map with fresh database data
         setProgressMap((prev) => {
           const newMap = { ...prev };
           let hasChanges = false;
-          
+
           videos.forEach((video) => {
-            const youtubeId = video.youtube_video_id;
-            if (youtubeId && prog[youtubeId]) {
-              const dbProgress = prog[youtubeId].progress || 0;
-              const dbCompleted = !!prog[youtubeId].completed;
+            const key = video.id;
+            if (prog[key]) {
+              const dbProgress = prog[key].progress || 0;
+              const dbCompleted = !!prog[key].completed;
               const currentProgress = prev[video.id]?.progress || 0;
               const currentCompleted = prev[video.id]?.completed || false;
               
@@ -342,8 +335,8 @@ export default function PlaylistViewer({ playlistId, initialVideoId, videos: pro
       
       console.log('Marking video as complete:', { userId, videoId, youtubeVideoId: video.youtube_video_id, progress: 100, completed: true });
       
-      await updateVideoProgress(videoId, {
-        progress_percentage: 100,
+      await updateVideoProgress(userId, videoId, {
+        progress: 100,
         completed: true,
       });
 
@@ -373,18 +366,11 @@ export default function PlaylistViewer({ playlistId, initialVideoId, videos: pro
   }, [contextMenu]);
 
   // Get the current progress for a video, prioritizing real-time updates over saved progress
-  const getVideoProgress = useCallback((video: Video) => {
+  const getVideoProgressForDisplay = useCallback((video: Video): { progress: number; completed: boolean } => {
     const savedProgress = progressMap[video.id];
     if (!savedProgress) return { progress: 0, completed: false };
-    
-    // If this is the currently selected video, use real-time progress
-    if (selectedVideo && selectedVideo.id === video.id) {
-      return savedProgress; // This will be updated by handleProgressUpdate
-    }
-    
-    // For other videos, use saved progress (always forward-only)
     return savedProgress;
-  }, [progressMap, selectedVideo]);
+  }, [progressMap]);
 
   useEffect(() => {
     if (playlistId) {
@@ -419,48 +405,31 @@ export default function PlaylistViewer({ playlistId, initialVideoId, videos: pro
         const userId =
           (typeof window !== 'undefined' && localStorage.getItem('userId')) ||
           '900f11b8-c901-49fd-bfab-5fafe984ce72';
-        const progressData = await getVideoProgress(userId);
-        
-        console.log('Progress data received from DATABASE (source of truth):', progressData);
-        
-        // Create a mapping from database video IDs to progress data - DATABASE IS SOURCE OF TRUTH
-        const map: Record<string, { progress: number; completed: boolean }> = {};
-        const prog: Record<string, any> = {};
-        
-        // Convert array to object format
-        if (Array.isArray(progressData)) {
-          progressData.forEach((p: any) => {
-            prog[p.video_id] = {
-              progress: p.progress_percentage || 0,
-              completed: p.completed || false,
-            };
-          });
-        } else if (progressData) {
-          prog[progressData.video_id] = {
-            progress: progressData.progress_percentage || 0,
-            completed: progressData.completed || false,
+        const result = await getVideoProgress(userId);
+        const raw = result?.progress ?? {};
+        console.log('Progress data received from DATABASE (source of truth):', result);
+
+        const prog: Record<string, { progress: number; completed: boolean }> = {};
+        for (const [vid, p] of Object.entries(raw)) {
+          const entry = p as { progress_percentage?: number; progress?: number; completed?: boolean };
+          prog[vid] = {
+            progress: entry.progress_percentage ?? entry.progress ?? 0,
+            completed: entry.completed ?? false,
           };
         }
-        
         console.log('Raw progress data from DATABASE:', prog);
-        
-        // Get the current videos to create the mapping
+
         const currentVideos = videos.length > 0 ? videos : await fetchCurrentVideos();
         console.log('Current videos for mapping:', currentVideos);
-        
+
+        const map: Record<string, { progress: number; completed: boolean }> = {};
         if (currentVideos && currentVideos.length > 0) {
           currentVideos.forEach((video) => {
-            const youtubeId = video.youtube_video_id;
-            console.log(`Mapping video ${video.id} (${video.title}) with YouTube ID ${youtubeId}`);
-            if (youtubeId && prog[youtubeId]) {
-              // Map database video ID to progress data using YouTube ID - DATABASE IS SOURCE OF TRUTH
-              map[video.id] = { 
-                progress: prog[youtubeId].progress || 0, 
-                completed: !!prog[youtubeId].completed 
+            if (prog[video.id]) {
+              map[video.id] = {
+                progress: prog[video.id].progress ?? 0,
+                completed: !!prog[video.id].completed,
               };
-              console.log(`Mapped ${video.id} -> progress: ${prog[youtubeId].progress}, completed: ${prog[youtubeId].completed} (from DATABASE)`);
-            } else {
-              console.log(`No progress found for video ${video.id} with YouTube ID ${youtubeId}`);
             }
           });
         }
@@ -478,7 +447,7 @@ export default function PlaylistViewer({ playlistId, initialVideoId, videos: pro
           return propVideos;
         }
         
-        const videosData = await getPlaylistVideos(playlistId);
+        const videosData = await getPlaylistVideos(playlistId ?? '');
         return videosData.videos || [];
       } catch (e) {
         console.error('Error fetching current videos:', e);
@@ -548,7 +517,7 @@ export default function PlaylistViewer({ playlistId, initialVideoId, videos: pro
                 description: v.description ?? full.description,
                 duration: candidateDuration ?? full.duration ?? 300,
                 video_order: candidateOrder ?? idx + 1,
-                youtube_video_id: candidateYoutubeId ?? full.youtube_video_id,
+                youtube_video_id: candidateYoutubeId ?? (full as { youtube_video_id?: string; youtube_id?: string }).youtube_video_id ?? (full as { youtube_id?: string }).youtube_id,
               };
             } catch (e) {
               console.error("Failed to hydrate personalized video", v.id, e);
@@ -584,11 +553,11 @@ export default function PlaylistViewer({ playlistId, initialVideoId, videos: pro
       
       // For regular playlists, fetch from API
       // Fetch playlist details
-      const playlistData = await getPlaylist(playlistId);
+      const playlistData = await getPlaylist(playlistId ?? '');
       setPlaylist(playlistData);
 
       // Fetch playlist videos
-      const videosData = await getPlaylistVideos(playlistId);
+      const videosData = await getPlaylistVideos(playlistId ?? '');
       console.log('Raw videos response:', videosData);
       const videosArray = videosData.videos || [];
       console.log('Processed videos array:', videosArray);
@@ -635,34 +604,18 @@ export default function PlaylistViewer({ playlistId, initialVideoId, videos: pro
     // DATABASE IS SOURCE OF TRUTH - fetch fresh progress when video is selected
     try {
       const userId = (typeof window !== 'undefined' && localStorage.getItem('userId')) || '900f11b8-c901-49fd-bfab-5fafe984ce72';
-      const progressData = await getVideoProgress(userId);
-      
-      // Convert array to object format
-      const prog: Record<string, any> = {};
-      if (Array.isArray(progressData)) {
-        progressData.forEach((p: any) => {
-          prog[p.video_id] = {
-            progress: p.progress_percentage || 0,
-            completed: p.completed || false,
-          };
-        });
-      } else if (progressData) {
-        prog[progressData.video_id] = {
-          progress: progressData.progress_percentage || 0,
-          completed: progressData.completed || false,
-        };
+      const result = await getVideoProgress(userId);
+      const raw = result?.progress ?? {};
+      const prog: Record<string, { progress: number; completed: boolean }> = {};
+      for (const [vid, p] of Object.entries(raw)) {
+        const entry = p as { progress_percentage?: number; progress?: number; completed?: boolean };
+        prog[vid] = { progress: entry.progress_percentage ?? entry.progress ?? 0, completed: entry.completed ?? false };
       }
-      
-      // Update progress map with fresh database data
       setProgressMap((prev) => {
         const newMap = { ...prev };
         videos.forEach((v) => {
-          const youtubeId = v.youtube_video_id;
-          if (youtubeId && prog[youtubeId]) {
-            newMap[v.id] = { 
-              progress: prog[youtubeId].progress || 0, 
-              completed: !!prog[youtubeId].completed 
-            };
+          if (prog[v.id]) {
+            newMap[v.id] = { progress: prog[v.id].progress ?? 0, completed: !!prog[v.id].completed };
           }
         });
         return newMap;
@@ -783,8 +736,8 @@ export default function PlaylistViewer({ playlistId, initialVideoId, videos: pro
       <Sidebar>
         <PlaylistTitle>{playlist?.title || "Playlist Videos"}</PlaylistTitle>
         {Array.isArray(videos) && videos.map((video) => {
-          const thumbnailUrl = getYouTubeThumbnail(video.youtube_video_id);
-          const videoProgress = getVideoProgress(video);
+          const thumbnailUrl = getYouTubeThumbnail(video.youtube_video_id ?? '');
+          const videoProgress = getVideoProgressForDisplay(video);
           const p = videoProgress.progress;
           const isCompleted = videoProgress.completed;
           // Only log for debugging when needed
@@ -831,10 +784,10 @@ export default function PlaylistViewer({ playlistId, initialVideoId, videos: pro
             {selectedVideo.youtube_video_id ? (
               <VideoPlayer
                 key={selectedVideo.youtube_video_id}
-                videoId={selectedVideo.youtube_video_id}
+                videoId={selectedVideo.youtube_video_id ?? ''}
                 title={selectedVideo.title}
                 description={selectedVideo.description}
-                playlistId={playlistId}
+                playlistId={playlistId ?? ''}
                 onProgressUpdate={handleProgressUpdate}
               />
             ) : (

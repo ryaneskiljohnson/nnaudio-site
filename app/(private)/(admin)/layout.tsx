@@ -608,7 +608,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, [user]);
 
   const handleNavigation = (
-    e: React.MouseEvent<HTMLAnchorElement>,
+    e: React.MouseEvent<HTMLElement>,
     href: string
   ) => {
     e.preventDefault();

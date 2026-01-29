@@ -398,6 +398,7 @@ interface PricingCardProps {
   compact?: boolean;
   hideButton?: boolean;
   variant?: "default" | "change_plan";
+  showTrialOptions?: boolean;
 }
 
 export default function PricingCard({
@@ -578,10 +579,11 @@ export default function PricingCard({
     ];
   }, [t]);
 
-  // Check if this is the current plan
+  // Check if this is the current plan (subscription can be PlanType or "none" at runtime)
+  const subscription = (user?.profile as { subscription?: string } | undefined)?.subscription;
   const isCurrentPlan =
     user?.profile?.subscription === billingPeriod &&
-    user.profile.subscription !== "none";
+    subscription !== "none";
 
 
   // Handle checkout

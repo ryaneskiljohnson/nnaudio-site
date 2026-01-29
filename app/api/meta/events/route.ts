@@ -129,7 +129,7 @@ async function logEventToSupabase(
 
     // Try to insert into meta_conversion_events table
     // If table doesn't exist, just log to console
-    const { error: insertError } = await supabase
+    const { error: insertError } = await (supabase as any)
       .from('meta_conversion_events')
       .insert({
         event_name: request.eventName,
@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Log to Supabase (before sending to Meta)
-    await logEventToSupabase(body, request, 'success');
+    await logEventToSupabase(metaEvent as MetaEvent, body, 'success');
 
     // In test mode, just log and return success
     if (TEST_MODE && body.testEventCode) {
@@ -315,10 +315,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Send to Meta API
-    const result = await sendToMetaAPI([metaEvent], body.testEventCode);
+    const result = await sendToMetaAPI([metaEvent as MetaEvent], body.testEventCode);
 
     if (!result.success) {
-      await logEventToSupabase(body, request, 'failed', result.error);
+      await logEventToSupabase(metaEvent as MetaEvent, body, 'failed', result.error);
       return NextResponse.json(
         { error: result.error || 'Failed to send event to Meta' },
         { status: 500 }

@@ -13,7 +13,7 @@ export { listMedia, uploadImage, uploadMedia, previewEmail } from './media';
 
 // Export types
 export type { GetCampaignsParams, Campaign, GetCampaignsResponse, GetCampaignResponse } from './campaigns';
-export type { GetTemplatesParams, Template, GetTemplatesResponse, GetTemplateResponse } from './templates';
+export type { GetTemplatesParams, EmailTemplate as Template, GetTemplatesResponse, GetTemplateResponse } from './templates';
 export type { GetAudiencesParams, EmailAudience, GetAudiencesResponse, CreateAudienceParams, CreateAudienceResponse, GetAudienceResponse, UpdateAudienceParams, UpdateAudienceResponse } from './audiences';
 export type { GetAudienceSubscribersParams, AudienceSubscriber, GetAudienceSubscribersResponse, AddAudienceSubscriberParams, AddAudienceSubscriberResponse, GetSubscriberAudienceMembershipsResponse } from './audience-subscribers';
 export type { GetSubscribersParams, Subscriber, GetSubscribersResponse, GetSubscriberResponse } from './subscribers';

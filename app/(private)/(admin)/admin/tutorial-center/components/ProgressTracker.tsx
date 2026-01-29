@@ -219,22 +219,13 @@ export default function ProgressTracker({ className }: ProgressTrackerProps) {
       if (!user) return;
 
       try {
-        const progressData = await getVideoProgress(user.id);
-        // Handle both array and object responses
-        if (Array.isArray(progressData)) {
-          // Convert array to object format
-          const progressObj: Record<string, any> = {};
-          progressData.forEach((p: any) => {
-            progressObj[p.video_id] = {
-              progress: p.progress_percentage || 0,
-              completed: p.completed || false,
-              lastWatched: p.last_watched || new Date().toISOString(),
-            };
-          });
-          setProgressData({ progress: progressObj });
-        } else {
-          setProgressData({ progress: { [progressData.video_id]: progressData } });
-        }
+        const result = await getVideoProgress(user.id);
+        const defaultUserPath = { theoryLevel: '', techLevel: '', appMode: '', musicalGoals: [] as string[] };
+        setProgressData({
+          progress: result?.progress ?? {},
+          totalProgress: result?.totalProgress ?? 0,
+          userPath: result?.userPath ?? defaultUserPath,
+        });
       } catch (error) {
         console.error('Failed to fetch progress:', error);
       } finally {

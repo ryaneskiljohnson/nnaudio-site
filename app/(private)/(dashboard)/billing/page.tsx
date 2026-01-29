@@ -662,7 +662,7 @@ export default function BillingPage() {
   });
 
   // Get subscription data from user object and cast to extended profile type
-  const userSubscription = user.profile as ProfileWithSubscriptionDetails;
+  const userSubscription = user.profile as unknown as ProfileWithSubscriptionDetails;
 
   // State for bundle subscriptions
   const [bundleSubscriptions, setBundleSubscriptions] = useState<any[]>([]);
@@ -989,9 +989,9 @@ export default function BillingPage() {
       if (
         selectedBillingPeriod === "monthly" ||
         selectedBillingPeriod === "annual" ||
-        selectedBillingPeriod === "lifetime"
+        (selectedBillingPeriod as string) === "lifetime"
       ) {
-        validPlanType = selectedBillingPeriod;
+        validPlanType = (selectedBillingPeriod as string) as "monthly" | "annual" | "lifetime";
       } else {
         // Default to monthly for 'admin', 'none', or any other invalid types
         validPlanType = "monthly";
@@ -1011,9 +1011,9 @@ export default function BillingPage() {
       if (
         selectedBillingPeriod === "monthly" ||
         selectedBillingPeriod === "annual" ||
-        selectedBillingPeriod === "lifetime"
+        (selectedBillingPeriod as string) === "lifetime"
       ) {
-        validPlanType = selectedBillingPeriod;
+        validPlanType = (selectedBillingPeriod as string) as "monthly" | "annual" | "lifetime";
       } else {
         // Default to monthly for any other invalid types
         validPlanType = "monthly";
@@ -1903,7 +1903,7 @@ export default function BillingPage() {
           <PlanSelectionModal
             isOpen={showPlanModal}
             onClose={() => setShowPlanModal(false)}
-            profile={userSubscription}
+            profile={user.profile as Parameters<typeof PlanSelectionModal>[0]['profile']}
             onIntervalChange={handleIntervalChange}
             onConfirm={handleConfirmPlanChange}
             formatDate={formatDate}
@@ -1950,7 +1950,6 @@ export default function BillingPage() {
             yearlyDiscount={yearlyDiscount || undefined}
             lifetimeDiscount={lifetimeDiscount || undefined}
             onCardToggleChange={handleCardToggleChange}
-            isPlanChangeLoading={isPlanChangeLoading}
           />
         )}
       </AnimatePresence>

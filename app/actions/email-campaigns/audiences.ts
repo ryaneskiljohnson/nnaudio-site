@@ -91,7 +91,7 @@ export async function getAudiences(
         return audiences || [];
       }
     })() : await Promise.all(
-      (audiences || []).map(async (audience) => {
+      ((audiences || []) as unknown as { id: string; name: string; subscriber_count: number | null; filters: any }[]).map(async (audience) => {
         let actualCount = 0;
 
         if (EMAIL_DEBUG) {
@@ -207,10 +207,10 @@ export async function getAudiences(
 
         if (EMAIL_DEBUG) {
           console.log(
-            `✅ Final result for "${audience.name}": subscriber_count=${result.subscriber_count}`
+            `✅ Final result for "${audience.name}": subscriber_count=${actualCount}`
           );
         }
-        return result;
+        return { ...audience, subscriber_count: actualCount } as EmailAudience;
       })
     );
 
@@ -286,6 +286,9 @@ export async function createAudience(
       initialCount = await calculateSubscriberCount(supabase, filters || {});
     }
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Authentication required');
+
     // Create new audience
     const { data: audience, error } = await supabase
       .from('email_audiences')
@@ -304,7 +307,7 @@ export async function createAudience(
       throw new Error('Failed to create audience');
     }
 
-    return { audience };
+    return { audience: { ...audience, subscriber_count: audience?.subscriber_count ?? 0 } as EmailAudience };
   } catch (error) {
     console.error('Error in createAudience:', error);
     throw error;
@@ -340,7 +343,7 @@ export async function getAudience(
       throw new Error('Failed to fetch audience');
     }
 
-    return { audience };
+    return { audience: { ...audience, subscriber_count: audience?.subscriber_count ?? 0 } as EmailAudience };
   } catch (error) {
     console.error('Error in getAudience:', error);
     throw error;
@@ -396,7 +399,7 @@ export async function updateAudience(
       throw new Error('Failed to update audience');
     }
 
-    return { audience };
+    return { audience: { ...audience, subscriber_count: audience?.subscriber_count ?? 0 } as EmailAudience };
   } catch (error) {
     console.error('Error in updateAudience:', error);
     throw error;

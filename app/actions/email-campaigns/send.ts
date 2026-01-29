@@ -43,6 +43,7 @@ export interface SendCampaignResponse {
   status?: string;
   message?: string;
   campaignId?: string;
+  scheduleType?: string;
   stats?: {
     total?: number;
     sent?: number;

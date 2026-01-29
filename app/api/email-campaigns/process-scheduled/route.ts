@@ -398,8 +398,8 @@ export async function POST(request: NextRequest) {
           console.log(`🚀 Using PARALLEL batch sending mode (${PARALLEL_BATCH_SIZE} emails sent concurrently)`);
           console.log(`   Personalization: ${hasPersonalization ? 'ENABLED (each email personalized)' : 'DISABLED (same content for all)'}`);
           
-          // Split subscribers into parallel batches
-          const batches: typeof subscribersResult[][] = [];
+          // Split subscribers into parallel batches (each batch is Subscriber[])
+          const batches: (typeof subscribersResult)[] = [];
           for (let i = 0; i < subscribersResult.length; i += PARALLEL_BATCH_SIZE) {
             batches.push(subscribersResult.slice(i, i + PARALLEL_BATCH_SIZE));
           }

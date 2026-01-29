@@ -1366,7 +1366,7 @@ export default function AdminCRM() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [previousSearchTerm, setPreviousSearchTerm] = useState("");
   const [subscriptionFilter, setSubscriptionFilter] = useState("all");
-  const [sortField, setSortField] = useState<keyof UserData>("createdAt");
+  const [sortField, setSortField] = useState<keyof UserData | "supportTickets">("createdAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -1819,7 +1819,7 @@ export default function AdminCRM() {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
-      setSortField(field as keyof UserData);
+      setSortField(field as keyof UserData | "supportTickets");
       setSortDirection("asc");
     }
     setCurrentPage(1); // Reset to first page when sorting changes
@@ -2224,7 +2224,7 @@ export default function AdminCRM() {
         console.error("Error fetching support tickets:", result.error);
         setSupportTickets([]);
       } else {
-        setSupportTickets(result.tickets);
+        setSupportTickets(result.tickets.map((t: { id: string; ticket_number: string; subject: string; status: string; created_at: string; updated_at: string; priority?: string }) => ({ ...t, priority: t.priority ?? 'normal' })));
       }
     } catch (error) {
       console.error("Error fetching support tickets:", error);

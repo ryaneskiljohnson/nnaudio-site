@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data: codes, error } = await adminSupabase
+    const { data: codes, error } = await (adminSupabase as any)
       .from("reseller_codes")
       .select(`
         serial_code,

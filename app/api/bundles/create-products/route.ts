@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
   try {
     const adminSupabase = await createAdminClient();
 
-    // Fetch all active bundles with their subscription tiers
-    const { data: bundles, error: bundlesError } = await adminSupabase
+    // Fetch all active bundles with their subscription tiers (tables may not be in generated DB types)
+    const { data: bundles, error: bundlesError } = await (adminSupabase as any)
       .from('bundles')
       .select(`
         *,
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if product already exists for this bundle
-      const { data: existingProduct } = await adminSupabase
+      const { data: existingProduct } = await (adminSupabase as any)
         .from('products')
         .select('id, stripe_product_id, stripe_price_id')
         .eq('slug', bundle.slug)
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
           ...tiers.map((t: any) => t.sale_price || t.price)
         );
 
-        const { data: newProduct, error: productError } = await adminSupabase
+        const { data: newProduct, error: productError } = await (adminSupabase as any)
           .from('products')
           .insert({
             name: bundle.name,
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Update product with Stripe product ID
-        await adminSupabase
+        await (adminSupabase as any)
           .from('products')
           .update({
             stripe_product_id: stripeProduct.id,
@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
           const stripePrice = await stripe.prices.create(priceData);
 
           // Store the Stripe price ID in the bundle_subscription_tiers table
-          await adminSupabase
+          await (adminSupabase as any)
             .from('bundle_subscription_tiers')
             .update({
               stripe_price_id: stripePrice.id,
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
 
           // Update product with Stripe price ID (use lifetime tier as primary, or first tier)
           if (tier.subscription_type === 'lifetime' || !existingProduct?.stripe_price_id) {
-            await adminSupabase
+            await (adminSupabase as any)
               .from('products')
               .update({
                 stripe_price_id: stripePrice.id,
@@ -247,7 +247,7 @@ export async function POST(request: NextRequest) {
       // For now, let's add metadata to track the relationship
       
       // Get all products in the bundle
-      const { data: bundleProducts } = await adminSupabase
+      const { data: bundleProducts } = await (adminSupabase as any)
         .from('bundle_products')
         .select('product_id')
         .eq('bundle_id', bundle.id);
