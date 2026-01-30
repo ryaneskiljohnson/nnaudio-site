@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
+// Disable caching so product updates (images, prices, etc.) show immediately
+export const dynamic = 'force-dynamic';
+
 // GET /api/products/slug/[slug] - Get product by slug
 export async function GET(
   request: NextRequest,
@@ -10,7 +13,7 @@ export async function GET(
     const supabase = await createClient();
     const { slug } = params;
 
-    const { data: product, error } = await supabase
+    const { data: product, error } = await (supabase as any)
       .from('products')
       .select(`
         *,
@@ -27,7 +30,7 @@ export async function GET(
     }
 
     // Fetch related products separately
-    const { data: relationships, error: relError } = await supabase
+    const { data: relationships, error: relError } = await (supabase as any)
       .from('product_relationships')
       .select(`
         id,
@@ -58,12 +61,12 @@ export async function GET(
       : 0;
 
     // Increment view count (fire and forget)
-    supabase
+    (supabase as any)
       .from('products')
       .update({ view_count: (product.view_count || 0) + 1 })
       .eq('id', product.id)
       .then(() => console.log(`Incremented view count for product: ${slug}`))
-      .catch((err) => console.error('Error incrementing view count:', err));
+      .catch((err: unknown) => console.error('Error incrementing view count:', err));
 
     return NextResponse.json({
       success: true,

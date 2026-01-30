@@ -1645,8 +1645,8 @@ interface Ticket {
   status: string;
   user_id: string;
   user_email: string | null;
-  user_first_name: string | null;
-  user_last_name: string | null;
+  user_first_name?: string | null;
+  user_last_name?: string | null;
   user_subscription?: string;
   user_has_nfr?: boolean;
   last_reply_is_admin?: boolean;
@@ -1804,7 +1804,8 @@ function SupportTicketsPage() {
     try {
       const result = await getSupportTicketAdmin(ticketId);
       if (result.ticket) {
-        setTicketDetails(prev => new Map(prev).set(ticketId, result.ticket!));
+        const t = result.ticket as Ticket;
+        setTicketDetails(prev => new Map(prev).set(ticketId, { ...t, user_first_name: t.user_first_name ?? null, user_last_name: t.user_last_name ?? null }));
       }
     } catch (error) {
       console.error("Error fetching ticket details:", error);
@@ -1942,9 +1943,10 @@ function SupportTicketsPage() {
     let aValue = a[sortField as keyof typeof a];
     let bValue = b[sortField as keyof typeof b];
     
+    if (aValue == null || bValue == null) return 0;
     if (typeof aValue === 'string') aValue = aValue.toLowerCase();
     if (typeof bValue === 'string') bValue = bValue.toLowerCase();
-    
+
     if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
     if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
     return 0;
@@ -2153,14 +2155,14 @@ function SupportTicketsPage() {
             container.scrollTop = container.scrollHeight;
             // Re-check scroll position after auto-scroll
             setTimeout(() => {
-              handleScroll(selectedTicketId, container);
+              if (selectedTicketId) handleScroll(selectedTicketId, container);
             }, 100);
           }, 100);
         }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticketDetails.get(selectedTicketId)?.messages?.length, selectedTicketId]);
+  }, [ticketDetails.get(selectedTicketId ?? '')?.messages?.length, selectedTicketId]);
 
   // Close status dropdown when clicking outside
   useEffect(() => {
@@ -3283,7 +3285,7 @@ function SupportTicketsPage() {
                               </div>
                             </Message>
                           ))}
-                          {(!ticketDetails.get(selectedTicketId)?.messages || ticketDetails.get(selectedTicketId)!.messages.length === 0) && (
+                          {(!ticketDetails.get(selectedTicketId ?? '')?.messages || (ticketDetails.get(selectedTicketId ?? '')?.messages?.length ?? 0) === 0) && (
                             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                               No messages yet. Start the conversation below.
                             </div>
@@ -3291,7 +3293,7 @@ function SupportTicketsPage() {
                         </div>
 
                         <MessageInputWrapper style={{ padding: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', flexShrink: 0 }}>
-                          {selectedTicketId && ticketDetails.get(selectedTicketId)?.messages && ticketDetails.get(selectedTicketId)!.messages!.length > 0 && (
+                          {selectedTicketId && (ticketDetails.get(selectedTicketId)?.messages?.length ?? 0) > 0 && (
                             <JumpToCurrentButton
                               $visible={!!isScrolledUp.get(selectedTicketId)}
                               onClick={() => {

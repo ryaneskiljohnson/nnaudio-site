@@ -154,10 +154,10 @@ export async function getMyProducts(): Promise<{
       }
     }
 
-    // Check for product grants (free licenses)
+    // Check for product grants (free licenses) — product_grants not in generated DB types
     if (profile?.email) {
       const adminSupabase = await createSupabaseServiceRole();
-      const { data: productGrants, error: grantsError } = await adminSupabase
+      const { data: productGrants, error: grantsError } = await (adminSupabase as any)
         .from("product_grants")
         .select("product_id")
         .eq("user_email", profile.email.toLowerCase());
@@ -167,7 +167,7 @@ export async function getMyProducts(): Promise<{
       }
 
       if (productGrants && productGrants.length > 0) {
-        productGrants.forEach((grant) => {
+        (productGrants as { product_id: string }[]).forEach((grant) => {
           if (grant.product_id) {
             purchasedProductIds.add(grant.product_id);
           }
@@ -184,10 +184,10 @@ export async function getMyProducts(): Promise<{
       };
     }
 
-    // Fetch product details for purchased products
+    // Fetch product details for purchased products (products table may not be in generated DB types)
     const productIdsArray = Array.from(purchasedProductIds);
     const adminSupabase = await createSupabaseServiceRole();
-    const { data: products, error: productsError } = await adminSupabase
+    const { data: products, error: productsError } = await (adminSupabase as any)
       .from("products")
       .select("id, name, slug, category, featured_image_url, short_description, tagline")
       .in("id", productIdsArray)
@@ -205,7 +205,7 @@ export async function getMyProducts(): Promise<{
 
     return {
       success: true,
-      products: (products || []) as Product[],
+      products: (products ?? []) as unknown as Product[],
       source: "purchases",
     };
   } catch (error) {

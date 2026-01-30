@@ -216,7 +216,7 @@ interface Product {
   featured_image_url?: string;
   logo_url?: string;
   backgroundImage?: string;
-  price: number;
+  price: number | string;
   sale_price?: number | null;
 }
 
@@ -227,7 +227,7 @@ interface ProductsSectionProps {
   id: string;
   fetchAllUrl?: string;
   maxCardsPerView?: number;
-  cardSize?: 'normal' | 'large';
+  cardSize?: 'normal' | 'large' | 'medium';
 }
 
 const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, products, id, fetchAllUrl, maxCardsPerView, cardSize = 'normal' }) => {
@@ -357,7 +357,7 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
             short_description: p.short_description,
             description: p.description,
             category: p.category,
-            image: p.logo_url || p.featured_image_url || '/images/nnaud-io/NNPurp1.png',
+            image: p.logo_url || p.featured_image_url || '/images/nnaud-io/NNPurp1.webp',
             featured_image_url: p.featured_image_url,
             logo_url: p.logo_url,
             backgroundImage: p.background_image_url || p.background_video_url || '',
@@ -442,7 +442,7 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
                 sale_price: product.sale_price,
                 featured_image_url: product.featured_image_url || undefined,
                 logo_url: product.logo_url || undefined,
-                image: product.image || product.featured_image_url || product.logo_url || '/images/nnaud-io/NNPurp1.png',
+                image: product.image || product.featured_image_url || product.logo_url || '/images/nnaud-io/NNPurp1.webp',
               };
 
               return (
@@ -480,7 +480,7 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
                   sale_price: product.sale_price,
                   featured_image_url: product.featured_image_url || undefined,
                   logo_url: product.logo_url || undefined,
-                  image: product.image || product.featured_image_url || product.logo_url || '/images/nnaud-io/NNPurp1.png',
+                  image: product.image || product.featured_image_url || product.logo_url || '/images/nnaud-io/NNPurp1.webp',
                 };
 
                 return (

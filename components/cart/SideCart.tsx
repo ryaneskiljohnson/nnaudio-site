@@ -384,14 +384,14 @@ export default function SideCart({ isOpen, onClose }: SideCartProps) {
                     <CartItemCard key={item.id}>
                       <ItemImage>
                           <Image
-                          src={item.featured_image_url || item.logo_url || '/images/nnaud-io/NNPurp1.png'}
+                          src={item.featured_image_url || item.logo_url || '/images/nnaud-io/NNPurp1.webp'}
                             alt={item.name}
                             fill
                             style={{ objectFit: 'cover' }}
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
-                            if (target.src !== '/images/nnaud-io/NNPurp1.png') {
-                              target.src = '/images/nnaud-io/NNPurp1.png';
+                            if (target.src !== '/images/nnaud-io/NNPurp1.webp') {
+                              target.src = '/images/nnaud-io/NNPurp1.webp';
                             }
                           }}
                         />

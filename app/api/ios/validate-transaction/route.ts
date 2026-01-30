@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
     if (!validationResult.valid) {
       const errorDetails =
         validationResult.error ||
-        validationResult.errorMessage ||
+        (validationResult as { errorMessage?: string }).errorMessage ||
         "Unknown validation error occurred";
       console.error(
         "[validate-transaction] ERROR - Apple validation failed:",
@@ -276,7 +276,7 @@ export async function POST(request: NextRequest) {
       "[validate-transaction] Checking for existing subscription with transaction_id:",
       subscriptionInfo.transactionId
     );
-    const { data: existingSubscription, error: existingError } = await supabase
+    const { data: existingSubscription, error: existingError } = await (supabase as any)
       .from("ios_subscriptions")
       .select("*")
       .eq("transaction_id", subscriptionInfo.transactionId)
@@ -354,7 +354,7 @@ export async function POST(request: NextRequest) {
       console.log(
         "[validate-transaction] Creating new iOS subscription in database..."
       );
-      const { error: insertError } = await supabase
+      const { error: insertError } = await (supabase as any)
         .from("ios_subscriptions")
         .insert({
           user_id: resolvedUserId,
@@ -668,8 +668,15 @@ async function validateTransactionWithApple(transactionId: string): Promise<{
         }
 
         // Verify and decode the JWS using Apple's root certificates
+        const signedInfo = transactionInfoResponse.signedTransactionInfo;
+        if (!signedInfo) {
+          return {
+            valid: false,
+            error: 'Missing signed transaction info',
+          };
+        }
         const transactionData = await verifyAndDecodeTransactionJWS(
-          transactionInfoResponse.signedTransactionInfo,
+          signedInfo,
           bundleId,
           env
         );
@@ -859,7 +866,7 @@ async function verifyAndDecodeTransactionJWS(
       true, // enableOnlineChecks
       environment,
       bundleId,
-      environment === Environment.PRODUCTION ? appAppleId : undefined
+      environment === Environment.PRODUCTION && appAppleId ? Number(appAppleId) : undefined
     );
 
     // Verify and decode the JWS using the official library method
@@ -886,13 +893,13 @@ async function verifyAndDecodeTransactionJWS(
       // Extract the transaction data from the decoded payload
       // The payload structure follows Apple's Transaction schema
       verifiedTransaction = {
-        transactionId: decodedPayload.transactionId,
+        transactionId: decodedPayload.transactionId ?? '',
         originalTransactionId:
-          decodedPayload.originalTransactionId || decodedPayload.transactionId,
-        productId: decodedPayload.productId,
-        purchaseDate: decodedPayload.purchaseDate,
+          decodedPayload.originalTransactionId ?? decodedPayload.transactionId ?? '',
+        productId: decodedPayload.productId ?? '',
+        purchaseDate: decodedPayload.purchaseDate ?? 0,
         expiresDate: decodedPayload.expiresDate,
-        signedDate: decodedPayload.signedDate,
+        signedDate: decodedPayload.signedDate ?? 0,
       };
     } catch (verificationError) {
       console.error(

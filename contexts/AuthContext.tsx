@@ -175,8 +175,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               subscription: "none",
               customer_id: null,
               subscription_expiration: null,
+              subscription_source: null,
               trial_expiration: null,
-              created_at: new Date().toISOString(),
+              last_stripe_api_check: null,
+              avatar_url: null,
               updated_at: new Date().toISOString(),
             };
             setUser({

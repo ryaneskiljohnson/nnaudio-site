@@ -37,7 +37,7 @@ export async function DELETE(
     const { id } = params;
     const adminSupabase = await createAdminClient();
 
-    const { error } = await adminSupabase
+    const { error } = await (adminSupabase as any)
       .from('product_relationships')
       .delete()
       .eq('id', id);

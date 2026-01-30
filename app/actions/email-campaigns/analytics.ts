@@ -7,6 +7,9 @@ export interface GetAnalyticsParams {
   campaignType?: string;
 }
 
+/** Return type of getAnalytics; exported as GetAnalyticsResponse from index. */
+export type GetAnalyticsResponse = AnalyticsData;
+
 export interface AnalyticsData {
   success: boolean;
   data: {
@@ -25,7 +28,7 @@ export interface AnalyticsData {
       id: string;
       name: string;
       type: string;
-      status: string;
+      status: string | null;
       sent: number;
       delivered: number;
       opens: number;

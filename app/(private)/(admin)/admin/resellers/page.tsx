@@ -900,6 +900,7 @@ interface ResellerCode {
   reseller_id: string;
   product_id: string;
   serial_code: string;
+  created_at?: string;
   redeemed_at: string | null;
   redeemed_by_user_id: string | null;
   products?: Product;
@@ -2042,7 +2043,7 @@ export default function ResellersPage() {
                               )}
                             </Td>
                             <Td>
-                              {new Date(code.created_at).toLocaleDateString()}
+                              {code.created_at ? new Date(code.created_at).toLocaleDateString() : '—'}
                             </Td>
                             <Td>
                               {code.redeemed_at 

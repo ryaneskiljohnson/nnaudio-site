@@ -250,7 +250,7 @@ export default function UnsubscribePage() {
             {!response ? (
               <button
                 onClick={handleUnsubscribe}
-                disabled={loading || isPlaceholder}
+                disabled={!!(loading || isPlaceholder)}
                 style={{ 
                   padding: '14px 32px',
                   backgroundColor: isPlaceholder ? '#666' : '#ff5e62',
@@ -271,7 +271,7 @@ export default function UnsubscribePage() {
                   }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.opacity = (loading || isPlaceholder) ? 0.5 : '1';
+                  e.currentTarget.style.opacity = (loading || isPlaceholder) ? '0.5' : '1';
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >

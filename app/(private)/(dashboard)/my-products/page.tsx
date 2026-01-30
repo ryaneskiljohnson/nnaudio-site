@@ -454,7 +454,7 @@ export default function MyProductsPage() {
       const result = await getMyProducts();
 
       if (result.success) {
-        setProducts(result.products);
+        setProducts(result.products as Product[]);
         setHasAccess(result.products.length > 0);
         setSubscriptionStatus("none"); // Server action doesn't return subscription status yet
         setCancelledSubscriptionId(null);
@@ -722,13 +722,13 @@ export default function MyProductsPage() {
                       <ProductCategoryBadge>{formatCategory(product.category, product.name)}</ProductCategoryBadge>
                     </TableCell>
                     <TableCell style={{ color: "rgba(255, 255, 255, 0.7)", maxWidth: "400px" }}>
-                      {product.short_description || product.tagline ? (
+                      {product.short_description || (product as { tagline?: string }).tagline ? (
                         <div style={{ 
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap"
                         }}>
-                          {cleanHtmlText(product.short_description || product.tagline || "")}
+                          {cleanHtmlText(product.short_description || (product as { tagline?: string }).tagline || "")}
                   </div>
                       ) : (
                         <span style={{ color: "rgba(255, 255, 255, 0.4)" }}>—</span>

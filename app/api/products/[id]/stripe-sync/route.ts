@@ -11,7 +11,7 @@ export async function POST(
     const adminSupabase = await createAdminClient();
 
     // Fetch product from database
-    const { data: product, error: productError } = await adminSupabase
+    const { data: product, error: productError } = await (adminSupabase as any)
       .from("products")
       .select("*")
       .eq("id", id)
@@ -52,7 +52,7 @@ export async function POST(
     }
 
     // Update product with Stripe IDs (clear sale price ID since we don't use it)
-    const { error: updateError } = await adminSupabase
+    const { error: updateError } = await (adminSupabase as any)
       .from("products")
       .update({
         stripe_product_id: syncResult.stripe_product_id,

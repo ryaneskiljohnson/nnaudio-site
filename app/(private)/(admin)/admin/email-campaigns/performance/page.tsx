@@ -584,7 +584,7 @@ function PerformancePage() {
         
         setPerformanceData(transformedData);
       } else {
-        throw new Error(result.error || 'Unknown error');
+        throw new Error((result as { error?: string }).error || 'Unknown error');
       }
     } catch (err) {
       console.error('Error fetching performance data:', err);

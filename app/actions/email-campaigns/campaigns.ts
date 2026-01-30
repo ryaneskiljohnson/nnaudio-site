@@ -191,6 +191,7 @@ export async function getCampaign(
     // Transform the data for frontend consumption
     const transformedCampaign = {
       ...campaign,
+      subject: campaign.subject ?? '',
       senderName: campaign.sender_name,
       senderEmail: campaign.sender_email,
       replyToEmail: campaign.reply_to_email,
@@ -203,7 +204,7 @@ export async function getCampaign(
     };
 
     return {
-      campaign: transformedCampaign,
+      campaign: transformedCampaign as GetCampaignResponse['campaign'],
     };
   } catch (error) {
     console.error("Error in getCampaign:", error);

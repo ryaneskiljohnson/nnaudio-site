@@ -323,7 +323,7 @@ export async function getMRR(): Promise<number> {
 
     // Get all active subscriptions from Stripe
     while (hasMore) {
-      const subscriptions = await stripe.subscriptions.list({
+      const subscriptions: Stripe.ApiList<Stripe.Subscription> = await stripe.subscriptions.list({
         status: "active",
         limit: 100,
         starting_after: startingAfter,
@@ -622,7 +622,7 @@ export async function getTrialUsersByType(): Promise<{
     let startingAfter: string | undefined = undefined;
 
     while (hasMore) {
-      const subscriptions = await stripe.subscriptions.list({
+      const subscriptions: Stripe.ApiList<Stripe.Subscription> = await stripe.subscriptions.list({
         limit: 100,
         starting_after: startingAfter,
         status: "all", // Get all statuses to track conversions
@@ -808,7 +808,7 @@ export async function getAverageSubscriptionLifespan(): Promise<number> {
     let startingAfter: string | undefined = undefined;
 
     while (hasMore) {
-      const subscriptions = await stripe.subscriptions.list({
+      const subscriptions: Stripe.ApiList<Stripe.Subscription> = await stripe.subscriptions.list({
         limit: 100,
         starting_after: startingAfter,
         status: "all", // Get all statuses
@@ -891,7 +891,7 @@ export async function getChurnRate(): Promise<number> {
 
     // Get all subscriptions from Stripe
     while (hasMore) {
-      const subscriptions = await stripe.subscriptions.list({
+      const subscriptions: Stripe.ApiList<Stripe.Subscription> = await stripe.subscriptions.list({
         limit: 100,
         starting_after: startingAfter,
         status: "all", // Get all statuses
@@ -1762,7 +1762,7 @@ export async function getMonthlyRevenueTrend(months: number = 12): Promise<{
         });
 
         paymentRevenue = paymentIntents.data
-          .filter((pi) => pi.status === "succeeded" && !pi.refunded)
+          .filter((pi) => pi.status === "succeeded" && !(pi as Stripe.PaymentIntent & { refunded?: boolean }).refunded)
           .reduce((sum, pi) => sum + (pi.amount || 0), 0);
 
         // Handle pagination if there are more than 100 payment intents
@@ -1780,7 +1780,7 @@ export async function getMonthlyRevenueTrend(months: number = 12): Promise<{
           });
 
           paymentRevenue += nextPage.data
-            .filter((pi) => pi.status === "succeeded" && !pi.refunded)
+            .filter((pi) => pi.status === "succeeded" && !(pi as Stripe.PaymentIntent & { refunded?: boolean }).refunded)
             .reduce((sum, pi) => sum + (pi.amount || 0), 0);
 
           hasMore = nextPage.has_more;

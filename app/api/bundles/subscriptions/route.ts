@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch all bundles with their subscription tiers (including stripe_price_id)
-    const { data: bundles, error: bundlesError } = await supabase
+    // Fetch all bundles with their subscription tiers (bundles table may not be in generated DB types)
+    const { data: bundles, error: bundlesError } = await (supabase as any)
       .from('bundles')
       .select(`
         *,

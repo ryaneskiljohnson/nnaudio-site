@@ -54,11 +54,11 @@ export async function getTemplates(
     }
 
     if (params?.type && ['welcome', 'newsletter', 'promotional', 'transactional', 'custom'].includes(params.type)) {
-      query = query.eq('template_type', params.type);
+      query = query.eq('template_type', params.type as 'custom' | 'welcome' | 'newsletter' | 'promotional' | 'transactional');
     }
 
     if (params?.status && ['draft', 'active', 'archived'].includes(params.status)) {
-      query = query.eq('status', params.status);
+      query = query.eq('status', params.status as 'draft' | 'active' | 'archived');
     }
 
     const { data: templates, error } = await query;
@@ -186,6 +186,7 @@ export async function getTemplate(templateId: string): Promise<GetTemplateRespon
     // Transform the data for frontend consumption
     const transformedTemplate = {
       ...template,
+      subject: template.subject ?? '',
       type: template.template_type,
       htmlContent: template.html_content,
       textContent: template.text_content,
@@ -194,7 +195,7 @@ export async function getTemplate(templateId: string): Promise<GetTemplateRespon
     };
 
     return {
-      template: transformedTemplate,
+      template: transformedTemplate as GetTemplateResponse['template'],
     };
   } catch (error) {
     console.error('Error in getTemplate:', error);

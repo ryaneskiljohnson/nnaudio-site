@@ -17,8 +17,11 @@ export interface UserManagementRecord {
   active: boolean;
 }
 
+/** Resolved Supabase client type (createClient returns Promise). */
+type SupabaseClientType = Awaited<ReturnType<typeof createClient>>;
+
 // Helper to check if user is admin
-export async function checkAdmin(supabase: ReturnType<typeof createClient>) {
+export async function checkAdmin(supabase: SupabaseClientType) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -583,7 +586,7 @@ export async function getUserByIdAdmin(userId: string): Promise<{
       customerId: profile.customer_id || undefined,
       subscriptionExpiration: profile.subscription_expiration || undefined,
       trialExpiration: profile.trial_expiration || undefined,
-      createdAt: profile.created_at || new Date().toISOString(),
+      createdAt: (profile as { created_at?: string | null }).created_at ?? profile.updated_at ?? new Date().toISOString(),
       lastActive: lastActive || undefined,
       totalSpent: totalSpent[userId] || 0,
       hasNfr,
@@ -824,7 +827,8 @@ export async function createSupportTicketAdmin(data: {
       };
     }
 
-    // Create the ticket
+    // Create the ticket (ticket_number required by schema)
+    const ticketNumber = `TKT-${Date.now().toString(36).toUpperCase()}`;
     const { data: ticket, error: ticketError } = await supabase
       .from("support_tickets")
       .insert({
@@ -832,6 +836,7 @@ export async function createSupportTicketAdmin(data: {
         description: data.description,
         user_id: data.userId,
         status: "open",
+        ticket_number: ticketNumber,
       })
       .select("id, ticket_number")
       .single();
@@ -1826,7 +1831,7 @@ async function sendSupportTicketEmailNotification(
                     <!-- Header -->
                     <tr>
                         <td style="background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); padding: 30px 24px; text-align: center;">
-                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.png" alt="Cymasphere" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
+                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.webp" alt="Cymasphere" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
                         </td>
                     </tr>
                     <!-- Content -->
@@ -2172,7 +2177,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
                     <!-- Header -->
                     <tr>
                         <td style="background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); padding: 30px 24px; text-align: center;">
-                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.png" alt="Cymasphere" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
+                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.webp" alt="Cymasphere" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
                         </td>
                     </tr>
                     <!-- Content -->
@@ -2610,7 +2615,8 @@ export async function createSupportTicket(data: {
       };
     }
 
-    // Create the ticket
+    // Create the ticket (ticket_number required by schema)
+    const ticketNumber = `TKT-${Date.now().toString(36).toUpperCase()}`;
     const { data: ticket, error: ticketError } = await supabase
       .from("support_tickets")
       .insert({
@@ -2618,6 +2624,7 @@ export async function createSupportTicket(data: {
         description: data.description,
         user_id: user.id,
         status: "open",
+        ticket_number: ticketNumber,
       })
       .select("id, ticket_number")
       .single();
@@ -2858,7 +2865,7 @@ export async function uploadSupportTicketAttachment(
 
     if (uploadError) {
       console.error("[Attachment Upload] Storage upload error:", uploadError);
-      console.error("[Attachment Upload] Error code:", uploadError.statusCode);
+      console.error("[Attachment Upload] Error code:", (uploadError as { statusCode?: number }).statusCode);
       console.error("[Attachment Upload] Error message:", uploadError.message);
 
       // If bucket doesn't exist, try to create it
@@ -3012,7 +3019,7 @@ export async function uploadSupportTicketAttachment(
               file_type: file.type,
               attachment_type: attachmentType,
               storage_path: storagePath,
-              url: publicUrl,
+              url: signedUrl ?? '',
             })
             .select("id")
             .single();
@@ -3093,7 +3100,7 @@ export async function getCustomerPurchasesAdmin(customerId: string): Promise<{
     });
 
     // Create a map of payment intent IDs to their invoices
-    const piToInvoiceMap = new Map<string, Stripe.Invoice>();
+    const piToInvoiceMap = new Map<string, import('stripe').Stripe.Invoice>();
     invoices.data.forEach((inv) => {
       if (inv.payment_intent && typeof inv.payment_intent === "string") {
         piToInvoiceMap.set(inv.payment_intent, inv);

@@ -76,6 +76,7 @@ export async function getOrders(): Promise<{
         success: false,
         orders: [],
         productGrants: [],
+        productRedemptions: [],
         error: "Not authenticated",
       };
     }
@@ -92,6 +93,7 @@ export async function getOrders(): Promise<{
         success: false,
         orders: [],
         productGrants: [],
+        productRedemptions: [],
         error: "Failed to fetch profile",
       };
     }
@@ -164,7 +166,7 @@ export async function getOrders(): Promise<{
     
     if (profile?.email) {
       const adminSupabase = await createSupabaseServiceRole();
-      const { data: grants, error: grantsError } = await adminSupabase
+      const { data: grants, error: grantsError } = await (adminSupabase as any)
         .from("product_grants")
         .select("id, product_id, granted_at, notes")
         .eq("user_email", profile.email.toLowerCase())
@@ -175,7 +177,7 @@ export async function getOrders(): Promise<{
       }
 
       if (grants) {
-        grantedProducts = grants;
+        grantedProducts = grants as typeof grantedProducts;
       }
     }
 
@@ -199,13 +201,13 @@ export async function getOrders(): Promise<{
           if (productIds.length > 0) {
             try {
               const adminSupabase = await createSupabaseServiceRole();
-              const { data: products, error: productsError } = await adminSupabase
+              const { data: products, error: productsError } = await (adminSupabase as any)
                 .from("products")
                 .select("id, name, slug, featured_image_url")
                 .in("id", productIds);
 
               if (!productsError && products) {
-                const productMap = new Map(products.map(p => [p.id, p]));
+                const productMap = new Map((products as { id: string; featured_image_url?: string | null; slug?: string | null }[]).map(p => [p.id, p]));
                 items = items.map(item => ({
                   ...item,
                   product_image: productMap.get(item.id)?.featured_image_url || null,
@@ -271,7 +273,7 @@ export async function getOrders(): Promise<{
                 id: refund.id,
                 amount: refund.amount / 100,
                 reason: refund.reason,
-                status: refund.status,
+                status: refund.status ?? '',
                 created: refund.created,
               }));
             } else if (charge.amount_refunded > 0) {
@@ -284,7 +286,7 @@ export async function getOrders(): Promise<{
                   id: refund.id,
                   amount: refund.amount / 100,
                   reason: refund.reason,
-                  status: refund.status,
+                  status: refund.status ?? '',
                   created: refund.created,
                 }));
               } catch (error) {
@@ -339,14 +341,14 @@ export async function getOrders(): Promise<{
     if (grantedProducts.length > 0) {
       const grantProductIds = grantedProducts.map(g => g.product_id);
       const adminSupabase = await createSupabaseServiceRole();
-      const { data: grantProducts } = await adminSupabase
+      const { data: grantProducts } = await (adminSupabase as any)
         .from("products")
         .select("id, name, slug, featured_image_url")
         .in("id", grantProductIds)
         .eq("status", "active");
 
       if (grantProducts) {
-        const productMap = new Map(grantProducts.map(p => [p.id, p]));
+        const productMap = new Map((grantProducts as { id: string; name: string; slug?: string | null; featured_image_url?: string | null }[]).map(p => [p.id, p]));
         
         // Collect redemption serial codes to look up reseller info
         const redemptionCodes: string[] = [];
@@ -367,7 +369,7 @@ export async function getOrders(): Promise<{
         // Fetch reseller information for redemptions
         const resellerMap = new Map<string, string>();
         if (redemptionCodes.length > 0) {
-          const { data: resellerCodes } = await adminSupabase
+          const { data: resellerCodes } = await (adminSupabase as any)
             .from("reseller_codes")
             .select(`
               serial_code,
@@ -378,8 +380,8 @@ export async function getOrders(): Promise<{
             .in("serial_code", redemptionCodes);
           
           if (resellerCodes) {
-            resellerCodes.forEach((code: any) => {
-              const resellerName = (code.resellers as any)?.name || null;
+            (resellerCodes as { serial_code: string; resellers: { name?: string } | null }[]).forEach((code) => {
+              const resellerName = code.resellers?.name ?? null;
               if (resellerName) {
                 resellerMap.set(code.serial_code, resellerName);
               }

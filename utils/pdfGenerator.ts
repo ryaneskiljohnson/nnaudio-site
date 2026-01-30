@@ -44,7 +44,7 @@ export class CymasphereQuickstartPDF {
       // Load logo from file system at runtime with compression
       const fs = require('fs');
       const path = require('path');
-      const logoPath = path.join(process.cwd(), 'public/images/cymasphere-logo.png');
+      const logoPath = path.join(process.cwd(), 'public/images/cymasphere-logo.webp');
       
       if (fs.existsSync(logoPath)) {
         const logoBuffer = fs.readFileSync(logoPath);

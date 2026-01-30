@@ -11,7 +11,7 @@ export async function GET(
     const supabase = await createClient();
     const { id } = params;
 
-    const { data: product, error } = await supabase
+    const { data: product, error } = await (supabase as any)
       .from('products')
       .select(`
         *,
@@ -27,8 +27,8 @@ export async function GET(
       );
     }
 
-    // Fetch related products separately
-    const { data: relationships, error: relError } = await supabase
+    // Fetch related products separately (tables may not be in generated DB types)
+    const { data: relationships, error: relError } = await (supabase as any)
       .from('product_relationships')
       .select(`
         id,
@@ -115,7 +115,7 @@ export async function PUT(
     const adminSupabase = await createAdminClient();
 
     // Get existing product to check current values and Stripe IDs
-      const { data: existingProduct } = await adminSupabase
+      const { data: existingProduct } = await (adminSupabase as any)
         .from('products')
         .select('stripe_product_id, stripe_price_id, stripe_sale_price_id, name, description, short_description, price, sale_price, legacy_product_id')
         .eq('id', id)
@@ -135,7 +135,7 @@ export async function PUT(
       
       // Only check if the value is actually changing and is not empty
       if (newLegacyId !== currentLegacyId && newLegacyId !== null && newLegacyId !== '') {
-        const { data: conflictingProduct, error: checkError } = await adminSupabase
+        const { data: conflictingProduct, error: checkError } = await (adminSupabase as any)
           .from('products')
           .select('id, name')
           .eq('legacy_product_id', newLegacyId)
@@ -176,7 +176,7 @@ export async function PUT(
           stripe_sale_price_id: existingProduct.stripe_sale_price_id,
         };
 
-    const { data: product, error } = await adminSupabase
+    const { data: product, error } = await (adminSupabase as any)
       .from('products')
       .update(body)
       .eq('id', id)
@@ -209,7 +209,7 @@ export async function PUT(
 
         if (syncResult.success) {
           // Update product with Stripe IDs (clear sale price ID since we don't use it)
-          await adminSupabase
+          await (adminSupabase as any)
             .from('products')
             .update({
               stripe_product_id: syncResult.stripe_product_id,
@@ -219,7 +219,7 @@ export async function PUT(
             .eq('id', id);
           
           // Refresh product data to include Stripe IDs
-          const { data: updatedProduct } = await adminSupabase
+          const { data: updatedProduct } = await (adminSupabase as any)
             .from('products')
             .select('*')
             .eq('id', id)
@@ -301,7 +301,7 @@ export async function DELETE(
     const adminSupabase = await createAdminClient();
 
     // Get product to check for Stripe IDs before deletion
-    const { data: product } = await adminSupabase
+    const { data: product } = await (adminSupabase as any)
       .from('products')
       .select('stripe_product_id, stripe_price_id, stripe_sale_price_id')
       .eq('id', id)
@@ -316,7 +316,7 @@ export async function DELETE(
         }
         
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-          apiVersion: '2024-12-18.acacia',
+          apiVersion: '2025-02-24.acacia',
         });
 
         // Archive prices first (can't delete prices that have been used)
@@ -358,7 +358,7 @@ export async function DELETE(
     }
 
     // Delete from database
-    const { error } = await adminSupabase
+    const { error } = await (adminSupabase as any)
       .from('products')
       .delete()
       .eq('id', id);

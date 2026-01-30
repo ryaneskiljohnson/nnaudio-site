@@ -3166,11 +3166,11 @@ export default function VisualEditor({
                     padding: '0.5rem',
                     transition: 'all 0.3s ease'
                   }}>
-                    {social.platform === 'facebook' && <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/fb.png" alt="Facebook" style={{ width: '20px', height: '20px' }} />}
-                    {social.platform === 'twitter' && <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/x.png" alt="Twitter" style={{ width: '20px', height: '20px' }} />}
-                    {social.platform === 'instagram' && <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/insta.png" alt="Instagram" style={{ width: '20px', height: '20px' }} />}
-                    {social.platform === 'youtube' && <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/youtube.png" alt="YouTube" style={{ width: '20px', height: '20px' }} />}
-                    {social.platform === 'discord' && <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/discord.png" alt="Discord" style={{ width: '20px', height: '20px' }} />}
+                    {social.platform === 'facebook' && <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/fb.webp" alt="Facebook" style={{ width: '20px', height: '20px' }} />}
+                    {social.platform === 'twitter' && <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/x.webp" alt="Twitter" style={{ width: '20px', height: '20px' }} />}
+                    {social.platform === 'instagram' && <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/insta.webp" alt="Instagram" style={{ width: '20px', height: '20px' }} />}
+                    {social.platform === 'youtube' && <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/youtube.webp" alt="YouTube" style={{ width: '20px', height: '20px' }} />}
+                    {social.platform === 'discord' && <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/discord.webp" alt="Discord" style={{ width: '20px', height: '20px' }} />}
                   </a>
                 ))}
               </div>
@@ -3346,7 +3346,7 @@ export default function VisualEditor({
           }}>
             {/* Logo */}
             <img 
-              src="/images/cm-logo-icon.png" 
+              src="/images/cm-logo-icon.webp" 
               alt="Cymasphere Logo" 
               style={{
                 width: '36px',
@@ -3889,7 +3889,7 @@ export default function VisualEditor({
                                     border-radius: 0;
                                     box-shadow: none;
                                   ">
-                                    <img src="/images/cm-logo-icon.png" alt="Cymasphere Logo" style="
+                                    <img src="/images/cm-logo-icon.webp" alt="Cymasphere Logo" style="
                                       width: 36px;
                                       height: 36px;
                                       object-fit: contain;

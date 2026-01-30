@@ -45,7 +45,7 @@ export async function getYouTubeDuration(
         .eq('youtube_video_id', videoId)
         .single();
 
-      if (!cacheError && cachedVideo?.youtube_duration_cached) {
+      if (!cacheError && cachedVideo?.youtube_duration_cached && cachedVideo.youtube_duration_last_updated) {
         const lastUpdated = new Date(cachedVideo.youtube_duration_last_updated);
         const hoursSinceUpdate = (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60);
         

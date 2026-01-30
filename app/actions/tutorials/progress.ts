@@ -59,7 +59,7 @@ export async function getVideoProgress(
       throw new Error('Failed to fetch user progress');
     }
 
-    const progressData = userPath.progress_data || {};
+    const progressData = (userPath.progress_data || {}) as Record<string, any>;
     const totalProgress = calculateTotalProgress(progressData);
 
     return { 
@@ -69,7 +69,7 @@ export async function getVideoProgress(
         theoryLevel: userPath.theory_level,
         techLevel: userPath.tech_level,
         appMode: userPath.app_mode,
-        musicalGoals: userPath.musical_goals
+        musicalGoals: userPath.musical_goals ?? []
       }
     };
   } catch (error) {
@@ -148,7 +148,7 @@ export async function updateVideoProgress(
     }
 
     // Update progress data
-    const currentProgress = userPath.progress_data || {};
+    const currentProgress = (userPath.progress_data || {}) as Record<string, any>;
     const videoProgress = {
       videoId,
       progress: progress.progress || 0,
@@ -157,7 +157,7 @@ export async function updateVideoProgress(
       ...(progress.completed && { completedAt: new Date().toISOString() })
     };
 
-    currentProgress[videoId] = videoProgress;
+    (currentProgress as Record<string, unknown>)[videoId] = videoProgress;
 
     // Update user path with new progress
     const { error: updateError } = await supabase

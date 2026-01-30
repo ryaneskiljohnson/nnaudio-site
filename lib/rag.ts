@@ -239,6 +239,12 @@ class CymasphereRAG {
     return results.map(doc => doc.pageContent).join('\n\n');
   }
 
+  /** Extract NEPQ state from conversation (implementation on prototype). */
+  declare extractNEPQState: (
+    conversationHistory: any[],
+    query: string
+  ) => { needs: string[]; pains: string[]; currentTools: string[]; experienceLevel: string; budget: string; decisionContext: string };
+
   async generateResponse(query: string, conversationHistory: any[] = []): Promise<string> {
     // Layer 1: Retrieve relevant information
     const context = await this.retrieveRelevantContext(query);

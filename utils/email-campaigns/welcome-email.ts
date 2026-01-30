@@ -20,7 +20,7 @@ export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
   const { customerName, customerEmail, purchaseType, subscriptionType, planName } = data;
   const firstName = customerName?.split(' ')[0] || 'there';
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com';
-  const logoUrl = 'https://cymasphere.com/images/cm-logo.png';
+  const logoUrl = 'https://cymasphere.com/images/cm-logo.webp';
   
   // Format plan name for display
   let planDisplayName = '';
@@ -48,7 +48,7 @@ export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
   }
 
   // Use the same logo URL as contact form
-  const logoUrlSupabase = 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.png';
+  const logoUrlSupabase = 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.webp';
 
   return `
 <!DOCTYPE html>

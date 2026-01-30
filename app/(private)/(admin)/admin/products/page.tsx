@@ -799,8 +799,8 @@ export default function ProductsManagementPage() {
         
         setMenuPosition({
           top: openUpward ? rect.top - menuHeight - 4 : rect.bottom + 4,
-          right: rightPosition,
-          left: leftPosition,
+          right: rightPosition ?? 0,
+          left: leftPosition ?? 0,
           openUpward,
         });
       }
@@ -1148,7 +1148,7 @@ export default function ProductsManagementPage() {
             >
               {deleting ? (
                 <>
-                  <NNAudioLoadingSpinner size={16} style={{ marginRight: '0.5rem', display: 'inline-block' }} />
+                  <span style={{ marginRight: '0.5rem', display: 'inline-block' }}><NNAudioLoadingSpinner size={16} /></span>
                   Deleting...
                 </>
               ) : (

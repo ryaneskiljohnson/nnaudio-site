@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const adminSupabase = await createAdminClient();
 
-    const { data: relationship, error } = await adminSupabase
+    const { data: relationship, error } = await (adminSupabase as any)
       .from('product_relationships')
       .insert([{
         product_id: body.product_id,

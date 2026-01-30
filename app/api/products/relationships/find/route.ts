@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    const { data: relationship, error } = await supabase
+    const { data: relationship, error } = await (supabase as any)
       .from('product_relationships')
       .select('*')
       .eq('product_id', productId)

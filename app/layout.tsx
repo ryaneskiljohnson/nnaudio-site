@@ -16,28 +16,28 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/images/nnaud-io/logo-icon.png",
+        url: "/images/nnaud-io/logo-icon.webp",
         sizes: "any",
       },
       {
-        url: "/images/nnaud-io/logo-icon-32x32.png",
+        url: "/images/nnaud-io/logo-icon-32x32.webp",
         type: "image/png",
         sizes: "32x32",
       },
       {
-        url: "/images/nnaud-io/logo-icon-16x16.png",
+        url: "/images/nnaud-io/logo-icon-16x16.webp",
         type: "image/png",
         sizes: "16x16",
       },
     ],
     apple: [
       {
-        url: "/images/nnaud-io/logo-icon.png",
+        url: "/images/nnaud-io/logo-icon.webp",
         sizes: "180x180",
         type: "image/png",
       },
     ],
-    shortcut: "/images/nnaud-io/logo-icon.png",
+    shortcut: "/images/nnaud-io/logo-icon.webp",
   },
 };
 

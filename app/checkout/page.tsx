@@ -986,7 +986,7 @@ function PaymentForm({
         <StripeBadge>
           <StripeLogoContainer>
             <StripeLogoImage 
-              src="/stripe.png" 
+              src="/stripe.webp" 
               alt="Stripe" 
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
@@ -1212,7 +1212,7 @@ export default function CheckoutPage() {
                   <OrderItemImage>
                     {(item.featured_image_url || item.logo_url) ? (
                       <Image
-                        src={item.featured_image_url || item.logo_url}
+                        src={(item.featured_image_url || item.logo_url) as string}
                         alt={item.name}
                         fill
                         style={{ objectFit: 'cover' }}

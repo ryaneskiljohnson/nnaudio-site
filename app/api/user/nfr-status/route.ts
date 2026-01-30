@@ -36,7 +36,7 @@ export async function GET() {
     console.log(`[NFR Status] Checking for email: "${email}" (normalized: "${normalizedEmail}")`);
     
     // Try exact match first
-    let { data, error } = await serviceSupabase
+    let { data, error } = await (serviceSupabase as any)
       .from("user_management")
       .select("pro, notes, user_email")
       .eq("user_email", normalizedEmail)
@@ -44,7 +44,7 @@ export async function GET() {
 
     // If no exact match, try case-insensitive search
     if (!data && (error?.code === "PGRST116" || !error)) {
-      const { data: caseInsensitiveData, error: caseInsensitiveError } = await serviceSupabase
+      const { data: caseInsensitiveData, error: caseInsensitiveError } = await (serviceSupabase as any)
         .from("user_management")
         .select("pro, notes, user_email")
         .ilike("user_email", `%${normalizedEmail}%`)
@@ -61,7 +61,7 @@ export async function GET() {
 
     // If still no match, try with original email (in case it's stored with different casing)
     if (!data) {
-      const { data: originalEmailData, error: originalEmailError } = await serviceSupabase
+      const { data: originalEmailData, error: originalEmailError } = await (serviceSupabase as any)
         .from("user_management")
         .select("pro, notes, user_email")
         .eq("user_email", email.trim())

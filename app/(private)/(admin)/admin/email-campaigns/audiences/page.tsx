@@ -575,7 +575,7 @@ interface DatabaseAudience {
   description: string | null;
   filters: any;
   subscriber_count: number | null;
-  created_by: string | null;
+  created_by?: string | null;
   created_at: string | null;
   updated_at: string | null;
 }

@@ -54,7 +54,7 @@ export default function NNAudioLoadingSpinner({
   return (
     <SpinnerContainer>
       <SpinnerImage
-        src="/images/nnaud-io/NNPurp1.png"
+        src="/images/nnaud-io/NNPurp1.webp"
         alt="Loading"
         width={size}
         height={size}

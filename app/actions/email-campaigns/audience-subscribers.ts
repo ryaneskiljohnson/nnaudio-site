@@ -350,7 +350,7 @@ export async function getSubscriberAudienceMemberships(
     const memberships: { [key: string]: boolean } = {};
 
     for (const audience of audiences || []) {
-      const filters = audience.filters || {};
+      const filters = (audience.filters || {}) as Record<string, unknown>;
       const isStatic = filters.audience_type === "static";
 
       if (isStatic) {

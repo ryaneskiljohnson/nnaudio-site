@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
     
-    let query = supabase
+    let query = (supabase as any)
       .from('products')
       .select('*, product_reviews(rating)')
       .order('created_at', { ascending: false });
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate average rating for each product
-    let productsWithRatings = products?.map(product => {
+    let productsWithRatings = products?.map((product: any) => {
       const reviews = product.product_reviews || [];
       const avgRating = reviews.length > 0
         ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     // Exclude "nnaudio access" from free products
     if (free === 'true') {
-      productsWithRatings = productsWithRatings.filter(product => {
+      productsWithRatings = productsWithRatings.filter((product: any) => {
         const name = (product.name || '').toLowerCase();
         const slug = (product.slug || '').toLowerCase();
         return !name.includes('nnaudio access') && !slug.includes('nnaudio-access');
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
     // Validate legacy_product_id uniqueness if provided
     if (body.legacy_product_id && body.legacy_product_id.trim() !== '') {
-      const { data: existingProduct, error: checkError } = await adminSupabase
+      const { data: existingProduct, error: checkError } = await (adminSupabase as any)
         .from('products')
         .select('id, name')
         .eq('legacy_product_id', body.legacy_product_id.trim())
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
 
-    const { data: product, error } = await adminSupabase
+    const { data: product, error } = await (adminSupabase as any)
       .from('products')
       .insert([{
         name: body.name,
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
 
         if (syncResult.success) {
           // Update product with Stripe IDs
-          await adminSupabase
+          await (adminSupabase as any)
             .from('products')
             .update({
               stripe_product_id: syncResult.stripe_product_id,
@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
             .eq('id', product.id);
           
           // Refresh product data to include Stripe IDs
-          const { data: updatedProduct } = await adminSupabase
+          const { data: updatedProduct } = await (adminSupabase as any)
             .from('products')
             .select('*')
             .eq('id', product.id)

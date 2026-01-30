@@ -87,7 +87,7 @@ export async function getUserAnalytics(
       console.error('Error fetching progress data:', progressError);
     }
 
-    const progress = progressData?.progress_data || {};
+    const progress = (progressData?.progress_data || {}) as Record<string, { completed?: boolean; timeSpent?: number; lastWatched?: string; category?: string }>;
 
     // Get user's completed videos
     const { data: completedVideos, error: completedError } = await supabase
@@ -140,7 +140,7 @@ export async function getUserAnalytics(
             tech_level_required
           )
         `)
-        .eq('playlist_id', userPath.current_playlist_id || '2509f80f-477f-4027-b02e-bcdba3c66511'); // Default to first playlist
+        .eq('playlist_id', (userPath as { generated_playlist_id?: string | null }).generated_playlist_id || '2509f80f-477f-4027-b02e-bcdba3c66511'); // Default to first playlist
 
       if (!playlistError && playlistVideos) {
         userPlaylistVideos = playlistVideos.map(pv => pv.tutorial_videos).filter(Boolean);
@@ -195,9 +195,9 @@ export async function getUserAnalytics(
       }
     });
 
-    const favoriteCategory = Object.keys(categoryStats).reduce((a, b) => 
-      categoryStats[a] > categoryStats[b] ? a : b, 'general'
-    );
+    const favoriteCategory = Object.keys(categoryStats).length > 0
+      ? Object.keys(categoryStats).reduce((a, b) => categoryStats[a] > categoryStats[b] ? a : b, 'general')
+      : 'general';
 
     // Get recent activity (last 7 days)
     const recentActivity = Object.values(progress)

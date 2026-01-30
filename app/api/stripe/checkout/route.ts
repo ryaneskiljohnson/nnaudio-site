@@ -403,7 +403,7 @@ async function createCheckoutSession(
         
         if (profile) {
           userId = profile.id;
-          userEmail = profile.email;
+          userEmail = profile.email ?? undefined;
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -417,7 +417,7 @@ async function createCheckoutSession(
     if (!userEmail && customerId) {
       try {
         const customer = await stripe.customers.retrieve(customerId);
-        userEmail = typeof customer === 'object' && !customer.deleted ? customer.email : undefined;
+        userEmail = (typeof customer === 'object' && !customer.deleted && customer.email) ? customer.email : undefined;
       } catch (error) {
         console.error("Error retrieving customer email:", error);
       }
@@ -499,7 +499,7 @@ async function createCheckoutSession(
     let hasAutoDiscount = false;
     try {
       const supabase = await createSupabaseServiceRole();
-      const { data: activePromotion } = await supabase
+      const { data: activePromotion } = await (supabase as any)
         .from('promotions')
         .select('*')
         .eq('active', true)

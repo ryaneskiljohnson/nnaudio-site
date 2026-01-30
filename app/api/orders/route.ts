@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
       console.log(`[Orders API] Checking product grants for email: ${profile.email.toLowerCase()}`);
       // Use service role client to bypass RLS for product_grants query
       const adminSupabase = await createSupabaseServiceRole();
-      const { data: grants, error: grantsError } = await adminSupabase
+      const { data: grants, error: grantsError } = await (adminSupabase as any)
         .from("product_grants")
         .select("id, product_id, granted_at, notes")
         .eq("user_email", profile.email.toLowerCase())
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
       }
 
       if (grants) {
-        grantedProducts = grants;
+        grantedProducts = grants as typeof grantedProducts;
         console.log(`[Orders API] Found ${grants.length} product grants:`, grants);
       } else {
         console.log(`[Orders API] No product grants found for ${profile.email.toLowerCase()}`);
@@ -168,14 +168,15 @@ export async function GET(request: NextRequest) {
           const productIds = items.map(item => item.id).filter(Boolean);
           if (productIds.length > 0) {
             try {
-              const { data: products, error: productsError } = await supabase
+              const { data: products, error: productsError } = await (supabase as any)
                 .from("products")
                 .select("id, name, slug, featured_image_url")
                 .in("id", productIds);
 
               if (!productsError && products) {
                 // Create a map of product ID to product details
-                const productMap = new Map(products.map(p => [p.id, p]));
+                const productList = products as { id: string; featured_image_url?: string | null; slug?: string | null }[];
+                const productMap = new Map(productList.map((p: { id: string; featured_image_url?: string | null; slug?: string | null }) => [p.id, p]));
                 
                 // Enrich items with product details
                 items = items.map(item => ({
@@ -248,7 +249,7 @@ export async function GET(request: NextRequest) {
               id: refund.id,
               amount: refund.amount / 100, // Convert from cents
               reason: refund.reason,
-              status: refund.status,
+              status: refund.status ?? '',
               created: refund.created,
             }));
           } else if (charge.amount_refunded > 0) {
@@ -262,7 +263,7 @@ export async function GET(request: NextRequest) {
                 id: refund.id,
                 amount: refund.amount / 100, // Convert from cents
                 reason: refund.reason,
-                status: refund.status,
+                status: refund.status ?? '',
                 created: refund.created,
               }));
             } catch (error) {
@@ -314,7 +315,7 @@ export async function GET(request: NextRequest) {
       
       // Use service role client for product query as well
       const adminSupabaseForProducts = await createSupabaseServiceRole();
-      const { data: grantProducts, error: productsError } = await adminSupabaseForProducts
+      const { data: grantProducts, error: productsError } = await (adminSupabaseForProducts as any)
         .from("products")
         .select("id, name, slug, featured_image_url")
         .in("id", grantProductIds)
@@ -326,7 +327,8 @@ export async function GET(request: NextRequest) {
 
       if (grantProducts) {
         console.log(`[Orders API] Found ${grantProducts.length} products for grants`);
-        const productMap = new Map(grantProducts.map(p => [p.id, p]));
+        const grantProductList = grantProducts as { id: string; name?: string; slug?: string | null; featured_image_url?: string | null }[];
+        const productMap = new Map(grantProductList.map((p: { id: string; name?: string; slug?: string | null; featured_image_url?: string | null }) => [p.id, p]));
         
         for (const grant of grantedProducts) {
           const product = productMap.get(grant.product_id);
@@ -335,12 +337,12 @@ export async function GET(request: NextRequest) {
               id: `grant_${grant.id}`,
               orderNumber: `GRANT-${grant.id.substring(0, 8).toUpperCase()}`,
               date: grant.granted_at,
-              status: "succeeded",
+              status: "succeeded" as const,
               amount: 0,
               currency: "USD",
               items: [{
                 id: product.id,
-                name: product.name,
+                name: product.name ?? '',
                 quantity: 1,
                 price: 0,
                 product_image: product.featured_image_url || null,
@@ -350,6 +352,10 @@ export async function GET(request: NextRequest) {
                 grant_id: grant.id,
                 grant_type: "free_license",
                 notes: grant.notes,
+                original_total: undefined,
+                discount_amount: undefined,
+                total_amount: undefined,
+                promotion_code: undefined,
               },
               receiptUrl: null,
               invoiceId: null,
@@ -359,12 +365,12 @@ export async function GET(request: NextRequest) {
               refunds: [],
             };
             console.log(`[Orders API] Adding grant order:`, grantOrder.orderNumber, grantOrder.metadata);
-            orders.push(grantOrder);
+            orders.push(grantOrder as any);
           } else {
             console.warn(`[Orders API] Product not found for grant ${grant.id}, product_id: ${grant.product_id}`);
           }
         }
-        console.log(`[Orders API] Added ${orders.filter(o => o.metadata?.grant_type === "free_license").length} grant orders to orders array`);
+        console.log(`[Orders API] Added ${orders.filter((o: any) => o.metadata?.grant_type === "free_license").length} grant orders to orders array`);
       } else {
         console.warn(`[Orders API] No products found for grant product IDs`);
       }
@@ -373,7 +379,7 @@ export async function GET(request: NextRequest) {
     // Sort by date (newest first)
     orders.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const grantCount = orders.filter(o => o.metadata?.grant_type === "free_license").length;
+    const grantCount = orders.filter((o: any) => o.metadata?.grant_type === "free_license").length;
     console.log(`[Orders API] Final response: ${orders.length} total orders, ${grantCount} product grants`);
 
     return NextResponse.json({

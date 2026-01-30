@@ -413,6 +413,7 @@ interface UserProfileModalProps {
   formatDate?: (dateString: string) => string;
   formatDateTime?: (dateString: string) => string;
   formatCurrency?: (amount: number) => string;
+  formatCurrencyFromDollars?: (amount: number) => string;
   getDisplayName?: (user: UserData) => string;
 }
 

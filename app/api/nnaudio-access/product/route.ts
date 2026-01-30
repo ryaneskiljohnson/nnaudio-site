@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     // Check NFR (Not For Resale) licenses first (highest priority) - SAME AS PRODUCTS ENDPOINT
     if (profile?.email) {
-      const { data: nfrData } = await adminSupabase
+      const { data: nfrData } = await (adminSupabase as any)
         .from("user_management")
         .select("pro")
         .eq("user_email", profile.email.toLowerCase())
@@ -111,18 +111,18 @@ export async function POST(request: NextRequest) {
 
       if (nfrLicense?.pro) {
         console.log(`[NNAudio Access Product] User has NFR license, granting all products`);
-        const { data: allProducts } = await adminSupabase
+        const { data: allProducts } = await (adminSupabase as any)
           .from("products")
           .select("id")
           .eq("status", "active");
 
         if (allProducts) {
-          allProducts.forEach((p) => productIds.add(p.id));
+          (allProducts as { id: string }[]).forEach((p: { id: string }) => productIds.add(p.id));
         }
       }
 
       // Check individual product grants
-      const { data: grantsData } = await adminSupabase
+      const { data: grantsData } = await (adminSupabase as any)
         .from("product_grants")
         .select("product_id")
         .eq("user_email", profile.email.toLowerCase());
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
 
       if (productGrants.length > 0) {
         console.log(`[NNAudio Access Product] User has ${productGrants.length} product grants`);
-        productGrants.forEach((grant) => {
+        (productGrants as { product_id: string }[]).forEach((grant: { product_id: string }) => {
           if (grant.product_id) {
             productIds.add(grant.product_id);
             console.log(`[NNAudio Access Product] Added granted product: ${grant.product_id}`);
@@ -143,13 +143,13 @@ export async function POST(request: NextRequest) {
     // If user has active subscription, they get access to all products - SAME AS PRODUCTS ENDPOINT
     if (hasActiveSubscription) {
       console.log(`[NNAudio Access Product] User has active subscription: ${profile?.subscription}`);
-      const { data: allProducts } = await adminSupabase
+      const { data: allProducts } = await (adminSupabase as any)
         .from("products")
         .select("id")
         .eq("status", "active");
 
       if (allProducts) {
-        allProducts.forEach((p) => productIds.add(p.id));
+        (allProducts as { id: string }[]).forEach((p: { id: string }) => productIds.add(p.id));
       }
     }
 
@@ -284,7 +284,7 @@ export async function POST(request: NextRequest) {
     let actualProductId: string = productId;
 
     // Try UUID first (most common case)
-    let { data: productByUuid, error: uuidError } = await adminSupabase
+    let { data: productByUuid, error: uuidError } = await (adminSupabase as any)
       .from("products")
       .select("*")
       .eq("id", productId)
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Try legacy_product_id if UUID lookup failed
       console.log(`[NNAudio Access Product] UUID lookup failed, trying legacy_product_id: ${productId}`);
-      const { data: productByLegacyId, error: legacyError } = await adminSupabase
+      const { data: productByLegacyId, error: legacyError } = await (adminSupabase as any)
         .from("products")
         .select("*")
         .eq("legacy_product_id", productId)

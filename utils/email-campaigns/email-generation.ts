@@ -172,11 +172,11 @@ export function generateHtmlFromElements(
         case "footer":
           // Use Supabase storage icons for consistency with Visual Editor preview
           const iconMap: Record<string, string> = {
-            facebook: 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/fb.png',
-            twitter: 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/x.png',
-            instagram: 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/insta.png',
-            youtube: 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/youtube.png',
-            discord: 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/discord.png'
+            facebook: 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/fb.webp',
+            twitter: 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/x.webp',
+            instagram: 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/insta.webp',
+            youtube: 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/youtube.webp',
+            discord: 'https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/discord.webp'
           };
           const socialLinksHtml = element.socialLinks && element.socialLinks.length > 0
             ? `<table role="presentation" align="center" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto;">
@@ -244,7 +244,7 @@ export function generateHtmlFromElements(
 
         case "brand-header":
           // Use a more reliable image source and Gmail-compatible structure
-          const logoUrl = "https://cymasphere.com/images/cm-logo.png";
+          const logoUrl = "https://cymasphere.com/images/cm-logo.webp";
           // Force brand header to align with content width
           const headerWrapperClass = "constrained-width";
 

@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       console.log(`[NNAudio Access Products] Checking product grants for email: ${profile.email.toLowerCase()}`);
       // Use service role client to bypass RLS for product_grants query
       const adminSupabase = await createSupabaseServiceRole();
-      const { data: productGrants, error: grantsError } = await adminSupabase
+      const { data: productGrants, error: grantsError } = await (adminSupabase as any)
         .from("product_grants")
         .select("product_id")
         .eq("user_email", profile.email.toLowerCase());
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
 
       if (productGrants && productGrants.length > 0) {
         console.log(`[NNAudio Access Products] User has ${productGrants.length} product grants`);
-        productGrants.forEach((grant) => {
+        productGrants.forEach((grant: { product_id: string }) => {
           if (grant.product_id) {
             productIds.add(grant.product_id);
             console.log(`[NNAudio Access Products] Added granted product: ${grant.product_id}`);
@@ -270,7 +270,7 @@ export async function POST(request: NextRequest) {
     const adminSupabase = await createSupabaseServiceRole();
     
     // First, fetch all products to check which ones are bundles (category: 'bundle')
-    const { data: allProductsCheck, error: productsCheckError } = await adminSupabase
+    const { data: allProductsCheck, error: productsCheckError } = await (adminSupabase as any)
       .from("products")
       .select("id, slug, category")
       .in("id", productIdsArray)
@@ -287,10 +287,10 @@ export async function POST(request: NextRequest) {
     const bundleProductIdsToExclude = new Set<string>();
     const bundleSlugs = new Set<string>();
     
-    (allProductsCheck || []).forEach((product) => {
+    (allProductsCheck || []).forEach((product: { id: string; category?: string; slug?: string }) => {
       if (product.category === 'bundle') {
         bundleProductIdsToExclude.add(product.id);
-        bundleSlugs.add(product.slug);
+        if (product.slug) bundleSlugs.add(product.slug);
         console.log(`[NNAudio Access Products] Found bundle product to exclude: ${product.id} (slug: ${product.slug})`);
       }
     });
@@ -301,7 +301,7 @@ export async function POST(request: NextRequest) {
     
     if (bundleSlugs.size > 0) {
       // Find bundles in bundles table by matching slugs
-      const { data: bundles, error: bundlesError } = await adminSupabase
+      const { data: bundles, error: bundlesError } = await (adminSupabase as any)
         .from("bundles")
         .select("id, slug, name")
         .in("slug", Array.from(bundleSlugs))
@@ -314,10 +314,10 @@ export async function POST(request: NextRequest) {
         
         // For each bundle, fetch all individual products in that bundle
         for (const bundle of bundles) {
-          const { data: bundleProducts, error: bundleProductsError } = await adminSupabase
+          const { data: bundleProducts, error: bundleProductsError } = await (adminSupabase as any)
             .from("bundle_products")
             .select("product_id")
-            .eq("bundle_id", bundle.id);
+            .eq("bundle_id", (bundle as { id: string }).id);
 
           if (bundleProductsError) {
             console.error(`[NNAudio Access Products] Error fetching products for bundle ${bundle.id}:`, bundleProductsError);
@@ -326,7 +326,7 @@ export async function POST(request: NextRequest) {
 
           if (bundleProducts && bundleProducts.length > 0) {
             console.log(`[NNAudio Access Products] Bundle ${bundle.id} (${bundle.name}) contains ${bundleProducts.length} individual products`);
-            bundleProducts.forEach((bp) => {
+            bundleProducts.forEach((bp: { product_id?: string }) => {
               if (bp.product_id) {
                 individualBundleProductIds.add(bp.product_id);
                 productToBundleMap.set(bp.product_id, bundle.name);
@@ -356,7 +356,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch all products (regular products + bundle products, but NOT the bundles themselves)
-    const { data: allProducts, error: allProductsError } = await adminSupabase
+    const { data: allProducts, error: allProductsError } = await (adminSupabase as any)
       .from("products")
       .select("id, name, slug, featured_image_url, legacy_product_id")
       .in("id", allProductIds)
@@ -370,14 +370,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Double-check: Filter out any products that are bundles (category: 'bundle')
-    const finalProducts = (allProducts || []).filter((product) => !bundleProductIdsToExclude.has(product.id));
+    const finalProducts = (allProducts || []).filter((product: { id: string }) => !bundleProductIdsToExclude.has(product.id));
     
     console.log(`[NNAudio Access Products] Total products returned: ${finalProducts.length} (${allProducts?.length || 0} fetched, ${bundleProductIdsToExclude.size} bundle product(s) filtered out)`);
 
     // Format response to match WooCommerce downloads format expected by desktop app
     // Use legacy_product_id if available, otherwise fall back to UUID
     // This ensures plugins can check authorization using their legacy IDs
-    const formattedProducts = finalProducts.map((product) => {
+    const formattedProducts = finalProducts.map((product: { id: string; name?: string; slug?: string; featured_image_url?: string | null; legacy_product_id?: string | null }) => {
       const bundleName = productToBundleMap.get(product.id);
       if (bundleName) {
         console.log(`[NNAudio Access Products] Product ${product.id} (${product.name}) is from bundle: ${bundleName}`);
@@ -392,7 +392,7 @@ export async function POST(request: NextRequest) {
       };
     });
     
-    console.log(`[NNAudio Access Products] Formatted ${formattedProducts.length} products, ${formattedProducts.filter(p => p.bundle_name).length} have bundle names`);
+    console.log(`[NNAudio Access Products] Formatted ${formattedProducts.length} products, ${formattedProducts.filter((p: { bundle_name?: string }) => p.bundle_name).length} have bundle names`);
 
     return new Response(JSON.stringify(formattedProducts), {
       status: 200,

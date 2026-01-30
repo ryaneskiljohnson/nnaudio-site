@@ -83,7 +83,7 @@ async function getSubscriberIdsFromFilters(supabase: any, filters: any): Promise
         .select('subscriber_id')
         .gte('opened_at', cutoff.toISOString());
       const exclude = new Set((recentOpeners || []).map((r: any) => r.subscriber_id));
-      ids = ids.filter((id) => !exclude.has(id));
+      ids = ids.filter((id: string) => !exclude.has(id));
     }
 
     return ids;

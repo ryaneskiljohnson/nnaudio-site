@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
 
     const adminSupabase = await createAdminClient();
 
-    // Get bundle products
-    const { data: bundleProducts, error } = await adminSupabase
+    // Get bundle products (tables may not be in generated DB types)
+    const { data: bundleProducts, error } = await (adminSupabase as any)
       .from('bundle_products')
       .select(`
         id,
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     const adminSupabase = await createAdminClient();
 
     // Check if product is already in bundle
-    const { data: existing } = await adminSupabase
+    const { data: existing } = await (adminSupabase as any)
       .from('bundle_products')
       .select('id')
       .eq('bundle_id', bundle_id)
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current max display_order
-    const { data: maxOrder } = await adminSupabase
+    const { data: maxOrder } = await (adminSupabase as any)
       .from('bundle_products')
       .select('display_order')
       .eq('bundle_id', bundle_id)
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     const display_order = (maxOrder?.display_order ?? -1) + 1;
 
     // Add product to bundle
-    const { data, error } = await adminSupabase
+    const { data, error } = await (adminSupabase as any)
       .from('bundle_products')
       .insert({
         bundle_id,
@@ -146,7 +146,7 @@ export async function DELETE(request: NextRequest) {
 
     const adminSupabase = await createAdminClient();
 
-    const { error } = await adminSupabase
+    const { error } = await (adminSupabase as any)
       .from('bundle_products')
       .delete()
       .eq('bundle_id', bundleId)

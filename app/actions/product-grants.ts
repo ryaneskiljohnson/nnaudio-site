@@ -18,8 +18,11 @@ export interface ProductGrant {
   };
 }
 
+/** Supabase client type (resolved from createClient Promise). */
+type SupabaseClientType = Awaited<ReturnType<typeof createClient>>;
+
 // Helper to check if user is admin
-async function checkAdmin(supabase: ReturnType<typeof createClient>) {
+async function checkAdmin(supabase: SupabaseClientType) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -53,7 +56,7 @@ export async function getProductGrants(): Promise<{
 
     const adminSupabase = await createSupabaseServiceRole();
 
-    const { data: grants, error } = await adminSupabase
+    const { data: grants, error } = await (adminSupabase as any)
       .from("product_grants")
       .select(`
         *,
@@ -94,7 +97,7 @@ export async function getUserProductGrants(userEmail: string): Promise<{
 
     const adminSupabase = await createSupabaseServiceRole();
 
-    const { data: grants, error } = await adminSupabase
+    const { data: grants, error } = await (adminSupabase as any)
       .from("product_grants")
       .select(`
         *,
@@ -149,7 +152,7 @@ export async function grantProduct(
     const adminSupabase = await createSupabaseServiceRole();
 
     // Check if grant already exists
-    const { data: existing, error: existingError } = await adminSupabase
+    const { data: existing, error: existingError } = await (adminSupabase as any)
       .from("product_grants")
       .select("id")
       .eq("user_email", userEmail.toLowerCase())
@@ -166,7 +169,7 @@ export async function grantProduct(
     }
 
     // Create grant
-    const { data: grant, error } = await adminSupabase
+    const { data: grant, error } = await (adminSupabase as any)
       .from("product_grants")
       .insert({
         user_email: userEmail.toLowerCase(),
@@ -212,7 +215,7 @@ export async function revokeProductGrant(grantId: string): Promise<{
 
     const adminSupabase = await createSupabaseServiceRole();
 
-    const { error } = await adminSupabase
+    const { error } = await (adminSupabase as any)
       .from("product_grants")
       .delete()
       .eq("id", grantId);

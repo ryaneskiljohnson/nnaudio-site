@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
     
-    let query = supabase
+    let query = (supabase as any)
       .from('bundles')
       .select(`
         *,
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform the data to make it easier to work with
-    const transformedBundles = bundles?.map(bundle => {
+    const transformedBundles = bundles?.map((bundle: any) => {
       const tiers = ((bundle.bundle_subscription_tiers || []) as any[]).filter(t => t.active);
       const pricing = {
         monthly: tiers.find(t => t.subscription_type === 'monthly'),
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Sort: elite subscription bundles first, then regular bundles, then by display_order
-    const sortedBundles = transformedBundles?.sort((a, b) => {
+    const sortedBundles = transformedBundles?.sort((a: any, b: any) => {
       // Elite subscription bundles (with monthly/annual tiers) come first
       if (a.isSubscriptionBundle && !b.isSubscriptionBundle) return -1;
       if (!a.isSubscriptionBundle && b.isSubscriptionBundle) return 1;
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
 
-    const { data: bundle, error } = await adminSupabase
+    const { data: bundle, error } = await (adminSupabase as any)
       .from('bundles')
       .insert([{
         name: body.name,

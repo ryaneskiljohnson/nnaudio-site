@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for existing codes in database
-    const { data: existingCodes, error: checkError } = await adminSupabase
+    const { data: existingCodes, error: checkError } = await (adminSupabase as any)
       .from("reseller_codes")
       .select("serial_code")
       .in("serial_code", codes);
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
 
     // Filter out any codes that already exist
     const existingSet = new Set(
-      (existingCodes || []).map((c) => c.serial_code)
+      (existingCodes || []).map((c: { serial_code: string }) => c.serial_code)
     );
     const uniqueCodes = codes.filter((code) => !existingSet.has(code));
 

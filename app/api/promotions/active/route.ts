@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    let query = supabase
+    let query = (supabase as any)
       .from('promotions')
       .select('*')
       .eq('active', true)
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     // Filter by date and plan in JavaScript (more complex filtering)
     // All date comparisons are done in PST timezone
-    const filtered = promotions?.filter(promo => {
+    const filtered = promotions?.filter((promo: any) => {
       // Check date range in PST
       if (promo.start_date && isPSTDateAfterNow(promo.start_date)) {
         return false; // Not started yet (in PST)

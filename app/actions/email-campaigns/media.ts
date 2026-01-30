@@ -46,9 +46,10 @@ export async function previewEmail(campaignId: string): Promise<PreviewResponse>
     // Parse email elements from html_content (embedded base64 JSON)
     let emailElements = [];
     try {
-      // First try to get elements from email_elements field
-      if (campaign.email_elements) {
-        emailElements = JSON.parse(campaign.email_elements);
+      // First try to get elements from email_elements field (may not be in generated DB type)
+      const campaignAny = campaign as Record<string, unknown>;
+      if (campaignAny.email_elements) {
+        emailElements = JSON.parse(campaignAny.email_elements as string);
       } else if (campaign.html_content) {
         // Extract embedded elements from html_content
         const match = campaign.html_content.match(/<!--ELEMENTS_B64:([^>]*)-->/);
@@ -206,7 +207,7 @@ export async function previewEmail(campaignId: string): Promise<PreviewResponse>
 
           case 'brand-header':
             // Use a more reliable image source and Gmail-compatible structure
-            const logoUrl = "https://cymasphere.com/images/cm-logo.png";
+            const logoUrl = "https://cymasphere.com/images/cm-logo.webp";
 
             // Force brand-header to align like send route: use constrained width container and 0 side padding
             const headerWrapperClass = 'container';
@@ -314,7 +315,7 @@ export async function previewEmail(campaignId: string): Promise<PreviewResponse>
       campaign: {
         id: campaign.id,
         name: campaign.name,
-        subject: campaign.subject
+        subject: campaign.subject ?? ''
       }
     };
   } catch (error) {

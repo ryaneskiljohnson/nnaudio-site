@@ -70,7 +70,7 @@ const staticPlugins = [
     id: 3,
     name: "CrystalBall",
     description: "Revolutionary effects processor with AI-powered modulation",
-    image: "/images/nnaud-io/CrystalBall-Logo.png",
+    image: "/images/nnaud-io/CrystalBall-Logo.webp",
     backgroundImage: "/images/nnaud-io/CrystalBall-Features-BG.gif",
     price: "$59",
   },
@@ -78,14 +78,14 @@ const staticPlugins = [
     id: 4,
     name: "Time Zones",
     description: "Creative delay and time-based effects plugin",
-    image: "/images/nnaud-io/Time-Zones-Logo-600x157.jpg",
+    image: "/images/nnaud-io/Time-Zones-Logo-600x157.webp",
     price: "$29",
   },
   {
     id: 5,
     name: "Bakers Dozen",
     description: "Professional drum machine with 13 unique kits",
-    image: "/images/nnaud-io/BakersDozenLogo-600x150.jpg",
+    image: "/images/nnaud-io/BakersDozenLogo-600x150.webp",
     backgroundImage: "/images/nnaud-io/BakersBackground.webp",
     price: "$34",
   },
@@ -182,8 +182,8 @@ const staticFeaturedProducts = [
     id: 3,
     name: "CrystalBall",
     tagline: "Sculpt Your Sonic Reality",
-    logo: "/images/nnaud-io/CrystalBall-Logo.png",
-    thumbnail: "/images/nnaud-io/CrystalBall-Logo.png",
+    logo: "/images/nnaud-io/CrystalBall-Logo.webp",
+    thumbnail: "/images/nnaud-io/CrystalBall-Logo.webp",
     backgroundImage: "/images/nnaud-io/CrystalBall-Features-BG.gif",
     price: "$59",
   },
@@ -200,9 +200,9 @@ const staticFeaturedProducts = [
     id: 5,
     name: "Time Zones",
     tagline: "Creative delay and time-based effects",
-    logo: "/images/nnaud-io/Time-Zones-Logo-600x157.jpg",
-    thumbnail: "/images/nnaud-io/Time-Zones-Logo-600x157.jpg",
-    backgroundImage: "/images/nnaud-io/Time-Zones-Logo-600x157.jpg",
+    logo: "/images/nnaud-io/Time-Zones-Logo-600x157.webp",
+    thumbnail: "/images/nnaud-io/Time-Zones-Logo-600x157.webp",
+    backgroundImage: "/images/nnaud-io/Time-Zones-Logo-600x157.webp",
     price: "$29",
   },
   {
@@ -470,7 +470,7 @@ export default function Home() {
             products={orbitalsProducts}
             fetchAllUrl="/api/products?status=active&limit=10000"
             maxCardsPerView={4}
-            cardSize="medium"
+            cardSize="large"
           />
         ) : (
           orbitalsProducts.length === 0 && !loading ? null : (

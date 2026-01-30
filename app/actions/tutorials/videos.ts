@@ -93,10 +93,20 @@ export async function getVideos(
 
     const uniqueCategories = [...new Set(categories?.map(c => c.feature_category) || [])];
 
+    const mappedVideos: Video[] = (videos || []).map((v: Record<string, unknown>) => ({
+      ...v,
+      youtube_id: (v.youtube_video_id as string) ?? '',
+      description: (v.description as string) ?? '',
+      duration: typeof v.duration === 'number' ? v.duration : 0,
+      created_at: (v.created_at as string) ?? '',
+      updated_at: (v.updated_at as string) ?? '',
+      app_mode_applicability: Array.isArray(v.app_mode_applicability) ? v.app_mode_applicability as string[] : [String(v.app_mode_applicability ?? '')],
+    })) as Video[];
+
     return {
-      videos: videos || [],
+      videos: mappedVideos,
       categories: uniqueCategories,
-      totalCount: videos?.length || 0
+      totalCount: mappedVideos.length
     };
   } catch (error) {
     console.error('Unexpected error in getVideos:', error);
@@ -133,17 +143,24 @@ export async function getVideo(videoId: string): Promise<Video & { script: strin
       throw new Error('Video not found');
     }
 
-    // Get video script
-    const { data: script, error: scriptError } = await supabase
+    // Get video script (column is script_content in DB)
+    const { data: scriptData, error: scriptError } = await supabase
       .from('video_scripts')
-      .select('content')
+      .select('script_content')
       .eq('video_id', videoId)
       .single();
 
+    const appMode = video.app_mode_applicability;
+    const appModeArray = typeof appMode === 'string' ? (appMode ? appMode.split(',').map(s => s.trim()).filter(Boolean) : []) : (Array.isArray(appMode) ? appMode : []);
     return {
       ...video,
-      script: script?.content || null
-    };
+      youtube_id: video.youtube_video_id ?? '',
+      script: scriptData?.script_content ?? null,
+      app_mode_applicability: appModeArray,
+      description: video.description ?? '',
+      created_at: video.created_at ?? '',
+      updated_at: video.updated_at ?? '',
+    } as unknown as Video & { script: string | null };
   } catch (error) {
     console.error('Unexpected error in getVideo:', error);
     throw error;
@@ -161,10 +178,15 @@ export async function updateVideo(
     const supabase = await createClient();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
-    // Update video data
+    // Map Video type to DB columns (app_mode_applicability is string in DB)
+    const dbUpdates: Record<string, unknown> = { ...updates };
+    if (Array.isArray(dbUpdates.app_mode_applicability)) {
+      const arr = dbUpdates.app_mode_applicability as string[];
+      dbUpdates.app_mode_applicability = arr.join(',') || (arr[0] ?? '');
+    }
     const { data: video, error: videoError } = await supabase
       .from('tutorial_videos')
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', videoId)
       .select()
       .single();
@@ -174,7 +196,16 @@ export async function updateVideo(
       throw new Error('Failed to update video');
     }
 
-    return video;
+    const appMode = video.app_mode_applicability;
+    const appModeArray = typeof appMode === 'string' ? (appMode ? appMode.split(',').map(s => s.trim()).filter(Boolean) : []) : (Array.isArray(appMode) ? appMode : []);
+    return {
+      ...video,
+      youtube_id: video.youtube_video_id ?? '',
+      description: video.description ?? '',
+      created_at: video.created_at ?? '',
+      updated_at: video.updated_at ?? '',
+      app_mode_applicability: appModeArray,
+    } as unknown as Video;
   } catch (error) {
     console.error('Unexpected error in updateVideo:', error);
     throw error;
@@ -297,8 +328,8 @@ export async function getVideosWithDurations(
     const videosWithDuration = videos?.map(video => ({
       id: video.id,
       title: video.title,
-      description: video.description,
-      youtube_video_id: video.youtube_video_id,
+      description: video.description ?? '',
+      youtube_video_id: video.youtube_video_id ?? '',
       duration: video.youtube_duration_cached || video.duration || 300, // Use cached duration, fallback to stored duration, then default
       duration_cached: !!video.youtube_duration_cached,
       duration_last_updated: video.youtube_duration_last_updated,

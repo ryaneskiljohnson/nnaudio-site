@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data: resellers, error } = await adminSupabase
+    const { data: resellers, error } = await (adminSupabase as any)
       .from("resellers")
       .select("*")
       .order("created_at", { ascending: false });
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data: reseller, error } = await adminSupabase
+    const { data: reseller, error } = await (adminSupabase as any)
       .from("resellers")
       .insert({
         name: name.trim(),

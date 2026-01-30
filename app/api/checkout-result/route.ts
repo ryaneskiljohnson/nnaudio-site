@@ -83,10 +83,11 @@ export async function GET(request: NextRequest) {
     // Determine if this is a lifetime purchase (one-time payment)
     const isLifetime = sessionResult.mode === "payment";
 
-    // Get value for lifetime purchases
-    if (isLifetime && sessionResult.amountTotal) {
-      subscriptionValue = sessionResult.amountTotal / 100; // Convert cents to dollars
-      subscriptionCurrency = sessionResult.currency?.toUpperCase() || "USD";
+    // Get value for lifetime purchases (amountTotal/currency may be on session type)
+    const sessionAny = sessionResult as { amountTotal?: number; currency?: string };
+    if (isLifetime && sessionAny.amountTotal) {
+      subscriptionValue = sessionAny.amountTotal / 100; // Convert cents to dollars
+      subscriptionCurrency = sessionAny.currency?.toUpperCase() || "USD";
     }
 
     // If this is a subscription with a trial, immediately refresh subscription status
@@ -122,7 +123,7 @@ export async function GET(request: NextRequest) {
     // Build redirect URL with all necessary parameters
     const params = new URLSearchParams({
       isSignedUp: isSignedUp.toString(),
-      isTrial: isTrial.toString(),
+      isTrial: (isTrial ?? false).toString(),
       isLifetime: isLifetime.toString(),
       session_id: sessionId,
     });

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data: grants, error } = await adminSupabase
+    const { data: grants, error } = await (adminSupabase as any)
       .from("product_grants")
       .select(`
         *,
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     console.log("[product-grants POST] Checking for existing grant...");
 
     // Check if grant already exists
-    const { data: existing, error: existingError } = await adminSupabase
+    const { data: existing, error: existingError } = await (adminSupabase as any)
       .from("product_grants")
       .select("id")
       .eq("user_email", user_email.toLowerCase())
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
     console.log("[product-grants POST] No existing grant found, creating new grant...");
 
     // Create grant
-    const { data: grant, error } = await adminSupabase
+    const { data: grant, error } = await (adminSupabase as any)
       .from("product_grants")
       .insert({
         user_email: user_email.toLowerCase(),
@@ -218,7 +218,7 @@ export async function DELETE(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { error } = await adminSupabase
+    const { error } = await (adminSupabase as any)
       .from("product_grants")
       .delete()
       .eq("id", grantId);
