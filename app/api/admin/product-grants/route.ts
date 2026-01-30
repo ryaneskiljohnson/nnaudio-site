@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { invalidateUserProductCacheByEmail } from "@/lib/product-cache";
 
 // GET - List all product grants (admin only)
 export async function GET(request: NextRequest) {
@@ -171,6 +172,8 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
+    await invalidateUserProductCacheByEmail(user_email);
+
     return NextResponse.json({ grant });
   } catch (error: any) {
     return NextResponse.json(
@@ -218,6 +221,12 @@ export async function DELETE(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    const { data: grant, error: fetchError } = await (adminSupabase as any)
+      .from("product_grants")
+      .select("user_email")
+      .eq("id", grantId)
+      .single();
+
     const { error } = await (adminSupabase as any)
       .from("product_grants")
       .delete()
@@ -225,6 +234,10 @@ export async function DELETE(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!fetchError && grant?.user_email) {
+      await invalidateUserProductCacheByEmail(grant.user_email);
     }
 
     return NextResponse.json({ success: true });
