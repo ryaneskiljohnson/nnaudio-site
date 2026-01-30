@@ -82,11 +82,33 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
   const [hasActivePromotion, setHasActivePromotion] = useState(false);
 
+  // Redirect invite tokens to /reset-password when Supabase redirects to wrong URL
+  // (e.g. Site URL in Supabase dashboard is base domain without path)
+  useEffect(() => {
+    if (typeof window === "undefined" || !pathname) return;
+    const hash = window.location.hash?.substring(1);
+    if (!hash) return;
+    const params = new URLSearchParams(hash);
+    const type = params.get("type");
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+    if (
+      type === "invite" &&
+      accessToken &&
+      refreshToken &&
+      !pathname.startsWith("/reset-password")
+    ) {
+      window.location.replace(
+        `${window.location.origin}/reset-password${window.location.hash}`,
+      );
+    }
+  }, [pathname]);
+
   // Check if there's an active promotion
   useEffect(() => {
     const checkPromotion = async () => {
       try {
-        const response = await fetch('/api/promotions/active');
+        const response = await fetch("/api/promotions/active");
         const data = await response.json();
         setHasActivePromotion(data.success && !!data.promotion);
       } catch (error) {
@@ -101,51 +123,54 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   // Load it after a delay to avoid blocking initial render
   useEffect(() => {
     // Only load YouTube API on routes that actually need it
-    const needsYoutube = pathname?.includes('/admin') || pathname?.includes('/dashboard') || pathname?.includes('/tutorials');
-    
+    const needsYoutube =
+      pathname?.includes("/admin") ||
+      pathname?.includes("/dashboard") ||
+      pathname?.includes("/tutorials");
+
     if (!needsYoutube) {
       // Load after 3 seconds for non-admin routes
       const timer = setTimeout(() => {
-        if (typeof window !== 'undefined' && !window.YT) {
-          console.log('Loading YouTube Iframe API...');
-          const script = document.createElement('script');
-          script.src = 'https://www.youtube.com/iframe_api';
+        if (typeof window !== "undefined" && !window.YT) {
+          console.log("Loading YouTube Iframe API...");
+          const script = document.createElement("script");
+          script.src = "https://www.youtube.com/iframe_api";
           script.async = true;
           script.onload = () => {
-            console.log('YouTube Iframe API script loaded');
+            console.log("YouTube Iframe API script loaded");
           };
           script.onerror = () => {
-            console.error('Failed to load YouTube Iframe API script');
+            console.error("Failed to load YouTube Iframe API script");
           };
           document.head.appendChild(script);
-          
+
           window.onYouTubeIframeAPIReady = () => {
-            console.log('YouTube Iframe API ready callback triggered');
+            console.log("YouTube Iframe API ready callback triggered");
           };
         }
       }, 3000);
-      
+
       return () => clearTimeout(timer);
     } else {
       // Load immediately for admin/dashboard routes
-      if (typeof window !== 'undefined' && !window.YT) {
-        console.log('Loading YouTube Iframe API...');
-        const script = document.createElement('script');
-        script.src = 'https://www.youtube.com/iframe_api';
+      if (typeof window !== "undefined" && !window.YT) {
+        console.log("Loading YouTube Iframe API...");
+        const script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
         script.async = true;
         script.onload = () => {
-          console.log('YouTube Iframe API script loaded');
+          console.log("YouTube Iframe API script loaded");
         };
         script.onerror = () => {
-          console.error('Failed to load YouTube Iframe API script');
+          console.error("Failed to load YouTube Iframe API script");
         };
         document.head.appendChild(script);
-        
+
         window.onYouTubeIframeAPIReady = () => {
-          console.log('YouTube Iframe API ready callback triggered');
+          console.log("YouTube Iframe API ready callback triggered");
         };
       } else if (window.YT) {
-        console.log('YouTube API already loaded');
+        console.log("YouTube API already loaded");
       }
     }
   }, [pathname]);
@@ -188,16 +213,16 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     <ThemeProvider theme={theme}>
       <ToastProvider>
         <CartProvider>
-        <AuthProvider>
-          <LayoutContent
-            shouldHideHeaderFooter={shouldHideHeaderFooter}
-            shouldHideChat={shouldHideChat}
-            hasActivePromotion={hasActivePromotion}
-            pathname={pathname}
-          >
-            {children}
-          </LayoutContent>
-        </AuthProvider>
+          <AuthProvider>
+            <LayoutContent
+              shouldHideHeaderFooter={shouldHideHeaderFooter}
+              shouldHideChat={shouldHideChat}
+              hasActivePromotion={hasActivePromotion}
+              pathname={pathname}
+            >
+              {children}
+            </LayoutContent>
+          </AuthProvider>
         </CartProvider>
       </ToastProvider>
     </ThemeProvider>
@@ -224,15 +249,18 @@ function LayoutContent({
   const shouldHideChatFinal = shouldHideChat;
 
   // Hide promotion banner for lifetime users
-  const shouldShowPromotion = hasActivePromotion && user?.profile?.subscription !== "lifetime";
+  const shouldShowPromotion =
+    hasActivePromotion && user?.profile?.subscription !== "lifetime";
 
   return (
     <LayoutWrapper>
-      {!shouldHideHeaderFooter && <NextHeader hasActiveBanner={hasActivePromotion} />}
-      {!shouldHideHeaderFooter && shouldShowPromotion && <PromotionBanner showCountdown={true} />}
-      <Main>
-        {children}
-      </Main>
+      {!shouldHideHeaderFooter && (
+        <NextHeader hasActiveBanner={hasActivePromotion} />
+      )}
+      {!shouldHideHeaderFooter && shouldShowPromotion && (
+        <PromotionBanner showCountdown={true} />
+      )}
+      <Main>{children}</Main>
       {!shouldHideHeaderFooter && <Footer />}
       {!shouldHideChatFinal && <ChatWidget />}
     </LayoutWrapper>

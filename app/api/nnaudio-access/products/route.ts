@@ -398,7 +398,7 @@ export async function POST(request: NextRequest) {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[NNAudio Access Products] Error:", error);
     return new Response(formatError("Unable to handle products request"), {
       status: 500,

@@ -77,7 +77,7 @@ export async function createUserManagementRecord(
   user_email: string,
   pro: boolean,
   notes?: string | null,
-  active?: boolean
+  active?: boolean,
 ): Promise<{
   data: UserManagementRecord | null;
   error: string | null;
@@ -138,22 +138,21 @@ export async function createUserManagementRecord(
         const { data: authUser } = await serviceSupabase.auth.admin.listUsers();
         const matchingUser = authUser?.users.find(
           (u) =>
-            u.email?.toLowerCase().trim() === user_email.toLowerCase().trim()
+            u.email?.toLowerCase().trim() === user_email.toLowerCase().trim(),
         );
 
         if (matchingUser) {
           // Use centralized function to update the profile
           // This will check user_management, Stripe, and iOS subscriptions
-          const { updateUserProStatus } = await import(
-            "@/utils/subscriptions/check-subscription"
-          );
+          const { updateUserProStatus } =
+            await import("@/utils/subscriptions/check-subscription");
           await updateUserProStatus(matchingUser.id);
         }
       } catch (profileUpdateError) {
         // Log but don't fail the user_management creation
         console.error(
           "Error updating profile after NFR creation:",
-          profileUpdateError
+          profileUpdateError,
         );
       }
     }
@@ -177,7 +176,7 @@ export async function updateUserManagementRecord(
     pro?: boolean;
     notes?: string | null;
     active?: boolean;
-  }
+  },
 ): Promise<{
   data: UserManagementRecord | null;
   error: string | null;
@@ -232,22 +231,21 @@ export async function updateUserManagementRecord(
         const { data: authUser } = await serviceSupabase.auth.admin.listUsers();
         const matchingUser = authUser?.users.find(
           (u) =>
-            u.email?.toLowerCase().trim() === user_email.toLowerCase().trim()
+            u.email?.toLowerCase().trim() === user_email.toLowerCase().trim(),
         );
 
         if (matchingUser) {
           // Use centralized function to update the profile
           // This will check user_management, Stripe, and iOS subscriptions
-          const { updateUserProStatus } = await import(
-            "@/utils/subscriptions/check-subscription"
-          );
+          const { updateUserProStatus } =
+            await import("@/utils/subscriptions/check-subscription");
           await updateUserProStatus(matchingUser.id);
         }
       } catch (profileUpdateError) {
         // Log but don't fail the user_management update
         console.error(
           "Error updating profile after NFR change:",
-          profileUpdateError
+          profileUpdateError,
         );
       }
     }
@@ -271,7 +269,7 @@ export async function createUserManagementWithInvite(
   notes?: string | null,
   first_name?: string | null,
   last_name?: string | null,
-  active?: boolean
+  active?: boolean,
 ): Promise<{
   data: UserManagementRecord | null;
   warning?: string;
@@ -324,9 +322,7 @@ export async function createUserManagementWithInvite(
       }
 
       console.error("Error creating user_management record:", insertError);
-      const detail = insertError.message
-        ? `: ${insertError.message}`
-        : "";
+      const detail = insertError.message ? `: ${insertError.message}` : "";
       return {
         data: null,
         error: `Failed to create user_management record${detail}`,
@@ -339,8 +335,12 @@ export async function createUserManagementWithInvite(
 
       // Redirect to this site's reset-password page (same pattern as AuthContext and Cymasphere).
       // NEXT_PUBLIC_SITE_URL is set per deployment (NNAudio vs Cymasphere) so invitees land on the correct domain.
+      // Note: Server actions don't have window; NEXT_PUBLIC_SITE_URL must be set in .env for local dev.
       const baseUrl =
-        process.env.NEXT_PUBLIC_SITE_URL || "https://cymasphere.com";
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        (typeof window !== "undefined"
+          ? window.location.origin
+          : "https://cymasphere.com");
       const redirectTo = `${baseUrl.replace(/\/$/, "")}/reset-password`;
 
       // Build user metadata with name if provided
@@ -452,7 +452,7 @@ export async function getAllUsersForCRMAdmin(
   searchTerm?: string,
   subscriptionFilter?: string,
   sortField?: string,
-  sortDirection?: "asc" | "desc"
+  sortDirection?: "asc" | "desc",
 ): Promise<{
   users: Array<{
     id: string;
@@ -482,7 +482,7 @@ export async function getAllUsersForCRMAdmin(
       searchTerm,
       subscriptionFilter,
       sortField,
-      sortDirection
+      sortDirection,
     );
 
     return { users: result.users };
@@ -605,7 +605,7 @@ export async function getUserByIdAdmin(userId: string): Promise<{
  */
 export async function getUsersForCRMCountAdmin(
   searchTerm?: string,
-  subscriptionFilter?: string
+  subscriptionFilter?: string,
 ): Promise<{
   count: number;
   error?: string;
@@ -636,7 +636,7 @@ export async function getUsersForCRMCountAdmin(
  * @returns Object indicating success and any errors
  */
 export async function updateUserProfileFromStripeByEmail(
-  userEmail: string
+  userEmail: string,
 ): Promise<{
   success: boolean;
   error: string | null;
@@ -656,7 +656,7 @@ export async function updateUserProfileFromStripeByEmail(
     const serviceSupabase = await createSupabaseServiceRole();
     const { data: authUser } = await serviceSupabase.auth.admin.listUsers();
     const matchingUser = authUser?.users.find(
-      (u) => u.email?.toLowerCase().trim() === userEmail.toLowerCase().trim()
+      (u) => u.email?.toLowerCase().trim() === userEmail.toLowerCase().trim(),
     );
 
     if (!matchingUser) {
@@ -664,9 +664,8 @@ export async function updateUserProfileFromStripeByEmail(
     }
 
     // Use centralized function to update the profile
-    const { updateUserProStatus } = await import(
-      "@/utils/subscriptions/check-subscription"
-    );
+    const { updateUserProStatus } =
+      await import("@/utils/subscriptions/check-subscription");
     await updateUserProStatus(matchingUser.id);
     return { success: true, error: null };
   } catch (error) {
@@ -700,9 +699,8 @@ export async function updateUserProfileFromStripe(userId: string): Promise<{
     }
 
     // Use centralized function that handles all subscription sources
-    const { updateUserProStatus } = await import(
-      "@/utils/subscriptions/check-subscription"
-    );
+    const { updateUserProStatus } =
+      await import("@/utils/subscriptions/check-subscription");
     await updateUserProStatus(userId);
 
     return { success: true, error: null };
@@ -895,7 +893,7 @@ export async function createSupportTicketAdmin(data: {
 
 export async function updateSupportTicketStatusAdmin(
   ticketId: string,
-  status: "open" | "in_progress" | "resolved" | "closed"
+  status: "open" | "in_progress" | "resolved" | "closed",
 ): Promise<{
   success: boolean;
   error?: string;
@@ -997,7 +995,7 @@ export async function getSupportTicketsAdmin(): Promise<{
         updated_at,
         resolved_at,
         closed_at
-      `
+      `,
       )
       .order("created_at", { ascending: false });
 
@@ -1213,7 +1211,7 @@ export async function getSupportTicketAdmin(ticketId: string): Promise<{
         created_at,
         updated_at,
         edited_at
-      `
+      `,
       )
       .eq("ticket_id", ticketId)
       .order("created_at", { ascending: true });
@@ -1268,12 +1266,12 @@ export async function getSupportTicketAdmin(ticketId: string): Promise<{
           } catch (error) {
             console.error(
               `Error generating signed URL for attachment ${att.id}:`,
-              error
+              error,
             );
           }
         }
         return { ...att, url };
-      })
+      }),
     );
 
     // Combine messages with attachments
@@ -1352,7 +1350,7 @@ export async function deleteSupportTicketAdmin(ticketId: string): Promise<{
  * Groups messages by user and returns the most recent message from each user with message count
  */
 export async function getRecentSupportTicketMessagesAdmin(
-  limit: number = 10
+  limit: number = 10,
 ): Promise<{
   messages: Array<{
     id: string;
@@ -1385,7 +1383,7 @@ export async function getRecentSupportTicketMessagesAdmin(
         content,
         user_id,
         created_at
-      `
+      `,
       )
       .eq("is_admin", false)
       .order("created_at", { ascending: false })
@@ -1420,7 +1418,7 @@ export async function getRecentSupportTicketMessagesAdmin(
           subject: t.subject,
           status: t.status,
         },
-      ])
+      ]),
     );
 
     // Get user emails using service role client
@@ -1468,7 +1466,7 @@ export async function getRecentSupportTicketMessagesAdmin(
       // Sort by created_at descending to get most recent
       const sortedMessages = [...userMessages].sort(
         (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       );
       const mostRecentMessage = sortedMessages[0];
       const ticket = ticketsMap.get(mostRecentMessage.ticket_id);
@@ -1490,7 +1488,7 @@ export async function getRecentSupportTicketMessagesAdmin(
     // Sort grouped messages by most recent and limit
     groupedMessages.sort(
       (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
 
     return { messages: groupedMessages.slice(0, limit) };
@@ -1512,7 +1510,7 @@ export async function getRecentSupportTicketMessagesAdmin(
 export async function addSupportTicketMessageAdmin(
   ticketId: string,
   content: string,
-  isAdmin: boolean = true
+  isAdmin: boolean = true,
 ): Promise<{
   success: boolean;
   messageId?: string;
@@ -1561,7 +1559,7 @@ export async function addSupportTicketMessageAdmin(
         // Don't fail the message creation if email fails
         console.error(
           "Error sending support ticket email notification:",
-          emailError
+          emailError,
         );
       }
     }
@@ -1581,7 +1579,7 @@ export async function addSupportTicketMessageAdmin(
  */
 async function sendSupportTicketEmailNotification(
   ticketId: string,
-  messageId: string
+  messageId: string,
 ): Promise<void> {
   try {
     const supabase = await createClient();
@@ -1640,7 +1638,7 @@ async function sendSupportTicketEmailNotification(
         is_admin,
         created_at,
         user_id
-      `
+      `,
       )
       .eq("ticket_id", ticketId)
       .order("created_at", { ascending: true });
@@ -1663,12 +1661,12 @@ async function sendSupportTicketEmailNotification(
       console.log(
         `[Email] Fetched ${attachments?.length || 0} attachments for ${
           messageIds.length
-        } messages`
+        } messages`,
       );
       if (attachments && attachments.length > 0) {
         attachments.forEach((att) => {
           console.log(
-            `[Email] Attachment: ${att.file_name}, type: ${att.attachment_type}, storage_path: ${att.storage_path}`
+            `[Email] Attachment: ${att.file_name}, type: ${att.attachment_type}, storage_path: ${att.storage_path}`,
           );
         });
       }
@@ -1693,7 +1691,7 @@ async function sendSupportTicketEmailNotification(
     // Helper function to download and convert image to base64
     const getImageBase64 = async (
       storagePath: string,
-      fileType: string
+      fileType: string,
     ): Promise<string | null> => {
       try {
         const bucketName = "support-attachments";
@@ -1723,13 +1721,13 @@ async function sendSupportTicketEmailNotification(
         const dataUri = `data:${contentType};base64,${base64}`;
 
         console.log(
-          `[Email] Successfully converted image to base64 (${base64.length} chars)`
+          `[Email] Successfully converted image to base64 (${base64.length} chars)`,
         );
         return dataUri;
       } catch (error) {
         console.error(
           `Error converting image to base64 ${storagePath}:`,
-          error
+          error,
         );
         return null;
       }
@@ -1751,7 +1749,7 @@ async function sendSupportTicketEmailNotification(
 
         // Get attachments for this message
         const messageAttachments = (attachments || []).filter(
-          (att) => att.message_id === msg.id
+          (att) => att.message_id === msg.id,
         );
 
         // Build image HTML for embedded images
@@ -1759,11 +1757,11 @@ async function sendSupportTicketEmailNotification(
         for (const att of messageAttachments) {
           if (att.attachment_type === "image" && att.storage_path) {
             console.log(
-              `[Email] Processing image attachment: ${att.file_name}, storage_path: ${att.storage_path}`
+              `[Email] Processing image attachment: ${att.file_name}, storage_path: ${att.storage_path}`,
             );
             const base64Image = await getImageBase64(
               att.storage_path,
-              att.file_type || "image/png"
+              att.file_type || "image/png",
             );
             if (base64Image) {
               imagesHtml += `
@@ -1772,7 +1770,7 @@ async function sendSupportTicketEmailNotification(
                 </div>
               `;
               console.log(
-                `[Email] Successfully embedded image: ${att.file_name}`
+                `[Email] Successfully embedded image: ${att.file_name}`,
               );
             } else {
               console.error(`[Email] Failed to embed image: ${att.file_name}`);
@@ -1784,14 +1782,14 @@ async function sendSupportTicketEmailNotification(
           <div style="margin-bottom: 20px; padding: 15px; background-color: ${
             isAdmin ? "#f0f7ff" : "#f9f9f9"
           }; border-left: 3px solid ${
-          isAdmin ? "#4a90e2" : "#ccc"
-        }; border-radius: 4px;">
+            isAdmin ? "#4a90e2" : "#ccc"
+          }; border-radius: 4px;">
             <div style="font-weight: 600; color: #333; margin-bottom: 8px;">
               ${senderName} ${
-          isAdmin
-            ? '<span style="color: #4a90e2; font-size: 0.85em;">(Support)</span>'
-            : ""
-        }
+                isAdmin
+                  ? '<span style="color: #4a90e2; font-size: 0.85em;">(Support)</span>'
+                  : ""
+              }
             </div>
             <div style="font-size: 0.85em; color: #666; margin-bottom: 10px;">
               ${messageDate}
@@ -1802,7 +1800,7 @@ async function sendSupportTicketEmailNotification(
             ${imagesHtml}
           </div>
         `;
-      })
+      }),
     );
 
     const messageChainHtmlString = messageChainHtml.join("");
@@ -1936,11 +1934,11 @@ This is an automated notification from Cymasphere Support.
 
     if (emailResult.success) {
       console.log(
-        `✅ Support ticket email notification sent to ${userEmail} for ticket ${ticket.ticket_number}`
+        `✅ Support ticket email notification sent to ${userEmail} for ticket ${ticket.ticket_number}`,
       );
     } else {
       console.error(
-        `❌ Failed to send support ticket email notification: ${emailResult.error}`
+        `❌ Failed to send support ticket email notification: ${emailResult.error}`,
       );
     }
   } catch (error) {
@@ -1954,7 +1952,7 @@ This is an automated notification from Cymasphere Support.
  */
 async function sendSupportTicketEmailNotificationToAdmin(
   ticketId: string,
-  messageId: string
+  messageId: string,
 ): Promise<void> {
   try {
     const supabase = await createClient();
@@ -2013,7 +2011,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
         is_admin,
         created_at,
         user_id
-      `
+      `,
       )
       .eq("ticket_id", ticketId)
       .order("created_at", { ascending: true });
@@ -2053,7 +2051,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
     // Helper function to download and convert image to base64
     const getImageBase64 = async (
       storagePath: string,
-      fileType: string
+      fileType: string,
     ): Promise<string | null> => {
       try {
         const bucketName = "support-attachments";
@@ -2083,7 +2081,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
       } catch (error) {
         console.error(
           `Error converting image to base64 ${storagePath}:`,
-          error
+          error,
         );
         return null;
       }
@@ -2105,7 +2103,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
 
         // Get attachments for this message
         const messageAttachments = (attachments || []).filter(
-          (att) => att.message_id === msg.id
+          (att) => att.message_id === msg.id,
         );
 
         // Build image HTML for embedded images
@@ -2114,7 +2112,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
           if (att.attachment_type === "image" && att.storage_path) {
             const base64Image = await getImageBase64(
               att.storage_path,
-              att.file_type || "image/png"
+              att.file_type || "image/png",
             );
             if (base64Image) {
               imagesHtml += `
@@ -2130,14 +2128,14 @@ async function sendSupportTicketEmailNotificationToAdmin(
           <div style="margin-bottom: 20px; padding: 15px; background-color: ${
             isAdmin ? "#f0f7ff" : "#f9f9f9"
           }; border-left: 3px solid ${
-          isAdmin ? "#4a90e2" : "#ccc"
-        }; border-radius: 4px;">
+            isAdmin ? "#4a90e2" : "#ccc"
+          }; border-radius: 4px;">
             <div style="font-weight: 600; color: #333; margin-bottom: 8px;">
               ${senderName} ${
-          isAdmin
-            ? '<span style="color: #4a90e2; font-size: 0.85em;">(Support)</span>'
-            : ""
-        }
+                isAdmin
+                  ? '<span style="color: #4a90e2; font-size: 0.85em;">(Support)</span>'
+                  : ""
+              }
             </div>
             <div style="font-size: 0.85em; color: #666; margin-bottom: 10px;">
               ${messageDate}
@@ -2148,7 +2146,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
             ${imagesHtml}
           </div>
         `;
-      })
+      }),
     );
 
     const messageChainHtmlString = messageChainHtml.join("");
@@ -2288,11 +2286,11 @@ This is an automated notification from Cymasphere Support.
 
     if (emailResult.success) {
       console.log(
-        `✅ Support ticket email notification sent to admin for ticket ${ticket.ticket_number}`
+        `✅ Support ticket email notification sent to admin for ticket ${ticket.ticket_number}`,
       );
     } else {
       console.error(
-        `❌ Failed to send support ticket email notification to admin: ${emailResult.error}`
+        `❌ Failed to send support ticket email notification to admin: ${emailResult.error}`,
       );
     }
   } catch (error) {
@@ -2305,7 +2303,7 @@ This is an automated notification from Cymasphere Support.
  * Delete a support ticket message (admin only)
  */
 export async function deleteSupportTicketMessageAdmin(
-  messageId: string
+  messageId: string,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -2388,7 +2386,7 @@ export async function getUserSupportTickets(): Promise<{
         updated_at,
         resolved_at,
         closed_at
-      `
+      `,
       )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
@@ -2483,7 +2481,7 @@ export async function getUserSupportTicket(ticketId: string): Promise<{
         created_at,
         updated_at,
         edited_at
-      `
+      `,
       )
       .eq("ticket_id", ticketId)
       .order("created_at", { ascending: true });
@@ -2539,12 +2537,12 @@ export async function getUserSupportTicket(ticketId: string): Promise<{
           } catch (error) {
             console.error(
               `Error generating signed URL for attachment ${att.id}:`,
-              error
+              error,
             );
           }
         }
         return { ...att, url };
-      })
+      }),
     );
 
     // Combine messages with attachments
@@ -2683,7 +2681,7 @@ export async function createSupportTicket(data: {
  */
 export async function addSupportTicketMessage(
   ticketId: string,
-  content: string
+  content: string,
 ): Promise<{
   success: boolean;
   messageId?: string;
@@ -2740,7 +2738,7 @@ export async function addSupportTicketMessage(
         // Don't fail the message creation if email fails
         console.error(
           "Error sending support ticket email notification to admin:",
-          emailError
+          emailError,
         );
       }
     }
@@ -2761,7 +2759,7 @@ export async function addSupportTicketMessage(
 export async function uploadSupportTicketAttachment(
   ticketId: string,
   messageId: string,
-  file: File
+  file: File,
 ): Promise<{
   success: boolean;
   attachmentId?: string;
@@ -2846,7 +2844,7 @@ export async function uploadSupportTicketAttachment(
     const bucketName = "support-attachments";
     console.log(
       "[Attachment Upload] Starting storage upload to bucket:",
-      bucketName
+      bucketName,
     );
     console.log("[Attachment Upload] Storage path:", storagePath);
 
@@ -2866,19 +2864,19 @@ export async function uploadSupportTicketAttachment(
       // If bucket doesn't exist, try to create it
       if (uploadError.message.includes("Bucket not found")) {
         console.log(
-          "[Attachment Upload] Bucket not found, attempting to create..."
+          "[Attachment Upload] Bucket not found, attempting to create...",
         );
         const { error: createError } = await supabase.storage.createBucket(
           bucketName,
           {
             public: false,
             fileSizeLimit: `${maxSize}`,
-          }
+          },
         );
         if (createError) {
           console.error(
             "[Attachment Upload] Error creating bucket:",
-            createError
+            createError,
           );
           return { success: false, error: "Failed to create storage bucket" };
         }
@@ -2902,7 +2900,7 @@ export async function uploadSupportTicketAttachment(
       } else {
         console.error(
           "[Attachment Upload] Storage upload failed (not bucket issue):",
-          uploadError
+          uploadError,
         );
         return {
           success: false,
@@ -2928,7 +2926,7 @@ export async function uploadSupportTicketAttachment(
       } else {
         console.error(
           "[Attachment Upload] Error generating signed URL:",
-          signedUrlError
+          signedUrlError,
         );
         // Fallback: try public URL (won't work for private bucket, but won't break)
         const { data: urlData } = supabase.storage
@@ -2956,7 +2954,7 @@ export async function uploadSupportTicketAttachment(
     let attachmentError;
 
     console.log(
-      "[Attachment Upload] Attempting insert with regular client first"
+      "[Attachment Upload] Attempting insert with regular client first",
     );
     const { data: attachmentData, error: attachmentErrorData } = await supabase
       .from("support_attachments")
@@ -2982,12 +2980,12 @@ export async function uploadSupportTicketAttachment(
         attachmentError.code === "42501")
     ) {
       console.log(
-        "[Attachment Upload] RLS blocked insert, trying with service role client..."
+        "[Attachment Upload] RLS blocked insert, trying with service role client...",
       );
 
       if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
         console.error(
-          "[Attachment Upload] SUPABASE_SERVICE_ROLE_KEY is not set! Cannot use service role fallback."
+          "[Attachment Upload] SUPABASE_SERVICE_ROLE_KEY is not set! Cannot use service role fallback.",
         );
         await supabase.storage.from(bucketName).remove([storagePath]);
         return {
@@ -3025,13 +3023,13 @@ export async function uploadSupportTicketAttachment(
         if (attachmentError) {
           console.error(
             "[Attachment Upload] Service role client also failed:",
-            attachmentError
+            attachmentError,
           );
         }
       } catch (serviceErr) {
         console.error(
           "[Attachment Upload] Service role client error:",
-          serviceErr
+          serviceErr,
         );
         attachmentError = serviceErr as any;
       }
@@ -3215,7 +3213,7 @@ export async function getCustomerInvoicesAdmin(customerId: string): Promise<{
  * Returns a map of userId -> ticket count info (open, closed, total)
  */
 export async function getUserSupportTicketCountsAdmin(
-  userIds: string[]
+  userIds: string[],
 ): Promise<{
   counts: Record<string, { open: number; closed: number; total: number }>;
   error?: string;

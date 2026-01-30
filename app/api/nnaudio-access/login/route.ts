@@ -4,6 +4,20 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { Database } from "@/database.types";
 
+/**
+ * @fileoverview Login endpoint for NNAudio Access desktop app
+ * @module nnaudio-access/login
+ *
+ * Authenticates users via Supabase signInWithPassword. Accepts form-urlencoded
+ * username (email) and password. Returns token, refresh_token, user_email,
+ * user_nicename for C++ compatibility.
+ *
+ * @example
+ * POST /api/nnaudio-access/login
+ * Body: username=user@example.com&password=secret
+ * Response: { token, refresh_token, user_email, user_nicename }
+ */
+
 // Format error response to match WordPress JWT format expected by desktop app
 function formatError(code: string, message: string): string {
   return JSON.stringify({ code, message });
@@ -67,6 +81,7 @@ export async function POST(request: NextRequest) {
     // Format response to match WordPress JWT format expected by desktop app
     const response = {
       token: session.access_token, // Use Supabase access token as JWT
+      refresh_token: session.refresh_token ?? "",
       user_email: user.email || "",
       user_nicename:
         profile?.first_name && profile?.last_name
@@ -82,7 +97,7 @@ export async function POST(request: NextRequest) {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[NNAudio Access Login] Error:", error);
     return new Response(
       formatError("server_error", "Unable to login"),
