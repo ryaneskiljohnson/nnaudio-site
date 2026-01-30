@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { updateUserProStatus } from "@/utils/subscriptions/check-subscription";
+import { invalidateUserProductCache } from "@/lib/product-cache";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
     // Find user by customer ID
     const userId = await findUserIdByCustomerId(customerId);
 
-    // If user exists, refresh subscription status using centralized function
+    // If user exists, refresh subscription status and invalidate product cache
     if (userId) {
       console.log(
         `Refreshing subscription for user ${userId} (customer: ${customerId})`
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
       console.log(
         `Subscription updated: ${result.subscription} (${result.source})`
       );
+      invalidateUserProductCache(userId);
     }
 
     return NextResponse.json({ status: "success", event: event.type });
