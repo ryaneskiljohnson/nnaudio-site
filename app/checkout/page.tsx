@@ -986,7 +986,7 @@ function PaymentForm({
         <StripeBadge>
           <StripeLogoContainer>
             <StripeLogoImage 
-              src="/stripe.png" 
+              src="/stripe.webp" 
               alt="Stripe" 
               onError={(e) => {
                 e.currentTarget.style.display = 'none';

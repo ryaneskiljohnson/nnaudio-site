@@ -48,7 +48,7 @@
 
 Deleted 5.5MB of unused files:
 - ❌ `matrix_original.png` (4.5MB backup)
-- ❌ `cm-logo.png` (549KB duplicate)
+- ❌ `cm-logo.webp` (549KB duplicate)
 - ❌ `logoball.png` (255KB unused)
 - ❌ `features/temp.jpg` (temp file)
 - ❌ `features.zip` (archive)
@@ -60,7 +60,7 @@ These stay as PNG for valid reasons:
 ### Icons/Favicons (<50KB each)
 - `cm-logo-icon.png` (242KB) - Favicon needs PNG
 - `cm-logo-icon.ico` - ICO format required
-- `cymasphere-logo.png` (10KB) - Already tiny
+- `cymasphere-logo.webp` (10KB) - Already tiny
 - `pads/*.png` (8-14KB) - UI elements, already small
 
 ## System in Place

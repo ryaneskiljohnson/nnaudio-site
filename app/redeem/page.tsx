@@ -552,7 +552,7 @@ export default function RedeemPage() {
               <IconContainer>
                 <IconCircle>
                   <Image
-                    src="/images/nnaud-io/NNAudio-logo-white.png"
+                    src="/images/nnaud-io/NNAudio-logo-white.webp"
                     alt="NNAudio Logo"
                     width={445}
                     height={283}
@@ -606,7 +606,7 @@ export default function RedeemPage() {
                 <IconContainer>
                   <IconCircle>
                     <Image
-                      src="/images/nnaud-io/NNAudio-logo-white.png"
+                      src="/images/nnaud-io/NNAudio-logo-white.webp"
                       alt="NNAudio Logo"
                       width={445}
                       height={283}

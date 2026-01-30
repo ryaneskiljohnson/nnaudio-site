@@ -39,7 +39,7 @@ const ChordButton = styled.div<ChordButtonProps>`
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 
   /* Use pad_on.png as background */
-  background-image: url("/img/pad_on.png");
+  background-image: url("/img/pad_on.webp");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -91,7 +91,7 @@ const ChordButton = styled.div<ChordButtonProps>`
   &:active {
     transform: translateY(1px);
     filter: brightness(0.95);
-    background-image: url("/img/pad_on_pressed.png");
+    background-image: url("/img/pad_on_pressed.webp");
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   }
 `;

@@ -3605,7 +3605,7 @@ function CreateCampaignPage() {
               border-radius: 0;
               box-shadow: none;
             ">
-              <img src="/images/cm-logo-icon.png" alt="Cymasphere Logo" style="
+              <img src="/images/cm-logo-icon.webp" alt="Cymasphere Logo" style="
                 width: 36px;
                 height: 36px;
                 object-fit: contain;
@@ -3649,11 +3649,11 @@ function CreateCampaignPage() {
             ? element.socialLinks
                 .map((social: any) => {
                   const icons = {
-                    facebook: `<img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/fb.png" alt="Facebook" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" />`,
-                    twitter: `<img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/x.png" alt="Twitter" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" />`,
-                    instagram: `<img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/insta.png" alt="Instagram" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" />`,
-                    youtube: `<img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/youtube.png" alt="YouTube" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" />`,
-                    discord: `<img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/discord.png" alt="Discord" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" />`
+                    facebook: `<img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/fb.webp" alt="Facebook" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" />`,
+                    twitter: `<img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/x.webp" alt="Twitter" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" />`,
+                    instagram: `<img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/insta.webp" alt="Instagram" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" />`,
+                    youtube: `<img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/youtube.webp" alt="YouTube" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" />`,
+                    discord: `<img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/email-assets/social-icons/discord.webp" alt="Discord" style="width: 16px; height: 16px; vertical-align: middle; margin-right: 5px;" />`
                   };
                   return `<a href="${social.url}" style="text-decoration: none; margin: 0 0.5rem; padding: 0.5rem; display: inline-block;">${icons[social.platform as keyof typeof icons] || "🔗"}</a>`;
                 })

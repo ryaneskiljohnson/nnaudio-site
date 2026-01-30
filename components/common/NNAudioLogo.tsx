@@ -64,7 +64,7 @@ const NNAudioLogo: React.FC<NNAudioLogoProps> = ({
     <LogoWrapper $clickable={!!href} onClick={onClick}>
       <LogoImage $size={size}>
         <Image
-          src="/images/nnaud-io/NNAudio-logo-white.png"
+          src="/images/nnaud-io/NNAudio-logo-white.webp"
           alt="NNAud.io Logo"
           width={445}
           height={283}

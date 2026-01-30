@@ -810,7 +810,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
               />
             ) : (
               <Image
-                src="/images/nnaud-io/NNPurp1.png"
+                src="/images/nnaud-io/NNPurp1.webp"
                 alt={bundle.name}
                 fill
                 style={{ objectFit: 'contain', padding: '40px' }}
@@ -993,14 +993,14 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                         onError={(e) => {
                           // Fallback to NNAudio logo if image fails
                           const target = e.target as HTMLImageElement;
-                          if (target.src !== '/images/nnaud-io/NNPurp1.png') {
-                            target.src = '/images/nnaud-io/NNPurp1.png';
+                          if (target.src !== '/images/nnaud-io/NNPurp1.webp') {
+                            target.src = '/images/nnaud-io/NNPurp1.webp';
                           }
                         }}
                       />
                     ) : (
                       <Image
-                        src="/images/nnaud-io/NNPurp1.png"
+                        src="/images/nnaud-io/NNPurp1.webp"
                         alt={product.name}
                         fill
                         style={{ objectFit: 'contain', padding: '20px' }}
@@ -1065,7 +1065,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                 />
               ) : (
                 <Image
-                  src="/images/nnaud-io/NNPurp1.png"
+                  src="/images/nnaud-io/NNPurp1.webp"
                   alt={bundle.name}
                   fill
                   style={{ objectFit: 'contain', padding: '8px' }}

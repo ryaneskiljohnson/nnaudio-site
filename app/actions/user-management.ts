@@ -1833,7 +1833,7 @@ async function sendSupportTicketEmailNotification(
                     <!-- Header -->
                     <tr>
                         <td style="background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); padding: 30px 24px; text-align: center;">
-                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.png" alt="Cymasphere" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
+                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.webp" alt="Cymasphere" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
                         </td>
                     </tr>
                     <!-- Content -->
@@ -2179,7 +2179,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
                     <!-- Header -->
                     <tr>
                         <td style="background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); padding: 30px 24px; text-align: center;">
-                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.png" alt="Cymasphere" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
+                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.webp" alt="Cymasphere" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
                         </td>
                     </tr>
                     <!-- Content -->

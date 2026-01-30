@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
       serial_code: code.replace(/[-\s]/g, "").trim().toUpperCase(),
     }));
 
-    const { data: insertedCodes, error: insertError } = await (adminSupabase as any)
+    const { data: insertedCodes, error: insertError } = await adminSupabase
       .from("reseller_codes")
       .insert(codesToInsert)
       .select(`

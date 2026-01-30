@@ -23,7 +23,7 @@ All workflow images now use optimized WebP:
 
 ### UI Elements
 - `pads/*.png` - 8-14KB each (button states)
-- `cymasphere-logo.png` - 10KB (logo)
+- `cymasphere-logo.webp` - 10KB (logo)
 - `mainBG.webp` - 15KB (already WebP, already small)
 
 ### Icons/Favicons
@@ -39,7 +39,7 @@ All workflow images now use optimized WebP:
 
 ### Large Unused Files
 - `matrix_original.png` - 4.5MB (backup/original, not used)
-- `cm-logo.png` - 549KB (duplicate, using icon version)
+- `cm-logo.webp` - 549KB (duplicate, using icon version)
 - `logoball.png` - 255KB (unused)
 - `features/temp.jpg` - Temporary file
 - `features.zip` - Archive file
@@ -66,9 +66,9 @@ All workflow images now use optimized WebP:
 
 1. **Delete unused files**:
    ```bash
-   rm public/images/matrix_original.png
-   rm public/images/logoball.png
-   rm public/images/cm-logo.png
+   rm public/images/matrix_original.webp
+   rm public/images/logoball.webp
+   rm public/images/cm-logo.webp
    rm public/images/features/temp.jpg
    rm public/images/features.zip
    ```

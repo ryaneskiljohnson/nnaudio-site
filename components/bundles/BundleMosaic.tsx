@@ -71,7 +71,7 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
   const [error, setError] = useState<string | null>(null);
 
   // NNAudio logo fallback
-  const NNAUDIO_LOGO = '/images/nnaud-io/NNPurp1.png';
+  const NNAUDIO_LOGO = '/images/nnaud-io/NNPurp1.webp';
 
   useEffect(() => {
     const canvas = canvasRef.current;

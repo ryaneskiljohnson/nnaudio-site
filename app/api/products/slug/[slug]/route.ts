@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
+// Disable caching so product updates (images, prices, etc.) show immediately
+export const dynamic = 'force-dynamic';
+
 // GET /api/products/slug/[slug] - Get product by slug
 export async function GET(
   request: NextRequest,

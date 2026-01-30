@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "supabase-gen-types": "bun x supabase gen types typescript --project-id \"jibirpbauzqhdiwjlrmf\" --schema public,stripe_tables > database.types.ts",
-    "supabase-migrate": "bun x supabase db push"
+    "supabase-migrate": "bun x supabase db push",
+    "images:convert-to-webp": "bun run scripts/convert-png-jpeg-to-webp-and-update-refs.ts",
+    "images:convert-to-webp:dry-run": "bun run scripts/convert-png-jpeg-to-webp-and-update-refs.ts --dry-run",
+    "storage:convert-to-webp": "bun run scripts/run-storage-convert-to-webp.ts",
+    "storage:convert-to-webp:dry-run": "bun run scripts/run-storage-convert-to-webp.ts --dry-run"
   },
   "packageManager": "bun@1.2.2",
   "overrides": {

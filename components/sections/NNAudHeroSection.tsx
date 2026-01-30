@@ -208,7 +208,7 @@ const NNAudHeroSection = () => {
           transition={{ duration: 0.8 }}
         >
           <Image
-            src="/images/nnaud-io/NNAudio-logo-white.png"
+            src="/images/nnaud-io/NNAudio-logo-white.webp"
             alt="NNAud.io Logo"
             width={445}
             height={283}

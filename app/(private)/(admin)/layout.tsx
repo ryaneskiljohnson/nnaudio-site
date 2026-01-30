@@ -796,6 +796,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <FaTicketAlt /> Support Tickets
             </NavItem>
           </Link>
+          <Link href="/admin/site-management">
+            <NavItem
+              $active={pathname.startsWith("/admin/site-management") ? "true" : "false"}
+              onClick={(e) => handleNavigation(e, "/admin/site-management")}
+            >
+              <FaCog /> Site Management
+            </NavItem>
+          </Link>
 
           <NavSection>
             <NavSectionHeader
@@ -1034,6 +1042,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </MobileNavItem>
           </Link>
 
+          <Link href="/admin/site-management">
+            <MobileNavItem
+              $active={pathname.startsWith("/admin/site-management") ? "true" : "false"}
+              variants={menuItemVariants}
+              custom={3.5}
+              initial="hidden"
+              animate="visible"
+              onClick={(e) => handleNavigation(e, "/admin/site-management")}
+            >
+              <FaCog /> Site Management
+            </MobileNavItem>
+          </Link>
 
           <Link href="/admin/email-campaigns/subscribers">
             <MobileNavItem

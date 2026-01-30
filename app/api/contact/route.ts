@@ -232,7 +232,7 @@ ${message}
                     <div class="divider" style="height: 3px; background: linear-gradient(90deg, #6c63ff, #4ecdc4); width: 100%; margin: 0; padding: 0;"></div>
                     <div class="header" style="background: #1a1a1a; padding: 30px 20px; text-align: center; border-bottom: 1px solid rgba(108, 99, 255, 0.2);">
                         <div class="logo-container" style="display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.png" alt="Cymasphere Logo" class="logo" width="180" height="auto" style="width: 180px; max-width: 100%; height: auto; border: 0; display: block; margin: 0 auto;">
+                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.webp" alt="Cymasphere Logo" class="logo" width="180" height="auto" style="width: 180px; max-width: 100%; height: auto; border: 0; display: block; margin: 0 auto;">
                         </div>
                     </div>
                     

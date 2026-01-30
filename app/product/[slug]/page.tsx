@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Dynamic product page: hero, pricing, Add to Cart, and Download (for purchasers).
+ * @module app/product/[slug]/page
+ * @note Purchasers see a Download button linking to /downloads; access is determined via getMyProducts (purchases and product_grants).
+ */
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -7,8 +12,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { FaStar, FaShoppingCart, FaDownload, FaCheck, FaPlay, FaPause, FaMusic, FaVideo, FaChevronRight, FaHome, FaVolumeUp, FaCheckCircle, FaDesktop, FaCog, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { useParams } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
+import { getMyProducts } from "@/app/actions/my-products";
 import { cleanHtmlText } from "@/utils/stringUtils";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
@@ -183,6 +190,29 @@ const BuyButton = styled(motion.button)`
   &:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 30px rgba(138, 43, 226, 0.6);
+  }
+`;
+
+/** Secondary button linking to the product download page for purchasers */
+const DownloadButton = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 48px;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 1.2rem;
+  text-decoration: none;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 1rem;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: white;
   }
 `;
 
@@ -1101,10 +1131,12 @@ const LoadingContainer = styled.div`
 export default function ProductPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const { user } = useAuth();
   const { addItem } = useCart();
   const { success } = useToast();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [hasPurchasedProduct, setHasPurchasedProduct] = useState(false);
   const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -1127,6 +1159,21 @@ export default function ProductPage() {
       fetchProduct();
     }
   }, [slug]);
+
+  /** Check if the current user has purchased this product (or has a grant) to show Download button */
+  useEffect(() => {
+    if (!user || !product?.id) {
+      setHasPurchasedProduct(false);
+      return;
+    }
+    let cancelled = false;
+    getMyProducts().then((result) => {
+      if (cancelled || !result.success) return;
+      const owned = (result.products ?? []).some((p: { id: string }) => p.id === product.id);
+      if (!cancelled) setHasPurchasedProduct(owned);
+    });
+    return () => { cancelled = true; };
+  }, [user, product?.id]);
 
   // Check if description needs expansion
   useEffect(() => {
@@ -1441,7 +1488,7 @@ export default function ProductPage() {
   const fetchProduct = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/products/slug/${slug}`);
+      const response = await fetch(`/api/products/slug/${slug}`, { cache: 'no-store' });
       const data = await response.json();
 
       if (data.success) {
@@ -1652,7 +1699,7 @@ export default function ProductPage() {
   const heroBgImage =
     product.background_image_url ||
     product.background_video_url ||
-    (slug === 'cymasphere' ? '/images/cymasphere-features/Song View.png' : undefined);
+    (slug === 'cymasphere' ? '/images/cymasphere-features/Song View.webp' : undefined);
 
   return (
     <Container>
@@ -1788,6 +1835,12 @@ export default function ProductPage() {
             >
               <FaShoppingCart /> Add to Cart
             </BuyButton>
+
+            {hasPurchasedProduct && (
+              <DownloadButton href="/downloads">
+                <FaDownload /> Download
+              </DownloadButton>
+            )}
             
             {product.download_url && (
               <motion.a

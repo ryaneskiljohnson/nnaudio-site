@@ -190,7 +190,7 @@ const NextFooter = () => {
               onClick={handleLogoClick}
             >
               <Image
-                src="/images/nnaud-io/NNAudio-logo-white.png"
+                src="/images/nnaud-io/NNAudio-logo-white.webp"
                 alt="NNAud.io Logo"
                 width={200}
                 height={127}

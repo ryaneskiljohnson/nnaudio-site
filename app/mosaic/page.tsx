@@ -42,7 +42,7 @@ export default function MosaicPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const NNAUDIO_LOGO = '/images/nnaud-io/NNPurp1.png';
+  const NNAUDIO_LOGO = '/images/nnaud-io/NNPurp1.webp';
 
   useEffect(() => {
     const fetchProductsAndGenerate = async () => {

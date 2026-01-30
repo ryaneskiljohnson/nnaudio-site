@@ -509,7 +509,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
                 <PremierImageContainer>
                   <div>
                     <Image
-                      src={premierProduct.thumbnail || premierProduct.logo || '/images/nnaud-io/NNPurp1.png'}
+                      src={premierProduct.thumbnail || premierProduct.logo || '/images/nnaud-io/NNPurp1.webp'}
                       alt={premierProduct.name}
                       fill
                       sizes="(max-width: 768px) 100vw, 600px"
@@ -573,7 +573,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
                   sale_price: null,
                   featured_image_url: product.thumbnail || product.logo || undefined,
                   logo_url: product.logo || undefined,
-                  image: product.thumbnail || product.logo || '/images/nnaud-io/NNPurp1.png',
+                  image: product.thumbnail || product.logo || '/images/nnaud-io/NNPurp1.webp',
                 };
 
                 return (

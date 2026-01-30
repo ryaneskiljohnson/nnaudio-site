@@ -817,7 +817,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
           <Link href="/" style={{ textDecoration: "none" }}>
             <LogoText>
               <Image
-                src="/images/nnaud-io/NNAudio-logo-white.png"
+                src="/images/nnaud-io/NNAudio-logo-white.webp"
                 alt="NNAud.io Logo"
                 width={445}
                 height={283}

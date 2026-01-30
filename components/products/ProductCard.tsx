@@ -216,7 +216,7 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
   const [imageError, setImageError] = React.useState(false);
 
   // NNAudio logo fallback
-  const NNAUDIO_LOGO = '/images/nnaud-io/NNPurp1.png';
+  const NNAUDIO_LOGO = '/images/nnaud-io/NNPurp1.webp';
 
   // Handle both API product format and landing page format
   // Check for truthy values (not null, undefined, or empty string)

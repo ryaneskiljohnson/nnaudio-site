@@ -136,7 +136,7 @@ const BannerTextContent = styled.div<{ $variant: 'sticky' | 'card' }>`
   }
 `;
 
-const BannerDescription = styled.p<{ $variant?: 'sticky' | 'card' }>`
+const BannerDescription = styled.p`
   font-size: 0.9rem;
   margin: 0;
   font-weight: 500;
@@ -598,7 +598,7 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
           </BannerTitle>
           
           {sale.description && (
-            <BannerDescription $variant={variant}>{sale.description}</BannerDescription>
+            <BannerDescription>{sale.description}</BannerDescription>
           )}
         </BannerTextContent>
 
