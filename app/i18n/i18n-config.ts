@@ -7,6 +7,21 @@ import { initReactI18next } from 'react-i18next';
 export const languages = ['en', 'es', 'fr', 'it', 'de', 'pt', 'tr', 'zh', 'ja'];
 export const defaultLanguage = 'en';
 
+// Synchronously initialize i18next with empty resources so useTranslation has consistent
+// hook behavior before async loadTranslations completes. Prevents "change in order of Hooks"
+// error in LegalModal and other components that use useTranslation from react-i18next.
+if (typeof window !== 'undefined' && !i18n.isInitialized) {
+  void i18n.use(initReactI18next).init({
+    lng: defaultLanguage,
+    fallbackLng: defaultLanguage,
+    resources: { [defaultLanguage]: { translation: {} } },
+    interpolation: { escapeValue: false },
+    returnNull: false,
+    returnEmptyString: false,
+    react: { useSuspense: false },
+  });
+}
+
 // Function to get the current language preference from localStorage or browser
 export const getCurrentLanguage = (): string => {
   if (typeof window === 'undefined') return defaultLanguage;

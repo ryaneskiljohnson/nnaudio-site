@@ -2,9 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { motion } from "framer-motion";
+import { motion, useAnimation } from "framer-motion";
 import Image from "next/image";
-import Link from "next/link";
 import HeroMosaic from "./HeroMosaic";
 
 const HeroContainer = styled.section`
@@ -166,6 +165,19 @@ const NNAudHeroSection = () => {
     featured_image_url?: string;
     logo_url?: string;
   }>>([]);
+  const logoControls = useAnimation();
+  const titleControls = useAnimation();
+  const subtitleControls = useAnimation();
+  const buttonControls = useAnimation();
+
+  // Trigger animations after mount to avoid SSR/hydration black screen
+  // (initial={{ opacity: 0 }} can cause content to stay invisible on first load)
+  useEffect(() => {
+    logoControls.start({ opacity: 1, y: 0, transition: { duration: 0.8 } });
+    titleControls.start({ opacity: 1, y: 0, transition: { duration: 0.8, delay: 0.2 } });
+    subtitleControls.start({ opacity: 1, y: 0, transition: { duration: 0.8, delay: 0.4 } });
+    buttonControls.start({ opacity: 1, y: 0, transition: { duration: 0.8, delay: 0.6 } });
+  }, [logoControls, titleControls, subtitleControls, buttonControls]);
 
   useEffect(() => {
     const fetchAllProducts = async () => {
@@ -204,7 +216,7 @@ const NNAudHeroSection = () => {
       <HeroContent>
         <LogoContainer
           initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={logoControls}
           transition={{ duration: 0.8 }}
         >
           <Image
@@ -218,7 +230,7 @@ const NNAudHeroSection = () => {
 
         <HeroTitle
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={titleControls}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
           Resources for Modern Music Producers
@@ -226,7 +238,7 @@ const NNAudHeroSection = () => {
 
         <HeroSubtitle
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={subtitleControls}
           transition={{ duration: 0.8, delay: 0.4 }}
         >
           Discover premium plugins, sample packs, MIDI tools, and more<br />
@@ -235,7 +247,7 @@ const NNAudHeroSection = () => {
 
         <ButtonGroup
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={buttonControls}
           transition={{ duration: 0.8, delay: 0.6 }}
         >
           <PrimaryButton

@@ -3,13 +3,15 @@
 import React, { useEffect } from 'react';
 import i18next from 'i18next';
 import useLanguage from '@/hooks/useLanguage';
+// Ensure i18n-config loads early so sync init runs before LegalModal/useTranslation
+import '@/app/i18n/i18n-config';
 
 interface I18nProviderProps {
   children: React.ReactNode;
 }
 
 export default function I18nProvider({ children }: I18nProviderProps) {
-  const { currentLanguage, isLoading } = useLanguage();
+  const { currentLanguage } = useLanguage();
   
   // Listen for global language change events
   useEffect(() => {
@@ -30,9 +32,8 @@ export default function I18nProvider({ children }: I18nProviderProps) {
     };
   }, [currentLanguage]);
   
-  if (isLoading) {
-    return null;
-  }
-  
+  // Always render children - do NOT block the entire app on translation loading.
+  // Blocking caused a black screen on first load until translations finished.
+  // Components that need translations can check translationsLoaded/isLoading and show fallbacks.
   return <>{children}</>;
 } 

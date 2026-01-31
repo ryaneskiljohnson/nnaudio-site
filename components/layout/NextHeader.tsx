@@ -35,27 +35,27 @@ const playSound = async () => {
   }
 };
 
+// Fallback values for common keys (used when translations not yet loaded)
+const TRANSLATION_FALLBACKS: Record<string, string> = {
+  "common.navigation": "Navigation",
+  "common.myAccount": "My Account",
+  "common.logout": "Logout",
+  "common.login": "Login",
+  "common.signUp": "Sign Up",
+  "header.features": "Features",
+  "header.howItWorks": "How It Works",
+  "header.pricing": "Pricing",
+  "header.faq": "FAQ",
+};
+
 // Function to get translations without using hooks
 const getTranslation = (key: string): string => {
-  // Safe access to i18next - if it's not initialized yet, return a fallback
   if (i18next.isInitialized) {
-    return i18next.t(key);
+    const result = i18next.t(key);
+    // When resources are empty (before async load), i18next returns the key
+    if (result !== key) return result;
   }
-
-  // Fallback values for common keys
-  const fallbacks: Record<string, string> = {
-    "common.navigation": "Navigation",
-    "common.myAccount": "My Account",
-    "common.logout": "Logout",
-    "common.login": "Login",
-    "common.signUp": "Sign Up",
-    "header.features": "Features",
-    "header.howItWorks": "How It Works",
-    "header.pricing": "Pricing",
-    "header.faq": "FAQ",
-  };
-
-  return fallbacks[key] || key;
+  return TRANSLATION_FALLBACKS[key] ?? key;
 };
 
 // Animation variants - optimized for mobile performance

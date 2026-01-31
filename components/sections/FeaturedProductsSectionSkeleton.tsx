@@ -10,7 +10,7 @@ const SectionContainer = styled.section`
   position: relative;
   overflow: visible;
   min-height: 800px;
-  
+
   @media (max-width: 768px) {
     min-height: 600px;
   }
@@ -30,7 +30,7 @@ const SectionTitle = styled.h2`
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  
+
   @media (max-width: 768px) {
     font-size: 2.5rem;
   }
@@ -51,7 +51,7 @@ const PremierSkeleton = styled.div`
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border: 3px solid rgba(255, 255, 255, 0.15);
-  
+
   @keyframes shimmer {
     0% {
       background-position: -200% 0;
@@ -60,7 +60,7 @@ const PremierSkeleton = styled.div`
       background-position: 200% 0;
     }
   }
-  
+
   @media (max-width: 768px) {
     min-height: 400px;
   }
@@ -77,33 +77,32 @@ const SliderWrapper = styled.div`
 const ProductsSlider = styled.div<{ $centered?: boolean }>`
   display: flex;
   gap: 2rem;
-  ${props => props.$centered ? 'justify-content: center;' : ''}
-  
+  ${(props) => (props.$centered ? "justify-content: center;" : "")}
+
   > * {
     flex-shrink: 0;
   }
 `;
 
 const ProductCardWrapper = styled.div<{ $width?: number }>`
-  flex: 0 0 ${props => props.$width ? `${props.$width}px` : 'auto'};
-  width: ${props => props.$width ? `${props.$width}px` : 'auto'};
-  min-width: ${props => props.$width ? `${props.$width}px` : 'auto'};
-  max-width: ${props => props.$width ? `${props.$width}px` : 'auto'};
+  flex: 0 0 ${(props) => (props.$width ? `${props.$width}px` : "auto")};
+  width: ${(props) => (props.$width ? `${props.$width}px` : "auto")};
+  min-width: ${(props) => (props.$width ? `${props.$width}px` : "auto")};
+  max-width: ${(props) => (props.$width ? `${props.$width}px` : "auto")};
 `;
 
 export default function FeaturedProductsSectionSkeleton() {
-  // Calculate card width (half of container minus gap)
-  const cardWidth = typeof window !== 'undefined' 
-    ? (Math.min(window.innerWidth, 1400) - 200 - 32) / 2 
-    : 600;
+  // Use consistent card width for SSR and initial client render to avoid hydration mismatch.
+  // (typeof window check caused server/client HTML to differ)
+  const cardWidth = 600;
 
   return (
     <SectionContainer>
       <ContentContainer>
         <SectionTitle>Spotlight</SectionTitle>
-        
+
         <PremierSkeleton />
-        
+
         <SliderWrapper>
           <ProductsSlider $centered={true}>
             {Array.from({ length: 2 }).map((_, index) => (
@@ -117,5 +116,3 @@ export default function FeaturedProductsSectionSkeleton() {
     </SectionContainer>
   );
 }
-
-
