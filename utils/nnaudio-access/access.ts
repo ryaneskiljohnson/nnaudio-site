@@ -101,23 +101,6 @@ export async function getAccessibleProductIds(
   const adminSupabase = await createSupabaseServiceRole();
   pushTiming(timings, "createSupabaseServiceRole", t0);
 
-  // Product grants (product_grants not in database.types.ts)
-  t0 = Date.now();
-  if (profile?.email) {
-    const { data: productGrants } = await (adminSupabase as any)
-      .from("product_grants")
-      .select("product_id")
-      .eq("user_email", profile.email.toLowerCase());
-
-    (productGrants || []).forEach((g: { product_id: string }) => {
-      if (g.product_id) productIds.add(g.product_id);
-    });
-  }
-  pushTiming(timings, "product_grants", t0);
-
-  // Stripe one-time purchases
-  t0 = Date.now();
-  const allPaymentIntents = new Map<string, Stripe.PaymentIntent>();
   const withTimeout = <T>(
     promise: Promise<T>,
     timeoutMs: number
@@ -132,55 +115,41 @@ export async function getAccessibleProductIds(
       ),
     ]);
 
-  const stripePromises: Promise<unknown>[] = [];
+  // Run product_grants and Stripe in parallel (they don't depend on each other)
+  const productGrantsPromise =
+    profile?.email
+      ? (adminSupabase as any)
+          .from("product_grants")
+          .select("product_id")
+          .eq("user_email", profile.email.toLowerCase())
+      : Promise.resolve({ data: [] });
 
-  if (profile?.customer_id) {
-    stripePromises.push(
-      withTimeout(
-        stripe.paymentIntents.list({
-          customer: profile.customer_id,
-          limit: 100,
-        }),
-        5000
-      )
-        .then((r) => r.data.forEach((pi) => allPaymentIntents.set(pi.id, pi)))
-        .catch(() => {})
-    );
-  }
+  // Single Stripe call: search by user_id in metadata (filters succeeded server-side)
+  // All our payment flows set user_id when creating payment intents
+  t0 = Date.now();
+  const allPaymentIntents = new Map<string, Stripe.PaymentIntent>();
+  const stripeSearchPromise = withTimeout(
+    stripe.paymentIntents.search({
+      query: `status:'succeeded' AND metadata['user_id']:'${userId}'`,
+      limit: 100,
+      expand: ["data.latest_charge"],
+    }),
+    8000
+  )
+    .then((r) => r.data.forEach((pi) => allPaymentIntents.set(pi.id, pi)))
+    .catch(() => {});
 
-  stripePromises.push(
-    withTimeout(
-      stripe.paymentIntents.search({
-        query: `metadata['user_id']:'${userId}'`,
-        limit: 100,
-      }),
-      5000
-    )
-      .then((r) => r.data.forEach((pi) => allPaymentIntents.set(pi.id, pi)))
-      .catch(() => {})
-  );
-
-  if (profile?.email) {
-    stripePromises.push(
-      withTimeout(stripe.customers.list({ email: profile.email, limit: 10 }), 5000)
-        .then((customers) =>
-          Promise.allSettled(
-            customers.data.map((c) =>
-              withTimeout(
-                stripe.paymentIntents.list({ customer: c.id, limit: 100 }),
-                5000
-              ).then((r) =>
-                r.data.forEach((pi) => allPaymentIntents.set(pi.id, pi))
-              )
-            )
-          )
-        )
-        .catch(() => {})
-    );
-  }
-
-  await Promise.allSettled(stripePromises);
+  const [productGrantsResult] = await Promise.all([
+    productGrantsPromise,
+    stripeSearchPromise,
+  ]);
+  pushTiming(timings, "product_grants", t0);
   pushTiming(timings, "stripe_payment_intents", t0);
+
+  const { data: productGrants } = await productGrantsResult;
+  (productGrants || []).forEach((g: { product_id: string }) => {
+    if (g.product_id) productIds.add(g.product_id);
+  });
 
   const successfulPayments = Array.from(allPaymentIntents.values()).filter(
     (pi) => pi.status === "succeeded"
@@ -188,26 +157,31 @@ export async function getAccessibleProductIds(
 
   t0 = Date.now();
   const refundChecks = successfulPayments.map(async (pi) => {
-    if (!pi.latest_charge) return { pi, isRefunded: false };
+    const charge = pi.latest_charge;
+    if (!charge) return { pi, isRefunded: false };
+    const chargeObj =
+      typeof charge === "object" && charge !== null ? charge : null;
+    if (chargeObj) {
+      return {
+        pi,
+        isRefunded:
+          chargeObj.refunded || chargeObj.amount_refunded === chargeObj.amount,
+      };
+    }
     try {
-      const charge = await withTimeout(
-        stripe.charges.retrieve(
-          typeof pi.latest_charge === "string"
-            ? pi.latest_charge
-            : pi.latest_charge.id
-        ),
+      const retrieved = await withTimeout(
+        stripe.charges.retrieve(typeof charge === "string" ? charge : charge.id),
         3000
       );
       return {
         pi,
         isRefunded:
-          charge.refunded || charge.amount_refunded === charge.amount,
+          retrieved.refunded || retrieved.amount_refunded === retrieved.amount,
       };
     } catch {
       return { pi, isRefunded: false };
     }
   });
-
   const refundResults = await Promise.allSettled(refundChecks);
   pushTiming(timings, "stripe_refund_checks", t0);
 
