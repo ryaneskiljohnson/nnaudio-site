@@ -5,7 +5,7 @@ import { createAdminClient } from '@/utils/supabase/service';
 // DELETE /api/products/relationships/[id] - Delete product relationship
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -34,7 +34,7 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const adminSupabase = await createAdminClient();
 
     const { error } = await (adminSupabase as any)

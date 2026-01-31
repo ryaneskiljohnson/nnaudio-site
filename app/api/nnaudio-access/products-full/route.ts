@@ -100,7 +100,20 @@ export async function POST(request: NextRequest) {
 
     t0 = Date.now();
     const adminSupabase = await createSupabaseServiceRole();
-    const { data: products, error: productsError } = await (adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>)
+    // products table not in generated database.types - use type assertion (matches other routes)
+    type ProductsQueryResult = { data: ProductRow[] | null; error: unknown };
+    type ProductsClient = {
+      from: (t: string) => {
+        select: (s: string) => {
+          in: (c: string, v: string[]) => {
+            eq: (c: string, v: string) => Promise<ProductsQueryResult>;
+          };
+        };
+      };
+    };
+    const { data: products, error: productsError } = await (
+      adminSupabase as unknown as ProductsClient
+    )
       .from("products")
       .select(
         "id, name, slug, featured_image_url, legacy_product_id, downloads, download_version"
@@ -119,7 +132,7 @@ export async function POST(request: NextRequest) {
     // Collect unique storage paths that need signed URLs (single batch call)
     const pathsToSign = Array.from(
       new Set(
-        (products as ProductRow[]).flatMap((product) =>
+        (products ?? []).flatMap((product) =>
           (product.downloads || [])
             .map((d) => d.path)
             .filter(
@@ -161,7 +174,7 @@ export async function POST(request: NextRequest) {
 
     const formattedProducts: ProductFullItem[] = [];
 
-    for (const product of products as ProductRow[]) {
+    for (const product of products ?? []) {
       const downloadsWithUrls: DownloadItem[] = [];
 
       if (product.downloads && Array.isArray(product.downloads)) {

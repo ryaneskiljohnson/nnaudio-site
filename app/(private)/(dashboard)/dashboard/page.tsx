@@ -15,8 +15,6 @@ import {
   FaShoppingBag,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
-import { capitalize } from "@/utils/stringUtils";
-import { getUpcomingInvoice } from "@/utils/stripe/actions";
 import { useRouter } from "next/navigation";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import { fetchUserSessions } from "@/utils/supabase/actions";
@@ -176,38 +174,6 @@ const Button = styled.button`
   }
 `;
 
-const SubscriptionInfo = styled.div`
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-
-  &:last-of-type {
-    margin-bottom: 20px;
-  }
-`;
-
-const InfoLabel = styled.span`
-  color: var(--text-secondary);
-`;
-
-const InfoValue = styled.span`
-  font-weight: 500;
-`;
-
-const TrialBadge = styled.div`
-  position: absolute;
-  top: 20px;
-  right: -32px;
-  background: linear-gradient(90deg, #ffd700, #ffa500);
-  color: #1a1a1a;
-  padding: 5px 40px 5px 50px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  transform: rotate(45deg);
-`;
-
 const ModalOverlay = styled(motion.div)`
   position: fixed;
   top: 0;
@@ -355,7 +321,6 @@ function DashboardPage() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
-  const [hasNfr, setHasNfr] = useState<boolean | null>(null);
 
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
   const [confirmationTitle, setConfirmationTitle] = useState("");
@@ -376,32 +341,6 @@ function DashboardPage() {
   const [orderCount, setOrderCount] = useState(0);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
 
-  // State for prices
-  const [isLoadingPrices, setIsLoadingPrices] = useState(true);
-  const [priceError, setPriceError] = useState<string | null>(null);
-  const [monthlyPrice, setMonthlyPrice] = useState<number | null>(null);
-  const [yearlyPrice, setYearlyPrice] = useState<number | null>(null);
-  const [lifetimePrice, setLifetimePrice] = useState<number | null>(null);
-
-  // State for upcoming invoice
-  const [upcomingInvoice, setUpcomingInvoice] = useState<{
-    amount: number | null;
-    due_date: Date | null;
-    error: string | null;
-  }>({
-    amount: null,
-    due_date: null,
-    error: null,
-  });
-  const [isLoadingInvoice, setIsLoadingInvoice] = useState(false);
-
-  // Trial duration in days
-  const trialDays = 7; // Default value
-
-  // Get trial duration based on plan
-  const getTrialDuration = () => {
-    return trialDays;
-  };
 
   // Format date for display
   const formatDate = (date: string | number | null | undefined) => {
@@ -462,57 +401,6 @@ function DashboardPage() {
       fetchOrderCount();
     }
   }, [user]);
-
-  // Fetch NFR status
-  useEffect(() => {
-    async function fetchNfrStatus() {
-      try {
-        const response = await fetch("/api/user/nfr-status");
-        const data = await response.json();
-        if (data.hasNfr) {
-          setHasNfr(true);
-        } else {
-          setHasNfr(false);
-        }
-      } catch (err) {
-        console.error("Error fetching NFR status:", err);
-        setHasNfr(false);
-      }
-    }
-
-    if (user) {
-      fetchNfrStatus();
-    }
-  }, [user]);
-
-  // Determine if user has completed a trial
-  const hasCompletedTrial = () => {
-    // Consider a trial completed if user has a subscription that's not "none"
-    // or if trial_expiration is in the past
-    return (
-      user.profile.subscription !== "none" ||
-      (user.profile.trial_expiration &&
-        new Date(user.profile.trial_expiration) < new Date())
-    );
-  };
-
-  // Determine if we should show trial content
-  const shouldShowTrialContent = () => {
-    // Only show for active trial users
-    return user?.profile.trial_expiration && !hasCompletedTrial();
-  };
-
-  // Get days left in trial
-  const getDaysLeftInTrial = () => {
-    if (!user?.profile.trial_expiration) return 0;
-
-    const today = new Date();
-    const trialEnd = new Date(user.profile.trial_expiration);
-    const diffTime = Number(trialEnd) - Number(today);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays > 0 ? diffDays : 0;
-  };
 
   const navigateToBilling = () => {
     router.push("/billing");
@@ -593,95 +481,6 @@ function DashboardPage() {
       setIsContactSubmitting(false);
     }
   };
-
-  // Fetch prices and upcoming invoice on component mount
-  useEffect(() => {
-    async function fetchPrices() {
-      try {
-        setIsLoadingPrices(true);
-        setPriceError(null);
-
-        const response = await fetch("/api/stripe/prices");
-        const result = await response.json();
-
-        if (result.error) {
-          setPriceError(
-            t(
-              "dashboard.billing.errorOccurred",
-              "An error occurred: {{error}}",
-              { error: result.error }
-            )
-          );
-          return;
-        }
-
-        if (result.success && result.prices) {
-          setMonthlyPrice(Math.round(result.prices.monthly.amount / 100));
-          setYearlyPrice(Math.round(result.prices.annual.amount / 100));
-          setLifetimePrice(Math.round(result.prices.lifetime.amount / 100));
-        }
-      } catch (err) {
-        console.error("Error fetching prices:", err);
-        setPriceError(
-          t("dashboard.billing.errorOccurred", "An error occurred: {{error}}", {
-            error:
-              err instanceof Error
-                ? err.message
-                : t("common.unknownError", "Unknown error"),
-          })
-        );
-      } finally {
-        setIsLoadingPrices(false);
-      }
-    }
-
-    async function fetchUpcomingInvoice() {
-      if (!user?.profile?.customer_id) return;
-
-      try {
-        setIsLoadingInvoice(true);
-
-        const { amount, error } = await getUpcomingInvoice(
-          user.profile.customer_id
-        );
-
-        if (error) {
-          // Only show as error if it's not the common "no upcoming invoices" case
-          setUpcomingInvoice({
-            amount: null,
-            due_date: null,
-            error: error,
-          });
-        } else {
-          setUpcomingInvoice({
-            amount: amount,
-            due_date: null, // API doesn't return due date currently
-            error: null,
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching upcoming invoice:", err);
-
-        setUpcomingInvoice({
-          amount: null,
-          due_date: null,
-          error: null, // Don't show errors for common cases like no upcoming invoices
-        });
-      } finally {
-        setIsLoadingInvoice(false);
-      }
-    }
-
-    // Only fetch if the user is logged in
-    if (user) {
-      fetchPrices();
-
-      // Only fetch upcoming invoice if user has customer ID
-      if (user.profile.customer_id) {
-        fetchUpcomingInvoice();
-      }
-    }
-  }, [user]);
 
   const handleModalClose = () => {
     setShowConfirmationModal(false);
@@ -776,7 +575,7 @@ function DashboardPage() {
 
         <StatCard
           whileHover={{ y: -5, transition: { duration: 0.2 } }}
-          onClick={navigateToDownloads}
+          onClick={() => router.push("/my-products")}
         >
           <StatHeader>
             <StatTitle>{t("dashboard.main.product", "Product")}</StatTitle>
@@ -786,12 +585,10 @@ function DashboardPage() {
           </StatHeader>
           <StatValue>{t("dashboard.main.downloads", "Downloads")}</StatValue>
           <StatDescription>
-            {user.profile.subscription !== "none"
-              ? t(
-                  "dashboard.main.standaloneAndPlugins",
-                  "Standalone App and Plugins"
-                )
-              : t("dashboard.main.subscribeForAccess", "Subscribe for access")}
+            {t(
+              "dashboard.main.viewPurchasedPlugins",
+              "View your purchased plugins"
+            )}
           </StatDescription>
         </StatCard>
 
@@ -848,171 +645,20 @@ function DashboardPage() {
 
       <CardGrid>
         <Card whileHover={{ y: -5, transition: { duration: 0.2 } }}>
-          {shouldShowTrialContent() && (
-            <TrialBadge>
-              {t("dashboard.main.freeTrialBadge", "{{trialDays}}-Day Trial", {
-                trialDays,
-              })}
-            </TrialBadge>
-          )}
           <CardTitle>
             <FaCreditCard />{" "}
-            {user.profile.subscription === "lifetime"
-              ? t("dashboard.main.membership", "Membership")
-              : t("dashboard.main.subscription", "Subscription")}
+            {t("dashboard.main.yourPurchases", "Your Purchases")}
           </CardTitle>
           <CardContent>
-            {/* Show price error if there is one */}
-            {priceError && (
-              <div
-                style={{
-                  color: "var(--error)",
-                  marginBottom: "10px",
-                  fontSize: "0.9rem",
-                }}
-              >
-                {priceError}{" "}
-                {t(
-                  "dashboard.billing.showingDefaultPrices",
-                  "Showing default prices."
-                )}
-              </div>
-            )}
-            <SubscriptionInfo>
-              <InfoLabel>{t("dashboard.main.plan", "Current Plan")}</InfoLabel>
-              <InfoValue>
-                {hasNfr === true
-                  ? "Elite Access"
-                  : user.profile.subscription === "none"
-                  ? t("common.none", "None")
-                  : capitalize(user.profile.subscription)}
-              </InfoValue>
-            </SubscriptionInfo>
-            {shouldShowTrialContent() && (
-              <SubscriptionInfo>
-                <InfoLabel>
-                  {t("dashboard.main.trialStatus", "Trial Status")}
-                </InfoLabel>
-                <InfoValue>
-                  {t(
-                    "dashboard.main.daysRemaining",
-                    "{{days}} days remaining",
-                    { days: getDaysLeftInTrial() }
-                  )}
-                </InfoValue>
-              </SubscriptionInfo>
-            )}
-            <SubscriptionInfo>
-              <InfoLabel>
-                {user.profile.subscription === "lifetime"
-                  ? t("dashboard.main.purchasedOn", "Purchase Date")
-                  : t("dashboard.main.renewalDate", "Renewal Date")}
-              </InfoLabel>
-              <InfoValue>
-                {shouldShowTrialContent()
-                  ? formatDate(user.profile.trial_expiration)
-                  : user.profile.subscription_expiration
-                  ? formatDate(user.profile.subscription_expiration)
-                  : t("common.notAvailable", "N/A")}
-              </InfoValue>
-            </SubscriptionInfo>
-            <SubscriptionInfo>
-              <InfoLabel>
-                {user.profile.subscription === "lifetime"
-                  ? t("dashboard.main.futurePayments", "Future Payments")
-                  : t("dashboard.main.nextPayment", "Next Payment")}
-              </InfoLabel>
-              <InfoValue>
-                {shouldShowTrialContent() ? (
-                  t(
-                    "dashboard.main.firstPayment",
-                    "${{amount}}.00 on {{date}}",
-                    {
-                      amount: isLoadingPrices ? "..." : monthlyPrice,
-                      date: formatDate(user.profile.trial_expiration),
-                    }
-                  )
-                ) : user.profile.subscription === "lifetime" ? (
-                  "$0.00"
-                ) : isLoadingInvoice ? (
-                  <LoadingComponent size="16px" text="" />
-                ) : upcomingInvoice.error ? (
-                  "$0.00"
-                ) : upcomingInvoice.amount ? (
-                  t("dashboard.main.amountOnDate", "${{amount}} {{date}}", {
-                    amount: upcomingInvoice.amount.toFixed(2),
-                    date: upcomingInvoice.due_date
-                      ? t("dashboard.main.onDate", "on {{date}}", {
-                          date: formatDate(
-                            upcomingInvoice.due_date.toISOString()
-                          ),
-                        })
-                      : "",
-                  })
-                ) : (
-                  "$0.00"
-                )}
-              </InfoValue>
-            </SubscriptionInfo>
             <p>
-              {shouldShowTrialContent()
-                ? t(
-                    "dashboard.main.trialMessage",
-                    "You're currently on a {{trialDays}}-day free trial with full access to all premium features. No payment until your trial ends.",
-                    { trialDays }
-                  )
-                : user.profile.subscription === "lifetime"
-                ? t(
-                    "dashboard.main.lifetimeMessage",
-                    "You have a lifetime membership with free updates for life. Enjoy all premium features and benefits permanently."
-                  )
-                : user.profile.subscription !== "none"
-                ? t(
-                    "dashboard.main.activeSubscriptionMessage",
-                    "Your {{plan}} subscription is active. Enjoy all premium features and benefits.",
-                    {
-                      plan: user.profile.subscription,
-                    }
-                  )
-                : t(
-                    "dashboard.main.upgradeMessage",
-                    "Upgrade to unlock premium features and advanced audio processing capabilities."
-                  )}
-            </p>
-            {user.profile.subscription !== "none" &&
-              user.profile.subscription !== "lifetime" &&
-              !shouldShowTrialContent() && (
-                <p
-                  style={{
-                    marginTop: "10px",
-                    fontSize: "0.9rem",
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  💡{" "}
-                  {t(
-                    "dashboard.main.upgradeToLifetime",
-                    "Upgrade to Lifetime access"
-                  )}{" "}
-                  - One-time payment, no recurring fees, free updates forever.
-                </p>
+              {t(
+                "dashboard.main.purchasesDesc",
+                "View and download your purchased plugins and bundles. All purchases are one-time—no subscriptions."
               )}
+            </p>
           </CardContent>
-          <Button
-            onClick={
-              user.profile.subscription === "lifetime"
-                ? navigateToDownloads
-                : navigateToBilling
-            }
-            disabled={isLoadingPrices}
-          >
-            {isLoadingPrices ? (
-              <LoadingComponent size="20px" text="" />
-            ) : user.profile.subscription === "lifetime" ? (
-              t("dashboard.downloads.downloadButton", "Download")
-            ) : (
-              t("dashboard.main.upgradeNow", "Upgrade")
-            )}
+          <Button onClick={() => router.push("/my-products")}>
+            {t("dashboard.main.viewMyProducts", "View My Products")}
           </Button>
         </Card>
 

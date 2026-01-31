@@ -4,11 +4,11 @@ import { createClient } from '@/utils/supabase/server';
 // GET /api/bundles/[slug] - Get single bundle with products and pricing
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const { slug } = params;
+    const { slug } = await params;
 
     // Get bundle (bundles table may not be in generated DB types)
     const { data: bundle, error: bundleError } = await (supabase as any)

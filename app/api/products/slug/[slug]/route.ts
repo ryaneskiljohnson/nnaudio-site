@@ -7,11 +7,11 @@ export const dynamic = 'force-dynamic';
 // GET /api/products/slug/[slug] - Get product by slug
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const { slug } = params;
+    const { slug } = await params;
 
     const { data: product, error } = await (supabase as any)
       .from('products')

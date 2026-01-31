@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (profile) {
-          // Update pro status using centralized function (handles NFR, Stripe, and iOS)
+          // Update pro status using centralized function (handles NFR and Stripe)
           try {
             const { updateUserProStatus } = await import(
               "@/utils/subscriptions/check-subscription"

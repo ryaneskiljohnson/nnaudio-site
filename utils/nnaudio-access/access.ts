@@ -237,8 +237,10 @@ export async function getAccessibleProductIds(
 
     if (bundles?.length) {
       const bundleIds = bundles.map((b: { id: string }) => b.id);
-      const bundleIdToName = new Map(
-        bundles.map((b: { id: string; name: string }) => [b.id, b.name])
+      const bundleIdToName = new Map<string, string>(
+        (bundles as { id: string; name: string }[])
+          .filter((b) => typeof b.name === "string")
+          .map((b) => [b.id, b.name])
       );
 
       const { data: allBundleProducts } = await (adminSupabase as any)
@@ -251,7 +253,9 @@ export async function getAccessibleProductIds(
           if (bp.product_id && bp.bundle_id) {
             productIds.add(bp.product_id);
             const name = bundleIdToName.get(bp.bundle_id);
-            if (name) productToBundleMap.set(bp.product_id, name);
+            if (typeof name === "string") {
+              productToBundleMap.set(bp.product_id, name);
+            }
           }
         }
       );

@@ -5,11 +5,11 @@ import { createAdminClient } from '@/utils/supabase/service';
 // GET /api/products/[id] - Get single product
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
-    const { id } = params;
+    const { id } = await params;
 
     const { data: product, error } = await (supabase as any)
       .from('products')
@@ -81,7 +81,7 @@ export async function GET(
 // PUT /api/products/[id] - Update product (Admin only)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -110,7 +110,7 @@ export async function PUT(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const adminSupabase = await createAdminClient();
 
@@ -268,7 +268,7 @@ export async function PUT(
 // DELETE /api/products/[id] - Delete product (Admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -297,7 +297,7 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const adminSupabase = await createAdminClient();
 
     // Get product to check for Stripe IDs before deletion
