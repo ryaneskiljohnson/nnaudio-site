@@ -350,9 +350,12 @@ const SubmitButton = styled.button`
   }
 `;
 
-// Simple i18n wrapper functions to avoid hook ordering issues
+// Simple i18n wrapper: use default when i18n not ready or key not loaded so server and client first paint match (avoids hydration mismatch).
 function getTranslation(key: string, defaultValue: string, options?: Record<string, any>): string {
-  return i18next.t(key, { defaultValue, ...options }) as string;
+  if (!i18next.isInitialized) return defaultValue;
+  const t = i18next.t(key, { defaultValue, ...options });
+  const s = typeof t === "string" ? t : defaultValue;
+  return s === key ? defaultValue : s;
 }
 
 const Footer = () => {
