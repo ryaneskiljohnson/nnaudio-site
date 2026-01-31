@@ -10,7 +10,6 @@
 import { type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
-import Stripe from "stripe";
 import {
   getUserProductCache,
   setUserProductCache,
@@ -18,311 +17,34 @@ import {
   type ProductFullItem,
   type DownloadItem,
 } from "@/lib/product-cache";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
+import {
+  validateToken,
+  getAccessibleProductIds,
+} from "@/utils/nnaudio-access/access";
 
 function formatError(message: string): string {
   return JSON.stringify({ success: false, message });
 }
 
-async function validateToken(
-  token: string
-): Promise<{ valid: boolean; userId?: string }> {
-  try {
-    if (!token) return { valid: false };
-
-    const { createServerClient } = await import("@supabase/ssr");
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return [];
-          },
-          setAll(_cookiesToSet) {},
-        },
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-
-    if (error || !user) {
-      return { valid: false };
-    }
-
-    return { valid: true, userId: user.id };
-  } catch (error) {
-    console.error("[Token Validation] Error:", error);
-    return { valid: false };
-  }
-}
-
-/**
- * @brief Fetches all product IDs the user has access to
- * Uses same logic as /api/nnaudio-access/products
- */
-async function getAccessibleProductIds(
-  userId: string,
-  profile: { customer_id?: string | null; email?: string | null }
-): Promise<{
-  productIds: Set<string>;
-  productToBundleMap: Map<string, string>;
-}> {
-  const productIds = new Set<string>();
-  const productToBundleMap = new Map<string, string>();
-  const adminSupabase = await createSupabaseServiceRole();
-
-  // Check individual product grants
-  if (profile?.email) {
-    const { data: productGrants } = await (adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>)
-      .from("product_grants")
-      .select("product_id")
-      .eq("user_email", profile.email.toLowerCase());
-
-    if (productGrants && Array.isArray(productGrants)) {
-      productGrants.forEach((grant: { product_id: string }) => {
-        if (grant.product_id) productIds.add(grant.product_id);
-      });
-    }
-  }
-
-  // Check NFR license and subscription (match product route for full access)
-  const { data: profileFull } = await (adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>)
-    .from("profiles")
-    .select("subscription, email")
-    .eq("id", userId)
-    .single();
-
-  const hasActiveSubscription =
-    profileFull?.subscription && profileFull.subscription !== "none";
-
-  if (profileFull?.email) {
-    const { data: nfrData } = await (adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>)
-      .from("user_management")
-      .select("pro")
-      .eq("user_email", profileFull.email.toLowerCase())
-      .single();
-
-    if (nfrData?.pro) {
-      const { data: allProducts } = await (adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>)
-        .from("products")
-        .select("id")
-        .eq("status", "active");
-      if (allProducts) {
-        allProducts.forEach((p: { id: string }) => productIds.add(p.id));
-      }
-    }
-  }
-
-  if (hasActiveSubscription) {
-    const { data: allProducts } = await (adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>)
-      .from("products")
-      .select("id")
-      .eq("status", "active");
-    if (allProducts) {
-      allProducts.forEach((p: { id: string }) => productIds.add(p.id));
-    }
-  }
-
-  // Get Stripe purchases
-  const allPaymentIntents = new Map<string, Stripe.PaymentIntent>();
-  const withTimeout = <T>(
-    promise: Promise<T>,
-    timeoutMs: number
-  ): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(
-          () => reject(new Error(`Timeout after ${timeoutMs}ms`)),
-          timeoutMs
-        )
-      ),
-    ]);
-  };
-
-  const stripePromises: Promise<unknown>[] = [];
-
-  if (profile?.customer_id) {
-    stripePromises.push(
-      withTimeout(
-        stripe.paymentIntents.list({
-          customer: profile.customer_id,
-          limit: 100,
-        }),
-        5000
-      )
-        .then((result) => {
-          result.data.forEach((pi) => allPaymentIntents.set(pi.id, pi));
-        })
-        .catch(() => {})
-    );
-  }
-
-  stripePromises.push(
-    withTimeout(
-      stripe.paymentIntents.search({
-        query: `metadata['user_id']:'${userId}'`,
-        limit: 100,
-      }),
-      5000
-    )
-      .then((result) => {
-        result.data.forEach((pi) => allPaymentIntents.set(pi.id, pi));
-      })
-      .catch(() => {})
-  );
-
-  if (profile?.email) {
-    stripePromises.push(
-      withTimeout(
-        stripe.customers.list({ email: profile.email, limit: 10 }),
-        5000
-      )
-        .then((customers) => {
-          const customerPromises = customers.data.map((customer) =>
-            withTimeout(
-              stripe.paymentIntents.list({
-                customer: customer.id,
-                limit: 100,
-              }),
-              5000
-            ).then((customerPayments) => {
-              customerPayments.data.forEach((pi) =>
-                allPaymentIntents.set(pi.id, pi)
-              );
-            })
-          );
-          return Promise.allSettled(customerPromises);
-        })
-        .catch(() => {})
-    );
-  }
-
-  await Promise.allSettled(stripePromises);
-
-  const successfulPayments = Array.from(allPaymentIntents.values()).filter(
-    (pi) => pi.status === "succeeded"
-  );
-
-  const refundChecks = successfulPayments.map(async (pi) => {
-    if (!pi.latest_charge) return { pi, isRefunded: false };
-    try {
-      const charge = await withTimeout(
-        stripe.charges.retrieve(
-          typeof pi.latest_charge === "string"
-            ? pi.latest_charge
-            : pi.latest_charge.id
-        ),
-        3000
-      );
-      return {
-        pi,
-        isRefunded: charge.refunded || charge.amount_refunded === charge.amount,
-      };
-    } catch {
-      return { pi, isRefunded: false };
-    }
-  });
-
-  const refundResults = await Promise.allSettled(refundChecks);
-  for (const result of refundResults) {
-    if (result.status === "rejected") continue;
-    const { pi, isRefunded } = result.value;
-    if (isRefunded) continue;
-
-    try {
-      const cartItemsStr = pi.metadata?.cart_items;
-      if (cartItemsStr) {
-        const items = JSON.parse(cartItemsStr);
-        for (const item of items) {
-          if (item.id) productIds.add(item.id);
-        }
-      }
-    } catch {
-      // Ignore parse errors
-    }
-  }
-
-  const productIdsArray = Array.from(productIds);
-  if (productIdsArray.length === 0) {
-    return { productIds, productToBundleMap };
-  }
-
-  // Exclude bundle products, expand to individual products
-  const { data: allProductsCheck } = await (adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>)
-    .from("products")
-    .select("id, slug, category")
-    .in("id", productIdsArray)
-    .eq("status", "active");
-
-  const bundleProductIdsToExclude = new Set<string>();
-  const bundleSlugs = new Set<string>();
-
-  (allProductsCheck || []).forEach(
-    (product: { id: string; category?: string; slug?: string }) => {
-      if (product.category === "bundle") {
-        bundleProductIdsToExclude.add(product.id);
-        if (product.slug) bundleSlugs.add(product.slug);
-      }
-    }
-  );
-
-  if (bundleSlugs.size > 0) {
-    const { data: bundles } = await (adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>)
-      .from("bundles")
-      .select("id, slug, name")
-      .in("slug", Array.from(bundleSlugs))
-      .eq("status", "active");
-
-    if (bundles) {
-      for (const bundle of bundles) {
-        const { data: bundleProducts } = await (adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>)
-          .from("bundle_products")
-          .select("product_id")
-          .eq("bundle_id", (bundle as { id: string }).id);
-
-        if (bundleProducts) {
-          bundleProducts.forEach((bp: { product_id?: string }) => {
-            if (bp.product_id) {
-              productIds.add(bp.product_id);
-              productToBundleMap.set(
-                bp.product_id,
-                (bundle as { name: string }).name
-              );
-            }
-          });
-        }
-      }
-    }
-  }
-
-  // Remove bundle product IDs from the set
-  bundleProductIdsToExclude.forEach((id) => productIds.delete(id));
-
-  return { productIds, productToBundleMap };
+/** @brief Returns elapsed ms since start, for timing logs */
+function elapsed(start: number): number {
+  return Math.round(Date.now() - start);
 }
 
 /**
  * @brief POST handler - returns all user products with full details in one response
  */
 export async function POST(request: NextRequest) {
+  const requestStart = Date.now();
+  const timings: { phase: string; ms: number }[] = [];
+
   try {
     const body = await request.formData();
     const token = body.get("token")?.toString() || "";
 
+    let t0 = Date.now();
     const { valid, userId } = await validateToken(token);
+    timings.push({ phase: "validateToken", ms: elapsed(t0) });
     if (!valid || !userId) {
       return new Response(formatError("Token is invalid"), { status: 400 });
     }
@@ -330,23 +52,31 @@ export async function POST(request: NextRequest) {
     // Check cache first
     const cached = getUserProductCache(userId);
     if (cached) {
+      console.log(
+        `[products-full] CACHE HIT userId=${userId.slice(0, 8)}... total=${elapsed(requestStart)}ms`
+      );
       return new Response(JSON.stringify(cached), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
 
+    t0 = Date.now();
     const supabase = await createClient();
     const { data: profile } = await supabase
       .from("profiles")
       .select("customer_id, email")
       .eq("id", userId)
       .single();
+    timings.push({ phase: "profile_fetch", ms: elapsed(t0) });
 
+    t0 = Date.now();
     const { productIds, productToBundleMap } = await getAccessibleProductIds(
       userId,
-      profile || {}
+      profile || {},
+      { timings }
     );
+    timings.push({ phase: "getAccessibleProductIds_total", ms: elapsed(t0) });
 
     const productIdsArray = Array.from(productIds);
     if (productIdsArray.length === 0) {
@@ -356,14 +86,20 @@ export async function POST(request: NextRequest) {
         cache_version: Date.now().toString(),
       };
       setUserProductCache(userId, response);
+      const timingStr = timings
+        .map((t) => `${t.phase}=${t.ms}ms`)
+        .join(" | ");
+      console.log(
+        `[products-full] CACHE MISS (0 products) userId=${userId.slice(0, 8)}... total=${elapsed(requestStart)}ms | ${timingStr}`
+      );
       return new Response(JSON.stringify(response), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
 
+    t0 = Date.now();
     const adminSupabase = await createSupabaseServiceRole();
-
     const { data: products, error: productsError } = await (adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>)
       .from("products")
       .select(
@@ -378,6 +114,50 @@ export async function POST(request: NextRequest) {
         status: 500,
       });
     }
+    timings.push({ phase: "products_fetch", ms: elapsed(t0) });
+
+    // Collect unique storage paths that need signed URLs (single batch call)
+    const pathsToSign = Array.from(
+      new Set(
+        (products as ProductRow[]).flatMap((product) =>
+          (product.downloads || [])
+            .map((d) => d.path)
+            .filter(
+              (path): path is string =>
+                !!path && !path.startsWith("http")
+            )
+        )
+      )
+    );
+
+    // Single batch call instead of N sequential createSignedUrl calls
+    const pathToSignedUrl = new Map<string, string>();
+    t0 = Date.now();
+    if (pathsToSign.length > 0) {
+      try {
+        const { data: signedResults } = await adminSupabase.storage
+          .from("product-downloads")
+          .createSignedUrls(pathsToSign, 3600);
+
+        if (signedResults && Array.isArray(signedResults)) {
+          for (const result of signedResults) {
+            if (
+              result?.path &&
+              result.signedUrl &&
+              !result.error
+            ) {
+              pathToSignedUrl.set(result.path, result.signedUrl);
+            }
+          }
+        }
+      } catch {
+        // Fallback: individual downloads will use path; client may need to retry
+      }
+    }
+    timings.push({
+      phase: `createSignedUrls(${pathsToSign.length} paths)`,
+      ms: elapsed(t0),
+    });
 
     const formattedProducts: ProductFullItem[] = [];
 
@@ -388,14 +168,7 @@ export async function POST(request: NextRequest) {
         for (const download of product.downloads) {
           let fileUrl = download.path || download.url || "";
           if (download.path && !download.path.startsWith("http")) {
-            try {
-              const { data: signedUrlData } = await adminSupabase.storage
-                .from("product-downloads")
-                .createSignedUrl(download.path, 3600);
-              fileUrl = signedUrlData?.signedUrl || download.path;
-            } catch {
-              // Fallback to path
-            }
+            fileUrl = pathToSignedUrl.get(download.path) || download.path;
           }
 
           downloadsWithUrls.push({
@@ -429,6 +202,14 @@ export async function POST(request: NextRequest) {
     };
 
     setUserProductCache(userId, response);
+
+    const totalMs = elapsed(requestStart);
+    const timingStr = timings
+      .map((t) => `${t.phase}=${t.ms}ms`)
+      .join(" | ");
+    console.log(
+      `[products-full] CACHE MISS userId=${userId.slice(0, 8)}... total=${totalMs}ms | ${timingStr}`
+    );
 
     return new Response(JSON.stringify(response), {
       status: 200,

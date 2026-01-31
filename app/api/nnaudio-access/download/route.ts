@@ -1,52 +1,16 @@
 "use server";
 
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import {
+  validateToken,
+  getAccessibleProductIds,
+  resolveProductId,
+} from "@/utils/nnaudio-access/access";
 
-// Format error response
 function formatError(message: string): string {
   return JSON.stringify({ success: false, message });
-}
-
-// Validate Supabase token
-async function validateToken(token: string): Promise<{ valid: boolean; userId?: string }> {
-  try {
-    if (!token) return { valid: false };
-
-    const { createServerClient } = await import("@supabase/ssr");
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return [];
-          },
-          setAll(_cookiesToSet) {},
-        },
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-
-    if (error || !user) {
-      return { valid: false };
-    }
-
-    return { valid: true, userId: user.id };
-  } catch (error) {
-    console.error("[Token Validation] Error:", error);
-    return { valid: false };
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -71,117 +35,37 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Verify user has access to this product
     const { data: profile } = await supabase
       .from("profiles")
-      .select("subscription, customer_id, email")
+      .select("customer_id, email")
       .eq("id", userId)
       .single();
 
-    const hasActiveSubscription =
-      profile?.subscription && profile.subscription !== "none";
+    const { productIds: accessibleProductIds } = await getAccessibleProductIds(
+      userId,
+      profile || {}
+    );
 
-    // Check if user has purchased this product or has subscription
-    let hasAccess = hasActiveSubscription;
+    const adminSupabase = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
 
-    if (!hasAccess && profile?.customer_id) {
-      // Check if product was purchased individually
-      const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-        apiVersion: "2025-02-24.acacia",
-      });
-
-      try {
-        const paymentIntents = await stripe.paymentIntents.list({
-          customer: profile.customer_id,
-          limit: 100,
-        });
-
-        const successfulPayments = paymentIntents.data.filter(
-          (pi) => pi.status === "succeeded"
-        );
-
-        for (const pi of successfulPayments) {
-          // Check if refunded
-          let isRefunded = false;
-          if (pi.latest_charge) {
-            try {
-              const charge = await stripe.charges.retrieve(
-                typeof pi.latest_charge === "string"
-                  ? pi.latest_charge
-                  : pi.latest_charge.id
-              );
-              isRefunded = charge.refunded || charge.amount_refunded === charge.amount;
-            } catch (error) {
-              // Continue if charge check fails
-            }
-          }
-
-          if (isRefunded) continue;
-
-          try {
-            const cartItemsStr = pi.metadata?.cart_items;
-            if (cartItemsStr) {
-              const items = JSON.parse(cartItemsStr);
-              if (items.some((item: any) => item.id === productId)) {
-                hasAccess = true;
-                break;
-              }
-            }
-          } catch (e) {
-            // Continue if parsing fails
-          }
-        }
-      } catch (error) {
-        console.error("Error checking purchase:", error);
-      }
+    const resolvedProductId = await resolveProductId(adminSupabase, productId);
+    if (resolvedProductId === null) {
+      return new Response(formatError("Product not found"), { status: 404 });
     }
 
-    // Check product grants
-    if (!hasAccess && profile?.email) {
-      const { data: productGrant } = await (supabase as any)
-        .from("product_grants")
-        .select("product_id")
-        .eq("user_email", profile.email.toLowerCase())
-        .eq("product_id", productId)
-        .single();
-
-      if (productGrant) {
-        hasAccess = true;
-        console.log(`[NNAudio Access Download] User has product grant for ${productId}`);
-      }
-    }
-
-    // Check NFR license
-    if (!hasAccess) {
-      const { data: userProfile } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("id", userId)
-        .single();
-
-      if (userProfile?.email) {
-        const { data: nfrLicense } = await (supabase as any)
-          .from("user_management")
-          .select("pro")
-          .eq("user_email", userProfile.email.toLowerCase())
-          .single();
-
-        if (nfrLicense?.pro) {
-          hasAccess = true;
-        }
-      }
-    }
-
-    if (!hasAccess) {
+    if (!accessibleProductIds.has(resolvedProductId)) {
       return new Response(formatError("Access denied"), { status: 403 });
     }
 
     // Verify the download path belongs to this product
-    const { data: product, error: productError } = await (supabase as any)
+    const { data: product, error: productError } = await adminSupabase
       .from("products")
       .select("downloads")
-      .eq("id", productId)
+      .eq("id", resolvedProductId)
       .single();
 
     if (productError || !product) {
@@ -199,18 +83,6 @@ export async function POST(request: NextRequest) {
         status: 404,
       });
     }
-
-    // Generate signed URL using admin client (has service role key)
-    const adminSupabase = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
 
     // Generate signed URL valid for 1 hour
     const { data: signedUrlData, error: signedUrlError } =

@@ -1,53 +1,14 @@
 "use server";
 
-import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { type NextRequest } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import {
+  validateToken,
+  getAccessibleProductIds,
+} from "@/utils/nnaudio-access/access";
 
-// Format error response
 function formatError(message: string): string {
   return JSON.stringify({ success: false, message });
-}
-
-// Validate Supabase token
-async function validateToken(token: string): Promise<{ valid: boolean; userId?: string }> {
-  try {
-    if (!token) return { valid: false };
-
-    // Create a client with the token in Authorization header
-    const { createServerClient } = await import("@supabase/ssr");
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return [];
-          },
-          setAll(_cookiesToSet) {},
-        },
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-
-    if (error || !user) {
-      return { valid: false };
-    }
-
-    return { valid: true, userId: user.id };
-  } catch (error) {
-    console.error("[Token Validation] Error:", error);
-    return { valid: false };
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -78,205 +39,14 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // Verify user has access to this product
-    // Use EXACT same logic as products endpoint to ensure consistency
+    // Verify user has access: product grants + one-time Stripe purchases (individual or bundles)
     const { data: profile } = await adminSupabase
       .from("profiles")
-      .select("subscription, customer_id, email")
+      .select("customer_id, email")
       .eq("id", userId)
       .single();
 
-    console.log(`[NNAudio Access Product] User ${userId} profile:`, {
-      subscription: profile?.subscription,
-      customer_id: profile?.customer_id,
-      email: profile?.email,
-    });
-
-    const hasActiveSubscription =
-      profile?.subscription && profile.subscription !== "none";
-
-    let productIds = new Set<string>();
-    let nfrLicense: any = null;
-    let productGrants: any[] = [];
-
-    // Check NFR (Not For Resale) licenses first (highest priority) - SAME AS PRODUCTS ENDPOINT
-    if (profile?.email) {
-      const { data: nfrData } = await (adminSupabase as any)
-        .from("user_management")
-        .select("pro")
-        .eq("user_email", profile.email.toLowerCase())
-        .single();
-
-      nfrLicense = nfrData;
-
-      if (nfrLicense?.pro) {
-        console.log(`[NNAudio Access Product] User has NFR license, granting all products`);
-        const { data: allProducts } = await (adminSupabase as any)
-          .from("products")
-          .select("id")
-          .eq("status", "active");
-
-        if (allProducts) {
-          (allProducts as { id: string }[]).forEach((p: { id: string }) => productIds.add(p.id));
-        }
-      }
-
-      // Check individual product grants
-      const { data: grantsData } = await (adminSupabase as any)
-        .from("product_grants")
-        .select("product_id")
-        .eq("user_email", profile.email.toLowerCase());
-
-      productGrants = grantsData || [];
-
-      if (productGrants.length > 0) {
-        console.log(`[NNAudio Access Product] User has ${productGrants.length} product grants`);
-        (productGrants as { product_id: string }[]).forEach((grant: { product_id: string }) => {
-          if (grant.product_id) {
-            productIds.add(grant.product_id);
-            console.log(`[NNAudio Access Product] Added granted product: ${grant.product_id}`);
-          }
-        });
-      }
-    }
-
-    // If user has active subscription, they get access to all products - SAME AS PRODUCTS ENDPOINT
-    if (hasActiveSubscription) {
-      console.log(`[NNAudio Access Product] User has active subscription: ${profile?.subscription}`);
-      const { data: allProducts } = await (adminSupabase as any)
-        .from("products")
-        .select("id")
-        .eq("status", "active");
-
-      if (allProducts) {
-        (allProducts as { id: string }[]).forEach((p: { id: string }) => productIds.add(p.id));
-      }
-    }
-
-    // Also get individually purchased products - SAME AS PRODUCTS ENDPOINT
-    // Add timeout to prevent hanging on slow Stripe calls
-    if (profile?.customer_id || profile?.email) {
-      const Stripe = (await import("stripe")).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-        apiVersion: "2025-02-24.acacia",
-      });
-
-      try {
-        const allPaymentIntents = new Map<string, any>();
-        
-        // Helper to add timeout to promises
-        const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-          return Promise.race([
-            promise,
-            new Promise<T>((_, reject) => 
-              setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
-            )
-          ]);
-        };
-
-        const stripePromises: Promise<any>[] = [];
-
-        // Method 1: Try to fetch by customer_id from profile (5 second timeout)
-        if (profile?.customer_id) {
-          stripePromises.push(
-            withTimeout(
-              stripe.paymentIntents.list({
-                customer: profile.customer_id,
-                limit: 100,
-              }),
-              5000
-            ).then(customerPayments => {
-              customerPayments.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
-              console.log(`[NNAudio Access Product] Found ${customerPayments.data.length} payment intents by customer_id`);
-            }).catch(error => {
-              console.error("[NNAudio Access Product] Error/timeout fetching by customer_id:", error.message);
-            })
-          );
-        }
-
-        // Method 2: Search by user_id in metadata (5 second timeout)
-        stripePromises.push(
-          withTimeout(
-            stripe.paymentIntents.search({
-              query: `metadata['user_id']:'${userId}'`,
-              limit: 100,
-            }),
-            5000
-          ).then(searchResult => {
-            searchResult.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
-            console.log(`[NNAudio Access Product] Found ${searchResult.data.length} payment intents by user_id metadata`);
-          }).catch(error => {
-            console.log("[NNAudio Access Product] Search API timeout/error:", error.message);
-          })
-        );
-
-        // Method 3: Search by email (10 second timeout for customer list + payment intents)
-        if (profile?.email) {
-          stripePromises.push(
-            withTimeout(
-              stripe.customers.list({
-                email: profile.email,
-                limit: 10,
-              }).then(customers => {
-                const customerPromises = customers.data.map(customer =>
-                  withTimeout(
-                    stripe.paymentIntents.list({
-                      customer: customer.id,
-                      limit: 100,
-                    }),
-                    5000
-                  ).then(customerPayments => {
-                    customerPayments.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
-                  }).catch(error => {
-                    console.error("[NNAudio Access Product] Error/timeout fetching payment intents:", error.message);
-                  })
-                );
-                return Promise.allSettled(customerPromises);
-              }),
-              10000
-            ).catch(error => {
-              console.error("[NNAudio Access Product] Error/timeout searching customers:", error.message);
-            })
-          );
-        }
-
-        // Wait for all Stripe calls to complete (or timeout) - max 15 seconds total
-        await Promise.race([
-          Promise.allSettled(stripePromises),
-          new Promise(resolve => setTimeout(resolve, 15000))
-        ]);
-
-        const paymentIntents = Array.from(allPaymentIntents.values());
-        console.log(`[NNAudio Access Product] Total unique payment intents found: ${paymentIntents.length}`);
-
-        // Filter to only successful payment intents
-        const successfulPayments = paymentIntents.filter(
-          (pi) => pi.status === "succeeded"
-        );
-        console.log(`[NNAudio Access Product] Successful payments: ${successfulPayments.length}`);
-
-        // Process payment intents - skip refund checks to avoid timeout
-        for (const pi of successfulPayments) {
-          // Extract product IDs from cart items - SAME AS PRODUCTS ENDPOINT
-          try {
-            const cartItemsStr = pi.metadata?.cart_items;
-            if (cartItemsStr) {
-              const items = JSON.parse(cartItemsStr);
-              for (const item of items) {
-                if (item.id) {
-                  productIds.add(item.id);
-                  console.log(`[NNAudio Access Product] Added product ID from purchase: ${item.id}`);
-                }
-              }
-            }
-          } catch (e) {
-            console.error("[NNAudio Access Product] Error parsing cart items:", e);
-          }
-        }
-      } catch (error) {
-        console.error("[NNAudio Access Product] Error checking purchase:", error);
-      }
-    }
+    const { productIds } = await getAccessibleProductIds(userId, profile || {});
 
     // First, try to find the product by UUID or legacy_product_id
     // This allows plugins to use either the new UUID or the old numeric ID
@@ -330,10 +100,6 @@ export async function POST(request: NextRequest) {
         actualProductId,
         productName: product.name,
         productIdsSize: productIds.size,
-        hasSubscription: hasActiveSubscription,
-        subscriptionType: profile?.subscription,
-        hasNFR: nfrLicense?.pro,
-        productGrantsCount: productGrants?.length || 0,
       });
       return new Response(formatError("Access denied"), { status: 403 });
     }
