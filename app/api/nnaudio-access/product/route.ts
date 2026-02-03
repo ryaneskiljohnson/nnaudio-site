@@ -115,10 +115,12 @@ export async function POST(request: NextRequest) {
       downloads: [],
     };
 
-    // Add image if available
-    if (product.featured_image_url) {
+    // Add image if available (use PNG for NNAudio Access - macOS doesn't support WebP)
+    const imageUrl =
+      product.featured_image_url_png || product.featured_image_url;
+    if (imageUrl) {
       formattedProduct.images.push({
-        src: product.featured_image_url,
+        src: imageUrl,
         alt: product.name,
       });
     }

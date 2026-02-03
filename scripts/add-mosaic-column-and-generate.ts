@@ -14,8 +14,6 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-const NNAUDIO_LOGO = '/images/nnaud-io/NNPurp1.png';
-
 async function addColumnIfNeeded() {
   const adminSupabase = await createAdminClient();
   
@@ -52,37 +50,20 @@ async function addColumnIfNeeded() {
   }
 }
 
-async function loadImageWithFallback(url: string, fallbackUrl: string): Promise<any> {
+/** Load image from URL or local path. No fallback - returns null on failure. */
+async function loadImageOnly(url: string): Promise<any> {
   try {
     if (url && url.startsWith('http')) {
-      try {
-        return await loadImage(url);
-      } catch (httpError) {
-        // If it fails, try fallback
-      }
-    } else if (url && url.startsWith('/')) {
+      return await loadImage(url);
+    }
+    if (url && url.startsWith('/')) {
       const localPath = path.join(process.cwd(), 'public', url);
-      if (fs.existsSync(localPath)) {
-        return await loadImage(localPath);
-      }
+      if (fs.existsSync(localPath)) return await loadImage(localPath);
     }
-    
-    const fallbackPath = path.join(process.cwd(), 'public', fallbackUrl);
-    if (fs.existsSync(fallbackPath)) {
-      return await loadImage(fallbackPath);
-    }
-    return null;
-  } catch (error) {
-    try {
-      const fallbackPath = path.join(process.cwd(), 'public', fallbackUrl);
-      if (fs.existsSync(fallbackPath)) {
-        return await loadImage(fallbackPath);
-      }
-    } catch {
-      // Ignore
-    }
-    return null;
+  } catch {
+    // Ignore
   }
+  return null;
 }
 
 async function generateMosaic(
@@ -124,27 +105,24 @@ async function generateMosaic(
       }
     }
     
-    if (!imageUrl) {
-      imageUrl = NNAUDIO_LOGO;
-    }
-
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    const x = col * cellWidth;
+    const y = row * cellHeight;
     try {
-      const img = await loadImageWithFallback(imageUrl, NNAUDIO_LOGO);
-      
-      if (img) {
-        const col = index % cols;
-        const row = Math.floor(index / cols);
-        const x = col * cellWidth;
-        const y = row * cellHeight;
-        
-        const size = Math.min(img.width, img.height);
-        const sx = (img.width - size) / 2;
-        const sy = (img.height - size) / 2;
-        
-        ctx.drawImage(img, sx, sy, size, size, x, y, cellWidth, cellHeight);
-      }
+      const img = imageUrl ? await loadImageOnly(imageUrl) : null;
+      if (img && img.width > 0 && img.height > 0) {
+      const size = Math.min(img.width, img.height);
+      const sx = (img.width - size) / 2;
+      const sy = (img.height - size) / 2;
+      ctx.drawImage(img, sx, sy, size, size, x, y, cellWidth, cellHeight);
+    } else {
+      ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
+      ctx.fillRect(x, y, cellWidth, cellHeight);
+    }
     } catch (error) {
-      // Skip failed images
+      ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
+      ctx.fillRect(x, y, cellWidth, cellHeight);
     }
   });
 

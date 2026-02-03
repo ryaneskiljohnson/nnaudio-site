@@ -522,6 +522,7 @@ export default function EditProductPage() {
     status: 'draft' as 'draft' | 'active' | 'archived',
     is_featured: false,
     featured_image_url: '',
+    featured_image_url_png: '',
     logo_url: '',
     background_image_url: '',
     background_video_url: '',
@@ -605,6 +606,7 @@ export default function EditProductPage() {
           status: product.status || 'draft',
           is_featured: product.is_featured || false,
           featured_image_url: product.featured_image_url || '',
+          featured_image_url_png: product.featured_image_url_png || '',
           logo_url: product.logo_url || '',
           background_image_url: product.background_image_url || '',
           background_video_url: product.background_video_url || '',
@@ -1732,6 +1734,37 @@ export default function EditProductPage() {
                 </ImagePreview>
               </ImagePreviewContainer>
             )}
+          </FormGroup>
+
+          <FormGroup>
+            <Label>NNAudio Access Product Image (PNG)</Label>
+            <StorageFilePicker
+              value={formData.featured_image_url_png}
+              onChange={(url) => setFormData(prev => ({ ...prev, featured_image_url_png: url }))}
+              bucket="product-images"
+              folder="nnaudio-access"
+              accept="image/*"
+              placeholder="PNG from nnaudio-access folder (for macOS app)"
+            />
+            {formData.featured_image_url_png && (
+              <ImagePreviewContainer>
+                <ImagePreview>
+                  <Image
+                    src={formData.featured_image_url_png}
+                    alt="NNAudio Access PNG preview"
+                    fill
+                    style={{ objectFit: 'contain' }}
+                    unoptimized
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </ImagePreview>
+              </ImagePreviewContainer>
+            )}
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+              PNG version for NNAudio Access (macOS WebP incompatibility). Browse opens nnaudio-access folder.
+            </p>
           </FormGroup>
 
           <FormGroup>

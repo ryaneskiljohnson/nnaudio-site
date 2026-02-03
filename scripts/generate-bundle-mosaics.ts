@@ -14,68 +14,41 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-const NNAUDIO_LOGO = '/images/nnaud-io/NNPurp1.png';
-
-async function loadImageWithFallback(url: string, fallbackUrl: string, retries: number = 3): Promise<any> {
+/** Load image from URL or local path. No fallback - returns null on failure. */
+async function loadImageOnly(url: string, retries: number = 3): Promise<any> {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       if (url && url.startsWith('http')) {
-        // Try loading URL directly first (canvas library supports this)
         try {
           return await loadImage(url);
-        } catch (directError) {
-          // If direct load fails, try fetching and converting to buffer
+        } catch {
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
-            
-            const response = await fetch(url, { 
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
+            const response = await fetch(url, {
               signal: controller.signal as any,
-              headers: {
-                'User-Agent': 'Mozilla/5.0',
-                'Accept': 'image/*'
-              }
+              headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'image/*' }
             });
             clearTimeout(timeoutId);
-            
             if (response.ok) {
-              const arrayBuffer = await response.arrayBuffer();
-              const buffer = Buffer.from(arrayBuffer);
+              const buffer = Buffer.from(await response.arrayBuffer());
               return await loadImage(buffer);
             }
-          } catch (fetchError: any) {
+          } catch {
             if (attempt < retries - 1) {
-              await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1))); // Exponential backoff
+              await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)));
               continue;
             }
           }
         }
       } else if (url && url.startsWith('/')) {
-        // Local file path
         const localPath = path.join(process.cwd(), 'public', url);
-        if (fs.existsSync(localPath)) {
-          return await loadImage(localPath);
-        }
-      }
-      
-      // Try fallback
-      const fallbackPath = path.join(process.cwd(), 'public', fallbackUrl);
-      if (fs.existsSync(fallbackPath)) {
-        return await loadImage(fallbackPath);
+        if (fs.existsSync(localPath)) return await loadImage(localPath);
       }
     } catch (error) {
       if (attempt < retries - 1) {
         await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)));
         continue;
-      }
-      // Final fallback attempt
-      try {
-        const fallbackPath = path.join(process.cwd(), 'public', fallbackUrl);
-        if (fs.existsSync(fallbackPath)) {
-          return await loadImage(fallbackPath);
-        }
-      } catch {
-        // Ignore
       }
     }
   }
@@ -133,11 +106,6 @@ async function generateMosaic(
       }
     }
     
-    // If no image at all, use NNAudio logo as fallback
-    if (!imageUrl) {
-      imageUrl = NNAUDIO_LOGO;
-    }
-
     // ALWAYS draw something for each product - calculate position first
     const col = index % cols;
     const row = Math.floor(index / cols);
@@ -145,102 +113,28 @@ async function generateMosaic(
     const y = row * cellHeight;
     
     try {
-      let img = await loadImageWithFallback(imageUrl, NNAUDIO_LOGO, 3);
-      
-      // Validate image has valid dimensions
-      if (!img || img.width === 0 || img.height === 0) {
-      // If image failed and it's not already the logo, try logo as fallback
-        if (imageUrl !== NNAUDIO_LOGO) {
-        const logoPath = path.join(process.cwd(), 'public', NNAUDIO_LOGO);
-        if (fs.existsSync(logoPath)) {
-          try {
-            const logoImg = await loadImage(logoPath);
-            if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
-              img = logoImg;
-            }
-          } catch {
-            // Ignore
-          }
-          }
-        }
-      }
-      
-      // Draw the image or fallback
+      const img = imageUrl ? await loadImageOnly(imageUrl, 3) : null;
       if (img && img.width > 0 && img.height > 0) {
         const size = Math.min(img.width, img.height);
         const sx = (img.width - size) / 2;
         const sy = (img.height - size) / 2;
-        
         ctx.drawImage(img, sx, sy, size, size, x, y, cellWidth, cellHeight);
         loadedCount++;
       } else {
-        // Draw NNAudio logo as fallback if available
-        const logoPath = path.join(process.cwd(), 'public', NNAUDIO_LOGO);
-        if (fs.existsSync(logoPath)) {
-          try {
-            const logoImg = await loadImage(logoPath);
-            if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
-              const size = Math.min(logoImg.width, logoImg.height);
-              const sx = (logoImg.width - size) / 2;
-              const sy = (logoImg.height - size) / 2;
-              ctx.drawImage(logoImg, sx, sy, size, size, x, y, cellWidth, cellHeight);
-              loadedCount++;
-            } else {
-              // Draw placeholder if even logo fails
-              ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
-              ctx.fillRect(x, y, cellWidth, cellHeight);
-              failedCount++;
-              failedProducts.push(`${product.name}`);
-            }
-          } catch {
-            // Draw placeholder if logo load fails
-            ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
-            ctx.fillRect(x, y, cellWidth, cellHeight);
-            failedCount++;
-            failedProducts.push(`${product.name}`);
-          }
-        } else {
-          // Draw placeholder if logo file doesn't exist
         ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
         ctx.fillRect(x, y, cellWidth, cellHeight);
         failedCount++;
-          failedProducts.push(`${product.name}`);
-        }
+        failedProducts.push(`${product.name}`);
       }
       
       if ((loadedCount + failedCount) % 10 === 0 || (loadedCount + failedCount) === shuffledProducts.length) {
         console.log(`    Processed ${loadedCount + failedCount}/${shuffledProducts.length} images (${loadedCount} loaded, ${failedCount} placeholders)...`);
       }
     } catch (error: any) {
-      // Even on error, draw logo or placeholder
-      const logoPath = path.join(process.cwd(), 'public', NNAUDIO_LOGO);
-      if (fs.existsSync(logoPath)) {
-        try {
-          const logoImg = await loadImage(logoPath);
-          if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
-            const size = Math.min(logoImg.width, logoImg.height);
-            const sx = (logoImg.width - size) / 2;
-            const sy = (logoImg.height - size) / 2;
-            ctx.drawImage(logoImg, sx, sy, size, size, x, y, cellWidth, cellHeight);
-            loadedCount++;
-          } else {
-            ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
-            ctx.fillRect(x, y, cellWidth, cellHeight);
-            failedCount++;
-            failedProducts.push(`${product.name}`);
-          }
-        } catch {
-          ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
-          ctx.fillRect(x, y, cellWidth, cellHeight);
-          failedCount++;
-          failedProducts.push(`${product.name}`);
-        }
-      } else {
       ctx.fillStyle = 'rgba(108, 99, 255, 0.3)';
       ctx.fillRect(x, y, cellWidth, cellHeight);
       failedCount++;
-        failedProducts.push(`${product.name}`);
-      }
+      failedProducts.push(`${product.name}`);
       if (failedCount <= 5) {
       console.warn(`    ⚠️  Error loading image for ${product.name}: ${error.message}`);
       }

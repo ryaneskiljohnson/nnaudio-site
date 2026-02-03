@@ -17,6 +17,8 @@ export interface ProductFullItem {
   image_url: string | null;
   version: string | null;
   bundle_name: string | null;
+  /** For NNAudio Access filter UI: bundle name when from bundle, else human-readable category */
+  product_type: string | null;
   downloads: DownloadItem[];
 }
 

@@ -26,6 +26,25 @@ function formatError(message: string): string {
   return JSON.stringify({ success: false, message });
 }
 
+/**
+ * @brief Maps product category (DB enum) to human-readable display name for filter UI
+ * @param category - Raw category from products table (e.g. instrument-plugin, audio-fx-plugin)
+ * @returns Human-readable label for NNAudio Access filter dropdown
+ */
+function categoryToDisplayName(category: string | null | undefined): string | null {
+  if (!category || typeof category !== "string") return null;
+  const map: Record<string, string> = {
+    "instrument-plugin": "Instrument Plugins",
+    "audio-fx-plugin": "FX Plugins",
+    "midi-fx-plugin": "MIDI FX Plugins",
+    pack: "Packs",
+    application: "Applications",
+    plugin: "Plugins",
+    bundle: "Bundles",
+  };
+  return map[category] ?? category.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /** @brief Returns elapsed ms since start, for timing logs */
 function elapsed(start: number): number {
   return Math.round(Date.now() - start);
@@ -116,7 +135,7 @@ export async function POST(request: NextRequest) {
     )
       .from("products")
       .select(
-        "id, name, slug, featured_image_url, legacy_product_id, downloads, download_version"
+        "id, name, slug, featured_image_url, featured_image_url_png, legacy_product_id, downloads, download_version, category"
       )
       .in("id", productIdsArray)
       .eq("status", "active");
@@ -197,13 +216,21 @@ export async function POST(request: NextRequest) {
       const version =
         downloadsWithUrls[0]?.version || product.download_version || null;
 
+      // Use PNG for NNAudio Access (macOS doesn't support WebP); fallback to webp/jpg
+      const imageUrl =
+        product.featured_image_url_png || product.featured_image_url || null;
+      const bundleName = productToBundleMap.get(product.id) || null;
+      // product_type: for filter UI - use bundle name when from bundle, else human-readable category
+      const productType =
+        bundleName || categoryToDisplayName(product.category) || null;
       formattedProducts.push({
         product_id: product.legacy_product_id || product.id,
         product_uuid: product.id,
         product_name: product.name,
-        image_url: product.featured_image_url || null,
+        image_url: imageUrl,
         version,
-        bundle_name: productToBundleMap.get(product.id) || null,
+        bundle_name: bundleName,
+        product_type: productType,
         downloads: downloadsWithUrls,
       });
     }
@@ -240,7 +267,9 @@ interface ProductRow {
   id: string;
   name: string;
   slug?: string;
+  category?: string | null;
   featured_image_url?: string | null;
+  featured_image_url_png?: string | null;
   legacy_product_id?: string | null;
   downloads?: Array<{
     path?: string;

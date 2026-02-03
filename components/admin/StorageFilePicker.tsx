@@ -662,8 +662,8 @@ export default function StorageFilePicker({
 
   useEffect(() => {
     if (isModalOpen) {
-      // Reset to root when opening modal
-      setCurrentPath([]);
+      // Open at folder when provided, otherwise root
+      setCurrentPath(folder ? folder.split('/').filter(Boolean) : []);
       setSearchQuery("");
       setSelectedFile(null);
       // Always fetch buckets so user can switch
@@ -677,7 +677,7 @@ export default function StorageFilePicker({
         setShowBucketSelector(true);
       }
     }
-  }, [isModalOpen, fetchBuckets, initialBucket, selectedBucket]);
+  }, [isModalOpen, fetchBuckets, initialBucket, selectedBucket, folder]);
 
   useEffect(() => {
     if (isModalOpen && currentFolder !== undefined && currentBucket && !showBucketSelector) {

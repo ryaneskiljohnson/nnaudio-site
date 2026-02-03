@@ -4,18 +4,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import sharp from 'sharp';
 
-const NNAUDIO_LOGO = '/images/nnaud-io/NNPurp1.png';
-
-async function loadImageWithFallback(url: string, fallbackUrl: string, retries: number = 5): Promise<any> {
+/** Load image from URL or local path. No fallback - returns null on failure. */
+async function loadImageOnly(url: string, retries: number = 5): Promise<any> {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       if (url && url.startsWith('http')) {
-        // Try fetching first (more reliable than direct loadImage for remote URLs)
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-          
-          const response = await fetch(url, { 
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          const response = await fetch(url, {
             signal: controller.signal as any,
             headers: {
               'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
@@ -24,26 +21,19 @@ async function loadImageWithFallback(url: string, fallbackUrl: string, retries: 
             }
           });
           clearTimeout(timeoutId);
-          
           if (response.ok) {
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             const img = await loadImage(buffer);
-            if (img && img.width > 0 && img.height > 0) {
-              return img;
-            }
+            if (img && img.width > 0 && img.height > 0) return img;
           }
-        } catch (fetchError: any) {
-          // Try direct loadImage as fallback
+        } catch {
           try {
             const img = await loadImage(url);
-            if (img && img.width > 0 && img.height > 0) {
-              return img;
-            }
-          } catch (directError) {
+            if (img && img.width > 0 && img.height > 0) return img;
+          } catch {
             if (attempt < retries - 1) {
-              const delay = 1000 * (attempt + 1);
-              await new Promise(resolve => setTimeout(resolve, delay));
+              await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
               continue;
             }
           }
@@ -52,37 +42,13 @@ async function loadImageWithFallback(url: string, fallbackUrl: string, retries: 
         const localPath = path.join(process.cwd(), 'public', url);
         if (fs.existsSync(localPath)) {
           const img = await loadImage(localPath);
-          if (img && img.width > 0 && img.height > 0) {
-            return img;
-          }
-        }
-      }
-      
-      // Try fallback logo
-      const fallbackPath = path.join(process.cwd(), 'public', fallbackUrl);
-      if (fs.existsSync(fallbackPath)) {
-        const img = await loadImage(fallbackPath);
-        if (img && img.width > 0 && img.height > 0) {
-          return img;
+          if (img && img.width > 0 && img.height > 0) return img;
         }
       }
     } catch (error: any) {
       if (attempt < retries - 1) {
-        const delay = 1000 * (attempt + 1);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
         continue;
-      }
-      // Final attempt with fallback
-      try {
-        const fallbackPath = path.join(process.cwd(), 'public', fallbackUrl);
-        if (fs.existsSync(fallbackPath)) {
-          const img = await loadImage(fallbackPath);
-          if (img && img.width > 0 && img.height > 0) {
-            return img;
-          }
-        }
-      } catch {
-        // Ignore
       }
     }
   }
@@ -159,35 +125,13 @@ async function generateHeroMosaic(
       }
     }
     
-    // Fallback to NNAudio logo
-    if (!imageUrl) {
-      imageUrl = NNAUDIO_LOGO;
-    }
-
     const col = index % cols;
     const row = Math.floor(index / cols);
     const x = col * cellWidth;
     const y = row * cellHeight;
     
     try {
-      // Load image with retries
-      let img = await loadImageWithFallback(imageUrl, NNAUDIO_LOGO, 5);
-      
-      // If image failed and it's not already the logo, try logo as final fallback
-      if ((!img || img.width === 0 || img.height === 0) && imageUrl !== NNAUDIO_LOGO) {
-        const logoPath = path.join(process.cwd(), 'public', NNAUDIO_LOGO);
-        if (fs.existsSync(logoPath)) {
-          try {
-            const logoImg = await loadImage(logoPath);
-            if (logoImg && logoImg.width > 0 && logoImg.height > 0) {
-              img = logoImg;
-            }
-          } catch {
-            // Ignore
-          }
-        }
-      }
-      
+      const img = imageUrl ? await loadImageOnly(imageUrl, 5) : null;
       return {
         index,
         product: product.name,
