@@ -130,6 +130,42 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PATCH /api/bundles/products - Reorder products in a bundle
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { bundle_id, order } = body;
+
+    if (!bundle_id || !Array.isArray(order)) {
+      return NextResponse.json(
+        { success: false, error: 'bundle_id and order array are required' },
+        { status: 400 }
+      );
+    }
+
+    const adminSupabase = await createAdminClient();
+
+    for (let i = 0; i < order.length; i++) {
+      const { id, display_order } = order[i];
+      if (!id) continue;
+
+      await (adminSupabase as any)
+        .from('bundle_products')
+        .update({ display_order: display_order ?? i })
+        .eq('id', id)
+        .eq('bundle_id', bundle_id);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Unexpected error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
 // DELETE /api/bundles/products?bundle_id=xxx&product_id=xxx - Remove a product from a bundle
 export async function DELETE(request: NextRequest) {
   try {

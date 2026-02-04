@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { FaSave, FaArrowLeft, FaPlus, FaTrash, FaSpinner, FaChevronDown, FaChevronUp, FaSearch, FaArrowUp, FaArrowDown, FaGripVertical, FaEye, FaExternalLinkAlt } from "react-icons/fa";
 import Link from "next/link";
 import Image from "next/image";
@@ -504,6 +505,126 @@ const LoadingContainer = styled.div`
   font-size: 1.2rem;
 `;
 
+const RemoveConfirmOverlay = styled.div<{ $isOpen: boolean }>`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10000;
+  display: ${props => props.$isOpen ? 'flex' : 'none'};
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  visibility: ${props => props.$isOpen ? 'visible' : 'hidden'};
+  opacity: ${props => props.$isOpen ? 1 : 0};
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  backdrop-filter: blur(4px);
+`;
+
+const RemoveConfirmDialog = styled.div`
+  background: var(--card-bg);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+`;
+
+const RemoveConfirmHeader = styled.div`
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const RemoveConfirmTitle = styled.h2`
+  font-size: 1.5rem;
+  color: #ff5e62;
+  margin: 0;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const RemoveConfirmBody = styled.div`
+  padding: 1.5rem;
+`;
+
+const RemoveConfirmMessage = styled.p`
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 1rem 0;
+`;
+
+const RemoveConfirmProductName = styled.div`
+  background: rgba(255, 94, 98, 0.1);
+  border: 1px solid rgba(255, 94, 98, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-align: center;
+`;
+
+const RemoveConfirmWarning = styled.div`
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #ffc107;
+  font-size: 0.9rem;
+  line-height: 1.5;
+`;
+
+const RemoveConfirmFooter = styled.div`
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+`;
+
+const RemoveConfirmCancelBtn = styled.button`
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+`;
+
+const RemoveConfirmDeleteBtn = styled.button`
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #ff5e62, #ff4757);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 94, 98, 0.4);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
 export default function EditProductPage() {
   const router = useRouter();
   const params = useParams();
@@ -559,6 +680,8 @@ export default function EditProductPage() {
   const [selectedProductToAdd, setSelectedProductToAdd] = useState<string>('');
   const [productSearchQuery, setProductSearchQuery] = useState<string>('');
   const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [removeFromBundleConfirm, setRemoveFromBundleConfirm] = useState<{ bundleProductId: string; productId: string; productName: string } | null>(null);
+  const [removingFromBundle, setRemovingFromBundle] = useState(false);
 
   const formatCategory = (category: string | null | undefined, productName?: string) => {
     if (!category) return 'N/A';
@@ -1005,11 +1128,20 @@ export default function EditProductPage() {
   const handleRemoveProductFromBundle = async (bundleProductId: string, productId: string) => {
     if (!bundleId) return;
     
-    if (!confirm('Are you sure you want to remove this product from the bundle?')) {
-      return;
-    }
+    const product = bundleProducts.find(bp => bp.product?.id === productId)?.product;
+    setRemoveFromBundleConfirm({
+      bundleProductId,
+      productId,
+      productName: product?.name || 'this product',
+    });
+  };
+
+  const confirmRemoveFromBundle = async () => {
+    if (!removeFromBundleConfirm || !bundleId) return;
+    const { bundleProductId, productId } = removeFromBundleConfirm;
     
     try {
+      setRemovingFromBundle(true);
       // Try the nested route first, fallback to simpler route
       let response = await fetch(`/api/bundles/${bundleId}/products?product_id=${productId}`, {
         method: 'DELETE'
@@ -1061,12 +1193,15 @@ export default function EditProductPage() {
         if (removedProduct) {
           setAvailableProducts(prev => [...prev, removedProduct]);
         }
+        setRemoveFromBundleConfirm(null);
       } else {
         alert(`Error: ${data.error}`);
       }
     } catch (error: any) {
       console.error('Error removing product from bundle:', error);
       alert(`Failed to remove product from bundle: ${error.message}`);
+    } finally {
+      setRemovingFromBundle(false);
     }
   };
 
@@ -1112,6 +1247,35 @@ export default function EditProductPage() {
     const newFeatures = [...features];
     [newFeatures[index], newFeatures[index + 1]] = [newFeatures[index + 1], newFeatures[index]];
     setFeatures(newFeatures);
+  };
+
+  const handleBundleProductDragEnd = async (result: DropResult) => {
+    if (!result.destination || !bundleId) return;
+    const items = Array.from(bundleProducts);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    setBundleProducts(items);
+
+    try {
+      const order = items.map((bp: any, i: number) => ({ id: bp.id, display_order: i }));
+      const response = await fetch(`/api/bundles/products`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bundle_id: bundleId, order }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+    } catch (error: any) {
+      console.error('Error reordering bundle products:', error);
+      alert(`Failed to save order: ${error.message}`);
+      const res = await fetch(`/api/bundles/products?bundle_id=${bundleId}`).catch(() => null);
+      if (res?.ok) {
+        const data = await res.json();
+        if (data.success && data.products) setBundleProducts(data.products);
+      }
+    }
   };
 
   const handleAudioSampleChange = (index: number, field: 'url' | 'name', value: string) => {
@@ -1390,7 +1554,7 @@ export default function EditProductPage() {
             <FormSection>
               <SectionTitle>Bundle Products</SectionTitle>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                Manage which products are included in this bundle.
+                Manage which products are included in this bundle. Drag and drop to reorder.
               </p>
               
               {loadingBundleProducts ? (
@@ -1401,76 +1565,97 @@ export default function EditProductPage() {
               ) : (
                 <>
                   {bundleProducts && bundleProducts.length > 0 ? (
-                    <div style={{ marginBottom: '1.5rem' }}>
-                      {bundleProducts.map((bp: any) => {
-                        const product = bp.product || bp;
-                        const thumbnailUrl = product.featured_image_url || product.logo_url;
-                        return (
+                    <DragDropContext onDragEnd={handleBundleProductDragEnd}>
+                      <Droppable droppableId="bundle-products" isDropDisabled={false} isCombineEnabled={false} ignoreContainerClipping={false}>
+                        {(provided) => (
                           <div
-                            key={bp.id || product.id}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '1rem',
-                              padding: '1rem',
-                              background: 'rgba(255, 255, 255, 0.05)',
-                              borderRadius: '8px',
-                              marginBottom: '0.5rem'
-                            }}
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            style={{ marginBottom: '1.5rem' }}
                           >
-                            {thumbnailUrl && (
-                              <div style={{
-                                width: '60px',
-                                height: '60px',
-                                borderRadius: '8px',
-                                overflow: 'hidden',
-                                flexShrink: 0,
-                                background: 'rgba(0, 0, 0, 0.3)',
-                                position: 'relative'
-                              }}>
-                                <Image
-                                  src={thumbnailUrl}
-                                  alt={product.name || 'Product thumbnail'}
-                                  fill
-                                  style={{ objectFit: 'cover' }}
-                                  unoptimized
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                  }}
-                                />
-                              </div>
-                            )}
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 600, color: 'var(--text)' }}>
-                                {product.name || 'Unknown Product'}
-                              </div>
-                              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                                {formatCategory(product.category, product.name)}
-                              </div>
-                            </div>
-                            <button
-                            type="button"
-                            onClick={() => handleRemoveProductFromBundle(bp.id, product.id)}
-                            style={{
-                              padding: '0.5rem 1rem',
-                              background: 'rgba(255, 94, 98, 0.2)',
-                              border: '1px solid rgba(255, 94, 98, 0.4)',
-                              borderRadius: '6px',
-                              color: '#ff5e62',
-                              cursor: 'pointer',
-                              fontSize: '0.9rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem'
-                            }}
-                          >
-                            <FaTrash /> Remove
-                          </button>
-                        </div>
-                        );
-                      })}
-                    </div>
+                            {bundleProducts.map((bp: any, index: number) => {
+                              const product = bp.product || bp;
+                              const thumbnailUrl = product.featured_image_url || product.logo_url;
+                              return (
+                                <Draggable key={bp.id} draggableId={bp.id} index={index}>
+                                  {(provided, snapshot) => (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '1rem',
+                                        padding: '1rem',
+                                        background: snapshot.isDragging ? 'rgba(108, 99, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                        borderRadius: '8px',
+                                        marginBottom: '0.5rem',
+                                        border: snapshot.isDragging ? '2px solid var(--primary)' : '1px solid transparent',
+                                        ...provided.draggableProps.style
+                                      }}
+                                    >
+                                      <div {...provided.dragHandleProps} style={{ cursor: 'grab', padding: '0.25rem', display: 'flex', alignItems: 'center' }}>
+                                        <FaGripVertical style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }} />
+                                      </div>
+                                      {thumbnailUrl && (
+                                        <div style={{
+                                          width: '60px',
+                                          height: '60px',
+                                          borderRadius: '8px',
+                                          overflow: 'hidden',
+                                          flexShrink: 0,
+                                          background: 'rgba(0, 0, 0, 0.3)',
+                                          position: 'relative'
+                                        }}>
+                                          <Image
+                                            src={thumbnailUrl}
+                                            alt={product.name || 'Product thumbnail'}
+                                            fill
+                                            style={{ objectFit: 'cover' }}
+                                            unoptimized
+                                            onError={(e) => {
+                                              const target = e.target as HTMLImageElement;
+                                              target.style.display = 'none';
+                                            }}
+                                          />
+                                        </div>
+                                      )}
+                                      <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                                          {product.name || 'Unknown Product'}
+                                        </div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                          {formatCategory(product.category, product.name)}
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveProductFromBundle(bp.id, product.id)}
+                                        style={{
+                                          padding: '0.5rem 1rem',
+                                          background: 'rgba(255, 94, 98, 0.2)',
+                                          border: '1px solid rgba(255, 94, 98, 0.4)',
+                                          borderRadius: '6px',
+                                          color: '#ff5e62',
+                                          cursor: 'pointer',
+                                          fontSize: '0.9rem',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '0.5rem'
+                                        }}
+                                      >
+                                        <FaTrash /> Remove
+                                      </button>
+                                    </div>
+                                  )}
+                                </Draggable>
+                              );
+                            })}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </DragDropContext>
                   ) : (
                     <div style={{ 
                       padding: '2rem', 
@@ -2146,6 +2331,58 @@ export default function EditProductPage() {
           )}
         </SaveButton>
       </Form>
+
+      {/* Remove from Bundle Confirmation Dialog */}
+      <RemoveConfirmOverlay
+        $isOpen={!!removeFromBundleConfirm}
+        onClick={() => !removingFromBundle && setRemoveFromBundleConfirm(null)}
+      >
+        <RemoveConfirmDialog onClick={(e) => e.stopPropagation()}>
+          <RemoveConfirmHeader>
+            <RemoveConfirmTitle>
+              <FaTrash />
+              Remove Product from Bundle
+            </RemoveConfirmTitle>
+          </RemoveConfirmHeader>
+          <RemoveConfirmBody>
+            <RemoveConfirmMessage>
+              Are you sure you want to remove this product from the bundle? It will no longer be included when customers purchase this bundle.
+            </RemoveConfirmMessage>
+            {removeFromBundleConfirm && (
+              <RemoveConfirmProductName>
+                {removeFromBundleConfirm.productName}
+              </RemoveConfirmProductName>
+            )}
+            <RemoveConfirmWarning>
+              This action can be undone by adding the product back to the bundle.
+            </RemoveConfirmWarning>
+          </RemoveConfirmBody>
+          <RemoveConfirmFooter>
+            <RemoveConfirmCancelBtn
+              onClick={() => setRemoveFromBundleConfirm(null)}
+              disabled={removingFromBundle}
+            >
+              Cancel
+            </RemoveConfirmCancelBtn>
+            <RemoveConfirmDeleteBtn
+              onClick={confirmRemoveFromBundle}
+              disabled={removingFromBundle}
+            >
+              {removingFromBundle ? (
+                <>
+                  <FaSpinner style={{ animation: 'spin 1s linear infinite', marginRight: '0.5rem' }} />
+                  Removing...
+                </>
+              ) : (
+                <>
+                  <FaTrash style={{ marginRight: '0.5rem' }} />
+                  Remove from Bundle
+                </>
+              )}
+            </RemoveConfirmDeleteBtn>
+          </RemoveConfirmFooter>
+        </RemoveConfirmDialog>
+      </RemoveConfirmOverlay>
     </Container>
   );
 }

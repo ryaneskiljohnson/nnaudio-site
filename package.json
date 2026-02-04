@@ -12,7 +12,7 @@
     "images:convert-to-webp": "bun run scripts/convert-png-jpeg-to-webp-and-update-refs.ts",
     "images:convert-to-webp:dry-run": "bun run scripts/convert-png-jpeg-to-webp-and-update-refs.ts --dry-run",
     "storage:convert-to-webp": "bun run scripts/run-storage-convert-to-webp.ts",
-    "storage:convert-to-webp:dry-run": "bun run scripts/run-storage-convert-to-webp.ts --dry-run",
+    "storage:convert-to-webp:dry-run": "bun run scripts/run-storage-convert-to-webp.ts --dry-run"
   },
   "packageManager": "bun@1.2.2",
   "overrides": {
@@ -26,6 +26,7 @@
     "@aws-sdk/client-sns": "^3.840.0",
     "@aws-sdk/client-sts": "^3.840.0",
     "@aws-sdk/credential-providers": "^3.787.0",
+    "@hello-pangea/dnd": "^18.0.1",
     "@langchain/core": "^0.3.78",
     "@langchain/openai": "^0.6.15",
     "@stripe/react-stripe-js": "^5.4.1",
@@ -35,7 +36,6 @@
     "@tanstack/react-query": "^5.77.2",
     "@types/csv-parse": "^1.1.12",
     "@types/csv-stringify": "^1.4.3",
-    "@types/react-beautiful-dnd": "^13.1.8",
     "@types/stripe": "^8.0.417",
     "@vercel/speed-insights": "^1.2.0",
     "caniuse-lite": "^1.0.30001754",
@@ -56,7 +56,6 @@
     "node-cron": "^4.2.0",
     "openai": "^6.3.0",
     "react": "^19.1.0",
-    "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^19.1.0",
     "react-i18next": "^15.4.1",
     "react-icons": "^5.5.0",
