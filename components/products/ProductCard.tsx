@@ -209,6 +209,26 @@ function getDefaultSubtitle(name: string, category?: string): string {
   return categoryText;
 }
 
+/** Maps product category to display label (matches admin dropdown options) */
+function formatProductType(category: string | undefined, productName?: string): string | null {
+  if (!category) return null;
+  const name = (productName || '').toLowerCase();
+  // MIDI Pack Bundle products should show "Bundle" even when category is pack
+  if (category === 'pack' && (name.includes('bundle') || name.includes('midi pack bundle'))) {
+    return 'Bundle';
+  }
+  const map: Record<string, string> = {
+    'audio-fx-plugin': 'Audio FX Plugin',
+    'instrument-plugin': 'Instrument Plugin',
+    'pack': 'Pack',
+    'bundle': 'Bundle',
+    'preset': 'Preset',
+    'application': 'Application',
+    'template': 'Template',
+  };
+  return map[category] || null;
+}
+
 function ProductCard({ product, index = 0, showCartButton = true, showPluginType = true }: ProductCardProps) {
   const { addItem } = useCart();
   const { success } = useToast();
@@ -323,11 +343,8 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
           <ProductTagline>
             {tagline || getDefaultSubtitle(product.name, product.category)}
           </ProductTagline>
-          {showPluginType && product.category === 'instrument-plugin' && (
-            <PluginType>Instrument</PluginType>
-          )}
-          {showPluginType && product.category === 'audio-fx-plugin' && (
-            <PluginType>Audio FX</PluginType>
+          {showPluginType && formatProductType(product.category, product.name) && (
+            <PluginType>{formatProductType(product.category, product.name)}</PluginType>
           )}
           {isEliteBundle ? (
             <ViewPricingButton

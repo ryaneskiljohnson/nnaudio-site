@@ -279,6 +279,43 @@ const StatusBadge = styled.span<{ $status: string }>`
   display: inline-block;
 `;
 
+const StatusDropdown = styled.select<{ $status: string }>`
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: ${props => {
+    switch(props.$status) {
+      case 'active': return 'rgba(78, 205, 196, 0.2)';
+      case 'draft': return 'rgba(255, 193, 7, 0.2)';
+      case 'archived': return 'rgba(255, 255, 255, 0.1)';
+      case 'inactive': return 'rgba(255, 140, 66, 0.2)';
+      default: return 'rgba(255, 255, 255, 0.1)';
+    }
+  }};
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+  min-width: 100px;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+  &:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+  &:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+`;
+
 
 const ActionsCell = styled(TableCell)`
   width: 60px;
@@ -601,7 +638,7 @@ export default function ProductsManagementPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'audio-fx-plugin' | 'instrument-plugin' | 'pack' | 'bundle'>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'active' | 'archived'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'active' | 'inactive' | 'archived'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -610,6 +647,7 @@ export default function ProductsManagementPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -624,9 +662,11 @@ export default function ProductsManagementPage() {
         url += `&category=${filter}`;
       }
       
-      // When statusFilter is 'all', don't pass status parameter - API will return all statuses
+      // When statusFilter is 'all', pass status=all to get all statuses. Otherwise filter by status.
       if (statusFilter !== 'all') {
         url += `&status=${statusFilter}`;
+      } else {
+        url += `&status=all`;
       }
 
       const response = await fetch(url);
@@ -639,6 +679,29 @@ export default function ProductsManagementPage() {
       console.error('Error fetching products:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusChange = async (productId: string, newStatus: string) => {
+    setStatusUpdatingId(productId);
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === productId ? { ...p, status: newStatus } : p))
+        );
+      } else {
+        console.error('Failed to update status:', data.error);
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    } finally {
+      setStatusUpdatingId(null);
     }
   };
 
@@ -889,6 +952,18 @@ export default function ProductsManagementPage() {
         >
           Draft
         </FilterButton>
+        <FilterButton
+          $active={statusFilter === 'inactive'}
+          onClick={() => setStatusFilter('inactive')}
+        >
+          Inactive
+        </FilterButton>
+        <FilterButton
+          $active={statusFilter === 'archived'}
+          onClick={() => setStatusFilter('archived')}
+        >
+          Archived
+        </FilterButton>
         </FilterButtonsContainer>
         <RightSideContainer>
           <SearchContainer>
@@ -1031,10 +1106,18 @@ export default function ProductsManagementPage() {
                     )}
                   </PriceCell>
                   
-                  <TableCell>
-                    <StatusBadge $status={product.status}>
-                      {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
-                    </StatusBadge>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <StatusDropdown
+                      $status={product.status}
+                      value={product.status}
+                      onChange={(e) => handleStatusChange(product.id, e.target.value)}
+                      disabled={statusUpdatingId === product.id}
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="archived">Archived</option>
+                    </StatusDropdown>
                   </TableCell>
                   
                   <ActionsCell onClick={(e) => e.stopPropagation()} data-menu-container>

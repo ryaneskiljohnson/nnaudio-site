@@ -640,7 +640,7 @@ export default function EditProductPage() {
     price: '',
     sale_price: '',
     category: 'audio-fx-plugin' as 'audio-fx-plugin' | 'instrument-plugin' | 'pack' | 'bundle' | 'preset' | 'template' | 'application',
-    status: 'draft' as 'draft' | 'active' | 'archived',
+    status: 'draft' as 'draft' | 'active' | 'inactive' | 'archived',
     is_featured: false,
     featured_image_url: '',
     featured_image_url_png: '',
@@ -1544,6 +1544,7 @@ export default function EditProductPage() {
               >
                 <option value="draft">Draft</option>
                 <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
                 <option value="archived">Archived</option>
               </Select>
             </FormGroup>
@@ -1594,6 +1595,9 @@ export default function EditProductPage() {
                                         ...provided.draggableProps.style
                                       }}
                                     >
+                                      <div style={{ minWidth: '1.5rem', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {index + 1}
+                                      </div>
                                       <div {...provided.dragHandleProps} style={{ cursor: 'grab', padding: '0.25rem', display: 'flex', alignItems: 'center' }}>
                                         <FaGripVertical style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }} />
                                       </div>

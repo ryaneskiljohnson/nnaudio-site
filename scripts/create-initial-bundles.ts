@@ -62,7 +62,7 @@ const bundles: BundleDefinition[] = [
   {
     name: 'Beat Lab',
     slug: 'beat-lab',
-    tagline: 'Unlimited MIDI & Loops. Infinite Inspiration.',
+    tagline: 'Unlimited Midi & Loops. Infinite Inspiration.',
     description: 'Access to our complete collection of MIDI packs and loops. From hip-hop to electronic, from ambient to aggressive - thousands of professionally crafted MIDI patterns and loops to fuel your creativity.',
     short_description: 'All MIDI packs and loops in one subscription. Thousands of patterns and loops.',
     bundle_type: 'midi_loops',

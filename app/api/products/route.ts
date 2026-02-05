@@ -8,13 +8,16 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
     const featured = searchParams.get('featured');
-    const status = searchParams.get('status') || 'active';
+    const statusParam = searchParams.get('status');
     const limitParam = searchParams.get('limit');
     const free = searchParams.get('free'); // Filter for free products (price = 0 or sale_price = 0)
     // If limit is provided, use it; otherwise fetch all (Supabase default is 1000, but we'll set a high limit)
     const limit = limitParam ? parseInt(limitParam) : 10000;
 
-    const supabase = await createClient();
+    // Use service role for admin requests (status=all, inactive, draft, archived) to bypass RLS.
+    // RLS restricts non-admins to status='active' only, so regular client would hide inactive/draft/archived.
+    const isAdminRequest = statusParam === 'all' || ['inactive', 'draft', 'archived'].includes(statusParam || '');
+    const supabase = isAdminRequest ? await createAdminClient() : await createClient();
     
     let query = (supabase as any)
       .from('products')
@@ -45,10 +48,14 @@ export async function GET(request: NextRequest) {
       query = query.or('price.eq.0,sale_price.eq.0');
     }
 
-    // Only filter by status if explicitly provided
-    // If not provided, return all statuses (for admin page)
-    if (status) {
-      query = query.eq('status', status);
+    // Filter by status when provided. status=all returns all statuses (admin). Otherwise default to active.
+    if (statusParam === 'all') {
+      // No status filter - return all
+    } else if (statusParam && ['active', 'inactive', 'draft', 'archived'].includes(statusParam)) {
+      query = query.eq('status', statusParam);
+    } else {
+      // No status param or invalid: default to active for public-facing requests
+      query = query.eq('status', 'active');
     }
 
     const { data: products, error } = await query;

@@ -346,7 +346,7 @@ export default function CreateProductPage() {
     price: '',
     sale_price: '',
     category: 'audio-fx-plugin' as 'audio-fx-plugin' | 'instrument-plugin' | 'pack' | 'bundle' | 'preset' | 'template' | 'application',
-    status: 'draft' as 'draft' | 'active' | 'archived',
+    status: 'draft' as 'draft' | 'active' | 'inactive' | 'archived',
     is_featured: false,
     featured_image_url: '',
     logo_url: '',
@@ -591,6 +591,7 @@ export default function CreateProductPage() {
               >
                 <option value="draft">Draft</option>
                 <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
                 <option value="archived">Archived</option>
               </Select>
             </FormGroup>

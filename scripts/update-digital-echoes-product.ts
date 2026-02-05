@@ -26,7 +26,7 @@ async function updateDigitalEchoesProduct() {
 
   // Product data from old site
   const productData: any = {
-    tagline: 'Dimensional Delay | Version 1.3.1',
+    tagline: 'Dimensional Delay',
     short_description: 'Step into a mesmerizing sonic realm where ethereal echoes cascade through the air like shimmering stardust, immersing your tracks in a cinematic tapestry of otherworldly beauty. Harness the power of tri-band architecture to effortlessly manipulate frequencies, infuse pulsating rhythms, and orchestrate an expansive sonic panorama.',
     description: `Step into a mesmerizing sonic realm where ethereal echoes cascade through the air like shimmering stardust, immersing your tracks in a cinematic tapestry of otherworldly beauty. Harness the power of tri-band architecture to effortlessly manipulate frequencies, infuse pulsating rhythms, and orchestrate an expansive sonic panorama. Prepare to embark on a sonic odyssey where past, present, and future converge, leaving an indelible imprint of atmospheric brilliance on your musical creations.
 
