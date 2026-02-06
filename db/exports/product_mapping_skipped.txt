@@ -1,0 +1,10 @@
+# Products NOT to migrate (excluded from mapping)
+
+- Blended Bundle
+- Lutes Of The World Bundle – PLUGINOMAT Deal
+- Nice Pipes Bundle – Xmas 2023
+- TestProd
+- Toybox-Retro
+- VSTAlarm FX Bundle
+- VSTAlarm Summer Sounds Bundle
+- Valentine MIDI Bundle + Free Plugin 2024

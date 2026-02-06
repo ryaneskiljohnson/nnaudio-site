@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
       meta_keywords
     `;
 
-    // First: same category
-    let query = supabase
+    // First: same category (use type assertion for products table)
+    let query = (supabase as any)
       .from('products')
       .select(selectCols)
       .neq('id', productId)
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     // Fallback: other categories if not enough
     if (allRelated.length < limit && category) {
-      const { data: other } = await supabase
+      const { data: other } = await (supabase as any)
         .from('products')
         .select(selectCols)
         .neq('id', productId)
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 
     // Last resort: any products if still empty
     if (allRelated.length === 0) {
-      const { data: anyProducts } = await supabase
+      const { data: anyProducts } = await (supabase as any)
         .from('products')
         .select(selectCols)
         .neq('id', productId)

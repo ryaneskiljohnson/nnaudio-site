@@ -58,7 +58,7 @@ const LoadingComponent: React.FC<LoadingComponentProps> = ({
         transition={{
           duration: 1.5,
           repeat: Infinity,
-          ease: "easeInOut",
+          ease: "easeInOut" as const,
         }}
       >
         <NNAudioLogo size={size} showText={false} />
@@ -72,7 +72,7 @@ const LoadingComponent: React.FC<LoadingComponentProps> = ({
           transition={{
             duration: 1.5,
             repeat: Infinity,
-            ease: "easeInOut",
+            ease: "easeInOut" as const,
           }}
         >
           {text}

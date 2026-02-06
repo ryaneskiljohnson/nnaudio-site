@@ -80,7 +80,9 @@ export async function POST(request: NextRequest) {
         products:product_id (
           id,
           name,
-          slug
+          slug,
+          price,
+          sale_price
         ),
         resellers:reseller_id (
           id,
@@ -175,6 +177,11 @@ export async function POST(request: NextRequest) {
     if (!existingGrant) {
       // Create product grant with reseller information
       const resellerName = (code.resellers as any)?.name || "Unknown Reseller";
+      const product = code.products as { price?: number; sale_price?: number } | null;
+      const amount =
+        product?.sale_price != null && product.sale_price > 0
+          ? product.sale_price
+          : (product?.price ?? 0);
       const { error: grantError } = await (adminSupabase as any)
         .from("product_grants")
         .insert({
@@ -182,6 +189,7 @@ export async function POST(request: NextRequest) {
           product_id: code.product_id,
           granted_by: user.id,
           notes: `Redeemed via reseller code: ${normalizedCode} from ${resellerName}`,
+          amount,
         });
 
       if (grantError) {

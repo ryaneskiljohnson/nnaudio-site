@@ -570,6 +570,7 @@ export default function UserManagementPage() {
   const [showGrantForm, setShowGrantForm] = useState(false);
   const [grantFormProductId, setGrantFormProductId] = useState('');
   const [grantFormNotes, setGrantFormNotes] = useState('');
+  const [grantFormAmount, setGrantFormAmount] = useState<string>('0');
   const [grantLoading, setGrantLoading] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [productSearchQuery, setProductSearchQuery] = useState('');
@@ -960,7 +961,7 @@ export default function UserManagementPage() {
 
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" as const } },
   };
 
   // Compute filtered records
@@ -1802,6 +1803,7 @@ export default function UserManagementPage() {
               setShowGrantForm(false);
               setGrantFormProductId('');
               setGrantFormNotes('');
+              setGrantFormAmount('0');
               setProductSearchQuery('');
             }}
           >
@@ -1822,6 +1824,7 @@ export default function UserManagementPage() {
                   setShowGrantForm(false);
                   setGrantFormProductId('');
                   setGrantFormNotes('');
+                  setGrantFormAmount('0');
                   setProductSearchQuery('');
                 }}>
                   <FaTimes />
@@ -1965,7 +1968,8 @@ export default function UserManagementPage() {
                     const result = await grantProduct(
                       showGrantModal,
                       grantFormProductId,
-                      grantFormNotes.trim() || null
+                      grantFormNotes.trim() || null,
+                      parseFloat(grantFormAmount) || 0
                     );
                     
                     if (result.error) {
@@ -1976,6 +1980,7 @@ export default function UserManagementPage() {
                     setShowGrantForm(false);
                     setGrantFormProductId('');
                     setGrantFormNotes('');
+                    setGrantFormAmount('0');
                     setProductSearchQuery('');
                     fetchProductGrants();
                   } catch (err: any) {
@@ -2051,6 +2056,10 @@ export default function UserManagementPage() {
                             onClick={() => {
                               setGrantFormProductId(product.id);
                               setProductSearchQuery(product.name);
+                              const price = product.sale_price != null && product.sale_price > 0
+                                ? product.sale_price
+                                : product.price ?? 0;
+                              setGrantFormAmount(String(price));
                             }}
                             style={{
                               padding: '12px 16px',
@@ -2135,6 +2144,7 @@ export default function UserManagementPage() {
                           onClick={() => {
                             setGrantFormProductId('');
                             setProductSearchQuery('');
+                            setGrantFormAmount('0');
                           }}
                           style={{
                             padding: '4px 8px',
@@ -2150,6 +2160,31 @@ export default function UserManagementPage() {
                         </button>
                       </div>
                     )}
+                  </div>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text)', fontWeight: 500 }}>
+                      Recorded Amount ($) *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={grantFormAmount}
+                      onChange={(e) => setGrantFormAmount(e.target.value)}
+                      placeholder="0"
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'var(--input-bg)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        color: 'var(--text)',
+                        fontSize: '1rem'
+                      }}
+                    />
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                      Transaction amount for historical record (no Stripe charge)
+                    </div>
                   </div>
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text)', fontWeight: 500 }}>
@@ -2180,6 +2215,7 @@ export default function UserManagementPage() {
                         setShowGrantForm(false);
                         setGrantFormProductId('');
                         setGrantFormNotes('');
+                        setGrantFormAmount('0');
                         setProductSearchQuery('');
                       }}
                     >

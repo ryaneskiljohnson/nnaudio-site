@@ -156,19 +156,20 @@ export async function getOrders(): Promise<{
       (pi) => pi.status === "succeeded"
     );
 
-    // Get product grants (free licenses) to show as $0 orders
+    // Get product grants to show as orders (with recorded amount for historical record)
     let grantedProducts: Array<{
       id: string;
       product_id: string;
       granted_at: string;
       notes: string | null;
+      amount?: number;
     }> = [];
     
     if (profile?.email) {
       const adminSupabase = await createSupabaseServiceRole();
       const { data: grants, error: grantsError } = await (adminSupabase as any)
         .from("product_grants")
-        .select("id, product_id, granted_at, notes")
+        .select("id, product_id, granted_at, notes, amount")
         .eq("user_email", profile.email.toLowerCase())
         .order("granted_at", { ascending: false });
 
@@ -388,81 +389,85 @@ export async function getOrders(): Promise<{
             });
           }
         }
-        
+
+        // Group grants by (user_email, minute) so batches created together appear as one order
+        const MINUTE_MS = 60 * 1000;
+        const grantGroups = new Map<
+          string,
+          Array<{
+            grant: typeof grantedProducts[0];
+            product: { id: string; name: string; slug?: string | null; featured_image_url?: string | null };
+            isRedemption: boolean;
+            serialCode: string;
+            resellerName: string | null;
+            recordedAmount: number;
+          }>
+        >();
+
         for (const grant of grantedProducts) {
           const product = productMap.get(grant.product_id);
-          if (product) {
-            // Check if this is a redemption (from reseller code)
-            const isRedemption = grant.notes && grant.notes.includes("Redeemed via reseller code:");
-            
-            if (isRedemption) {
-              // Extract serial code and reseller name
-              const serialCodeMatch = grant.notes?.match(/Redeemed via reseller code: ([^\s]+)/);
-              const resellerMatch = grant.notes?.match(/from (.+)$/);
-              const serialCode = serialCodeMatch ? serialCodeMatch[1] : "Unknown";
-              // Try to get reseller name from notes first, then from database lookup
-              const resellerName = resellerMatch ? resellerMatch[1] : (resellerMap.get(serialCode) || null);
-              
-              orders.push({
-                id: `redemption_${grant.id}`,
-                orderNumber: `REDEEM-${grant.id.substring(0, 8).toUpperCase()}`,
-                date: grant.granted_at,
-                status: "succeeded",
-                amount: 0,
-                currency: "USD",
-                items: [{
-                  id: product.id,
-                  name: product.name,
-                  quantity: 1,
-                  price: 0,
-                  product_image: product.featured_image_url || null,
-                  product_slug: product.slug || null,
-                }],
-                metadata: {
-                  grant_id: grant.id,
-                  grant_type: "redemption",
-                  redemption_code: serialCode,
-                  reseller_name: resellerName,
-                  notes: grant.notes,
-                },
-                receiptUrl: null,
-                invoiceId: null,
-                refundedAmount: 0,
-                isRefunded: false,
-                isPartiallyRefunded: false,
-                refunds: [],
-              } as Order);
-            } else {
-              // Regular product grant
-              orders.push({
-                id: `grant_${grant.id}`,
-                orderNumber: `GRANT-${grant.id.substring(0, 8).toUpperCase()}`,
-                date: grant.granted_at,
-                status: "succeeded",
-                amount: 0,
-                currency: "USD",
-                items: [{
-                  id: product.id,
-                  name: product.name,
-                  quantity: 1,
-                  price: 0,
-                  product_image: product.featured_image_url || null,
-                  product_slug: product.slug || null,
-                }],
-                metadata: {
-                  grant_id: grant.id,
-                  grant_type: "free_license",
-                  notes: grant.notes,
-                },
-                receiptUrl: null,
-                invoiceId: null,
-                refundedAmount: 0,
-                isRefunded: false,
-                isPartiallyRefunded: false,
-                refunds: [],
-              } as Order);
-            }
+          if (!product) continue;
+
+          const isRedemption = !!(grant.notes && grant.notes.includes("Redeemed via reseller code:"));
+          const serialCodeMatch = grant.notes?.match(/Redeemed via reseller code: ([^\s]+)/);
+          const resellerMatch = grant.notes?.match(/from (.+)$/);
+          const serialCode = serialCodeMatch ? serialCodeMatch[1] : "Unknown";
+          const resellerName = resellerMatch ? resellerMatch[1] : (resellerMap.get(serialCode) || null);
+          const recordedAmount = Number(grant.amount) || 0;
+
+          const minuteBucket = Math.floor(new Date(grant.granted_at).getTime() / MINUTE_MS);
+          const groupKey = `${(profile?.email ?? "").toLowerCase()}|${minuteBucket}`;
+
+          if (!grantGroups.has(groupKey)) {
+            grantGroups.set(groupKey, []);
           }
+          grantGroups.get(groupKey)!.push({
+            grant,
+            product,
+            isRedemption,
+            serialCode,
+            resellerName,
+            recordedAmount,
+          });
+        }
+
+        for (const [, group] of grantGroups) {
+          const first = group[0];
+          const totalAmount = group.reduce((sum, g) => sum + g.recordedAmount, 0);
+          const items = group.map((g) => ({
+            id: g.product.id,
+            name: g.product.name,
+            quantity: 1,
+            price: g.recordedAmount,
+            product_image: g.product.featured_image_url || null,
+            product_slug: g.product.slug || null,
+          }));
+          const grantIds = group.map((g) => g.grant.id);
+          const allRedemptions = group.every((g) => g.isRedemption);
+
+          orders.push({
+            id: group.length > 1 ? `batch_${first.grant.id}` : (allRedemptions ? `redemption_${first.grant.id}` : `grant_${first.grant.id}`),
+            orderNumber: allRedemptions ? `REDEEM-${first.grant.id.substring(0, 8).toUpperCase()}` : `GRANT-${first.grant.id.substring(0, 8).toUpperCase()}`,
+            date: first.grant.granted_at,
+            status: "succeeded",
+            amount: totalAmount,
+            currency: "USD",
+            items,
+            metadata: {
+              grant_id: grantIds.length === 1 ? grantIds[0] : undefined,
+              grant_ids: grantIds.length > 1 ? grantIds : undefined,
+              grant_type: allRedemptions ? "redemption" : "free_license",
+              redemption_code: allRedemptions ? first.serialCode : undefined,
+              reseller_name: allRedemptions ? first.resellerName : undefined,
+              notes: first.grant.notes,
+            },
+            receiptUrl: null,
+            invoiceId: null,
+            refundedAmount: 0,
+            isRefunded: false,
+            isPartiallyRefunded: false,
+            refunds: [],
+          } as Order);
         }
       }
     }

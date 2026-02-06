@@ -224,7 +224,7 @@ const buttonVariants = {
     boxShadow: "0 5px 15px rgba(108, 99, 255, 0.4)",
     transition: {
       duration: 0.3,
-      ease: "easeInOut",
+      ease: "easeInOut" as const,
     },
   },
   tap: {

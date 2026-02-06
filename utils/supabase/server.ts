@@ -59,5 +59,5 @@ export async function createClient(): Promise<SupabaseClient<Database>> {
         },
       },
     }
-  );
+  ) as unknown as SupabaseClient<Database>;
 }

@@ -94,9 +94,9 @@ export async function POST(request: NextRequest) {
     console.log("[product-grants POST] Admin verified");
 
     const body = await request.json();
-    const { user_email, product_id, notes } = body;
+    const { user_email, product_id, notes, amount } = body;
 
-    console.log("[product-grants POST] Request body:", { user_email, product_id, notes });
+    console.log("[product-grants POST] Request body:", { user_email, product_id, notes, amount });
 
     if (!user_email || !product_id) {
       return NextResponse.json(
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[product-grants POST] No existing grant found, creating new grant...");
 
-    // Create grant
+    // Create grant (amount = recorded transaction for historical record)
     const { data: grant, error } = await (adminSupabase as any)
       .from("product_grants")
       .insert({
@@ -148,6 +148,7 @@ export async function POST(request: NextRequest) {
         product_id,
         granted_by: user.id,
         notes: notes || null,
+        amount: typeof amount === "number" ? amount : parseFloat(amount) || 0,
       })
       .select(`
         *,

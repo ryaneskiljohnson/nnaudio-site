@@ -117,12 +117,13 @@ export async function GET(request: NextRequest) {
     );
     console.log(`[Orders API] Successful payment intents: ${successfulPayments.length}`);
 
-    // Get product grants (free licenses) to show as $0 orders
+    // Get product grants to show as orders (with recorded amount for historical record)
     let grantedProducts: Array<{
       id: string;
       product_id: string;
       granted_at: string;
       notes: string | null;
+      amount?: number;
     }> = [];
     
     if (profile?.email) {
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
       const adminSupabase = await createSupabaseServiceRole();
       const { data: grants, error: grantsError } = await (adminSupabase as any)
         .from("product_grants")
-        .select("id, product_id, granted_at, notes")
+        .select("id, product_id, granted_at, notes, amount")
         .eq("user_email", profile.email.toLowerCase())
         .order("granted_at", { ascending: false });
 
@@ -330,45 +331,66 @@ export async function GET(request: NextRequest) {
         const grantProductList = grantProducts as { id: string; name?: string; slug?: string | null; featured_image_url?: string | null }[];
         const productMap = new Map(grantProductList.map((p: { id: string; name?: string; slug?: string | null; featured_image_url?: string | null }) => [p.id, p]));
         
+        // Group grants by (user_email, minute) so batches created together appear as one order
+        const MINUTE_MS = 60 * 1000;
+        const grantGroups = new Map<string, Array<{ grant: typeof grantedProducts[0]; product: any; recordedAmount: number }>>();
+
         for (const grant of grantedProducts) {
           const product = productMap.get(grant.product_id);
-          if (product) {
-            const grantOrder = {
-              id: `grant_${grant.id}`,
-              orderNumber: `GRANT-${grant.id.substring(0, 8).toUpperCase()}`,
-              date: grant.granted_at,
-              status: "succeeded" as const,
-              amount: 0,
-              currency: "USD",
-              items: [{
-                id: product.id,
-                name: product.name ?? '',
-                quantity: 1,
-                price: 0,
-                product_image: product.featured_image_url || null,
-                product_slug: product.slug || null,
-              }],
-              metadata: {
-                grant_id: grant.id,
-                grant_type: "free_license",
-                notes: grant.notes,
-                original_total: undefined,
-                discount_amount: undefined,
-                total_amount: undefined,
-                promotion_code: undefined,
-              },
-              receiptUrl: null,
-              invoiceId: null,
-              refundedAmount: 0,
-              isRefunded: false,
-              isPartiallyRefunded: false,
-              refunds: [],
-            };
-            console.log(`[Orders API] Adding grant order:`, grantOrder.orderNumber, grantOrder.metadata);
-            orders.push(grantOrder as any);
-          } else {
+          if (!product) {
             console.warn(`[Orders API] Product not found for grant ${grant.id}, product_id: ${grant.product_id}`);
+            continue;
           }
+          const recordedAmount = Number(grant.amount) || 0;
+          const minuteBucket = Math.floor(new Date(grant.granted_at).getTime() / MINUTE_MS);
+          const groupKey = `${(profile?.email ?? "").toLowerCase()}|${minuteBucket}`;
+
+          if (!grantGroups.has(groupKey)) {
+            grantGroups.set(groupKey, []);
+          }
+          grantGroups.get(groupKey)!.push({ grant, product, recordedAmount });
+        }
+
+        for (const [, group] of grantGroups) {
+          const first = group[0];
+          const totalAmount = group.reduce((sum, g) => sum + g.recordedAmount, 0);
+          const items = group.map((g) => ({
+            id: g.product.id,
+            name: g.product.name ?? '',
+            quantity: 1,
+            price: g.recordedAmount,
+            product_image: g.product.featured_image_url || null,
+            product_slug: g.product.slug || null,
+          }));
+          const grantIds = group.map((g) => g.grant.id);
+
+          const grantOrder = {
+            id: group.length > 1 ? `batch_${first.grant.id}` : `grant_${first.grant.id}`,
+            orderNumber: `GRANT-${first.grant.id.substring(0, 8).toUpperCase()}`,
+            date: first.grant.granted_at,
+            status: "succeeded" as const,
+            amount: totalAmount,
+            currency: "USD",
+            items,
+            metadata: {
+              grant_id: grantIds.length === 1 ? grantIds[0] : undefined,
+              grant_ids: grantIds.length > 1 ? grantIds : undefined,
+              grant_type: "free_license",
+              notes: first.grant.notes,
+              original_total: undefined,
+              discount_amount: undefined,
+              total_amount: undefined,
+              promotion_code: undefined,
+            },
+            receiptUrl: null,
+            invoiceId: null,
+            refundedAmount: 0,
+            isRefunded: false,
+            isPartiallyRefunded: false,
+            refunds: [],
+          };
+          console.log(`[Orders API] Adding grant order:`, grantOrder.orderNumber, grantOrder.metadata);
+          orders.push(grantOrder as any);
         }
         console.log(`[Orders API] Added ${orders.filter((o: any) => o.metadata?.grant_type === "free_license").length} grant orders to orders array`);
       } else {

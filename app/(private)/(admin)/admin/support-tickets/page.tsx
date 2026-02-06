@@ -1964,7 +1964,7 @@ function SupportTicketsPage() {
     visible: (i: number) => ({
       opacity: 1,
       y: 0,
-      transition: { delay: i * 0.1, duration: 0.6, ease: "easeOut" },
+      transition: { delay: i * 0.1, duration: 0.6, ease: "easeOut" as const },
     }),
   };
 
@@ -2753,7 +2753,7 @@ function SupportTicketsPage() {
                         {updatingStatus === ticket.id && (
                           <motion.div
                             animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" as const }}
                             style={{
                               width: "12px",
                               height: "12px",
@@ -2966,7 +2966,7 @@ function SupportTicketsPage() {
                         <>
                           <motion.div
                             animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" as const }}
                             style={{
                               width: "16px",
                               height: "16px",
@@ -3108,7 +3108,7 @@ function SupportTicketsPage() {
                       <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                         <motion.div
                           animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" as const }}
                           style={{ 
                             width: '20px', 
                             height: '20px', 

@@ -305,6 +305,7 @@ interface ProductGrant {
   product_id: string;
   granted_at: string;
   notes: string | null;
+  amount?: number;
   products: {
     id: string;
     name: string;
@@ -330,6 +331,7 @@ export default function ProductGrantsPage() {
   const [formEmail, setFormEmail] = useState("");
   const [formProductId, setFormProductId] = useState("");
   const [formNotes, setFormNotes] = useState("");
+  const [formAmount, setFormAmount] = useState<string>("0");
 
   const fetchGrants = async () => {
     try {
@@ -352,7 +354,7 @@ export default function ProductGrantsPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("/api/products?free=true");
+      const response = await fetch("/api/products?status=active");
       const data = await response.json();
 
       if (data.success && data.products) {
@@ -395,6 +397,7 @@ export default function ProductGrantsPage() {
           user_email: formEmail.trim(),
           product_id: formProductId,
           notes: formNotes.trim() || null,
+          amount: parseFloat(formAmount) || 0,
         }),
       });
 
@@ -409,6 +412,7 @@ export default function ProductGrantsPage() {
       setFormEmail("");
       setFormProductId("");
       setFormNotes("");
+      setFormAmount("0");
       fetchGrants();
     } catch (err: any) {
       showNotification("error", err.message || "Failed to grant product");
@@ -459,8 +463,9 @@ export default function ProductGrantsPage() {
           Product Grants
         </Title>
         <Subtitle>
-          Grant free product licenses to users. These appear as $0 orders and
-          show up in their products list.
+          Grant product licenses to users. Specify the recorded transaction
+          amount for historical records (no Stripe charge). These appear as
+          completed orders in the Orders page.
         </Subtitle>
       </Header>
 
@@ -487,6 +492,7 @@ export default function ProductGrantsPage() {
             <TableRow>
               <TableHeaderCell>User Email</TableHeaderCell>
               <TableHeaderCell>Product</TableHeaderCell>
+              <TableHeaderCell>Amount</TableHeaderCell>
               <TableHeaderCell>Granted At</TableHeaderCell>
               <TableHeaderCell>Notes</TableHeaderCell>
               <TableHeaderCell>Actions</TableHeaderCell>
@@ -495,7 +501,7 @@ export default function ProductGrantsPage() {
           <tbody>
             {filteredGrants.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} style={{ textAlign: "center", padding: "3rem" }}>
+                <TableCell colSpan={6} style={{ textAlign: "center", padding: "3rem" }}>
                   No product grants found
                 </TableCell>
               </TableRow>
@@ -534,6 +540,9 @@ export default function ProductGrantsPage() {
                         Product not found
                       </span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    ${(grant.amount ?? 0).toFixed(2)}
                   </TableCell>
                   <TableCell>
                     {new Date(grant.granted_at).toLocaleDateString()}
@@ -594,7 +603,20 @@ export default function ProductGrantsPage() {
                 </Label>
                 <Select
                   value={formProductId}
-                  onChange={(e) => setFormProductId(e.target.value)}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setFormProductId(id);
+                    const p = products.find((x) => x.id === id);
+                    if (p) {
+                      const price =
+                        p.sale_price != null && p.sale_price > 0
+                          ? p.sale_price
+                          : p.price ?? 0;
+                      setFormAmount(String(price));
+                    } else {
+                      setFormAmount("0");
+                    }
+                  }}
                   required
                 >
                   <option value="">Select a product...</option>
@@ -603,9 +625,34 @@ export default function ProductGrantsPage() {
                     .map((product) => (
                       <option key={product.id} value={product.id}>
                         {product.name}
+                        {product.price != null
+                          ? ` ($${product.sale_price ?? product.price})`
+                          : ""}
                       </option>
                     ))}
                 </Select>
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Recorded Amount ($) *</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formAmount}
+                  onChange={(e) => setFormAmount(e.target.value)}
+                  placeholder="0"
+                  required
+                />
+                <div
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "var(--text-secondary)",
+                    marginTop: "0.25rem",
+                  }}
+                >
+                  Transaction amount for historical record (no Stripe charge)
+                </div>
               </FormGroup>
 
               <FormGroup>

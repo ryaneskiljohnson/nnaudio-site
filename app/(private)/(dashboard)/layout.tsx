@@ -503,14 +503,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       opacity: 0,
       transition: {
         duration: 0.3,
-        ease: "easeInOut",
+        ease: "easeInOut" as const,
       },
     },
     visible: {
       opacity: 1,
       transition: {
         duration: 0.3,
-        ease: "easeInOut",
+        ease: "easeInOut" as const,
       },
     },
   };
@@ -530,7 +530,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       transition: {
         delay: i * 0.1,
         duration: 0.3,
-        ease: "easeOut",
+        ease: "easeOut" as const,
       },
     }),
   };
@@ -546,7 +546,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       y: 0,
       transition: {
         duration: 0.4,
-        ease: "easeOut",
+        ease: "easeOut" as const,
       },
     },
     exit: {
@@ -554,7 +554,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       y: -10,
       transition: {
         duration: 0.3,
-        ease: "easeIn",
+        ease: "easeIn" as const,
       },
     },
   };

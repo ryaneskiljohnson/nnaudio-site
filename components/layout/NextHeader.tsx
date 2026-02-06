@@ -65,7 +65,7 @@ const fadeIn = {
     y: -20,
     transition: {
       duration: 0.2,
-      ease: "easeOut",
+      ease: "easeOut" as const,
     },
   },
   visible: {
@@ -73,7 +73,7 @@ const fadeIn = {
     y: 0,
     transition: {
       duration: 0.25,
-      ease: "easeOut",
+      ease: "easeOut" as const,
     },
   },
 };
@@ -90,7 +90,7 @@ const menuItemVariants = {
     transition: {
       delay: i * 0.05, // Reduced delay for faster animation
       duration: 0.2, // Shorter duration
-      ease: "easeOut",
+      ease: "easeOut" as const,
     },
   }),
 };

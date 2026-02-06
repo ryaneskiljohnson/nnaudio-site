@@ -27,7 +27,7 @@ const TableLoadingRow: React.FC<TableLoadingRowProps> = ({ colSpan, message }) =
           }}>
             <motion.div
               animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" as const }}
               style={{ 
                 width: '20px', 
                 height: '20px', 

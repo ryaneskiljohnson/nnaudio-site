@@ -786,7 +786,7 @@ export default function AdminDashboard() {
 
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" as const } },
   };
 
   const staggerChildren = {
@@ -927,260 +927,6 @@ export default function AdminDashboard() {
             Cymasphere Analytics & Management
           </Subtitle>
         </Header>
-
-        <motion.div variants={staggerChildren} initial="hidden" animate="visible">
-          <StatsGrid>
-            <StatCard variants={fadeIn}>
-              <StatIcon>
-                <FaUsers />
-              </StatIcon>
-              <StatContent>
-                <StatLabel>Total Users</StatLabel>
-                <StatValue>
-                  {loadingTotalUsers ? (
-                    <StatLoadingSpinner size={20} />
-                  ) : (
-                    totalUsersData?.totalUsers.toLocaleString() ?? "0"
-                  )}
-                </StatValue>
-                <StatDetail>
-                  {loadingTotalUsers ? (
-                    <StatLoadingSpinner size={12} />
-                  ) : (
-                    `${totalUsersData?.freeUsers ?? 0} free, ${totalUsersData?.activeSubscriptions ?? 0} paid`
-                  )}
-                </StatDetail>
-              </StatContent>
-            </StatCard>
-
-            <StatCard variants={fadeIn}>
-              <StatIcon>
-                <FaMoneyBillWave />
-              </StatIcon>
-              <StatContent>
-                <StatLabel>Active Subscriptions</StatLabel>
-                <StatValue>
-                  {loadingActiveSubscriptions ? (
-                    <StatLoadingSpinner size={20} />
-                  ) : (
-                    <>
-                      {activeSubscriptionsData?.activeSubscriptions ?? 0}
-                      {!loadingMrr && typeof mrr === 'number' && (
-                        <span style={{ 
-                          fontSize: '0.5em', 
-                          color: 'white', 
-                          marginLeft: '0.5rem', 
-                          fontWeight: 'normal', 
-                          opacity: 0.9,
-                          WebkitTextFillColor: 'white'
-                        }}>
-                          (MRR: {formatCurrency(mrr)})
-                        </span>
-                      )}
-                    </>
-                  )}
-                </StatValue>
-                <StatDetail>
-                  {loadingActiveSubscriptions ? (
-                    <StatLoadingSpinner size={12} />
-                  ) : (
-                    `${activeSubscriptionsData?.monthlySubscribers ?? 0} monthly, ${activeSubscriptionsData?.annualSubscribers ?? 0} annual`
-                  )}
-                </StatDetail>
-              </StatContent>
-            </StatCard>
-
-            <StatCard variants={fadeIn}>
-              <StatIcon>
-                <FaTicketAlt />
-              </StatIcon>
-              <StatContent>
-                <StatLabel>Lifetime Customers</StatLabel>
-                <StatValue>
-                  {loadingLifetimeCustomers ? (
-                    <StatLoadingSpinner size={20} />
-                  ) : (
-                    lifetimeCustomers ?? 0
-                  )}
-                </StatValue>
-                <StatDetail>
-                  One-time purchases
-                </StatDetail>
-              </StatContent>
-            </StatCard>
-
-            <StatCard variants={fadeIn}>
-              <StatIcon>
-                <FaChartLine />
-              </StatIcon>
-              <StatContent>
-                <StatLabel>Monthly Revenue</StatLabel>
-                <StatValue>
-                  {loadingMonthlyRevenue ? (
-                    <StatLoadingSpinner size={20} />
-                  ) : (
-                    formatCurrency(monthlyRevenue ?? 0)
-                  )}
-                </StatValue>
-                <StatDetail>
-                  Last 30 days
-                </StatDetail>
-              </StatContent>
-            </StatCard>
-          </StatsGrid>
-
-          <StatsGrid style={{ marginTop: '2rem' }}>
-            <StatCard variants={fadeIn}>
-              <StatIcon>
-                <FaClock />
-              </StatIcon>
-              <StatContent>
-                <StatLabel>7-Day Trials</StatLabel>
-                <StatValue>
-                  {loadingTrialUsersByType ? (
-                    <StatLoadingSpinner size={20} />
-                  ) : (
-                    trialUsersByType?.sevenDayTrials ?? 0
-                  )}
-                </StatValue>
-                <StatDetail>
-                  Active 7-day trials
-                  {!loadingTrialUsersByType && typeof trialUsersByType?.sevenDayConversionRate === 'number' && (
-                    <span style={{ 
-                      display: 'block', 
-                      marginTop: '0.5rem', 
-                      fontSize: '0.9em', 
-                      color: 'var(--primary)',
-                      fontWeight: '600'
-                    }}>
-                      {trialUsersByType.sevenDayConversionRate.toFixed(1)}% conversion rate
-                    </span>
-                  )}
-                </StatDetail>
-              </StatContent>
-            </StatCard>
-
-            <StatCard variants={fadeIn}>
-              <StatIcon>
-                <FaClock />
-              </StatIcon>
-              <StatContent>
-                <StatLabel>14-Day Trials</StatLabel>
-                <StatValue>
-                  {loadingTrialUsersByType ? (
-                    <StatLoadingSpinner size={20} />
-                  ) : (
-                    trialUsersByType?.fourteenDayTrials ?? 0
-                  )}
-                </StatValue>
-                <StatDetail>
-                  Active 14-day trials
-                  {!loadingTrialUsersByType && typeof trialUsersByType?.fourteenDayConversionRate === 'number' && (
-                    <span style={{ 
-                      display: 'block', 
-                      marginTop: '0.5rem', 
-                      fontSize: '0.9em', 
-                      color: 'var(--primary)',
-                      fontWeight: '600'
-                    }}>
-                      {trialUsersByType.fourteenDayConversionRate.toFixed(1)}% conversion rate
-                    </span>
-                  )}
-                </StatDetail>
-              </StatContent>
-            </StatCard>
-
-            <StatCard variants={fadeIn}>
-              <StatIcon>
-                <FaChartLine />
-              </StatIcon>
-              <StatContent>
-                <StatLabel>Avg. Sub Lifespan</StatLabel>
-                <StatValue>
-                  {loadingAverageSubscriptionLifespan ? (
-                    <StatLoadingSpinner size={20} />
-                  ) : (
-                    averageSubscriptionLifespan !== null && averageSubscriptionLifespan > 0
-                      ? (() => {
-                          const formatted = formatLifespan(averageSubscriptionLifespan);
-                          return (
-                            <>
-                              {formatted.value}
-                              <span style={{ 
-                                fontSize: '0.5em', 
-                                marginLeft: '0.25rem',
-                                fontWeight: 'normal',
-                                opacity: 0.8,
-                                color: 'white',
-                                WebkitTextFillColor: 'white'
-                              }}>
-                                {formatted.unit}
-                              </span>
-                            </>
-                          );
-                        })()
-                      : (
-                        <>
-                          0.0
-                          <span style={{ 
-                            fontSize: '0.5em', 
-                            marginLeft: '0.25rem',
-                            fontWeight: 'normal',
-                            opacity: 0.8,
-                            color: 'white',
-                            WebkitTextFillColor: 'white'
-                          }}>
-                            months
-                          </span>
-                        </>
-                      )
-                  )}
-                </StatValue>
-                <StatDetail>
-                  Average time paying subscribers stay
-                </StatDetail>
-              </StatContent>
-            </StatCard>
-
-            <StatCard variants={fadeIn}>
-              <StatIcon>
-                <FaChartLine />
-              </StatIcon>
-              <StatContent>
-                <StatLabel>Churn Rate</StatLabel>
-                <StatValue>
-                  {loadingChurnRate ? (
-                    <StatLoadingSpinner size={20} />
-                  ) : (
-                    `${(churnRate ?? 0).toFixed(1)}%`
-                  )}
-                </StatValue>
-                <StatDetail>
-                  Subscription churn
-                </StatDetail>
-              </StatContent>
-            </StatCard>
-
-            <StatCard variants={fadeIn}>
-              <StatIcon>
-                <FaDollarSign />
-              </StatIcon>
-              <StatContent>
-                <StatLabel>YTD Sales</StatLabel>
-                <StatValue>
-                  {loadingYtdSales ? (
-                    <StatLoadingSpinner size={20} />
-                  ) : (
-                    formatCurrency(ytdSales ?? 0)
-                  )}
-                </StatValue>
-                <StatDetail>
-                  Year-to-date revenue
-                </StatDetail>
-              </StatContent>
-            </StatCard>
-          </StatsGrid>
-        </motion.div>
           </>
         )}
 
@@ -1502,7 +1248,7 @@ function AnalyticsTab({
 
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" as const } },
   };
 
   // Calculate projections based on historical data and inputs - recalculates when params change
@@ -1772,7 +1518,7 @@ function AnalyticsTab({
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       borderRadius: '8px'
                     }}
-                    formatter={(value: number) => formatCurrencyForChart(value)}
+                    formatter={(value) => formatCurrencyForChart(Number(value) || 0)}
                   />
                   <Legend />
                   <Line 

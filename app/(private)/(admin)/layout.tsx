@@ -30,6 +30,7 @@ import {
   FaPlay,
   FaBox,
   FaStore,
+  FaShoppingBag,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
@@ -667,7 +668,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.6, ease: "easeOut" },
+      transition: { duration: 0.6, ease: "easeOut" as const },
     },
   };
 
@@ -676,7 +677,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     visible: (i: number) => ({
       opacity: 1,
       y: 0,
-      transition: { delay: i * 0.1, duration: 0.3, ease: "easeOut" },
+      transition: { delay: i * 0.1, duration: 0.3, ease: "easeOut" as const },
     }),
   };
 
@@ -750,6 +751,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaUserShield />
               NFR Licenses
+            </NavItem>
+          </Link>
+          <Link href="/admin/orders">
+            <NavItem
+              $active={pathname === "/admin/orders" ? "true" : "false"}
+              onClick={(e) => handleNavigation(e, "/admin/orders")}
+            >
+              <FaShoppingBag />
+              Orders
             </NavItem>
           </Link>
           <Link href="/admin/coupons">
@@ -828,7 +838,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
+                transition={{ duration: 0.3, ease: "easeInOut" as const }}
               >
                 <Link href="/admin/email-campaigns/subscribers">
                   <SubNavItem

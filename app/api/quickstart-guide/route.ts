@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     headers.set('Pragma', 'no-cache');
     headers.set('Expires', '0');
     
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(Buffer.from(pdfBuffer), {
       status: 200,
       headers,
     });

@@ -946,7 +946,7 @@ const HeroSection = () => {
                 }}
                 transition={{
                   type: "tween",
-                  ease: "easeInOut",
+                  ease: "easeInOut" as const,
                   duration: 0.5,
                 }}
                 style={{
@@ -985,7 +985,7 @@ const HeroSection = () => {
                     exit={{ opacity: 0, y: -20 }}
                     transition={{
                       duration: 0.4,
-                      ease: "easeInOut",
+                      ease: "easeInOut" as const,
                     }}
                     style={{
                       display: "inline-block",
@@ -1009,7 +1009,7 @@ const HeroSection = () => {
                 }}
                 transition={{
                   type: "tween",
-                  ease: "easeInOut",
+                  ease: "easeInOut" as const,
                   duration: 0.5,
                 }}
                 style={{
@@ -1155,7 +1155,7 @@ const HeroSection = () => {
           }}
           initial={{ opacity: 0, scaleX: 0 }}
           animate={{ opacity: [0, 0.7, 0], scaleX: [0, 1, 0] }}
-          transition={{ duration: 1.5, ease: "easeInOut" }}
+          transition={{ duration: 1.5, ease: "easeInOut" as const }}
         />
       );
     }
@@ -1242,14 +1242,14 @@ const HeroSection = () => {
                 repeatType: "mirror",
                 repeat: Infinity,
                 duration: 2.5,
-                ease: "easeInOut",
+                ease: "easeInOut" as const,
                 delay: animationOffset.delay + 0.5, // Add extra delay after text loads
               },
               opacity: {
                 repeatType: "mirror",
                 repeat: Infinity,
                 duration: 2.5,
-                ease: "easeInOut",
+                ease: "easeInOut" as const,
                 delay: animationOffset.delay + 0.5, // Add extra delay after text loads
               },
             } : {
@@ -1296,20 +1296,20 @@ const HeroSection = () => {
             transition={textContentLoaded ? {
               backgroundColor: {
                 duration: 1.5,
-                ease: "easeInOut",
+                ease: "easeInOut" as const,
               },
               y: {
                 repeatType: "mirror",
                 repeat: Infinity,
                 duration: 2.5,
-                ease: "easeInOut",
+                ease: "easeInOut" as const,
                 delay: animationOffset.delay + 0.5, // Add extra delay after text loads
               },
               scale: {
                 repeatType: "mirror",
                 repeat: Infinity,
                 duration: 2.5,
-                ease: "easeInOut",
+                ease: "easeInOut" as const,
                 delay: animationOffset.delay + 0.5, // Add extra delay after text loads
               },
             } : {
@@ -1340,7 +1340,7 @@ const HeroSection = () => {
                   }}
                   initial={{ opacity: 1 }}
                   animate={{ opacity: 0 }}
-                  transition={{ duration: 1.5, ease: "easeInOut" }}
+                  transition={{ duration: 1.5, ease: "easeInOut" as const }}
                 >
                   {prevNote}
                 </motion.span>
@@ -1351,7 +1351,7 @@ const HeroSection = () => {
                   }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 1.5, ease: "easeInOut" }}
+                  transition={{ duration: 1.5, ease: "easeInOut" as const }}
                 >
                   {note}
                 </motion.span>

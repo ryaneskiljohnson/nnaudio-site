@@ -1392,7 +1392,7 @@ function CampaignsPage() {
     visible: (i: number) => ({
       opacity: 1,
       y: 0,
-      transition: { delay: i * 0.1, duration: 0.6, ease: "easeOut" },
+      transition: { delay: i * 0.1, duration: 0.6, ease: "easeOut" as const },
     }),
   };
 
@@ -1912,7 +1912,7 @@ function CampaignsPage() {
                               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <motion.div
                                   animate={{ rotate: 360 }}
-                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" as const }}
                                   style={{ width: '12px', height: '12px', border: '2px solid rgba(108, 99, 255, 0.3)', borderTop: '2px solid var(--primary)', borderRadius: '50%' }}
                                 />
                                 Calculating...
@@ -1964,7 +1964,7 @@ function CampaignsPage() {
                               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <motion.div
                                   animate={{ rotate: 360 }}
-                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" as const }}
                                   style={{ width: '12px', height: '12px', border: '2px solid rgba(108, 99, 255, 0.3)', borderTop: '2px solid var(--primary)', borderRadius: '50%' }}
                                 />
                                 Calculating...
@@ -2322,7 +2322,7 @@ function CampaignsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
                   <motion.div
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" as const }}
                     style={{ 
                       width: '24px', 
                       height: '24px', 

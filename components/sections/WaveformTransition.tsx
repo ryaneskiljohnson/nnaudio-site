@@ -167,7 +167,7 @@ const WaveformTransition: React.FC<WaveformTransitionProps> = ({
           duration: 1.2 + Math.random() * 0.8, // Reduced duration range
           repeat: Infinity,
           delay: custom.delay,
-          ease: "easeInOut",
+          ease: "easeInOut" as const,
         },
       };
     },

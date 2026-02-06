@@ -1,0 +1,94 @@
+woocommerce_name,supabase_id,supabase_name,supabase_status,match_type
+Albanju,a5a5e9e1-3392-484a-b48f-4aca71fbb122,Albanju,active,exact
+Alice Cthulhu,3457232b-cb8c-4daa-b386-95895c50a7d6,Alice Cthulhu,active,exact
+All Guitar Bundle,de75e8b5-cb98-46da-8498-0486e130384f,All Guitar Bundle,active,exact
+Analog Plugin Bundle,90bcf8a0-c3a0-487a-87ce-af085689ba49,Analog Plugin Bundle,active,exact
+Apache Flute,0ba4b698-da40-49a6-9bde-f363adccc3fa,Apache Flute,active,exact
+Apache MIDI,34fd6bb0-410e-4aff-a01d-8083596e7098,Apache MIDI,active,exact
+Atmosphere Bundle,0de3afc4-13c7-4965-80a0-6b257afe0c88,Atmosphere Bundle,active,exact
+Bakers Delight MIDI,9fdd6900-da3e-434d-8a5d-10cfe66dc337,Bakers Delight MIDI,active,exact
+Bakers Dozen,0bcb1962-10ce-420b-937f-8ef65edb936e,Bakers Dozen,active,exact
+Blaque,9d6020d0-ac39-4b11-8688-ead24f5c81ee,Blaque,active,exact
+Blossom MIDI,ab9f4420-e7e7-4b8a-afe6-10523b7d6c08,Blossom MIDI,active,exact
+Broken MIDI,3aff3e94-4fda-4460-9a51-7d501c277a36,Broken MIDI,active,exact
+Cowboy Harp,46aaabea-901f-4893-ad99-ea294b2914cc,Cowboy Harp,active,exact
+Cryptic Tales MIDI,8e69ef7a-47b2-4c45-9aec-3dc99d202e65,Cryptic Tales MIDI,active,exact
+Crystal Ball – Magic Multi Effect,16f8a174-6178-4996-9331-3b2c921ed17c,Crystal Ball,active,normalized
+Cthulhu Bundle 1 – Xmas 2023,c00b22e5-1647-4145-b531-6ccb54e4c529,Cthulhu Bundle 1,active,normalized
+Cthulhu Godz 1,8c01eb8f-9183-4f6d-8c4d-fd9cf593a866,Cthulhu Godz 1,active,exact
+Cthulhu Godz 2,19775982-017e-44c2-8d44-abb4f7a3490d,Cthulhu Godz 2,active,exact
+Curves EQ,ae91f922-c778-4fef-91b7-74a7f7d1b7a9,Curves EQ,active,exact
+Cymasphere,c699bf58-1af7-4bff-b05c-0f76275c0c62,Cymasphere,active,exact
+Demented Wisdom MIDI,f98826e2-973c-4f1c-9109-c12a8289b900,Demented Wisdom MIDI,active,exact
+Digital Echoes Delay,a03c75f0-d5c3-4689-9124-a787dd351fe8,Digital Echoes Delay,active,exact
+DigitalDreamscape FULL,e579dbd6-8b3d-451d-a5f9-8b1066e34b89,DigitalDreamscape,active,normalized
+DigitalDreamscape TRIAL,e579dbd6-8b3d-451d-a5f9-8b1066e34b89,DigitalDreamscape,active,normalized
+Drum & Bass Bundle,08ea4008-1908-405a-bd36-4cf50de780bf,Drum & Bass Bundle,active,exact
+Drum & Perc Bundle,4ce5e019-9f08-4f18-a903-d9776deb625b,Drum & Perc Bundle,active,exact
+Element Cthulhu,cc9c70b8-b167-4778-bf7e-42b7012ad79e,Element Cthulhu,active,exact
+Enchanted Melodies MIDI Pack Bundle,8fa7f953-c1d5-4143-a47b-def7876c8fe5,Enchanted Melodies MIDI Pack Bundle,active,exact
+Evanescent Baby Grand Piano,28eece1b-df54-4593-82a7-e9a21d6c3fcb,Evanescent Baby Grand Piano,active,exact
+Flower Cthulhu,de2da995-64f6-4424-89c1-7013c941210c,Flower Cthulhu,active,exact
+Free Tetrad Guitars Plugin,64d10503-970f-47ec-b86d-70528c5a2fdf,Tetrad Guitars,active,normalized
+Free Tetrad Keys Plugin,0d8fa4b1-43c0-44a4-86f1-821966ecf430,Tetrad Keys,active,normalized
+FreeQ,ed4723ea-7f3f-4558-9d24-1265773ae4b7,FreeQ,active,exact
+Freelay,a617d04c-13cb-403c-8e12-0dcf13603859,Freelay,active,exact
+Freeverb,8c9d3944-873e-4761-8601-f7cc5067a10f,Freeverb,active,exact
+Fruit Salad MIDI,21d8b116-dac9-4577-9147-c78bc0be17da,Fruit Salad MIDI,active,exact
+Game Boi,bd7fc185-5f90-4fc1-912e-2f41ca77830d,Game Boi,active,exact
+Go To Work,4f986f2f-8c14-482f-850b-2e888b1ee2f1,Go To Work,active,exact
+Guitar Bundle,088e3794-0e94-4c3b-a255-2ef4d090d6fa,Guitar Bundle,active,exact
+Life & Death MIDI,06e99e43-eb45-4ba7-a5b3-bacf89f9f1f9,Life & Death MIDI,active,exact
+Lofi Jamz,cad704c6-0f58-4e81-b110-f654bbbbe70f,Lofi Jamz,active,exact
+MIDI Library 1,fc6e1f19-b4b9-44fc-b7ac-0783ea7b9186,MIDI Library 1,active,exact
+MIDI Library 2,b7d8bc91-c719-48a8-86b9-e71f0904afcb,MIDI Library 2,active,exact
+MIDI Library 3,ddf2b3a1-de4c-48d1-824e-521ecbd927eb,MIDI Library 3,active,exact
+MIDI Library 4,52c08c7f-0184-4faa-ad0d-8c657c7950b9,MIDI Library 4,active,exact
+MIDI Mob MIDI Bundle,0bda2e88-8492-49c5-8d28-6d0808b45309,MIDI Mob MIDI Bundle,active,exact
+MIDI Nerds,f4177a27-bfd9-4ea1-be0b-2ca02749558f,MIDI Nerds,active,exact
+MIDI Takeout Bundle,847ef5be-32ea-405e-b0b1-023de4247f96,MIDI Takeout Bundle,active,exact
+Mai Tai MIDI,fad87e8f-5e4f-45b4-9f40-89018d4d78d5,Mai Tai MIDI,active,exact
+Mandolele Mandolin & Ukulele,bd0a35fd-8791-4a8c-8c33-a91a633e25e8,Mandolele Mandolin & Ukulele,active,exact
+Mesosphere,6c05313b-6174-40ec-b736-856219e5979b,Mesosphere,active,exact
+Modern Cthulhu 1,5f54256e-f20c-4e39-b6fe-fb5c73709549,Modern Cthulhu 1,active,exact
+Modern Cthulhu 2,9fc3cd3b-eec8-44c8-a1a7-e1c7500611cd,Modern Cthulhu 2,active,exact
+Modern FX Bundle,e01d9991-5f18-4c23-a459-bb4e0d951c8b,Modern FX Bundle,active,exact
+Modern Song Constructions Bundle,d6f94b07-92b6-459d-8005-cebfd5b484f2,Modern Song Constructions Bundle,active,exact
+Mutahad Sample Library,b65d4ed2-5393-489f-9f37-e7713fd7d229,Mutahad Sample Library,active,exact
+Natura,9ad5f7f7-e379-4516-bcd3-98bc98cc39bc,Natura,active,exact
+Noker,e013d27e-d73c-4372-b2af-8f54275cf76b,Noker,active,exact
+Numb,2eb585b3-740f-457c-b1c2-67fc7a84970f,Numb,active,exact
+Obscura + Royal Family Bundle – Black Friday,71f9d53b-85dc-4ff6-a6e9-826696af5240,Obscura + Royal Family Bundle,active,normalized
+Ooze MIDI,039bdd30-dee8-4700-8c27-319f72fdd738,Ooze MIDI,active,exact
+Orchestral Plugin Bundle,0fae3a57-27dc-4019-a8cf-2aad4773b50d,Orchestral Plugin Bundle,active,exact
+Perc Gadget,08114789-d853-4544-b026-c6870bcbc2dc,Perc Gadget,active,exact
+Primal Cthulhu,eeeed3df-2486-4bc9-b43a-65f95b374e77,Primal Cthulhu,active,exact
+Prodigious,f2a406a0-02b6-4a0f-87cb-0bcc040b01b6,Prodigious,active,exact
+Quoir,c92beb38-f39c-444e-8848-df7019dc0962,Quoir,active,exact
+Rabbit Hole MIDI,43800acf-c5e1-4d1a-942f-bede7b3ff213,Rabbit Hole MIDI,active,exact
+Reflection Cthulhu,e6df4c54-9924-4e92-9140-a1a869824a9a,Reflection Cthulhu,active,exact
+Reiya,99e541c6-53ca-430d-9c8d-a122c5afda12,Reiya,active,exact
+Ride Away,c06fcb68-ef64-4b24-9b0a-9a346f4bfb64,Ride Away,active,exact
+Rompl Workstation,9d441668-1d34-4385-9cbe-078b716f2241,Rompl Workstation,active,exact
+Rompl Workstation Trial,9d441668-1d34-4385-9cbe-078b716f2241,Rompl Workstation,active,normalized
+Royal Family MIDI,2296ce7b-bf92-4bc8-8c0f-85ace56d5401,Royal Family MIDI,active,exact
+So Far Gone MIDI,85e02580-7a4c-4e9a-a905-2a5edd3a5e56,So Far Gone MIDI,active,exact
+Soundscapes Bundle – Xmas 2023,6c8e99c7-19df-4861-9918-9e00e87fc295,Soundscapes Bundle,active,normalized
+Sterfreeo,d7cb3189-7e14-4386-afbf-cc2c6ad5cffa,Sterfreeo,active,exact
+Strange Tingz,068f019d-177d-4203-9e4a-27b75ea2926e,Strange Tingz,active,exact
+SubFlux,fb9c5795-103d-41c1-ad19-cf62f4826e6a,SubFlux,active,exact
+Summer Kickoff MIDI Bundle,7292e85a-aef8-470a-96eb-1c23216a2943,Summer Kickoff MIDI Bundle,inactive,exact
+Summer Sample Pack Bundle 2024,2cfb32e3-b48c-45d5-99aa-ae4cac46e905,Summer Sample Pack Bundle,active,normalized
+Sun Goes Down MIDI,19072fbb-2758-4d1e-90d3-4787baea120d,Sun Goes Down MIDI,active,exact
+Swiper MIDI,5fcd6aac-7ebb-4cab-bbd6-69f0b84598e5,Swiper MIDI,active,exact
+Tactures,af0833e9-ebe2-43ce-81cc-1b8f72e8a9c5,Tactures,active,exact
+Tetrad Series,ff030a9f-197d-48e0-9a4b-2200c94b8168,Tetrad Series,active,exact
+The Code,c892fd79-0aa8-4b84-8932-d0f65ef5706d,The Code,active,exact
+Time Zones MIDI,f0f627c8-93e8-4f0b-8825-d82987e44ae5,Time Zones MIDI,active,exact
+Trapsoul MIDI,fbeb4a56-bc56-45c5-afd3-f6fcc9b1e836,Trapsoul MIDI,active,exact
+UMC6 MIDI,e7039f7f-bb67-4a52-aaf9-7c4f9ca053f7,UMC6 MIDI,active,exact
+Ultimate Drums & Percs 1,7f1935a6-317e-4bb7-9a6d-8a717a52fca9,Ultimate Drums & Percs 1,active,exact
+Ultimate Drums & Percs 2,900fa701-134f-49f0-a69c-22e5de52f8df,Ultimate Drums & Percs 2,active,exact
+Ultimate MIDI Collection 2,471fcf92-33de-4f64-b730-5e52887a5215,Ultimate MIDI Collection 2,active,exact
+Weaknd Cthulhu,d6e3ed84-be77-4b88-8829-dde06f787b6a,Weaknd Cthulhu,active,exact
+Yonkers Cthulhu,13edc63b-6408-4ad6-b724-f1a85670d904,Yonkers Cthulhu,active,exact

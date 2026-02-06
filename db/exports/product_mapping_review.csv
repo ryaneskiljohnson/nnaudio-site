@@ -1,0 +1,4 @@
+woocommerce_name,supabase_id,supabase_name,supabase_status,similarity,match_type
+20 For 20 MIDI Bundle 1,5b67e835-8f4b-46f7-ae07-cee6a033bfa5,20 For 20 MIDI Bundle,inactive,0.95,fuzzy
+Modern Song Constructions,d6f94b07-92b6-459d-8005-cebfd5b484f2,Modern Song Constructions Bundle,active,0.88,fuzzy
+Orchestra Bundle – Xmas 2023,0fae3a57-27dc-4019-a8cf-2aad4773b50d,Orchestral Plugin Bundle,active,0.97,fuzzy

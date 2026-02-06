@@ -56,8 +56,8 @@ export async function getRelatedProducts(
       ? keywords.split(',').map(k => k.trim().toLowerCase()).filter(Boolean)
       : [];
     
-    // Build the query
-    let query = supabase
+    // Build the query (use type assertion - products table columns may not match generated types)
+    let query = (supabase as any)
       .from('products')
       .select(`
         id,
@@ -92,7 +92,7 @@ export async function getRelatedProducts(
     let allRelated = sameCategory || [];
     
     if (allRelated.length < limit) {
-      const { data: otherProducts, error: otherError } = await supabase
+      const { data: otherProducts, error: otherError } = await (supabase as any)
         .from('products')
         .select(`
           id,
@@ -120,7 +120,7 @@ export async function getRelatedProducts(
     }
     
     // Score and sort products by relevance
-    const scoredProducts = allRelated.map(product => {
+    const scoredProducts = (allRelated as Array<Record<string, unknown>>).map((product: Record<string, unknown>) => {
       let score = 0;
       
       // Same category gets high score
@@ -129,47 +129,50 @@ export async function getRelatedProducts(
       }
       
       // Matching keywords
-      if (keywordArray.length > 0 && product.meta_keywords) {
-        const productKeywords = product.meta_keywords
+      const metaKeywords = product.meta_keywords as string | null | undefined;
+      if (keywordArray.length > 0 && metaKeywords) {
+        const productKeywords = metaKeywords
           .toLowerCase()
           .split(',')
           .map((k: string) => k.trim());
         
         const matchCount = keywordArray.filter(kw => 
-          productKeywords.some(pk => pk.includes(kw) || kw.includes(pk))
+          productKeywords.some((pk: string) => pk.includes(kw) || kw.includes(pk))
         ).length;
         
         score += matchCount * 5;
       }
       
       // Boost products with good ratings
-      if (product.average_rating && product.average_rating >= 4) {
+      const avgRating = product.average_rating as number | null | undefined;
+      if (avgRating != null && avgRating >= 4) {
         score += 2;
       }
       
       // Boost products with reviews
-      if (product.review_count && product.review_count > 0) {
+      const revCount = product.review_count as number | null | undefined;
+      if (revCount != null && revCount > 0) {
         score += 1;
       }
       
       return {
-        ...product,
+        ...(product as object),
         relevanceScore: score
       };
     });
     
     // Sort by relevance score, then by rating
-    scoredProducts.sort((a, b) => {
+    scoredProducts.sort((a: { relevanceScore: number; average_rating?: number }, b: { relevanceScore: number; average_rating?: number }) => {
       if (b.relevanceScore !== a.relevanceScore) {
         return b.relevanceScore - a.relevanceScore;
       }
-      return (b.average_rating || 0) - (a.average_rating || 0);
+      return ((b.average_rating as number) || 0) - ((a.average_rating as number) || 0);
     });
     
     // Take top products
     const relatedProducts = scoredProducts
       .slice(0, limit)
-      .map(({ relevanceScore, ...product }) => product as RelatedProduct);
+      .map(({ relevanceScore, ...product }: { relevanceScore: number; [k: string]: unknown }) => product as unknown as RelatedProduct);
     
     return {
       success: true,

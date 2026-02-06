@@ -92,7 +92,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
           transition={{
             duration: 1.5,
             repeat: Infinity,
-            ease: "easeInOut",
+            ease: "easeInOut" as const,
           }}
         >
           <NNAudioLogo size={logoSize} showText={false} />
@@ -107,7 +107,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             transition={{
               duration: 1.5,
               repeat: Infinity,
-              ease: "easeInOut",
+              ease: "easeInOut" as const,
             }}
           >
             {text}

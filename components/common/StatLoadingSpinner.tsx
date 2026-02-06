@@ -9,7 +9,7 @@ const StatLoadingSpinner: React.FC<StatLoadingSpinnerProps> = ({ size = 16 }) =>
   return (
     <motion.div
       animate={{ rotate: 360 }}
-      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+      transition={{ duration: 1, repeat: Infinity, ease: "linear" as const }}
       style={{ 
         width: `${size}px`, 
         height: `${size}px`, 

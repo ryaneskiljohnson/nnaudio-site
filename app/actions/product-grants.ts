@@ -10,6 +10,7 @@ export interface ProductGrant {
   granted_at: string;
   granted_by: string | null;
   notes: string | null;
+  amount?: number;
   products?: {
     id: string;
     name: string;
@@ -125,11 +126,13 @@ export async function getUserProductGrants(userEmail: string): Promise<{
 
 /**
  * Grant a product to a user (admin only)
+ * @param amount Recorded transaction amount for historical record (default 0)
  */
 export async function grantProduct(
   userEmail: string,
   productId: string,
-  notes?: string | null
+  notes?: string | null,
+  amount?: number
 ): Promise<{
   data: ProductGrant | null;
   error: string | null;
@@ -176,6 +179,7 @@ export async function grantProduct(
         product_id: productId,
         granted_by: user.id,
         notes: notes || null,
+        amount: amount ?? 0,
       })
       .select(`
         *,

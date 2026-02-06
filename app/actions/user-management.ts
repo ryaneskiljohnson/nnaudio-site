@@ -499,6 +499,56 @@ export async function getAllUsersForCRMAdmin(
 }
 
 /**
+ * Get a single user by email for CRM (admin only)
+ * Finds profile by email, then fetches full user data
+ */
+export async function getUserByEmailAdmin(userEmail: string): Promise<{
+  user: {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    subscription: string;
+    customerId?: string;
+    subscriptionExpiration?: string;
+    trialExpiration?: string;
+    createdAt: string;
+    lastActive?: string;
+    totalSpent: number;
+    hasNfr?: boolean;
+  } | null;
+  error?: string;
+}> {
+  if (!userEmail || typeof userEmail !== "string") {
+    return { user: null, error: "Valid email is required" };
+  }
+  const normalizedEmail = userEmail.toLowerCase().trim();
+  try {
+    const supabase = await createClient();
+    if (!(await checkAdmin(supabase))) {
+      return { user: null, error: "Unauthorized" };
+    }
+    const serviceSupabase = await createSupabaseServiceRole();
+    const { data: profile, error: profileError } = await serviceSupabase
+      .from("profiles")
+      .select("id")
+      .ilike("email", normalizedEmail)
+      .limit(1)
+      .maybeSingle();
+    if (profileError || !profile?.id) {
+      return { user: null, error: "User not found" };
+    }
+    return getUserByIdAdmin(profile.id);
+  } catch (error) {
+    console.error("Error in getUserByEmailAdmin:", error);
+    return {
+      user: null,
+      error: error instanceof Error ? error.message : "Failed to fetch user",
+    };
+  }
+}
+
+/**
  * Get a single user by ID for CRM (admin only)
  */
 export async function getUserByIdAdmin(userId: string): Promise<{

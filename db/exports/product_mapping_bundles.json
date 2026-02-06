@@ -1,0 +1,42 @@
+[
+  {
+    "woocommerce_name": "Relaunch Plugin Bundle",
+    "expanded_products": [
+      {
+        "id": "ae91f922-c778-4fef-91b7-74a7f7d1b7a9",
+        "name": "Curves EQ",
+        "status": "active"
+      },
+      {
+        "id": "a03c75f0-d5c3-4689-9124-a787dd351fe8",
+        "name": "Digital Echoes Delay",
+        "status": "active"
+      },
+      {
+        "id": "fb9c5795-103d-41c1-ad19-cf62f4826e6a",
+        "name": "SubFlux",
+        "status": "active"
+      },
+      {
+        "id": "e579dbd6-8b3d-451d-a5f9-8b1066e34b89",
+        "name": "DigitalDreamscape",
+        "status": "active"
+      }
+    ]
+  },
+  {
+    "woocommerce_name": "Selection Box Bundle \u2013 Xmas 2023",
+    "expanded_products": [
+      {
+        "id": "99e541c6-53ca-430d-9c8d-a122c5afda12",
+        "name": "Reiya",
+        "status": "active"
+      },
+      {
+        "id": "28eece1b-df54-4593-82a7-e9a21d6c3fcb",
+        "name": "Evanescent Baby Grand Piano",
+        "status": "active"
+      }
+    ]
+  }
+]
