@@ -134,7 +134,6 @@ const PremierImageContainer = styled.div`
   aspect-ratio: 1;
   border-radius: 20px;
   overflow: hidden;
-  margin-bottom: 3rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   border: 3px solid rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
@@ -168,66 +167,68 @@ const PremierImageContainer = styled.div`
   
   @media (max-width: 768px) {
     max-width: 100%;
-    margin-bottom: 2rem;
   }
 `;
 
 const PremierContent = styled.div`
-  position: relative;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  width: 90%;
-  padding: 3rem 2rem;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  border-radius: 16px;
+  width: 100%;
+  padding: 1rem 2rem 1rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.6) 70%, transparent);
+  backdrop-filter: blur(8px);
+  border-radius: 0 0 20px 20px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: none;
   
   @media (max-width: 768px) {
-    width: 95%;
-    padding: 2rem 1.5rem;
+    padding: 0.75rem 1.5rem 0.75rem;
   }
 `;
 
 const PremierTitle = styled.h3`
   font-size: 2.5rem;
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin: 0 0 0.35rem 0;
   color: white;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
   
   @media (max-width: 768px) {
     font-size: 2rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.25rem;
   }
 `;
 
 const PremierDescription = styled.p`
   font-size: 1.1rem;
   color: rgba(255, 255, 255, 0.95);
-  line-height: 1.6;
-  margin-bottom: 1.5rem;
+  line-height: 1.4;
+  margin: 0 0 0.75rem 0;
   max-width: 100%;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
   
   @media (max-width: 768px) {
     font-size: 1rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.5rem;
   }
 `;
 
 const PremierActions = styled.div`
   display: flex;
-  gap: 2rem;
+  gap: 1.25rem;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
   
   @media (max-width: 768px) {
-    gap: 1.5rem;
+    gap: 0.75rem;
     flex-direction: column;
   }
 `;
