@@ -1,0 +1,1500 @@
+-- Add indexes for performance
+CREATE INDEX idx_template_audiences_template ON email_template_audiences(template_id);
+CREATE INDEX idx_template_audiences_audience ON email_template_audiences(audience_id);
+CREATE INDEX idx_template_audiences_excluded ON email_template_audiences(is_excluded);
+
+-- Enable RLS on the new table
+ALTER TABLE email_template_audiences ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for admin access to template audiences
+CREATE POLICY "Admins can manage template audiences" ON email_template_audiences
+FOR ALL USING (is_admin(auth.uid()));
+
+-- Add comment for documentation
+COMMENT ON TABLE email_template_audiences IS 'Junction table linking templates to their intended/default audiences. These can be overridden when creating campaigns from templates.';
+COMMENT ON COLUMN email_template_audiences.is_excluded IS 'FALSE = included audience, TRUE = excluded audience for this template'; 
+
+
+-- ============================================================================
+-- Migration: 20250127000003_match_campaign_audience_policy.sql
+-- ============================================================================
+
+-- Make template audiences policy match campaign audiences policy exactly
+
+DROP POLICY IF EXISTS "Admins can manage template audiences" ON email_template_audiences;
+
+-- Create policy identical to campaign audiences policy
+CREATE POLICY "Admins can manage template audiences" ON email_template_audiences
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+); 
+
+
+-- ============================================================================
+-- Migration: 20250130000000_add_ios_subscriptions.sql
+-- ============================================================================
+
+-- Migration: Add iOS subscription tracking
+-- This allows us to track iOS StoreKit purchases alongside Stripe subscriptions
+
+-- Create table to track iOS subscriptions
+CREATE TABLE IF NOT EXISTS ios_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  
+  -- StoreKit transaction details
+  transaction_id TEXT NOT NULL UNIQUE,
+  original_transaction_id TEXT, -- For subscription renewals
+  product_id TEXT NOT NULL,
+  
+  -- Subscription details
+  subscription_type subscription_type NOT NULL DEFAULT 'none',
+  purchase_date TIMESTAMPTZ NOT NULL,
+  expires_date TIMESTAMPTZ NOT NULL,
+  
+  -- Receipt validation
+  receipt_data TEXT NOT NULL, -- Base64 encoded receipt
+  receipt_validated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  validation_status TEXT NOT NULL DEFAULT 'valid', -- 'valid', 'expired', 'revoked', 'invalid'
+  
+  -- Apple receipt validation response
+  apple_validation_response JSONB,
+  
+  -- Status tracking
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  auto_renew_status BOOLEAN DEFAULT true,
+  
+  -- Metadata
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  
+  -- Constraints
+  CONSTRAINT valid_subscription_type CHECK (subscription_type IN ('none', 'monthly', 'annual', 'lifetime')),
+  CONSTRAINT valid_expires_date CHECK (expires_date > purchase_date)
+);
+
+-- Create indexes for efficient queries
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_user_id ON ios_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_profile_id ON ios_subscriptions(profile_id);
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_transaction_id ON ios_subscriptions(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_original_transaction_id ON ios_subscriptions(original_transaction_id);
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_is_active ON ios_subscriptions(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_expires_date ON ios_subscriptions(expires_date);
+
+-- Create function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_ios_subscriptions_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for updated_at
+CREATE TRIGGER update_ios_subscriptions_updated_at
+  BEFORE UPDATE ON ios_subscriptions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_ios_subscriptions_updated_at();
+
+-- Create function to get active iOS subscription for a user
+CREATE OR REPLACE FUNCTION get_active_ios_subscription(p_user_id UUID)
+RETURNS TABLE (
+  subscription_type subscription_type,
+  expires_date TIMESTAMPTZ,
+  transaction_id TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    ios.subscription_type,
+    ios.expires_date,
+    ios.transaction_id
+  FROM ios_subscriptions ios
+  WHERE ios.user_id = p_user_id
+    AND ios.is_active = true
+    AND ios.validation_status = 'valid'
+    AND ios.expires_date > NOW()
+  ORDER BY ios.expires_date DESC
+  LIMIT 1;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Add RLS policies
+ALTER TABLE ios_subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- Users can view their own iOS subscriptions
+CREATE POLICY "Users can view own iOS subscriptions"
+  ON ios_subscriptions
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Service role can do everything (for API endpoints)
+CREATE POLICY "Service role can manage iOS subscriptions"
+  ON ios_subscriptions
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- Add comment
+COMMENT ON TABLE ios_subscriptions IS 'Tracks iOS StoreKit subscription purchases and their validation status';
+COMMENT ON COLUMN ios_subscriptions.transaction_id IS 'Unique transaction ID from StoreKit';
+COMMENT ON COLUMN ios_subscriptions.original_transaction_id IS 'Original transaction ID for subscription renewals';
+COMMENT ON COLUMN ios_subscriptions.product_id IS 'Product ID from App Store Connect (e.g., com.NNAudio.Cymasphere.monthly.plan)';
+COMMENT ON COLUMN ios_subscriptions.receipt_data IS 'Base64 encoded receipt data for validation';
+COMMENT ON COLUMN ios_subscriptions.validation_status IS 'Status of receipt validation: valid, expired, revoked, invalid';
+
+
+
+
+
+
+-- ============================================================================
+-- Migration: 20250131000000_fix_ticket_number_race_condition.sql
+-- ============================================================================
+
+-- Fix ticket number generation race condition
+-- This migration replaces the MAX-based approach with a sequence for thread-safe ticket number generation
+
+-- Create a sequence for ticket numbers
+CREATE SEQUENCE IF NOT EXISTS public.support_ticket_number_seq
+  START WITH 1
+  INCREMENT BY 1
+  NO MINVALUE
+  NO MAXVALUE
+  CACHE 1;
+
+-- Set the sequence to start from the highest existing ticket number + 1
+DO $$
+DECLARE
+  max_number integer;
+BEGIN
+  -- Get the maximum ticket number from existing tickets
+  SELECT COALESCE(MAX(CAST(SUBSTRING(ticket_number FROM 3) AS integer)), 0)
+  INTO max_number
+  FROM public.support_tickets
+  WHERE ticket_number ~ '^T-[0-9]+$';
+  
+  -- Set the sequence to start from max_number + 1
+  IF max_number > 0 THEN
+    PERFORM setval('public.support_ticket_number_seq', max_number, true);
+  END IF;
+END $$;
+
+-- Replace the generate_ticket_number function to use the sequence
+CREATE OR REPLACE FUNCTION generate_ticket_number()
+RETURNS text AS $$
+DECLARE
+  next_number integer;
+  ticket_number text;
+BEGIN
+  -- Get the next number from the sequence (atomic operation)
+  next_number := nextval('public.support_ticket_number_seq');
+  
+  -- Format as T-XXX with zero padding
+  ticket_number := 'T-' || LPAD(next_number::text, 3, '0');
+  
+  RETURN ticket_number;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+-- ============================================================================
+-- Migration: 20250201000000_fix_support_tickets_rls_admin_check.sql
+-- ============================================================================
+
+-- Fix support tickets RLS policies to use admins table instead of profiles.subscription
+-- This ensures consistency with the application-level checkAdmin() function
+
+-- Drop existing admin policies that check profiles.subscription
+DROP POLICY IF EXISTS "Users can view their own tickets" ON public.support_tickets;
+DROP POLICY IF EXISTS "Admins can update any ticket" ON public.support_tickets;
+DROP POLICY IF EXISTS "Admins can delete tickets" ON public.support_tickets;
+DROP POLICY IF EXISTS "Users can view messages for their tickets" ON public.support_messages;
+DROP POLICY IF EXISTS "Users can create messages for their tickets" ON public.support_messages;
+DROP POLICY IF EXISTS "Admins can update any message" ON public.support_messages;
+DROP POLICY IF EXISTS "Users can view attachments for accessible messages" ON public.support_attachments;
+DROP POLICY IF EXISTS "Users can create attachments for their messages" ON public.support_attachments;
+
+-- Recreate policies using is_admin() function (which checks admins table)
+-- Users can view their own tickets OR if they're admin
+CREATE POLICY "Users can view their own tickets" ON public.support_tickets
+  FOR SELECT USING (
+    auth.uid() = user_id OR 
+    is_admin(auth.uid())
+  );
+
+-- Admins can update any ticket
+CREATE POLICY "Admins can update any ticket" ON public.support_tickets
+  FOR UPDATE USING (is_admin(auth.uid()));
+
+-- Admins can delete tickets
+CREATE POLICY "Admins can delete tickets" ON public.support_tickets
+  FOR DELETE USING (is_admin(auth.uid()));
+
+-- Users can view messages for their own tickets OR if they're admin
+CREATE POLICY "Users can view messages for their tickets" ON public.support_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.support_tickets 
+      WHERE id = ticket_id AND (
+        user_id = auth.uid() OR 
+        is_admin(auth.uid())
+      )
+    )
+  );
+
+-- Users can create messages for their own tickets OR if they're admin
+CREATE POLICY "Users can create messages for their tickets" ON public.support_messages
+  FOR INSERT WITH CHECK (
+    auth.uid() = user_id AND (
+      EXISTS (
+        SELECT 1 FROM public.support_tickets 
+        WHERE id = ticket_id AND user_id = auth.uid()
+      ) OR
+      is_admin(auth.uid())
+    )
+  );
+
+-- Admins can update any message
+CREATE POLICY "Admins can update any message" ON public.support_messages
+  FOR UPDATE USING (is_admin(auth.uid()));
+
+-- Users can view attachments for messages they can see (their own tickets OR if admin)
+CREATE POLICY "Users can view attachments for accessible messages" ON public.support_attachments
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.support_messages sm
+      JOIN public.support_tickets st ON sm.ticket_id = st.id
+      WHERE sm.id = message_id AND (
+        st.user_id = auth.uid() OR 
+        is_admin(auth.uid())
+      )
+    )
+  );
+
+-- Users can create attachments for their own messages OR if they're admin
+CREATE POLICY "Users can create attachments for their messages" ON public.support_attachments
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.support_messages sm
+      JOIN public.support_tickets st ON sm.ticket_id = st.id
+      WHERE sm.id = message_id AND sm.user_id = auth.uid() AND (
+        st.user_id = auth.uid() OR 
+        is_admin(auth.uid())
+      )
+    )
+  );
+
+
+
+
+-- ============================================================================
+-- Migration: 20250620133145_fix_invalid_audience_status_filters.sql
+-- ============================================================================
+
+-- Fix invalid status values in email_audiences filters
+-- This migration fixes audiences that have invalid subscriber_status enum values
+
+-- Update direct status filters (legacy format)
+UPDATE email_audiences 
+SET filters = jsonb_set(
+  filters, 
+  '{status}', 
+  '"unsubscribed"'::jsonb
+)
+WHERE filters->>'status' = 'inactive';
+
+UPDATE email_audiences 
+SET filters = jsonb_set(
+  filters, 
+  '{status}', 
+  '"active"'::jsonb
+)
+WHERE filters->>'status' = 'subscribed';
+
+-- Update structured rules format (new format)
+UPDATE email_audiences 
+SET filters = jsonb_set(
+  filters,
+  '{rules}',
+  (
+    SELECT jsonb_agg(
+      CASE 
+        WHEN rule->>'field' = 'status' AND rule->>'value' = 'inactive' THEN
+          jsonb_set(rule, '{value}', '"unsubscribed"'::jsonb)
+        WHEN rule->>'field' = 'status' AND rule->>'value' = 'subscribed' THEN
+          jsonb_set(rule, '{value}', '"active"'::jsonb)
+        ELSE rule
+      END
+    )
+    FROM jsonb_array_elements(filters->'rules') AS rule
+  )
+)
+WHERE filters->'rules' IS NOT NULL 
+AND EXISTS (
+  SELECT 1 
+  FROM jsonb_array_elements(filters->'rules') AS rule
+  WHERE rule->>'field' = 'status' 
+  AND rule->>'value' IN ('inactive', 'subscribed')
+);
+
+-- Log the changes made
+DO $$
+DECLARE
+  affected_count INTEGER;
+BEGIN
+  GET DIAGNOSTICS affected_count = ROW_COUNT;
+  RAISE NOTICE 'Fixed % audience records with invalid status filters', affected_count;
+END $$;
+
+
+
+-- ============================================================================
+-- Migration: 20250620133634_update_test_audience_filter.sql
+-- ============================================================================
+
+-- Update the test audience filter to use a more common filter that will return results
+-- Change from subscription=lifetime (no matches) to status=active (many matches)
+
+UPDATE email_audiences 
+SET filters = '{"status": "active"}'::jsonb 
+WHERE id = '713c5ad9-f284-4fe1-a32f-f172412e9171';
+
+-- Also update any audience that has the problematic lifetime filter
+UPDATE email_audiences 
+SET filters = '{"status": "active"}'::jsonb 
+WHERE filters->>'subscription' = 'lifetime';
+
+
+
+-- ============================================================================
+-- Migration: 20250620133826_update_audience_to_none_subscription.sql
+-- ============================================================================
+
+-- Update the test audience filter to use subscription 'none' which has actual users
+-- Currently the audience is filtering for 'lifetime' subscription which has 0 users
+-- This changes it to 'none' subscription which has 999 users and will actually return results
+
+UPDATE email_audiences 
+SET filters = '{
+  "rules": [
+    {
+      "field": "subscription", 
+      "operator": "equals", 
+      "value": "none", 
+      "timeframe": "all_time"
+    }
+  ]
+}'::jsonb 
+WHERE id = '713c5ad9-f284-4fe1-a32f-f172412e9171';
+
+-- Also update any other audiences that have the problematic lifetime filter
+UPDATE email_audiences 
+SET filters = '{
+  "rules": [
+    {
+      "field": "subscription", 
+      "operator": "equals", 
+      "value": "none", 
+      "timeframe": "all_time"
+    }
+  ]
+}'::jsonb 
+WHERE filters->>'subscription' = 'lifetime' 
+   OR filters->'rules' @> '[{"value": "lifetime"}]';
+
+
+
+-- ============================================================================
+-- Migration: 20250620134144_create_test_audience_with_valid_data.sql
+-- ============================================================================
+
+
+
+
+-- ============================================================================
+-- Migration: 20250620135000_standardize_audience_filter_display.sql
+-- ============================================================================
+
+-- Standardize audience filter display by converting simple key-value filters to rules format
+-- This ensures consistent UI display of all filter conditions
+
+DO $$
+DECLARE
+    audience_record RECORD;
+    new_filters JSONB;
+    rules_array JSONB;
+BEGIN
+    RAISE NOTICE 'Starting audience filter standardization...';
+    
+    -- Process each audience
+    FOR audience_record IN 
+        SELECT id, name, filters 
+        FROM email_audiences 
+        WHERE filters IS NOT NULL
+    LOOP
+        RAISE NOTICE 'Processing audience: %', audience_record.name;
+        
+        -- Initialize new filter structure
+        new_filters := COALESCE(audience_record.filters, '{}'::jsonb);
+        rules_array := '[]'::jsonb;
+        
+        -- Convert simple key-value filters to rules format for consistent display
+        -- Only convert if not already in rules format
+        IF NOT (new_filters ? 'rules') THEN
+            RAISE NOTICE '  Converting % from simple to rules format', audience_record.name;
+            
+            -- Add status rule if present
+            IF new_filters ? 'status' THEN
+                rules_array := rules_array || jsonb_build_array(
+                    jsonb_build_object(
+                        'id', '1',
+                        'field', 'status',
+                        'operator', 'equals',
+                        'value', new_filters->>'status',
+                        'timeframe', 'all_time'
+                    )
+                );
+            END IF;
+            
+            -- Add subscription rule if present and not 'none'
+            IF new_filters ? 'subscription' AND new_filters->>'subscription' != 'none' THEN
+                rules_array := rules_array || jsonb_build_array(
+                    jsonb_build_object(
+                        'id', '2',
+                        'field', 'subscription', 
+                        'operator', 'equals',
+                        'value', new_filters->>'subscription',
+                        'timeframe', 'all_time'
+                    )
+                );
+            END IF;
+            
+            -- Handle complex filters like signup_date, last_email_open
+            IF new_filters ? 'signup_date' AND jsonb_typeof(new_filters->'signup_date') = 'object' THEN
+                rules_array := rules_array || jsonb_build_array(
+                    jsonb_build_object(
+                        'id', '3',
+                        'field', 'signup_date',
+                        'operator', COALESCE(new_filters->'signup_date'->>'operator', 'within'),
+                        'value', COALESCE(new_filters->'signup_date'->>'value', '7_days'),
+                        'timeframe', 'all_time'
+                    )
+                );
+            END IF;
+            
+            IF new_filters ? 'last_email_open' AND jsonb_typeof(new_filters->'last_email_open') = 'object' THEN
+                rules_array := rules_array || jsonb_build_array(
+                    jsonb_build_object(
+                        'id', '4',
+                        'field', 'last_email_open',
+                        'operator', COALESCE(new_filters->'last_email_open'->>'operator', 'older_than'),
+                        'value', COALESCE(new_filters->'last_email_open'->>'value', '60_days'),
+                        'timeframe', 'all_time'
+                    )
+                );
+            END IF;
+            
+            -- Only add rules if we have any, otherwise keep simple format
+            IF jsonb_array_length(rules_array) > 0 THEN
+                -- Create new filter structure with rules
+                new_filters := jsonb_build_object(
+                    'rules', rules_array,
+                    'audience_type', COALESCE(new_filters->>'audience_type', 'dynamic')
+                );
+                
+                -- Update the audience
+                UPDATE email_audiences 
+                SET filters = new_filters,
+                    updated_at = NOW()
+                WHERE id = audience_record.id;
+                
+                RAISE NOTICE '  ✅ Updated % with % rules', audience_record.name, jsonb_array_length(rules_array);
+            ELSE
+                RAISE NOTICE '  ℹ️  Skipped % (no meaningful filters to convert)', audience_record.name;
+            END IF;
+        ELSE
+            RAISE NOTICE '  ℹ️  Skipped % (already in rules format)', audience_record.name;
+        END IF;
+    END LOOP;
+    
+    RAISE NOTICE 'Audience filter standardization completed!';
+END $$; 
+
+
+-- ============================================================================
+-- Migration: 20250626072846_fix_campaign_schema_fields.sql
+-- ============================================================================
+
+-- Fix campaign schema to match frontend expectations
+-- Add missing fields to email_campaigns table
+ALTER TABLE email_campaigns 
+ADD COLUMN IF NOT EXISTS preheader TEXT,
+ADD COLUMN IF NOT EXISTS html_content TEXT,
+ADD COLUMN IF NOT EXISTS text_content TEXT,
+ADD COLUMN IF NOT EXISTS sender_name TEXT,
+ADD COLUMN IF NOT EXISTS sender_email TEXT,
+ADD COLUMN IF NOT EXISTS reply_to_email TEXT;
+
+-- Copy data from old columns to new columns (if they exist)
+UPDATE email_campaigns 
+SET 
+  sender_name = from_name,
+  sender_email = from_email,
+  reply_to_email = reply_to
+WHERE sender_name IS NULL OR sender_email IS NULL OR reply_to_email IS NULL;
+
+-- Create junction table for campaign-audience relationships (many-to-many)
+CREATE TABLE IF NOT EXISTS email_campaign_audiences (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id UUID REFERENCES email_campaigns(id) ON DELETE CASCADE,
+  audience_id UUID REFERENCES email_audiences(id) ON DELETE CASCADE,
+  is_excluded BOOLEAN DEFAULT FALSE, -- TRUE for excluded audiences, FALSE for included
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(campaign_id, audience_id, is_excluded)
+);
+
+-- Add indexes for performance
+CREATE INDEX IF NOT EXISTS idx_campaign_audiences_campaign ON email_campaign_audiences(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_campaign_audiences_audience ON email_campaign_audiences(audience_id);
+CREATE INDEX IF NOT EXISTS idx_campaign_audiences_excluded ON email_campaign_audiences(is_excluded);
+
+-- Enable RLS on the new table
+ALTER TABLE email_campaign_audiences ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for admin access to campaign audiences
+CREATE POLICY "Admins can manage campaign audiences" ON email_campaign_audiences
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+
+
+-- ============================================================================
+-- Migration: 20250626073527_cleanup_duplicate_campaign_columns.sql
+-- ============================================================================
+
+-- Clean up duplicate columns in email_campaigns table
+-- Remove old columns that were replaced by new ones
+
+-- Only drop columns if they exist to avoid errors
+DO $$ 
+BEGIN
+    -- Drop old columns if they exist
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_campaigns' AND column_name = 'from_name') THEN
+        ALTER TABLE email_campaigns DROP COLUMN from_name;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_campaigns' AND column_name = 'from_email') THEN
+        ALTER TABLE email_campaigns DROP COLUMN from_email;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_campaigns' AND column_name = 'reply_to') THEN
+        ALTER TABLE email_campaigns DROP COLUMN reply_to;
+    END IF;
+END $$;
+
+-- Ensure the new columns have the correct constraints
+ALTER TABLE email_campaigns 
+ALTER COLUMN sender_name TYPE VARCHAR(255),
+ALTER COLUMN sender_email TYPE VARCHAR(255),
+ALTER COLUMN reply_to_email TYPE VARCHAR(255);
+
+-- Add comments to document the schema
+COMMENT ON COLUMN email_campaigns.sender_name IS 'Campaign sender display name';
+COMMENT ON COLUMN email_campaigns.sender_email IS 'Campaign sender email address';  
+COMMENT ON COLUMN email_campaigns.reply_to_email IS 'Reply-to email address for campaign';
+COMMENT ON COLUMN email_campaigns.preheader IS 'Email preheader text shown in inbox preview';
+COMMENT ON COLUMN email_campaigns.html_content IS 'Campaign HTML content';
+COMMENT ON COLUMN email_campaigns.text_content IS 'Campaign plain text content';
+
+
+
+-- ============================================================================
+-- Migration: 20250703193455_email_automation_system_final.sql
+-- ============================================================================
+
+-- Complete Email Automations System Migration
+-- Created: 2025-07-03
+-- Description: Comprehensive email automation system with workflow engine, triggers, conditions, and advanced features
+
+-- Enable necessary extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_cron";
+
+-- =============================================
+-- AUTOMATION WORKFLOW ENGINE
+-- =============================================
+
+-- Enhanced automation types
+DO $$ 
+BEGIN
+  -- Automation trigger types
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'automation_trigger_type') THEN
+    CREATE TYPE automation_trigger_type AS ENUM (
+      'signup', 'purchase', 'abandonment', 'anniversary', 'behavior', 
+      'date_based', 'segment_entry', 'segment_exit', 'custom_event',
+      'email_open', 'email_click', 'website_visit', 'subscription_change'
+    );
+  END IF;
+  
+  -- Automation step types
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'automation_step_type') THEN
+    CREATE TYPE automation_step_type AS ENUM (
+      'email', 'delay', 'condition', 'action', 'webhook', 'tag_add', 
+      'tag_remove', 'segment_add', 'segment_remove', 'custom_field_update'
+    );
+  END IF;
+  
+  -- Automation status types
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'automation_status') THEN
+    CREATE TYPE automation_status AS ENUM ('draft', 'active', 'paused', 'archived', 'testing');
+  END IF;
+  
+  -- Enrollment status types
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'enrollment_status') THEN
+    CREATE TYPE enrollment_status AS ENUM ('active', 'completed', 'paused', 'cancelled', 'failed');
+  END IF;
+  
+  -- Job status types
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'job_status') THEN
+    CREATE TYPE job_status AS ENUM ('pending', 'processing', 'completed', 'failed', 'cancelled');
+  END IF;
+END $$;
+
+-- Enhanced email automations table
+DO $$
+BEGIN
+  -- Check if table exists and add missing columns
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_automations') THEN
+    -- Add missing columns if they don't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_automations' AND column_name = 'trigger_type') THEN
+      ALTER TABLE email_automations ADD COLUMN trigger_type automation_trigger_type;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_automations' AND column_name = 'trigger_conditions') THEN
+      ALTER TABLE email_automations ADD COLUMN trigger_conditions JSONB NOT NULL DEFAULT '{}';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_automations' AND column_name = 'workflow_definition') THEN
+      ALTER TABLE email_automations ADD COLUMN workflow_definition JSONB NOT NULL DEFAULT '{"steps": []}';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_automations' AND column_name = 'status') THEN
+      ALTER TABLE email_automations ADD COLUMN status automation_status DEFAULT 'draft';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_automations' AND column_name = 'is_recurring') THEN
+      ALTER TABLE email_automations ADD COLUMN is_recurring BOOLEAN DEFAULT true;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_automations' AND column_name = 'max_enrollments') THEN
+      ALTER TABLE email_automations ADD COLUMN max_enrollments INTEGER DEFAULT NULL;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_automations' AND column_name = 'enrollment_limit_per_user') THEN
+      ALTER TABLE email_automations ADD COLUMN enrollment_limit_per_user INTEGER DEFAULT 1;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_automations' AND column_name = 'total_enrollments') THEN
+      ALTER TABLE email_automations ADD COLUMN total_enrollments INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_automations' AND column_name = 'active_enrollments') THEN
+      ALTER TABLE email_automations ADD COLUMN active_enrollments INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_automations' AND column_name = 'completed_enrollments') THEN
+      ALTER TABLE email_automations ADD COLUMN completed_enrollments INTEGER DEFAULT 0;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'email_automations' AND column_name = 'created_by') THEN
+      ALTER TABLE email_automations ADD COLUMN created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+    END IF;
+  ELSE
+    -- Create the table if it doesn't exist
+    CREATE TABLE email_automations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      
+      -- Trigger configuration
+      trigger_type automation_trigger_type NOT NULL,
+      trigger_conditions JSONB NOT NULL DEFAULT '{}',
+      
+      -- Workflow definition
+      workflow_definition JSONB NOT NULL DEFAULT '{"steps": []}',
+      
+      -- Settings
+      status automation_status DEFAULT 'draft',
+      is_recurring BOOLEAN DEFAULT true,
+      max_enrollments INTEGER DEFAULT NULL, -- NULL = unlimited
+      enrollment_limit_per_user INTEGER DEFAULT 1,
+      
+      -- Analytics
+      total_enrollments INTEGER DEFAULT 0,
+      active_enrollments INTEGER DEFAULT 0,
+      completed_enrollments INTEGER DEFAULT 0,
+      
+      -- Timing
+      created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      
+      -- Constraints
+      CONSTRAINT valid_workflow_structure CHECK (
+        workflow_definition ? 'steps' AND 
+        jsonb_typeof(workflow_definition->'steps') = 'array'
+      )
+    );
+  END IF;
+END $$;
+
+-- Automation enrollments with enhanced tracking
+CREATE TABLE IF NOT EXISTS email_automation_enrollments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  automation_id UUID REFERENCES email_automations(id) ON DELETE CASCADE,
+  subscriber_id UUID REFERENCES subscribers(id) ON DELETE CASCADE,
+  
+  -- Progress tracking
+  current_step_index INTEGER DEFAULT 0,
+  current_step_id UUID DEFAULT NULL,
+  status enrollment_status DEFAULT 'active',
+  
+  -- Timing
+  enrolled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  completed_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  paused_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  next_action_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  
+  -- Context data
+  enrollment_data JSONB DEFAULT '{}', -- Original trigger data
+  current_context JSONB DEFAULT '{}', -- Current workflow context
+  
+  -- Analytics
+  emails_sent INTEGER DEFAULT 0,
+  emails_opened INTEGER DEFAULT 0,
+  emails_clicked INTEGER DEFAULT 0,
+  
+  UNIQUE(automation_id, subscriber_id) -- Prevent duplicate enrollments
+);
+
+-- Automation step executions log
+CREATE TABLE IF NOT EXISTS automation_step_executions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  enrollment_id UUID REFERENCES email_automation_enrollments(id) ON DELETE CASCADE,
+  automation_id UUID REFERENCES email_automations(id) ON DELETE CASCADE,
+  subscriber_id UUID REFERENCES subscribers(id) ON DELETE CASCADE,
+  
+  -- Step details
+  step_index INTEGER NOT NULL,
+  step_id UUID NOT NULL,
+  step_type automation_step_type NOT NULL,
+  step_config JSONB NOT NULL,
+  
+  -- Execution tracking
+  status job_status DEFAULT 'pending',
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  completed_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  error_message TEXT DEFAULT NULL,
+  retry_count INTEGER DEFAULT 0,
+  
+  -- Results
+  execution_result JSONB DEFAULT '{}',
+  
+  -- Performance metrics
+  processing_time_ms INTEGER DEFAULT NULL
+);
+
+-- =============================================
+-- BACKGROUND JOB QUEUE SYSTEM
+-- =============================================
+
+-- Job types for different automation tasks
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'automation_job_type') THEN
+    CREATE TYPE automation_job_type AS ENUM (
+      'trigger_check', 'enrollment_process', 'step_execution', 
+      'delay_completion', 'condition_evaluation', 'email_send',
+      'webhook_call', 'cleanup', 'analytics_update'
+    );
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'job_priority') THEN
+    CREATE TYPE job_priority AS ENUM ('low', 'medium', 'high', 'urgent');
+  END IF;
+END $$;
+
+-- Background job queue
+CREATE TABLE IF NOT EXISTS automation_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Job identification
+  job_type automation_job_type NOT NULL,
+  priority job_priority DEFAULT 'medium',
+  
+  -- Scheduling
+  scheduled_for TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  attempts INTEGER DEFAULT 0,
+  max_attempts INTEGER DEFAULT 3,
+  
+  -- Status tracking
+  status job_status DEFAULT 'pending',
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  completed_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  
+  -- Data
+  payload JSONB NOT NULL DEFAULT '{}',
+  result JSONB DEFAULT '{}',
+  error_message TEXT DEFAULT NULL,
+  
+  -- References
+  automation_id UUID REFERENCES email_automations(id) ON DELETE CASCADE DEFAULT NULL,
+  enrollment_id UUID REFERENCES email_automation_enrollments(id) ON DELETE CASCADE DEFAULT NULL,
+  
+  -- Metadata
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =============================================
+-- TRIGGER DETECTION SYSTEM
+-- =============================================
+
+-- Event tracking for trigger detection (partitioned by date for performance)
+CREATE TABLE IF NOT EXISTS automation_events (
+  id UUID DEFAULT gen_random_uuid(),
+  
+  -- Event identification
+  event_type VARCHAR(50) NOT NULL,
+  subscriber_id UUID REFERENCES subscribers(id) ON DELETE CASCADE,
+  
+  -- Event data
+  event_data JSONB NOT NULL DEFAULT '{}',
+  
+  -- Processing
+  processed BOOLEAN DEFAULT false,
+  processed_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  
+  -- Timing
+  occurred_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  -- Metadata
+  source VARCHAR(100) DEFAULT NULL,
+  session_id VARCHAR(255) DEFAULT NULL,
+  
+  -- Composite primary key including partition column
+  PRIMARY KEY (id, occurred_at)
+) PARTITION BY RANGE (occurred_at);
+
+-- Create initial partitions (current month and next month)
+CREATE TABLE IF NOT EXISTS automation_events_default PARTITION OF automation_events DEFAULT;
+
+-- =============================================
+-- ADVANCED SEGMENTATION SYSTEM
+-- =============================================
+
+-- Custom fields for advanced segmentation
+CREATE TABLE IF NOT EXISTS automation_custom_fields (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(100) NOT NULL UNIQUE,
+  field_type VARCHAR(20) NOT NULL CHECK (field_type IN ('text', 'number', 'date', 'boolean', 'select')),
+  description TEXT,
+  options JSONB DEFAULT '[]', -- For select fields
+  is_required BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Subscriber field values
+CREATE TABLE IF NOT EXISTS automation_subscriber_fields (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  subscriber_id UUID REFERENCES subscribers(id) ON DELETE CASCADE,
+  field_id UUID REFERENCES automation_custom_fields(id) ON DELETE CASCADE,
+  value TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  UNIQUE(subscriber_id, field_id)
+);
+
+-- Dynamic segments
+CREATE TABLE IF NOT EXISTS automation_segments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  conditions JSONB NOT NULL DEFAULT '{}',
+  
+  -- Caching
+  member_count INTEGER DEFAULT 0,
+  last_calculated_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  
+  -- Settings
+  is_dynamic BOOLEAN DEFAULT true,
+  auto_update BOOLEAN DEFAULT true,
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Segment membership cache
+CREATE TABLE IF NOT EXISTS automation_segment_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  segment_id UUID REFERENCES automation_segments(id) ON DELETE CASCADE,
+  subscriber_id UUID REFERENCES subscribers(id) ON DELETE CASCADE,
+  added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  
+  UNIQUE(segment_id, subscriber_id)
+);
+
+-- =============================================
+-- EMAIL TEMPLATE SYSTEM
+-- =============================================
+
+-- Automation-specific email templates
+CREATE TABLE IF NOT EXISTS automation_email_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  subject VARCHAR(255) NOT NULL,
+  html_content TEXT NOT NULL,
+  text_content TEXT DEFAULT NULL,
+  
+  -- Template metadata
+  template_type VARCHAR(50) DEFAULT 'automation',
+  category VARCHAR(100) DEFAULT NULL,
+  
+  -- A/B testing
+  is_variant BOOLEAN DEFAULT false,
+  parent_template_id UUID REFERENCES automation_email_templates(id) ON DELETE CASCADE DEFAULT NULL,
+  variant_name VARCHAR(100) DEFAULT NULL,
+  
+  -- Analytics
+  usage_count INTEGER DEFAULT 0,
+  
+  -- Timing
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- =============================================
+-- WEBHOOK INTEGRATION SYSTEM
+-- =============================================
+
+-- Webhook endpoints for external integrations
+CREATE TABLE IF NOT EXISTS automation_webhooks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  url VARCHAR(500) NOT NULL,
+  method VARCHAR(10) DEFAULT 'POST' CHECK (method IN ('GET', 'POST', 'PUT', 'PATCH', 'DELETE')),
+  
+  -- Authentication
+  headers JSONB DEFAULT '{}',
+  auth_type VARCHAR(20) DEFAULT 'none' CHECK (auth_type IN ('none', 'basic', 'bearer', 'api_key')),
+  auth_config JSONB DEFAULT '{}',
+  
+  -- Settings
+  timeout_seconds INTEGER DEFAULT 30,
+  retry_attempts INTEGER DEFAULT 3,
+  is_active BOOLEAN DEFAULT true,
+  
+  -- Analytics
+  total_calls INTEGER DEFAULT 0,
+  successful_calls INTEGER DEFAULT 0,
+  failed_calls INTEGER DEFAULT 0,
+  
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Webhook call logs (partitioned by date)
+CREATE TABLE IF NOT EXISTS automation_webhook_logs (
+  id UUID DEFAULT gen_random_uuid(),
+  webhook_id UUID REFERENCES automation_webhooks(id) ON DELETE CASCADE,
+  
+  -- Request details
+  request_payload JSONB NOT NULL,
+  request_headers JSONB DEFAULT '{}',
+  
+  -- Response details
+  response_status INTEGER DEFAULT NULL,
+  response_body TEXT DEFAULT NULL,
+  response_headers JSONB DEFAULT '{}',
+  
+  -- Timing
+  called_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  response_time_ms INTEGER DEFAULT NULL,
+  
+  -- Status
+  success BOOLEAN DEFAULT false,
+  error_message TEXT DEFAULT NULL,
+  
+  -- Context
+  automation_id UUID REFERENCES email_automations(id) ON DELETE CASCADE DEFAULT NULL,
+  enrollment_id UUID REFERENCES email_automation_enrollments(id) ON DELETE CASCADE DEFAULT NULL,
+  
+  -- Composite primary key including partition column
+  PRIMARY KEY (id, called_at)
+) PARTITION BY RANGE (called_at);
+
+-- Create initial partitions
+CREATE TABLE IF NOT EXISTS automation_webhook_logs_default PARTITION OF automation_webhook_logs DEFAULT;
+
+-- =============================================
+-- INDEXES FOR PERFORMANCE
+-- =============================================
+
+-- Email automations indexes
+CREATE INDEX IF NOT EXISTS idx_automations_status ON email_automations(status) WHERE status IN ('active', 'testing');
+CREATE INDEX IF NOT EXISTS idx_automations_trigger_type ON email_automations(trigger_type);
+CREATE INDEX IF NOT EXISTS idx_automations_created_at ON email_automations(created_at);
+
+-- Enrollment indexes
+CREATE INDEX IF NOT EXISTS idx_enrollments_automation_status ON email_automation_enrollments(automation_id, status);
+CREATE INDEX IF NOT EXISTS idx_enrollments_subscriber ON email_automation_enrollments(subscriber_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_next_action ON email_automation_enrollments(next_action_at) WHERE status = 'active' AND next_action_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_enrollments_active ON email_automation_enrollments(automation_id) WHERE status = 'active';
+
+-- Job queue indexes
+CREATE INDEX IF NOT EXISTS idx_jobs_pending ON automation_jobs(priority DESC, scheduled_for ASC) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_jobs_automation ON automation_jobs(automation_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_enrollment ON automation_jobs(enrollment_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_cleanup ON automation_jobs(completed_at) WHERE status IN ('completed', 'failed');
+
+-- Event indexes
+CREATE INDEX IF NOT EXISTS idx_events_unprocessed ON automation_events(occurred_at, event_type) WHERE processed = false;
+CREATE INDEX IF NOT EXISTS idx_events_subscriber ON automation_events(subscriber_id, occurred_at);
+CREATE INDEX IF NOT EXISTS idx_events_type ON automation_events(event_type, occurred_at);
+
+-- Step execution indexes
+CREATE INDEX IF NOT EXISTS idx_step_executions_enrollment ON automation_step_executions(enrollment_id, step_index);
+CREATE INDEX IF NOT EXISTS idx_step_executions_status ON automation_step_executions(status, started_at);
+
+-- Segment indexes
+CREATE INDEX IF NOT EXISTS idx_segment_members_segment ON automation_segment_members(segment_id);
+CREATE INDEX IF NOT EXISTS idx_segment_members_subscriber ON automation_segment_members(subscriber_id);
+
+-- Custom field indexes
+CREATE INDEX IF NOT EXISTS idx_subscriber_fields_subscriber ON automation_subscriber_fields(subscriber_id);
+CREATE INDEX IF NOT EXISTS idx_subscriber_fields_field ON automation_subscriber_fields(field_id);
+
+-- Webhook indexes
+CREATE INDEX IF NOT EXISTS idx_webhooks_active ON automation_webhooks(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_webhook_logs_webhook ON automation_webhook_logs(webhook_id, called_at);
+
+-- =============================================
+-- ROW LEVEL SECURITY
+-- =============================================
+
+-- Enable RLS on all tables
+ALTER TABLE email_automations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_automation_enrollments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_step_executions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_custom_fields ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_subscriber_fields ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_segments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_segment_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_email_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_webhooks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE automation_webhook_logs ENABLE ROW LEVEL SECURITY;
+
+-- Admin policies for all tables
+CREATE POLICY "Admins can manage all automation data" ON email_automations
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all enrollments" ON email_automation_enrollments
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all step executions" ON automation_step_executions
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all jobs" ON automation_jobs
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all events" ON automation_events
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all custom fields" ON automation_custom_fields
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all subscriber fields" ON automation_subscriber_fields
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all segments" ON automation_segments
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all segment members" ON automation_segment_members
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all email templates" ON automation_email_templates
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all webhooks" ON automation_webhooks
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+CREATE POLICY "Admins can manage all webhook logs" ON automation_webhook_logs
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+-- Service role policies (for API and background jobs)
+CREATE POLICY "Service role can manage all automation data" ON email_automations
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage all enrollments" ON email_automation_enrollments
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage all step executions" ON automation_step_executions
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage all jobs" ON automation_jobs
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage all events" ON automation_events
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage all custom fields" ON automation_custom_fields
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage all subscriber fields" ON automation_subscriber_fields
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage all segments" ON automation_segments
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage all segment members" ON automation_segment_members
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage all email templates" ON automation_email_templates
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage all webhooks" ON automation_webhooks
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage all webhook logs" ON automation_webhook_logs
+FOR ALL USING (auth.role() = 'service_role');
+
+-- =============================================
+-- AUTOMATION PROCESSING FUNCTIONS
+-- =============================================
+
+-- Function to create automation events
+CREATE OR REPLACE FUNCTION create_automation_event(
+  p_event_type VARCHAR(50),
+  p_subscriber_id UUID,
+  p_event_data JSONB DEFAULT '{}',
+  p_source VARCHAR(100) DEFAULT NULL,
+  p_session_id VARCHAR(255) DEFAULT NULL
+) RETURNS UUID AS $$
+DECLARE
+  v_event_id UUID;
+BEGIN
+  INSERT INTO automation_events (event_type, subscriber_id, event_data, source, session_id)
+  VALUES (p_event_type, p_subscriber_id, p_event_data, p_source, p_session_id)
+  RETURNING id INTO v_event_id;
+  
+  RETURN v_event_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to enroll subscriber in automation
+CREATE OR REPLACE FUNCTION enroll_subscriber_in_automation(
+  p_automation_id UUID,
+  p_subscriber_id UUID,
+  p_enrollment_data JSONB DEFAULT '{}'
+) RETURNS UUID AS $$
+DECLARE
+  v_enrollment_id UUID;
+  v_automation_record RECORD;
+  v_existing_count INTEGER;
+BEGIN
+  -- Get automation details
+  SELECT * INTO v_automation_record 
+  FROM email_automations 
+  WHERE id = p_automation_id AND status = 'active';
+  
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Automation not found or not active';
+  END IF;
+  
+  -- Check enrollment limits
+  SELECT COUNT(*) INTO v_existing_count
+  FROM email_automation_enrollments
+  WHERE automation_id = p_automation_id AND subscriber_id = p_subscriber_id;
+  
+  IF v_existing_count >= v_automation_record.enrollment_limit_per_user THEN
+    RAISE EXCEPTION 'Enrollment limit exceeded for this subscriber';
+  END IF;
+  
+  -- Check global enrollment limit
+  IF v_automation_record.max_enrollments IS NOT NULL THEN
+    SELECT COUNT(*) INTO v_existing_count
+    FROM email_automation_enrollments
+    WHERE automation_id = p_automation_id;
+    
+    IF v_existing_count >= v_automation_record.max_enrollments THEN
+      RAISE EXCEPTION 'Global enrollment limit exceeded';
+    END IF;
+  END IF;
+  
+  -- Create enrollment
+  INSERT INTO email_automation_enrollments (
+    automation_id, subscriber_id, enrollment_data, next_action_at
+  ) VALUES (
+    p_automation_id, p_subscriber_id, p_enrollment_data, NOW()
+  ) RETURNING id INTO v_enrollment_id;
+  
+  -- Update automation stats
+  UPDATE email_automations 
+  SET 
+    total_enrollments = total_enrollments + 1,
+    active_enrollments = active_enrollments + 1
+  WHERE id = p_automation_id;
+  
+  -- Schedule first step
+  PERFORM schedule_automation_job(
+    'step_execution',
+    jsonb_build_object(
+      'enrollment_id', v_enrollment_id,
+      'step_index', 0
+    ),
+    'medium',
+    NOW()
+  );
+  
+  RETURN v_enrollment_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to schedule automation jobs
+CREATE OR REPLACE FUNCTION schedule_automation_job(
+  p_job_type automation_job_type,
+  p_payload JSONB,
+  p_priority job_priority DEFAULT 'medium',
+  p_scheduled_for TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+) RETURNS UUID AS $$
+DECLARE
+  v_job_id UUID;
+BEGIN
+  INSERT INTO automation_jobs (
+    job_type, payload, priority, scheduled_for,
+    automation_id, enrollment_id
+  ) VALUES (
+    p_job_type, p_payload, p_priority, p_scheduled_for,
+    (p_payload->>'automation_id')::UUID,
+    (p_payload->>'enrollment_id')::UUID
+  ) RETURNING id INTO v_job_id;
+  
+  RETURN v_job_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to evaluate automation conditions
+CREATE OR REPLACE FUNCTION evaluate_automation_conditions(
+  p_conditions JSONB,
+  p_subscriber_id UUID
+) RETURNS BOOLEAN AS $$
+DECLARE
+  v_condition JSONB;
+  v_operator TEXT;
+  v_field TEXT;
+  v_value TEXT;
+  v_subscriber_value TEXT;
+  v_result BOOLEAN := TRUE;
+BEGIN
+  -- Handle empty conditions
+  IF p_conditions IS NULL OR jsonb_array_length(p_conditions) = 0 THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- Get operator (default to 'and')
+  v_operator := COALESCE(p_conditions->>'operator', 'and');
+  
+  -- Process each condition
+  FOR v_condition IN SELECT * FROM jsonb_array_elements(p_conditions->'conditions')
+  LOOP
+    v_field := v_condition->>'field';
+    v_value := v_condition->>'value';
+    
+    -- Get subscriber field value
+    CASE v_field
+      WHEN 'email' THEN
+        SELECT email INTO v_subscriber_value FROM subscribers WHERE id = p_subscriber_id;
+      WHEN 'name' THEN
+        SELECT name INTO v_subscriber_value FROM subscribers WHERE id = p_subscriber_id;
+      WHEN 'created_at' THEN
+        SELECT created_at::TEXT INTO v_subscriber_value FROM subscribers WHERE id = p_subscriber_id;
+      ELSE
+        -- Custom field
+        SELECT value INTO v_subscriber_value 
+        FROM automation_subscriber_fields asf
+        JOIN automation_custom_fields acf ON asf.field_id = acf.id
+        WHERE asf.subscriber_id = p_subscriber_id AND acf.name = v_field;
+    END CASE;
+    
+    -- Evaluate condition based on operator
+    CASE v_condition->>'operator'
+      WHEN 'equals' THEN
+        IF v_operator = 'and' THEN
+          v_result := v_result AND (v_subscriber_value = v_value);
+        ELSE
+          v_result := v_result OR (v_subscriber_value = v_value);
+        END IF;
+      WHEN 'not_equals' THEN
+        IF v_operator = 'and' THEN
+          v_result := v_result AND (v_subscriber_value != v_value);
+        ELSE
+          v_result := v_result OR (v_subscriber_value != v_value);
+        END IF;
+      WHEN 'contains' THEN
+        IF v_operator = 'and' THEN
+          v_result := v_result AND (v_subscriber_value ILIKE '%' || v_value || '%');
+        ELSE
+          v_result := v_result OR (v_subscriber_value ILIKE '%' || v_value || '%');
+        END IF;
+      WHEN 'not_contains' THEN
+        IF v_operator = 'and' THEN
+          v_result := v_result AND (v_subscriber_value NOT ILIKE '%' || v_value || '%');
+        ELSE
+          v_result := v_result OR (v_subscriber_value NOT ILIKE '%' || v_value || '%');
+        END IF;
+      ELSE
+        -- Default to equals
+        IF v_operator = 'and' THEN
+          v_result := v_result AND (v_subscriber_value = v_value);
+        ELSE
+          v_result := v_result OR (v_subscriber_value = v_value);
+        END IF;
+    END CASE;
+    
+    -- Early exit for AND operations
+    IF v_operator = 'and' AND v_result = FALSE THEN
+      RETURN FALSE;
+    END IF;
+    
+    -- Early exit for OR operations
+    IF v_operator = 'or' AND v_result = TRUE THEN
+      RETURN TRUE;
+    END IF;
+  END LOOP;
+  
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to get next job from queue
+CREATE OR REPLACE FUNCTION get_next_automation_job()
+RETURNS TABLE(
+  job_id UUID,
+  job_type automation_job_type,
+  payload JSONB,
+  automation_id UUID,
+  enrollment_id UUID
+) AS $$
+DECLARE
+  v_job_record RECORD;
+BEGIN
+  -- Get and lock the next pending job
+  SELECT * INTO v_job_record
+  FROM automation_jobs
+  WHERE status = 'pending' 
+    AND scheduled_for <= NOW()
+    AND attempts < max_attempts
+  ORDER BY priority DESC, scheduled_for ASC
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED;
+  
+  IF FOUND THEN
+    -- Update job status to processing
+    UPDATE automation_jobs 
+    SET 
+      status = 'processing',
+      started_at = NOW(),
+      attempts = attempts + 1
+    WHERE id = v_job_record.id;
+    
+    -- Return job details
+    RETURN QUERY SELECT 
+      v_job_record.id,
+      v_job_record.job_type,
+      v_job_record.payload,
+      v_job_record.automation_id,
+      v_job_record.enrollment_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to complete automation job
+CREATE OR REPLACE FUNCTION complete_automation_job(
+  p_job_id UUID,
+  p_status job_status,
+  p_result JSONB DEFAULT '{}',

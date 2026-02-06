@@ -43,6 +43,17 @@ When a user logs in, the application:
 
 This approach eliminates the need for direct Stripe API calls and their associated rate limits.
 
+## Project Structure
+
+- `app/` – Next.js app router
+- `components/` – React components
+- `docs/` – Documentation (guides, audits, references)
+- `scripts/` – Executable scripts (`scripts/legacy/` for older JS scripts)
+- `db/` – Database exports and migration archives
+- `supabase/` – Supabase config and migrations
+
+See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for details.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

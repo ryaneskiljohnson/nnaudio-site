@@ -1,0 +1,780 @@
+{
+  "timestamp": "2026-02-05T23:58:02.848Z",
+  "summary": {
+    "total": 128,
+    "updated": 0,
+    "alreadyHad": 12,
+    "notFound": 116,
+    "coverage": "9.4%"
+  },
+  "results": [
+    {
+      "productName": "Primal Cthulhu",
+      "slug": "primal-cthulhu",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Reflection Cthulhu",
+      "slug": "reflection-cthulhu",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Alice Cthulhu",
+      "slug": "alice-cthulhu",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Apache MIDI",
+      "slug": "apache-free-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Bakers Delight MIDI",
+      "slug": "bakers-delight-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Bakers Dozen",
+      "slug": "bakers-dozen",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Blossom MIDI",
+      "slug": "blossom-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Broken MIDI",
+      "slug": "broken-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Cryptic Tales MIDI",
+      "slug": "cryptic-tales-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Cthulhu Godz 1",
+      "slug": "cthulhu-godz-1",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Cthulhu Godz 2",
+      "slug": "cthulhu-godz-2",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Demented Wisdom MIDI",
+      "slug": "demented-wisdom-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Element Cthulhu",
+      "slug": "element-cthulhu",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Flower Cthulhu",
+      "slug": "flower-cthulhu",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Fruit Salad MIDI",
+      "slug": "fruit-salad-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Go To Work",
+      "slug": "go-to-work-modern-song-constructions",
+      "videoUrl": "https://www.youtube.com/embed/SsIXxt7oNlk?feature=oembed",
+      "source": "existing"
+    },
+    {
+      "productName": "La Fleur MIDI",
+      "slug": "la-fleur-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Life & Death MIDI",
+      "slug": "life-death-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Lofi Jamz",
+      "slug": "lofi-jamz",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Mai Tai MIDI",
+      "slug": "mai-tai-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "MIDI Library 1",
+      "slug": "midi-library-1",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "MIDI Library 2",
+      "slug": "midi-library-2",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "MIDI Library 3",
+      "slug": "midi-library-3",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "MIDI Library 4",
+      "slug": "midi-library-4",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "MIDI Nerds",
+      "slug": "midi-nerds-free-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Modern Cthulhu 1",
+      "slug": "modern-cthulhu-1",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Modern Cthulhu 2",
+      "slug": "modern-cthulhu-2",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Mutahad Sample Library",
+      "slug": "mutahad-sample-library",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ooze MIDI",
+      "slug": "ooze-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Rabbit Hole MIDI",
+      "slug": "rabbit-hole-free-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ride Away",
+      "slug": "ride-away-modern-song-constructions",
+      "videoUrl": "https://www.youtube.com/embed/l-Dveod7y1A?feature=oembed",
+      "source": "existing"
+    },
+    {
+      "productName": "Royal Family MIDI",
+      "slug": "royal-family-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "So Far Gone MIDI",
+      "slug": "so-far-gone-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Sun Goes Down MIDI",
+      "slug": "sun-goes-down-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Swiper MIDI",
+      "slug": "swiper-midi-free",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "The Code",
+      "slug": "the-code-modern-song-constructions",
+      "videoUrl": "https://www.youtube.com/embed/-vpwUyc-f9M?feature=oembed",
+      "source": "existing"
+    },
+    {
+      "productName": "Time Zones MIDI",
+      "slug": "time-zones-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Trapsoul MIDI",
+      "slug": "trapsoul-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ultimate 808 Bundle",
+      "slug": "ultimate-808-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ultimate Drums & Percs 1",
+      "slug": "ultimate-drums-percs-1",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ultimate Drums & Percs 2",
+      "slug": "ultimate-drums-percs-2",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ultimate MIDI Collection 1",
+      "slug": "ultimate-midi-collection-1",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ultimate MIDI Collection 2",
+      "slug": "ultimate-midi-collection-2",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ultimate MIDI Collection 3",
+      "slug": "ultimate-midi-collection-3",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ultimate MIDI Collection 4",
+      "slug": "ultimate-midi-collection-4",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ultimate MIDI Collection 5",
+      "slug": "ultimate-midi-collection-5",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ultimate MIDI Collection 6",
+      "slug": "ultimate-midi-collection-6",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "UMC6 MIDI",
+      "slug": "umc6-midi",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Weaknd Cthulhu",
+      "slug": "weaknd-cthulhu",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Yonkers Cthulhu",
+      "slug": "yonkers-cthulhu",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "20 For 20 MIDI Bundle",
+      "slug": "20-for-20-midi-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "All Guitar Bundle",
+      "slug": "all-guitar-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Analog Plugin Bundle",
+      "slug": "analog-plugin-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Atmosphere Bundle",
+      "slug": "atmosphere-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Beat Lab",
+      "slug": "beat-lab",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Cthulhu Bundle 1",
+      "slug": "cthulhu-bundle-1",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Cthulhu Bundle 2",
+      "slug": "cthulhu-bundle-2",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Drum & Bass Bundle",
+      "slug": "drum-bass-bundle-2",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Drum & Perc Bundle",
+      "slug": "drum-perc-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Enchanted Melodies MIDI Pack Bundle",
+      "slug": "enchante_melodies_bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Guitar Bundle",
+      "slug": "guitar-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Mandelbrot Set Bundle",
+      "slug": "mandelbrot-set-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "MIDI Mob MIDI Bundle",
+      "slug": "midi-mob-midi-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "MIDI Takeout Bundle",
+      "slug": "midi-takeout-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Modern FX Bundle",
+      "slug": "modern-fx-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Modern Song Constructions Bundle",
+      "slug": "modern-song-constructions-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Modern Workstation Bundle",
+      "slug": "modern-workstation-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Obscura + Royal Family Bundle",
+      "slug": "obscura-royal-family-bundle-black-friday",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Orbitals Bundle",
+      "slug": "orbitals-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Orchestral Plugin Bundle",
+      "slug": "orchestral-plugin-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Producer's Arsenal",
+      "slug": "producers-arsenal",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Soundscapes Bundle",
+      "slug": "soundscapes-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Summer Kickoff MIDI Bundle",
+      "slug": "summer-kickoff-midi-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Summer Sample Pack Bundle",
+      "slug": "summer-sample-pack-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Tetrad Series",
+      "slug": "tetrad-series",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ultimate Bundle",
+      "slug": "ultimate-bundle",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "NNAudio Access",
+      "slug": "nnaudio-access",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Crystal Ball",
+      "slug": "crystal-ball-magic-multi-effect",
+      "videoUrl": "https://youtu.be/xjPXoZQWWbI",
+      "source": "existing"
+    },
+    {
+      "productName": "Curves EQ",
+      "slug": "curves-eq",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Digital Echoes Delay",
+      "slug": "digital-echoes-delay",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Entanglement",
+      "slug": "entanglement",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Fabric",
+      "slug": "fabric",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Freelay",
+      "slug": "freelay-free-delay-module-plugin",
+      "videoUrl": "https://www.youtube.com/embed/MLEwDJeKAa0?feature=oembed",
+      "source": "existing"
+    },
+    {
+      "productName": "FreeQ",
+      "slug": "freeq-free-eq-module-plugin",
+      "videoUrl": "https://www.youtube.com/embed/oJLohJcQob8?feature=oembed",
+      "source": "existing"
+    },
+    {
+      "productName": "Freeverb",
+      "slug": "freeverb-free-reverb-module-plugin",
+      "videoUrl": "https://www.youtube.com/embed/_ynMy-8JkR0?feature=oembed",
+      "source": "existing"
+    },
+    {
+      "productName": "Hadron",
+      "slug": "hadron",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Mandelbrot",
+      "slug": "mandelbrot",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Observer",
+      "slug": "observer",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Planck",
+      "slug": "planck",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Quarks",
+      "slug": "quarks",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Rabbithole",
+      "slug": "rabbithole",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Singularity",
+      "slug": "singularity",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Sterfreeo",
+      "slug": "sterfreeo-free-stereo-module-plugin",
+      "videoUrl": "https://www.youtube.com/embed/EriQsXoYQHc?feature=oembed",
+      "source": "existing"
+    },
+    {
+      "productName": "Albanju",
+      "slug": "albanju",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Apache Flute",
+      "slug": "apache-flute",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Blaque",
+      "slug": "blaque",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Cowboy Harp",
+      "slug": "cowboy-harp-free-jaw-harp-plugin",
+      "videoUrl": "https://www.youtube.com/embed/ETW4YhHPhsM?feature=oembed",
+      "source": "existing"
+    },
+    {
+      "productName": "Curio",
+      "slug": "curio-texture-generator",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "CymaSynth",
+      "slug": "cymasynth",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "DigitalDreamscape",
+      "slug": "digitaldreamscape-quad-rompler",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Evanescent Baby Grand Piano",
+      "slug": "evanescent-baby-grand-piano",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Game Boi",
+      "slug": "game-boi-retro-sounds-free-plugin",
+      "videoUrl": "https://nnaud.io/wp-content/uploads/2023/08/Trying-My-Idea-With-Game-Boi-.mp4#t=0.1",
+      "source": "existing"
+    },
+    {
+      "productName": "Mandolele Mandolin & Ukulele",
+      "slug": "mandolele-mandolin-ukulele",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Mesosphere",
+      "slug": "mesosphere",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Natura",
+      "slug": "natura",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Noker",
+      "slug": "noker",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Numb",
+      "slug": "numb",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Obscura",
+      "slug": "obscura-tortured-orchestral-box",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Perc Gadget",
+      "slug": "perc-gadget",
+      "videoUrl": "https://youtu.be/A1nJhqn8GYw",
+      "source": "existing"
+    },
+    {
+      "productName": "Prodigious",
+      "slug": "prodigious",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Quoir",
+      "slug": "quoir",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Reiya",
+      "slug": "reiya",
+      "videoUrl": "https://www.youtube.com/watch?v=ck_lV_NuPmM&t=61s",
+      "source": "existing"
+    },
+    {
+      "productName": "Rompl Workstation",
+      "slug": "rompl-workstation",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Strange Tingz",
+      "slug": "strange-tingz-free-80s-plugin",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "SubFlux",
+      "slug": "subflux-bass-module",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Tactures",
+      "slug": "tactures",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Tetrad Guitars",
+      "slug": "tetrad-guitars",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Tetrad Keys",
+      "slug": "tetrad-keys",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Tetrad Winds",
+      "slug": "tetrad-winds",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Apogee",
+      "slug": "apogee",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Eclipse",
+      "slug": "eclipse",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Ion",
+      "slug": "ion",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Kepler",
+      "slug": "kepler",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Lagrange",
+      "slug": "lagrange",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Perihelion",
+      "slug": "perihelion",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Retrograde",
+      "slug": "retrograde",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Tidal",
+      "slug": "tidal",
+      "videoUrl": null,
+      "source": "not_found"
+    },
+    {
+      "productName": "Zenith",
+      "slug": "zenith",
+      "videoUrl": null,
+      "source": "not_found"
+    }
+  ]
+}

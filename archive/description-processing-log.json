@@ -1,0 +1,628 @@
+[
+  {
+    "slug": "bakers-dozen",
+    "name": "Bakers Dozen",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 478,
+    "fullLength": 606
+  },
+  {
+    "slug": "blossom-midi",
+    "name": "Blossom MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 146,
+    "fullLength": 457
+  },
+  {
+    "slug": "broken-midi",
+    "name": "Broken MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 155,
+    "fullLength": 500
+  },
+  {
+    "slug": "cryptic-tales-midi",
+    "name": "Cryptic Tales MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 146,
+    "fullLength": 488
+  },
+  {
+    "slug": "cthulhu-godz-1",
+    "name": "Cthulhu Godz 1",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 502,
+    "fullLength": 578
+  },
+  {
+    "slug": "cthulhu-godz-2",
+    "name": "Cthulhu Godz 2",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 473,
+    "fullLength": 557
+  },
+  {
+    "slug": "demented-wisdom-midi",
+    "name": "Demented Wisdom MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 210,
+    "fullLength": 486
+  },
+  {
+    "slug": "element-cthulhu",
+    "name": "Element Cthulhu",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 313,
+    "fullLength": 596
+  },
+  {
+    "slug": "flower-cthulhu",
+    "name": "Flower Cthulhu",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 315,
+    "fullLength": 590
+  },
+  {
+    "slug": "fruit-salad-midi",
+    "name": "Fruit Salad MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 155,
+    "fullLength": 487
+  },
+  {
+    "slug": "go-to-work-modern-song-constructions",
+    "name": "Go To Work",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 220,
+    "fullLength": 421
+  },
+  {
+    "slug": "la-fleur-midi",
+    "name": "La Fleur MIDI",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "life-death-midi",
+    "name": "Life & Death MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 155,
+    "fullLength": 606
+  },
+  {
+    "slug": "lofi-jamz",
+    "name": "Lofi Jamz",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 276,
+    "fullLength": 462
+  },
+  {
+    "slug": "mai-tai-midi",
+    "name": "Mai Tai MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 155,
+    "fullLength": 489
+  },
+  {
+    "slug": "midi-library-1",
+    "name": "MIDI Library 1",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 201,
+    "fullLength": 579
+  },
+  {
+    "slug": "midi-library-2",
+    "name": "MIDI Library 2",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 187,
+    "fullLength": 416
+  },
+  {
+    "slug": "midi-library-3",
+    "name": "MIDI Library 3",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 17,
+    "fullLength": 579
+  },
+  {
+    "slug": "midi-library-4",
+    "name": "MIDI Library 4",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 17,
+    "fullLength": 544
+  },
+  {
+    "slug": "midi-nerds-free-midi",
+    "name": "MIDI Nerds",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 139,
+    "fullLength": 508
+  },
+  {
+    "slug": "modern-cthulhu-1",
+    "name": "Modern Cthulhu 1",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 312,
+    "fullLength": 580
+  },
+  {
+    "slug": "modern-cthulhu-2",
+    "name": "Modern Cthulhu 2",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 313,
+    "fullLength": 591
+  },
+  {
+    "slug": "mutahad-sample-library",
+    "name": "Mutahad Sample Library",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 17,
+    "fullLength": 470
+  },
+  {
+    "slug": "ooze-midi",
+    "name": "Ooze MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 184,
+    "fullLength": 427
+  },
+  {
+    "slug": "rabbit-hole-free-midi",
+    "name": "Rabbit Hole MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 176,
+    "fullLength": 570
+  },
+  {
+    "slug": "ride-away-modern-song-constructions",
+    "name": "Ride Away",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 220,
+    "fullLength": 421
+  },
+  {
+    "slug": "royal-family-midi",
+    "name": "Royal Family MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 154,
+    "fullLength": 530
+  },
+  {
+    "slug": "so-far-gone-midi",
+    "name": "So Far Gone MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 155,
+    "fullLength": 610
+  },
+  {
+    "slug": "sun-goes-down-midi",
+    "name": "Sun Goes Down MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 205,
+    "fullLength": 486
+  },
+  {
+    "slug": "swiper-midi-free",
+    "name": "Swiper MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 216,
+    "fullLength": 515
+  },
+  {
+    "slug": "the-code-modern-song-constructions",
+    "name": "The Code",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 220,
+    "fullLength": 415
+  },
+  {
+    "slug": "time-zones-midi",
+    "name": "Time Zones MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 220,
+    "fullLength": 472
+  },
+  {
+    "slug": "trapsoul-midi",
+    "name": "Trapsoul MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 220,
+    "fullLength": 466
+  },
+  {
+    "slug": "ultimate-808-bundle",
+    "name": "Ultimate 808 Bundle",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "ultimate-drums-percs-1",
+    "name": "Ultimate Drums & Percs 1",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 202,
+    "fullLength": 492
+  },
+  {
+    "slug": "ultimate-drums-percs-2",
+    "name": "Ultimate Drums & Percs 2",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 179,
+    "fullLength": 539
+  },
+  {
+    "slug": "ultimate-midi-collection-1",
+    "name": "Ultimate MIDI Collection 1",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "ultimate-midi-collection-2",
+    "name": "Ultimate MIDI Collection 2",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 235,
+    "fullLength": 523
+  },
+  {
+    "slug": "ultimate-midi-collection-3",
+    "name": "Ultimate MIDI Collection 3",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "ultimate-midi-collection-4",
+    "name": "Ultimate MIDI Collection 4",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "ultimate-midi-collection-5",
+    "name": "Ultimate MIDI Collection 5",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "ultimate-midi-collection-6",
+    "name": "Ultimate MIDI Collection 6",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "umc6-midi",
+    "name": "UMC6 MIDI",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 155,
+    "fullLength": 596
+  },
+  {
+    "slug": "weaknd-cthulhu",
+    "name": "Weaknd Cthulhu",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 315,
+    "fullLength": 441
+  },
+  {
+    "slug": "yonkers-cthulhu",
+    "name": "Yonkers Cthulhu",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 315,
+    "fullLength": 596
+  },
+  {
+    "slug": "20-for-20-midi-bundle",
+    "name": "20 For 20 MIDI Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 23,
+    "fullLength": 23
+  },
+  {
+    "slug": "analog-plugin-bundle",
+    "name": "Analog Plugin Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 20,
+    "fullLength": 20
+  },
+  {
+    "slug": "atmosphere-bundle",
+    "name": "Atmosphere Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 17,
+    "fullLength": 17
+  },
+  {
+    "slug": "cthulhu-bundle-1-xmas-2023",
+    "name": "Cthulhu Bundle 1",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 28,
+    "fullLength": 28
+  },
+  {
+    "slug": "cthulhu-bundle-2-xmas-2023",
+    "name": "Cthulhu Bundle 2",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 28,
+    "fullLength": 28
+  },
+  {
+    "slug": "drum-bass-bundle-2",
+    "name": "Drum & Bass Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 18,
+    "fullLength": 18
+  },
+  {
+    "slug": "drum-perc-bundle",
+    "name": "Drum & Perc Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 18,
+    "fullLength": 18
+  },
+  {
+    "slug": "enchante_melodies_bundle",
+    "name": "Enchanted Melodies MIDI Pack Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 581,
+    "fullLength": 583
+  },
+  {
+    "slug": "guitar-bundle-xmas-2023",
+    "name": "Guitar Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 25,
+    "fullLength": 25
+  },
+  {
+    "slug": "midi-takeout-bundle",
+    "name": "MIDI Takeout Bundle",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "modern-song-constructions-bundle",
+    "name": "Modern Song Constructions Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 32,
+    "fullLength": 32
+  },
+  {
+    "slug": "modern-workstation-bundle-xmas-2023",
+    "name": "Modern Workstation Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 37,
+    "fullLength": 37
+  },
+  {
+    "slug": "obscura-royal-family-bundle-black-friday",
+    "name": "Obscura + Royal Family Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 44,
+    "fullLength": 44
+  },
+  {
+    "slug": "orchestra-bundle-xmas-2023",
+    "name": "Orchestra Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 28,
+    "fullLength": 28
+  },
+  {
+    "slug": "orchestral-plugin-bundle",
+    "name": "Orchestral Plugin Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 24,
+    "fullLength": 24
+  },
+  {
+    "slug": "relaunch-plugin-bundle-2",
+    "name": "Relaunch Plugin Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 22,
+    "fullLength": 22
+  },
+  {
+    "slug": "selection-box-bundle-xmas-2023",
+    "name": "Selection Box Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 32,
+    "fullLength": 32
+  },
+  {
+    "slug": "soundscapes-bundle-xmas-2023",
+    "name": "Soundscapes Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 30,
+    "fullLength": 30
+  },
+  {
+    "slug": "summer-kickoff-midi-bundle",
+    "name": "Summer Kickoff MIDI Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 26,
+    "fullLength": 26
+  },
+  {
+    "slug": "summer-sample-pack-bundle",
+    "name": "Summer Sample Pack Bundle",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 30,
+    "fullLength": 30
+  },
+  {
+    "slug": "nnaudio-access",
+    "name": "NNAudio Access",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "entanglement",
+    "name": "Entanglement",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "fabric",
+    "name": "Fabric",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "freelay-free-delay-module-plugin",
+    "name": "Freelay",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 55,
+    "fullLength": 504
+  },
+  {
+    "slug": "freeverb-free-reverb-module-plugin",
+    "name": "Freeverb",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 43,
+    "fullLength": 454
+  },
+  {
+    "slug": "hadron",
+    "name": "Hadron",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "mandelbrot",
+    "name": "Mandelbrot",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "observer",
+    "name": "Observer",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "planck",
+    "name": "Planck",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "quarks",
+    "name": "Quarks",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "rabbithole",
+    "name": "Rabbithole",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "singularity",
+    "name": "Singularity",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "game-boi-retro-sounds-free-plugin",
+    "name": "Game Boi",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 48,
+    "fullLength": 523
+  },
+  {
+    "slug": "strange-tingz-free-80s-plugin",
+    "name": "Strange Tingz",
+    "status": "completed",
+    "message": "Successfully updated",
+    "shortLength": 47,
+    "fullLength": 382
+  },
+  {
+    "slug": "eclipse",
+    "name": "Eclipse",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "kepler",
+    "name": "Kepler",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "perihelion",
+    "name": "Perihelion",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "retrograde",
+    "name": "Retrograde",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  },
+  {
+    "slug": "zenith",
+    "name": "Zenith",
+    "status": "failed",
+    "message": "Failed to scrape any descriptions"
+  }
+]

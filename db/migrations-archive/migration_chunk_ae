@@ -1,0 +1,1000 @@
+
+-- Add message_id column to email_sends table if it doesn't exist
+ALTER TABLE email_sends 
+ADD COLUMN IF NOT EXISTS message_id VARCHAR(255);
+
+-- Add index for message_id lookups
+CREATE INDEX IF NOT EXISTS idx_email_sends_message_id ON email_sends(message_id);
+
+-- Add bounce_reason column to subscribers table if it doesn't exist
+ALTER TABLE subscribers 
+ADD COLUMN IF NOT EXISTS bounce_reason TEXT,
+ADD COLUMN IF NOT EXISTS bounced_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN IF NOT EXISTS complained_at TIMESTAMP WITH TIME ZONE;
+
+-- Update subscriber status enum to include 'bounced' and 'complained'
+ALTER TYPE subscriber_status ADD VALUE IF NOT EXISTS 'bounced';
+ALTER TYPE subscriber_status ADD VALUE IF NOT EXISTS 'complained';
+
+-- Create email_webhook_logs table if it doesn't exist
+CREATE TABLE IF NOT EXISTS email_webhook_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider VARCHAR(100) NOT NULL,
+  event_type VARCHAR(100) NOT NULL,
+  webhook_data JSONB NOT NULL,
+  processed BOOLEAN DEFAULT false,
+  campaign_id UUID REFERENCES email_campaigns(id) ON DELETE SET NULL,
+  subscriber_id UUID REFERENCES subscribers(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Index for webhook processing
+CREATE INDEX IF NOT EXISTS idx_webhook_logs_unprocessed ON email_webhook_logs(created_at) WHERE processed = false;
+CREATE INDEX IF NOT EXISTS idx_webhook_logs_provider_event ON email_webhook_logs(provider, event_type); 
+
+
+-- ============================================================================
+-- Migration: 20250115000000_add_youtube_duration_caching.sql
+-- ============================================================================
+
+-- Add YouTube duration caching to tutorial_videos table
+-- This migration adds fields to cache YouTube video durations and track when they were last updated
+
+-- Add duration caching fields to tutorial_videos table
+ALTER TABLE tutorial_videos 
+ADD COLUMN IF NOT EXISTS youtube_duration_cached INTEGER DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS youtube_duration_last_updated TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS youtube_duration_cache_version INTEGER DEFAULT 1;
+
+-- Add index for efficient duration lookups
+CREATE INDEX IF NOT EXISTS idx_tutorial_videos_youtube_duration_cached 
+ON tutorial_videos(youtube_duration_cached) 
+WHERE youtube_duration_cached IS NOT NULL;
+
+-- Add index for cache invalidation queries
+CREATE INDEX IF NOT EXISTS idx_tutorial_videos_youtube_duration_last_updated 
+ON tutorial_videos(youtube_duration_last_updated) 
+WHERE youtube_duration_last_updated IS NOT NULL;
+
+-- Add comment explaining the caching system
+COMMENT ON COLUMN tutorial_videos.youtube_duration_cached IS 'Cached YouTube video duration in seconds. NULL means not cached yet.';
+COMMENT ON COLUMN tutorial_videos.youtube_duration_last_updated IS 'When the YouTube duration was last fetched and cached. Used for cache invalidation.';
+COMMENT ON COLUMN tutorial_videos.youtube_duration_cache_version IS 'Version number for cache invalidation. Increment when video metadata changes.';
+
+-- Create function to invalidate duration cache when video metadata changes
+CREATE OR REPLACE FUNCTION invalidate_youtube_duration_cache()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- If youtube_video_id changed, invalidate the cache
+  IF OLD.youtube_video_id IS DISTINCT FROM NEW.youtube_video_id THEN
+    NEW.youtube_duration_cached := NULL;
+    NEW.youtube_duration_last_updated := NULL;
+    NEW.youtube_duration_cache_version := COALESCE(OLD.youtube_duration_cache_version, 1) + 1;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger to automatically invalidate cache when video metadata changes
+DROP TRIGGER IF EXISTS trigger_invalidate_youtube_duration_cache ON tutorial_videos;
+CREATE TRIGGER trigger_invalidate_youtube_duration_cache
+  BEFORE UPDATE ON tutorial_videos
+  FOR EACH ROW
+  EXECUTE FUNCTION invalidate_youtube_duration_cache();
+
+-- Create function to get videos that need duration caching
+CREATE OR REPLACE FUNCTION get_videos_needing_duration_cache(
+  max_age_hours INTEGER DEFAULT 24,
+  limit_count INTEGER DEFAULT 100
+)
+RETURNS TABLE (
+  id UUID,
+  youtube_video_id TEXT,
+  youtube_duration_cached INTEGER,
+  youtube_duration_last_updated TIMESTAMP WITH TIME ZONE
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    tv.id,
+    tv.youtube_video_id,
+    tv.youtube_duration_cached,
+    tv.youtube_duration_last_updated
+  FROM tutorial_videos tv
+  WHERE tv.youtube_video_id IS NOT NULL
+    AND (
+      tv.youtube_duration_cached IS NULL 
+      OR tv.youtube_duration_last_updated IS NULL
+      OR tv.youtube_duration_last_updated < NOW() - INTERVAL '1 hour' * max_age_hours
+    )
+  ORDER BY 
+    CASE 
+      WHEN tv.youtube_duration_cached IS NULL THEN 1
+      WHEN tv.youtube_duration_last_updated IS NULL THEN 2
+      ELSE 3
+    END,
+    tv.youtube_duration_last_updated ASC NULLS FIRST
+  LIMIT limit_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create function to update cached duration
+CREATE OR REPLACE FUNCTION update_youtube_duration_cache(
+  video_id UUID,
+  duration_seconds INTEGER
+)
+RETURNS BOOLEAN AS $$
+BEGIN
+  UPDATE tutorial_videos 
+  SET 
+    youtube_duration_cached = duration_seconds,
+    youtube_duration_last_updated = NOW(),
+    updated_at = NOW()
+  WHERE id = video_id;
+  
+  RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+
+
+
+
+
+-- ============================================================================
+-- Migration: 20250115000001_create_meta_conversion_events.sql
+-- ============================================================================
+
+-- Meta Conversions API Events Table
+-- Stores all Meta conversion events for logging, debugging, and compliance
+
+CREATE TABLE IF NOT EXISTS meta_conversion_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_name VARCHAR(100) NOT NULL,
+  event_id VARCHAR(255),
+  status VARCHAR(50) NOT NULL CHECK (status IN ('success', 'failed', 'test')),
+  user_email VARCHAR(255),
+  user_id VARCHAR(255),
+  custom_data JSONB,
+  error_message TEXT,
+  client_ip INET,
+  meta_response_id VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for faster queries
+CREATE INDEX IF NOT EXISTS idx_meta_events_event_name ON meta_conversion_events(event_name);
+CREATE INDEX IF NOT EXISTS idx_meta_events_status ON meta_conversion_events(status);
+CREATE INDEX IF NOT EXISTS idx_meta_events_user_email ON meta_conversion_events(user_email);
+CREATE INDEX IF NOT EXISTS idx_meta_events_user_id ON meta_conversion_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_meta_events_created_at ON meta_conversion_events(created_at DESC);
+
+-- Enable RLS
+ALTER TABLE meta_conversion_events ENABLE ROW LEVEL SECURITY;
+
+-- Service role can insert (from API)
+CREATE POLICY "Service role can insert meta events"
+  ON meta_conversion_events
+  FOR INSERT
+  WITH CHECK (true);
+
+-- Authenticated users can view
+CREATE POLICY "Admins can view meta events"
+  ON meta_conversion_events
+  FOR SELECT
+  USING (auth.jwt() ->> 'role' = 'authenticated');
+
+-- Service role bypass (automatically applies)
+GRANT ALL ON meta_conversion_events TO service_role;
+
+
+
+
+-- ============================================================================
+-- Migration: 20250120000000_fix_admin_rls.sql
+-- ============================================================================
+
+-- Create the missing admins table
+CREATE TABLE IF NOT EXISTS admins (
+  id SERIAL PRIMARY KEY,
+  "user" TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Add the current user as admin (only if not exists)
+INSERT INTO admins ("user") 
+SELECT '900f11b8-c901-49fd-bfab-5fafe984ce72'
+WHERE NOT EXISTS (
+  SELECT 1 FROM admins WHERE "user" = '900f11b8-c901-49fd-bfab-5fafe984ce72'
+);
+
+-- Enable RLS on admins table
+ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+
+-- Allow admins to read admin table
+CREATE POLICY "Admins can read admin table" ON admins
+  FOR SELECT USING (user = auth.uid()::text); 
+
+
+-- ============================================================================
+-- Migration: 20250120000001_fix_admin_rls_policy.sql
+-- ============================================================================
+
+-- Drop the existing policy
+DROP POLICY IF EXISTS "Admins can manage campaigns" ON email_campaigns;
+ 
+-- Temporarily disable RLS to allow campaign creation
+ALTER TABLE email_campaigns DISABLE ROW LEVEL SECURITY; 
+
+
+-- ============================================================================
+-- Migration: 20250120000002_re_enable_rls_with_proper_policy.sql
+-- ============================================================================
+
+-- Re-enable RLS on email_campaigns table
+ALTER TABLE email_campaigns ENABLE ROW LEVEL SECURITY;
+
+-- Recreate the is_admin function to ensure it works properly
+CREATE OR REPLACE FUNCTION is_admin(user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM admins 
+    WHERE "user" = user_id::text
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create a proper admin policy using the is_admin function
+CREATE POLICY "Admins can manage campaigns" ON email_campaigns
+  FOR ALL USING (is_admin(auth.uid())); 
+
+
+-- ============================================================================
+-- Migration: 20250120000003_fix_is_admin_function.sql
+-- ============================================================================
+
+-- Fix the is_admin function to accept text parameter instead of UUID
+CREATE OR REPLACE FUNCTION is_admin(user_id TEXT)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM admins 
+    WHERE "user" = user_id
+  );
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Also create a UUID version that converts to text first
+CREATE OR REPLACE FUNCTION is_admin(user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN is_admin(user_id::text);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER; 
+
+
+-- ============================================================================
+-- Migration: 20250120000004_simplify_is_admin_function.sql
+-- ============================================================================
+
+-- Replace the function without dropping (to avoid dependency issues)
+CREATE OR REPLACE FUNCTION is_admin(user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  user_text TEXT;
+BEGIN
+  -- Convert UUID to text explicitly
+  user_text := user_id::text;
+  
+  -- Check if user exists in admins table
+  RETURN EXISTS (
+    SELECT 1 FROM admins 
+    WHERE "user" = user_text
+  );
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER; 
+
+
+-- ============================================================================
+-- Migration: 20250120000005_remove_text_is_admin.sql
+-- ============================================================================
+
+-- Remove the TEXT version of is_admin to resolve overloading
+DROP FUNCTION IF EXISTS is_admin(TEXT); 
+
+
+-- ============================================================================
+-- Migration: 20250120000006_debug_is_admin.sql
+-- ============================================================================
+
+-- Create a debug function to see what's happening
+CREATE OR REPLACE FUNCTION debug_is_admin(user_id UUID)
+RETURNS JSON AS $$
+DECLARE
+  user_text TEXT;
+  admin_exists BOOLEAN;
+  admin_count INTEGER;
+BEGIN
+  -- Convert UUID to text explicitly
+  user_text := user_id::text;
+  
+  -- Count admins with this user
+  SELECT COUNT(*) INTO admin_count FROM admins WHERE "user" = user_text;
+  
+  -- Check if user exists in admins table
+  admin_exists := EXISTS (
+    SELECT 1 FROM admins 
+    WHERE "user" = user_text
+  );
+  
+  -- Return debug info
+  RETURN json_build_object(
+    'input_uuid', user_id,
+    'converted_text', user_text,
+    'admin_count', admin_count,
+    'admin_exists', admin_exists,
+    'all_admins', (SELECT json_agg("user") FROM admins)
+  );
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN json_build_object('error', SQLERRM);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER; 
+
+
+-- ============================================================================
+-- Migration: 20250120000007_fix_is_admin_final.sql
+-- ============================================================================
+
+-- Final fix for is_admin function - handle both UUID and text types
+CREATE OR REPLACE FUNCTION is_admin(user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  -- Try UUID comparison first (in case column is UUID type)
+  RETURN EXISTS (
+    SELECT 1 FROM admins 
+    WHERE "user"::uuid = user_id
+  );
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Fallback to text comparison (in case column is text type)
+    BEGIN
+      RETURN EXISTS (
+        SELECT 1 FROM admins 
+        WHERE "user" = user_id::text
+      );
+    EXCEPTION
+      WHEN OTHERS THEN
+        RETURN FALSE;
+    END;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER; 
+
+
+-- ============================================================================
+-- Migration: 20250120000008_fix_admins_rls_recursion.sql
+-- ============================================================================
+
+-- Fix infinite recursion in admins table RLS policy
+-- The issue is that the policy references auth.uid() which causes recursion
+
+-- Drop the problematic policy
+DROP POLICY IF EXISTS "Admins can read admin table" ON admins;
+
+-- Disable RLS temporarily to fix the issue
+ALTER TABLE admins DISABLE ROW LEVEL SECURITY;
+
+-- Re-enable RLS with a proper policy
+ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+
+-- Create a simple policy that allows reading admins table
+-- This policy allows any authenticated user to read the admins table
+-- The actual admin check is done in the application logic
+CREATE POLICY "Allow authenticated users to read admins" ON admins
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Also allow service role to access
+CREATE POLICY "Allow service role to access admins" ON admins
+  FOR ALL USING (auth.role() = 'service_role');
+
+
+
+-- ============================================================================
+-- Migration: 20250125000000_add_inactive_status.sql
+-- ============================================================================
+
+-- Migration to add INACTIVE status to subscriber_status enum
+-- This allows us to properly track unsubscribed subscribers
+
+-- Add INACTIVE status to the enum
+ALTER TYPE subscriber_status ADD VALUE IF NOT EXISTS 'INACTIVE';
+
+-- Add comment to the enum type for documentation
+COMMENT ON TYPE subscriber_status IS 'Subscriber status: active, INACTIVE, bounced, pending';
+
+
+
+-- ============================================================================
+-- Migration: 20250127000000_add_template_audiences.sql
+-- ============================================================================
+
+-- Add template-audience relationships (intended audiences for templates)
+-- This allows templates to have default/intended audiences that can be overridden in campaigns
+
+-- Create junction table for template-audience relationships (many-to-many)
+CREATE TABLE IF NOT EXISTS email_template_audiences (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  template_id UUID REFERENCES email_templates(id) ON DELETE CASCADE,
+  audience_id UUID REFERENCES email_audiences(id) ON DELETE CASCADE,
+  is_excluded BOOLEAN DEFAULT FALSE, -- TRUE for excluded audiences, FALSE for included
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(template_id, audience_id, is_excluded)
+);
+
+-- Add indexes for performance
+CREATE INDEX IF NOT EXISTS idx_template_audiences_template ON email_template_audiences(template_id);
+CREATE INDEX IF NOT EXISTS idx_template_audiences_audience ON email_template_audiences(audience_id);
+CREATE INDEX IF NOT EXISTS idx_template_audiences_excluded ON email_template_audiences(is_excluded);
+
+-- Enable RLS on the new table
+ALTER TABLE email_template_audiences ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for admin access to template audiences
+CREATE POLICY "Admins can manage template audiences" ON email_template_audiences
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+);
+
+-- Add comment for documentation
+COMMENT ON TABLE email_template_audiences IS 'Junction table linking templates to their intended/default audiences. These can be overridden when creating campaigns from templates.';
+COMMENT ON COLUMN email_template_audiences.is_excluded IS 'FALSE = included audience, TRUE = excluded audience for this template'; 
+
+
+-- ============================================================================
+-- Migration: 20250127000001_fix_email_templates_rls.sql
+-- ============================================================================
+
+-- Fix RLS policy for email_templates table to match working campaigns policy
+-- Drop existing policy if it exists
+DROP POLICY IF EXISTS "Admins can manage templates" ON email_templates;
+ 
+-- Create a proper admin policy using the is_admin function (same as campaigns)
+CREATE POLICY "Admins can manage templates" ON email_templates
+  FOR ALL USING (is_admin(auth.uid())); 
+
+
+-- ============================================================================
+-- Migration: 20250127000002_force_create_template_audiences.sql
+-- ============================================================================
+
+-- Force create the email_template_audiences table (it seems the previous migration didn't work)
+
+-- Drop table if it exists and recreate it
+DROP TABLE IF EXISTS email_template_audiences CASCADE;
+
+-- Create junction table for template-audience relationships (many-to-many)
+CREATE TABLE email_template_audiences (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  template_id UUID NOT NULL REFERENCES email_templates(id) ON DELETE CASCADE,
+  audience_id UUID NOT NULL REFERENCES email_audiences(id) ON DELETE CASCADE,
+  is_excluded BOOLEAN NOT NULL DEFAULT FALSE, -- TRUE for excluded audiences, FALSE for included
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CONSTRAINT unique_template_audience_exclusion UNIQUE(template_id, audience_id, is_excluded)
+);
+
+-- Add indexes for performance
+CREATE INDEX idx_template_audiences_template ON email_template_audiences(template_id);
+CREATE INDEX idx_template_audiences_audience ON email_template_audiences(audience_id);
+CREATE INDEX idx_template_audiences_excluded ON email_template_audiences(is_excluded);
+
+-- Enable RLS on the new table
+ALTER TABLE email_template_audiences ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for admin access to template audiences
+CREATE POLICY "Admins can manage template audiences" ON email_template_audiences
+FOR ALL USING (is_admin(auth.uid()));
+
+-- Add comment for documentation
+COMMENT ON TABLE email_template_audiences IS 'Junction table linking templates to their intended/default audiences. These can be overridden when creating campaigns from templates.';
+COMMENT ON COLUMN email_template_audiences.is_excluded IS 'FALSE = included audience, TRUE = excluded audience for this template'; 
+
+
+-- ============================================================================
+-- Migration: 20250127000003_match_campaign_audience_policy.sql
+-- ============================================================================
+
+-- Make template audiences policy match campaign audiences policy exactly
+
+DROP POLICY IF EXISTS "Admins can manage template audiences" ON email_template_audiences;
+
+-- Create policy identical to campaign audiences policy
+CREATE POLICY "Admins can manage template audiences" ON email_template_audiences
+FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM admins 
+    WHERE admins.user = auth.uid()
+  )
+); 
+
+
+-- ============================================================================
+-- Migration: 20250130000000_add_ios_subscriptions.sql
+-- ============================================================================
+
+-- Migration: Add iOS subscription tracking
+-- This allows us to track iOS StoreKit purchases alongside Stripe subscriptions
+
+-- Create table to track iOS subscriptions
+CREATE TABLE IF NOT EXISTS ios_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  
+  -- StoreKit transaction details
+  transaction_id TEXT NOT NULL UNIQUE,
+  original_transaction_id TEXT, -- For subscription renewals
+  product_id TEXT NOT NULL,
+  
+  -- Subscription details
+  subscription_type subscription_type NOT NULL DEFAULT 'none',
+  purchase_date TIMESTAMPTZ NOT NULL,
+  expires_date TIMESTAMPTZ NOT NULL,
+  
+  -- Receipt validation
+  receipt_data TEXT NOT NULL, -- Base64 encoded receipt
+  receipt_validated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  validation_status TEXT NOT NULL DEFAULT 'valid', -- 'valid', 'expired', 'revoked', 'invalid'
+  
+  -- Apple receipt validation response
+  apple_validation_response JSONB,
+  
+  -- Status tracking
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  auto_renew_status BOOLEAN DEFAULT true,
+  
+  -- Metadata
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  
+  -- Constraints
+  CONSTRAINT valid_subscription_type CHECK (subscription_type IN ('none', 'monthly', 'annual', 'lifetime')),
+  CONSTRAINT valid_expires_date CHECK (expires_date > purchase_date)
+);
+
+-- Create indexes for efficient queries
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_user_id ON ios_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_profile_id ON ios_subscriptions(profile_id);
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_transaction_id ON ios_subscriptions(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_original_transaction_id ON ios_subscriptions(original_transaction_id);
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_is_active ON ios_subscriptions(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_ios_subscriptions_expires_date ON ios_subscriptions(expires_date);
+
+-- Create function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_ios_subscriptions_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for updated_at
+CREATE TRIGGER update_ios_subscriptions_updated_at
+  BEFORE UPDATE ON ios_subscriptions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_ios_subscriptions_updated_at();
+
+-- Create function to get active iOS subscription for a user
+CREATE OR REPLACE FUNCTION get_active_ios_subscription(p_user_id UUID)
+RETURNS TABLE (
+  subscription_type subscription_type,
+  expires_date TIMESTAMPTZ,
+  transaction_id TEXT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    ios.subscription_type,
+    ios.expires_date,
+    ios.transaction_id
+  FROM ios_subscriptions ios
+  WHERE ios.user_id = p_user_id
+    AND ios.is_active = true
+    AND ios.validation_status = 'valid'
+    AND ios.expires_date > NOW()
+  ORDER BY ios.expires_date DESC
+  LIMIT 1;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Add RLS policies
+ALTER TABLE ios_subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- Users can view their own iOS subscriptions
+CREATE POLICY "Users can view own iOS subscriptions"
+  ON ios_subscriptions
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Service role can do everything (for API endpoints)
+CREATE POLICY "Service role can manage iOS subscriptions"
+  ON ios_subscriptions
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- Add comment
+COMMENT ON TABLE ios_subscriptions IS 'Tracks iOS StoreKit subscription purchases and their validation status';
+COMMENT ON COLUMN ios_subscriptions.transaction_id IS 'Unique transaction ID from StoreKit';
+COMMENT ON COLUMN ios_subscriptions.original_transaction_id IS 'Original transaction ID for subscription renewals';
+COMMENT ON COLUMN ios_subscriptions.product_id IS 'Product ID from App Store Connect (e.g., com.NNAudio.Cymasphere.monthly.plan)';
+COMMENT ON COLUMN ios_subscriptions.receipt_data IS 'Base64 encoded receipt data for validation';
+COMMENT ON COLUMN ios_subscriptions.validation_status IS 'Status of receipt validation: valid, expired, revoked, invalid';
+
+
+
+
+
+
+-- ============================================================================
+-- Migration: 20250131000000_fix_ticket_number_race_condition.sql
+-- ============================================================================
+
+-- Fix ticket number generation race condition
+-- This migration replaces the MAX-based approach with a sequence for thread-safe ticket number generation
+
+-- Create a sequence for ticket numbers
+CREATE SEQUENCE IF NOT EXISTS public.support_ticket_number_seq
+  START WITH 1
+  INCREMENT BY 1
+  NO MINVALUE
+  NO MAXVALUE
+  CACHE 1;
+
+-- Set the sequence to start from the highest existing ticket number + 1
+DO $$
+DECLARE
+  max_number integer;
+BEGIN
+  -- Get the maximum ticket number from existing tickets
+  SELECT COALESCE(MAX(CAST(SUBSTRING(ticket_number FROM 3) AS integer)), 0)
+  INTO max_number
+  FROM public.support_tickets
+  WHERE ticket_number ~ '^T-[0-9]+$';
+  
+  -- Set the sequence to start from max_number + 1
+  IF max_number > 0 THEN
+    PERFORM setval('public.support_ticket_number_seq', max_number, true);
+  END IF;
+END $$;
+
+-- Replace the generate_ticket_number function to use the sequence
+CREATE OR REPLACE FUNCTION generate_ticket_number()
+RETURNS text AS $$
+DECLARE
+  next_number integer;
+  ticket_number text;
+BEGIN
+  -- Get the next number from the sequence (atomic operation)
+  next_number := nextval('public.support_ticket_number_seq');
+  
+  -- Format as T-XXX with zero padding
+  ticket_number := 'T-' || LPAD(next_number::text, 3, '0');
+  
+  RETURN ticket_number;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+-- ============================================================================
+-- Migration: 20250201000000_fix_support_tickets_rls_admin_check.sql
+-- ============================================================================
+
+-- Fix support tickets RLS policies to use admins table instead of profiles.subscription
+-- This ensures consistency with the application-level checkAdmin() function
+
+-- Drop existing admin policies that check profiles.subscription
+DROP POLICY IF EXISTS "Users can view their own tickets" ON public.support_tickets;
+DROP POLICY IF EXISTS "Admins can update any ticket" ON public.support_tickets;
+DROP POLICY IF EXISTS "Admins can delete tickets" ON public.support_tickets;
+DROP POLICY IF EXISTS "Users can view messages for their tickets" ON public.support_messages;
+DROP POLICY IF EXISTS "Users can create messages for their tickets" ON public.support_messages;
+DROP POLICY IF EXISTS "Admins can update any message" ON public.support_messages;
+DROP POLICY IF EXISTS "Users can view attachments for accessible messages" ON public.support_attachments;
+DROP POLICY IF EXISTS "Users can create attachments for their messages" ON public.support_attachments;
+
+-- Recreate policies using is_admin() function (which checks admins table)
+-- Users can view their own tickets OR if they're admin
+CREATE POLICY "Users can view their own tickets" ON public.support_tickets
+  FOR SELECT USING (
+    auth.uid() = user_id OR 
+    is_admin(auth.uid())
+  );
+
+-- Admins can update any ticket
+CREATE POLICY "Admins can update any ticket" ON public.support_tickets
+  FOR UPDATE USING (is_admin(auth.uid()));
+
+-- Admins can delete tickets
+CREATE POLICY "Admins can delete tickets" ON public.support_tickets
+  FOR DELETE USING (is_admin(auth.uid()));
+
+-- Users can view messages for their own tickets OR if they're admin
+CREATE POLICY "Users can view messages for their tickets" ON public.support_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.support_tickets 
+      WHERE id = ticket_id AND (
+        user_id = auth.uid() OR 
+        is_admin(auth.uid())
+      )
+    )
+  );
+
+-- Users can create messages for their own tickets OR if they're admin
+CREATE POLICY "Users can create messages for their tickets" ON public.support_messages
+  FOR INSERT WITH CHECK (
+    auth.uid() = user_id AND (
+      EXISTS (
+        SELECT 1 FROM public.support_tickets 
+        WHERE id = ticket_id AND user_id = auth.uid()
+      ) OR
+      is_admin(auth.uid())
+    )
+  );
+
+-- Admins can update any message
+CREATE POLICY "Admins can update any message" ON public.support_messages
+  FOR UPDATE USING (is_admin(auth.uid()));
+
+-- Users can view attachments for messages they can see (their own tickets OR if admin)
+CREATE POLICY "Users can view attachments for accessible messages" ON public.support_attachments
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.support_messages sm
+      JOIN public.support_tickets st ON sm.ticket_id = st.id
+      WHERE sm.id = message_id AND (
+        st.user_id = auth.uid() OR 
+        is_admin(auth.uid())
+      )
+    )
+  );
+
+-- Users can create attachments for their own messages OR if they're admin
+CREATE POLICY "Users can create attachments for their messages" ON public.support_attachments
+  FOR INSERT WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.support_messages sm
+      JOIN public.support_tickets st ON sm.ticket_id = st.id
+      WHERE sm.id = message_id AND sm.user_id = auth.uid() AND (
+        st.user_id = auth.uid() OR 
+        is_admin(auth.uid())
+      )
+    )
+  );
+
+
+
+
+-- ============================================================================
+-- Migration: 20250620133145_fix_invalid_audience_status_filters.sql
+-- ============================================================================
+
+-- Fix invalid status values in email_audiences filters
+-- This migration fixes audiences that have invalid subscriber_status enum values
+
+-- Update direct status filters (legacy format)
+UPDATE email_audiences 
+SET filters = jsonb_set(
+  filters, 
+  '{status}', 
+  '"unsubscribed"'::jsonb
+)
+WHERE filters->>'status' = 'inactive';
+
+UPDATE email_audiences 
+SET filters = jsonb_set(
+  filters, 
+  '{status}', 
+  '"active"'::jsonb
+)
+WHERE filters->>'status' = 'subscribed';
+
+-- Update structured rules format (new format)
+UPDATE email_audiences 
+SET filters = jsonb_set(
+  filters,
+  '{rules}',
+  (
+    SELECT jsonb_agg(
+      CASE 
+        WHEN rule->>'field' = 'status' AND rule->>'value' = 'inactive' THEN
+          jsonb_set(rule, '{value}', '"unsubscribed"'::jsonb)
+        WHEN rule->>'field' = 'status' AND rule->>'value' = 'subscribed' THEN
+          jsonb_set(rule, '{value}', '"active"'::jsonb)
+        ELSE rule
+      END
+    )
+    FROM jsonb_array_elements(filters->'rules') AS rule
+  )
+)
+WHERE filters->'rules' IS NOT NULL 
+AND EXISTS (
+  SELECT 1 
+  FROM jsonb_array_elements(filters->'rules') AS rule
+  WHERE rule->>'field' = 'status' 
+  AND rule->>'value' IN ('inactive', 'subscribed')
+);
+
+-- Log the changes made
+DO $$
+DECLARE
+  affected_count INTEGER;
+BEGIN
+  GET DIAGNOSTICS affected_count = ROW_COUNT;
+  RAISE NOTICE 'Fixed % audience records with invalid status filters', affected_count;
+END $$;
+
+
+
+-- ============================================================================
+-- Migration: 20250620133634_update_test_audience_filter.sql
+-- ============================================================================
+
+-- Update the test audience filter to use a more common filter that will return results
+-- Change from subscription=lifetime (no matches) to status=active (many matches)
+
+UPDATE email_audiences 
+SET filters = '{"status": "active"}'::jsonb 
+WHERE id = '713c5ad9-f284-4fe1-a32f-f172412e9171';
+
+-- Also update any audience that has the problematic lifetime filter
+UPDATE email_audiences 
+SET filters = '{"status": "active"}'::jsonb 
+WHERE filters->>'subscription' = 'lifetime';
+
+
+
+-- ============================================================================
+-- Migration: 20250620133826_update_audience_to_none_subscription.sql
+-- ============================================================================
+
+-- Update the test audience filter to use subscription 'none' which has actual users
+-- Currently the audience is filtering for 'lifetime' subscription which has 0 users
+-- This changes it to 'none' subscription which has 999 users and will actually return results
+
+UPDATE email_audiences 
+SET filters = '{
+  "rules": [
+    {
+      "field": "subscription", 
+      "operator": "equals", 
+      "value": "none", 
+      "timeframe": "all_time"
+    }
+  ]
+}'::jsonb 
+WHERE id = '713c5ad9-f284-4fe1-a32f-f172412e9171';
+
+-- Also update any other audiences that have the problematic lifetime filter
+UPDATE email_audiences 
+SET filters = '{
+  "rules": [
+    {
+      "field": "subscription", 
+      "operator": "equals", 
+      "value": "none", 
+      "timeframe": "all_time"
+    }
+  ]
+}'::jsonb 
+WHERE filters->>'subscription' = 'lifetime' 
+   OR filters->'rules' @> '[{"value": "lifetime"}]';
+
+
+
+-- ============================================================================
+-- Migration: 20250620134144_create_test_audience_with_valid_data.sql
+-- ============================================================================
+
+
+
+
+-- ============================================================================
+-- Migration: 20250620135000_standardize_audience_filter_display.sql
+-- ============================================================================
+
+-- Standardize audience filter display by converting simple key-value filters to rules format
+-- This ensures consistent UI display of all filter conditions
+
+DO $$
+DECLARE
+    audience_record RECORD;
+    new_filters JSONB;
+    rules_array JSONB;
+BEGIN
+    RAISE NOTICE 'Starting audience filter standardization...';
+    
+    -- Process each audience
+    FOR audience_record IN 
+        SELECT id, name, filters 
+        FROM email_audiences 
+        WHERE filters IS NOT NULL
+    LOOP
+        RAISE NOTICE 'Processing audience: %', audience_record.name;
+        
+        -- Initialize new filter structure
+        new_filters := COALESCE(audience_record.filters, '{}'::jsonb);
+        rules_array := '[]'::jsonb;
+        
+        -- Convert simple key-value filters to rules format for consistent display
+        -- Only convert if not already in rules format
+        IF NOT (new_filters ? 'rules') THEN
+            RAISE NOTICE '  Converting % from simple to rules format', audience_record.name;
+            
+            -- Add status rule if present
+            IF new_filters ? 'status' THEN
+                rules_array := rules_array || jsonb_build_array(
+                    jsonb_build_object(
+                        'id', '1',
+                        'field', 'status',
+                        'operator', 'equals',
+                        'value', new_filters->>'status',
+                        'timeframe', 'all_time'
+                    )
+                );
+            END IF;
+            
+            -- Add subscription rule if present and not 'none'
+            IF new_filters ? 'subscription' AND new_filters->>'subscription' != 'none' THEN
+                rules_array := rules_array || jsonb_build_array(
+                    jsonb_build_object(
+                        'id', '2',
+                        'field', 'subscription', 
+                        'operator', 'equals',
+                        'value', new_filters->>'subscription',
+                        'timeframe', 'all_time'
+                    )
+                );
+            END IF;
+            
+            -- Handle complex filters like signup_date, last_email_open
+            IF new_filters ? 'signup_date' AND jsonb_typeof(new_filters->'signup_date') = 'object' THEN
+                rules_array := rules_array || jsonb_build_array(
+                    jsonb_build_object(
+                        'id', '3',
+                        'field', 'signup_date',
+                        'operator', COALESCE(new_filters->'signup_date'->>'operator', 'within'),
+                        'value', COALESCE(new_filters->'signup_date'->>'value', '7_days'),
+                        'timeframe', 'all_time'
+                    )
+                );
+            END IF;
+            
+            IF new_filters ? 'last_email_open' AND jsonb_typeof(new_filters->'last_email_open') = 'object' THEN
+                rules_array := rules_array || jsonb_build_array(
+                    jsonb_build_object(
+                        'id', '4',
+                        'field', 'last_email_open',
+                        'operator', COALESCE(new_filters->'last_email_open'->>'operator', 'older_than'),
+                        'value', COALESCE(new_filters->'last_email_open'->>'value', '60_days'),
+                        'timeframe', 'all_time'
+                    )
+                );
