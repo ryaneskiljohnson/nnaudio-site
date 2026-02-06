@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -11,7 +11,7 @@ interface UnsubscribeResponse {
   status?: string;
 }
 
-export default function UnsubscribePage() {
+function UnsubscribeContent() {
   const searchParams = useSearchParams();
   const rawEmail = searchParams.get('email');
   const token = searchParams.get('token');
@@ -337,5 +337,33 @@ export default function UnsubscribePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function UnsubscribeFallback() {
+  return (
+    <div style={{
+      backgroundColor: '#121212',
+      minHeight: '100vh',
+      width: '100vw',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif',
+      color: '#ffffff',
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>📧</div>
+        <div style={{ fontSize: '18px', color: 'rgba(255, 255, 255, 0.7)' }}>Loading...</div>
+      </div>
+    </div>
+  );
+}
+
+export default function UnsubscribePage() {
+  return (
+    <Suspense fallback={<UnsubscribeFallback />}>
+      <UnsubscribeContent />
+    </Suspense>
   );
 }

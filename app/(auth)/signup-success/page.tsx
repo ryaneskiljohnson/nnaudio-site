@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import styled from "styled-components";
@@ -131,7 +131,7 @@ const Button = styled.button`
   }
 `;
 
-export default function SignupSuccess() {
+function SignupSuccessContent() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const name = searchParams.get("name") || "there";
@@ -219,5 +219,26 @@ export default function SignupSuccess() {
         </Link>
       </ContentContainer>
     </PageContainer>
+  );
+}
+
+export default function SignupSuccess() {
+  return (
+    <Suspense fallback={
+      <PageContainer>
+        <HeaderNav>
+          <HeaderContent>
+            <NNAudioLogo size="40px" fontSize="1.8rem" href="/" onClick={() => {}} className="" showText={true} />
+          </HeaderContent>
+        </HeaderNav>
+        <ContentContainer initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+          <SuccessIcon />
+          <Title>Account Created Successfully!</Title>
+          <Subtitle>Loading...</Subtitle>
+        </ContentContainer>
+      </PageContainer>
+    }>
+      <SignupSuccessContent />
+    </Suspense>
   );
 } 

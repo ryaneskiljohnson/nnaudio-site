@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import styled from "styled-components";
@@ -165,7 +165,7 @@ const SecondaryButton = styled.button`
   }
 `;
 
-export default function AccountExists() {
+function AccountExistsContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "your email";
 
@@ -217,5 +217,26 @@ export default function AccountExists() {
         </ButtonContainer>
       </ContentContainer>
     </PageContainer>
+  );
+}
+
+export default function AccountExists() {
+  return (
+    <Suspense fallback={
+      <PageContainer>
+        <HeaderNav>
+          <HeaderContent>
+            <NNAudioLogo size="40px" fontSize="1.8rem" href="/" onClick={() => {}} className="" showText={true} />
+          </HeaderContent>
+        </HeaderNav>
+        <ContentContainer initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+          <InfoIcon />
+          <Title>Account Already Exists</Title>
+          <Subtitle>Loading...</Subtitle>
+        </ContentContainer>
+      </PageContainer>
+    }>
+      <AccountExistsContent />
+    </Suspense>
   );
 } 

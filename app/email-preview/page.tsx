@@ -1,13 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-interface EmailPreviewProps {
-  campaignId?: string;
-}
-
-export default function EmailPreviewPage() {
+function EmailPreviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const campaignId = searchParams.get('c');
@@ -162,5 +158,17 @@ export default function EmailPreviewPage() {
         ×
       </button>
     </div>
+  );
+}
+
+export default function EmailPreviewPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ position: 'fixed', inset: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#ffffff', fontFamily: 'Arial, sans-serif' }}>
+        Loading email preview...
+      </div>
+    }>
+      <EmailPreviewContent />
+    </Suspense>
   );
 }
