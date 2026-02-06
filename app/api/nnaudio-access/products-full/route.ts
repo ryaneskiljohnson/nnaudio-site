@@ -220,9 +220,8 @@ export async function POST(request: NextRequest) {
       const imageUrl =
         product.featured_image_url_png || product.featured_image_url || null;
       const bundleName = productToBundleMap.get(product.id) || null;
-      // product_type: for filter UI - use bundle name when from bundle, else human-readable category
-      const productType =
-        bundleName || categoryToDisplayName(product.category) || null;
+      // product_type: for filter UI - always from product.category, never bundle name or fallbacks
+      const productType = categoryToDisplayName(product.category) || null;
       formattedProducts.push({
         product_id: product.legacy_product_id || product.id,
         product_uuid: product.id,
