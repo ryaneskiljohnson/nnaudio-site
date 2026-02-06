@@ -19,6 +19,7 @@ import { getMyProducts } from "@/app/actions/my-products";
 import { cleanHtmlText } from "@/utils/stringUtils";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
+import RelatedProductsSlider from "@/components/RelatedProductsSlider";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -1095,27 +1096,8 @@ const VideoIframe = styled.iframe`
 const RelatedProducts = styled.div`
   padding: 80px 20px;
   background: rgba(0, 0, 0, 0.3);
-`;
-
-const RelatedGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 2rem;
-  max-width: 1200px;
-  margin: 2rem auto 0;
-`;
-
-const RelatedCard = styled(motion.div)`
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  cursor: pointer;
-  
-  &:hover {
-    transform: translateY(-5px);
-    border-color: rgba(138, 43, 226, 0.5);
-  }
+  max-width: 1400px;
+  margin: 0 auto;
 `;
 
 const LoadingContainer = styled.div`
@@ -1146,6 +1128,7 @@ export default function ProductPage() {
   const [showStickyButton, setShowStickyButton] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [descriptionNeedsExpansion, setDescriptionNeedsExpansion] = useState(false);
+  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const descriptionRef = useRef<HTMLDivElement | null>(null);
   const mainAudioRef = useRef<HTMLAudioElement | null>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -1159,6 +1142,13 @@ export default function ProductPage() {
       fetchProduct();
     }
   }, [slug]);
+
+  // Fetch related products when product loads
+  useEffect(() => {
+    if (product?.id) {
+      fetchRelatedProducts();
+    }
+  }, [product?.id, product?.category, product?.meta_keywords]);
 
   /** Check if the current user has purchased this product (or has a grant) to show Download button */
   useEffect(() => {
@@ -1502,6 +1492,27 @@ export default function ProductPage() {
       console.error('Error fetching product:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * @brief Fetches related products based on category and keywords
+   */
+  const fetchRelatedProducts = async () => {
+    try {
+      const params = new URLSearchParams({
+        productId: product.id,
+        category: product.category || '',
+        keywords: product.meta_keywords || '',
+        limit: '8'
+      });
+      const res = await fetch(`/api/products/related?${params}`, { cache: 'no-store' });
+      const data = await res.json();
+      if (data.success) {
+        setRelatedProducts(data.products || []);
+      }
+    } catch (error) {
+      console.error('Error fetching related products:', error);
     }
   };
 
@@ -2409,43 +2420,12 @@ export default function ProductPage() {
         </ReviewsSection>
       </ContentSection>
 
-      {product.related_products && product.related_products.length > 0 && (
-        <RelatedProducts>
-          <ContentSection>
-            <SectionTitle>Related Products</SectionTitle>
-            <RelatedGrid>
-              {product.related_products.map((related: any) => (
-                <Link key={related.id} href={`/product/${related.slug}`}>
-                  <RelatedCard
-                    whileHover={{ scale: 1.02 }}
-                  >
-                    <div style={{ position: 'relative', width: '100%', height: '200px', background: '#1a1a1a' }}>
-                      {related.featured_image_url || related.logo_url ? (
-                        <Image
-                          src={related.featured_image_url || related.logo_url}
-                          alt={related.name}
-                          fill
-                          style={{ objectFit: 'contain', padding: '20px' }}
-                        />
-                      ) : null}
-                    </div>
-                    <div style={{ padding: '1.5rem' }}>
-                      <h3 style={{ color: 'white', marginBottom: '0.5rem', fontSize: '1.2rem' }}>
-                        {related.name}
-                      </h3>
-                      <div style={{ color: '#4ecdc4', fontSize: '1.3rem', fontWeight: 700 }}>
-                        {((related.sale_price || related.price) === 0 || (related.sale_price || related.price) === null) 
-                          ? 'FREE' 
-                          : `$${related.sale_price || related.price}`}
-                      </div>
-                    </div>
-                  </RelatedCard>
-                </Link>
-              ))}
-            </RelatedGrid>
-          </ContentSection>
-        </RelatedProducts>
-      )}
+      <RelatedProducts>
+        <ContentSection>
+          <SectionTitle>Related Products</SectionTitle>
+          <RelatedProductsSlider products={relatedProducts} />
+        </ContentSection>
+      </RelatedProducts>
 
       {showStickyButton && product && (
         <StickyAddToCartButton

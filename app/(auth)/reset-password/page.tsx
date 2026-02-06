@@ -218,6 +218,8 @@ const SuccessMessage = styled(Message)`
   color: var(--success);
   background-color: rgba(46, 213, 115, 0.1);
   border: 1px solid rgba(46, 213, 115, 0.2);
+  white-space: pre-line;
+  text-align: center;
 `;
 
 const LinkText = styled.div`
@@ -378,7 +380,7 @@ function ResetPasswordClient() {
         return;
       }
 
-      setMessage("Password reset instructions have been sent to your email");
+      setMessage("Password reset instructions\nhave been sent to your email");
     } catch (err) {
       console.error("Reset password error:", err);
       setError("An unexpected error occurred");

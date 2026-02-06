@@ -1,0 +1,502 @@
+{
+  "generated_at": "2026-02-06T00:13:50.126Z",
+  "prompts": [
+    {
+      "productId": "eeeed3df-2486-4bc9-b43a-65f95b374e77",
+      "productName": "Primal Cthulhu",
+      "slug": "primal-cthulhu",
+      "prompt": "Dark mystical atmosphere, chord progressions visualized as geometric patterns, cosmic horror aesthetic, deep purple and black gradients, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "primal-cthulhu-background.png"
+    },
+    {
+      "productId": "e6df4c54-9924-4e92-9140-a1a869824a9a",
+      "productName": "Reflection Cthulhu",
+      "slug": "reflection-cthulhu",
+      "prompt": "Dark mystical atmosphere, chord progressions visualized as geometric patterns, cosmic horror aesthetic, deep purple and black gradients, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "reflection-cthulhu-background.png"
+    },
+    {
+      "productId": "3457232b-cb8c-4daa-b386-95895c50a7d6",
+      "productName": "Alice Cthulhu",
+      "slug": "alice-cthulhu",
+      "prompt": "Dark mystical presets, chord progression patterns, cosmic elements, deep space nebula with purple tones, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "alice-cthulhu-background.png"
+    },
+    {
+      "productId": "34fd6bb0-410e-4aff-a01d-8083596e7098",
+      "productName": "Apache MIDI",
+      "slug": "apache-free-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "apache-free-midi-background.png"
+    },
+    {
+      "productId": "9fdd6900-da3e-434d-8a5d-10cfe66dc337",
+      "productName": "Bakers Delight MIDI",
+      "slug": "bakers-delight-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "bakers-delight-midi-background.png"
+    },
+    {
+      "productId": "ab9f4420-e7e7-4b8a-afe6-10523b7d6c08",
+      "productName": "Blossom MIDI",
+      "slug": "blossom-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "blossom-midi-background.png"
+    },
+    {
+      "productId": "3aff3e94-4fda-4460-9a51-7d501c277a36",
+      "productName": "Broken MIDI",
+      "slug": "broken-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "broken-midi-background.png"
+    },
+    {
+      "productId": "8e69ef7a-47b2-4c45-9aec-3dc99d202e65",
+      "productName": "Cryptic Tales MIDI",
+      "slug": "cryptic-tales-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "cryptic-tales-midi-background.png"
+    },
+    {
+      "productId": "8c01eb8f-9183-4f6d-8c4d-fd9cf593a866",
+      "productName": "Cthulhu Godz 1",
+      "slug": "cthulhu-godz-1",
+      "prompt": "Dark mystical presets, chord progression patterns, cosmic elements, deep space nebula with purple tones, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "cthulhu-godz-1-background.png"
+    },
+    {
+      "productId": "19775982-017e-44c2-8d44-abb4f7a3490d",
+      "productName": "Cthulhu Godz 2",
+      "slug": "cthulhu-godz-2",
+      "prompt": "Dark mystical presets, chord progression patterns, cosmic elements, deep space nebula with purple tones, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "cthulhu-godz-2-background.png"
+    },
+    {
+      "productId": "f98826e2-973c-4f1c-9109-c12a8289b900",
+      "productName": "Demented Wisdom MIDI",
+      "slug": "demented-wisdom-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "demented-wisdom-midi-background.png"
+    },
+    {
+      "productId": "cc9c70b8-b167-4778-bf7e-42b7012ad79e",
+      "productName": "Element Cthulhu",
+      "slug": "element-cthulhu",
+      "prompt": "Dark mystical presets, chord progression patterns, cosmic elements, deep space nebula with purple tones, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "element-cthulhu-background.png"
+    },
+    {
+      "productId": "de2da995-64f6-4424-89c1-7013c941210c",
+      "productName": "Flower Cthulhu",
+      "slug": "flower-cthulhu",
+      "prompt": "Dark mystical presets, chord progression patterns, cosmic elements, deep space nebula with purple tones, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "flower-cthulhu-background.png"
+    },
+    {
+      "productId": "21d8b116-dac9-4577-9147-c78bc0be17da",
+      "productName": "Fruit Salad MIDI",
+      "slug": "fruit-salad-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "fruit-salad-midi-background.png"
+    },
+    {
+      "productId": "4f986f2f-8c14-482f-850b-2e888b1ee2f1",
+      "productName": "Go To Work",
+      "slug": "go-to-work-modern-song-constructions",
+      "prompt": "Sample pack visualization, waveforms, musical elements, production studio aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "go-to-work-modern-song-constructions-background.png"
+    },
+    {
+      "productId": "06e99e43-eb45-4ba7-a5b3-bacf89f9f1f9",
+      "productName": "Life & Death MIDI",
+      "slug": "life-death-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "life-death-midi-background.png"
+    },
+    {
+      "productId": "cad704c6-0f58-4e81-b110-f654bbbbe70f",
+      "productName": "Lofi Jamz",
+      "slug": "lofi-jamz",
+      "prompt": "Sample pack visualization, waveforms, musical elements, production studio aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "lofi-jamz-background.png"
+    },
+    {
+      "productId": "fad87e8f-5e4f-45b4-9f40-89018d4d78d5",
+      "productName": "Mai Tai MIDI",
+      "slug": "mai-tai-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "mai-tai-midi-background.png"
+    },
+    {
+      "productId": "fc6e1f19-b4b9-44fc-b7ac-0783ea7b9186",
+      "productName": "MIDI Library 1",
+      "slug": "midi-library-1",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "midi-library-1-background.png"
+    },
+    {
+      "productId": "b7d8bc91-c719-48a8-86b9-e71f0904afcb",
+      "productName": "MIDI Library 2",
+      "slug": "midi-library-2",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "midi-library-2-background.png"
+    },
+    {
+      "productId": "ddf2b3a1-de4c-48d1-824e-521ecbd927eb",
+      "productName": "MIDI Library 3",
+      "slug": "midi-library-3",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "midi-library-3-background.png"
+    },
+    {
+      "productId": "52c08c7f-0184-4faa-ad0d-8c657c7950b9",
+      "productName": "MIDI Library 4",
+      "slug": "midi-library-4",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "midi-library-4-background.png"
+    },
+    {
+      "productId": "f4177a27-bfd9-4ea1-be0b-2ca02749558f",
+      "productName": "MIDI Nerds",
+      "slug": "midi-nerds-free-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "midi-nerds-free-midi-background.png"
+    },
+    {
+      "productId": "5f54256e-f20c-4e39-b6fe-fb5c73709549",
+      "productName": "Modern Cthulhu 1",
+      "slug": "modern-cthulhu-1",
+      "prompt": "Dark mystical presets, chord progression patterns, cosmic elements, deep space nebula with purple tones, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "modern-cthulhu-1-background.png"
+    },
+    {
+      "productId": "9fc3cd3b-eec8-44c8-a1a7-e1c7500611cd",
+      "productName": "Modern Cthulhu 2",
+      "slug": "modern-cthulhu-2",
+      "prompt": "Dark mystical presets, chord progression patterns, cosmic elements, deep space nebula with purple tones, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "modern-cthulhu-2-background.png"
+    },
+    {
+      "productId": "b65d4ed2-5393-489f-9f37-e7713fd7d229",
+      "productName": "Mutahad Sample Library",
+      "slug": "mutahad-sample-library",
+      "prompt": "Sample pack visualization, waveforms, musical elements, production studio aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "mutahad-sample-library-background.png"
+    },
+    {
+      "productId": "039bdd30-dee8-4700-8c27-319f72fdd738",
+      "productName": "Ooze MIDI",
+      "slug": "ooze-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "ooze-midi-background.png"
+    },
+    {
+      "productId": "43800acf-c5e1-4d1a-942f-bede7b3ff213",
+      "productName": "Rabbit Hole MIDI",
+      "slug": "rabbit-hole-free-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "rabbit-hole-free-midi-background.png"
+    },
+    {
+      "productId": "c06fcb68-ef64-4b24-9b0a-9a346f4bfb64",
+      "productName": "Ride Away",
+      "slug": "ride-away-modern-song-constructions",
+      "prompt": "Sample pack visualization, waveforms, musical elements, production studio aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "ride-away-modern-song-constructions-background.png"
+    },
+    {
+      "productId": "2296ce7b-bf92-4bc8-8c0f-85ace56d5401",
+      "productName": "Royal Family MIDI",
+      "slug": "royal-family-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "royal-family-midi-background.png"
+    },
+    {
+      "productId": "85e02580-7a4c-4e9a-a905-2a5edd3a5e56",
+      "productName": "So Far Gone MIDI",
+      "slug": "so-far-gone-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "so-far-gone-midi-background.png"
+    },
+    {
+      "productId": "19072fbb-2758-4d1e-90d3-4787baea120d",
+      "productName": "Sun Goes Down MIDI",
+      "slug": "sun-goes-down-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "sun-goes-down-midi-background.png"
+    },
+    {
+      "productId": "5fcd6aac-7ebb-4cab-bbd6-69f0b84598e5",
+      "productName": "Swiper MIDI",
+      "slug": "swiper-midi-free",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "swiper-midi-free-background.png"
+    },
+    {
+      "productId": "c892fd79-0aa8-4b84-8932-d0f65ef5706d",
+      "productName": "The Code",
+      "slug": "the-code-modern-song-constructions",
+      "prompt": "Sample pack visualization, waveforms, musical elements, production studio aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "the-code-modern-song-constructions-background.png"
+    },
+    {
+      "productId": "f0f627c8-93e8-4f0b-8825-d82987e44ae5",
+      "productName": "Time Zones MIDI",
+      "slug": "time-zones-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "time-zones-midi-background.png"
+    },
+    {
+      "productId": "fbeb4a56-bc56-45c5-afd3-f6fcc9b1e836",
+      "productName": "Trapsoul MIDI",
+      "slug": "trapsoul-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "trapsoul-midi-background.png"
+    },
+    {
+      "productId": "7f1935a6-317e-4bb7-9a6d-8a717a52fca9",
+      "productName": "Ultimate Drums & Percs 1",
+      "slug": "ultimate-drums-percs-1",
+      "prompt": "Sample pack visualization, waveforms, musical elements, production studio aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "ultimate-drums-percs-1-background.png"
+    },
+    {
+      "productId": "900fa701-134f-49f0-a69c-22e5de52f8df",
+      "productName": "Ultimate Drums & Percs 2",
+      "slug": "ultimate-drums-percs-2",
+      "prompt": "Sample pack visualization, waveforms, musical elements, production studio aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "ultimate-drums-percs-2-background.png"
+    },
+    {
+      "productId": "471fcf92-33de-4f64-b730-5e52887a5215",
+      "productName": "Ultimate MIDI Collection 2",
+      "slug": "ultimate-midi-collection-2",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "ultimate-midi-collection-2-background.png"
+    },
+    {
+      "productId": "e7039f7f-bb67-4a52-aaf9-7c4f9ca053f7",
+      "productName": "UMC6 MIDI",
+      "slug": "umc6-midi",
+      "prompt": "Piano roll grid, MIDI notes visualization, musical notation, chord progressions, modern DAW interface aesthetic, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "umc6-midi-background.png"
+    },
+    {
+      "productId": "d6e3ed84-be77-4b88-8829-dde06f787b6a",
+      "productName": "Weaknd Cthulhu",
+      "slug": "weaknd-cthulhu",
+      "prompt": "Dark mystical presets, chord progression patterns, cosmic elements, deep space nebula with purple tones, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "weaknd-cthulhu-background.png"
+    },
+    {
+      "productId": "13edc63b-6408-4ad6-b724-f1a85670d904",
+      "productName": "Yonkers Cthulhu",
+      "slug": "yonkers-cthulhu",
+      "prompt": "Dark mystical presets, chord progression patterns, cosmic elements, deep space nebula with purple tones, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "yonkers-cthulhu-background.png"
+    },
+    {
+      "productId": "de75e8b5-cb98-46da-8498-0486e130384f",
+      "productName": "All Guitar Bundle",
+      "slug": "all-guitar-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "all-guitar-bundle-background.png"
+    },
+    {
+      "productId": "90bcf8a0-c3a0-487a-87ce-af085689ba49",
+      "productName": "Analog Plugin Bundle",
+      "slug": "analog-plugin-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "analog-plugin-bundle-background.png"
+    },
+    {
+      "productId": "0de3afc4-13c7-4965-80a0-6b257afe0c88",
+      "productName": "Atmosphere Bundle",
+      "slug": "atmosphere-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "atmosphere-bundle-background.png"
+    },
+    {
+      "productId": "1d9b81c8-2dc4-4282-b0f8-5b4b48a584e2",
+      "productName": "Beat Lab",
+      "slug": "beat-lab",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "beat-lab-background.png"
+    },
+    {
+      "productId": "c00b22e5-1647-4145-b531-6ccb54e4c529",
+      "productName": "Cthulhu Bundle 1",
+      "slug": "cthulhu-bundle-1",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "cthulhu-bundle-1-background.png"
+    },
+    {
+      "productId": "8b2b7400-e2c9-4c3f-8819-47d76f82660c",
+      "productName": "Cthulhu Bundle 2",
+      "slug": "cthulhu-bundle-2",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "cthulhu-bundle-2-background.png"
+    },
+    {
+      "productId": "08ea4008-1908-405a-bd36-4cf50de780bf",
+      "productName": "Drum & Bass Bundle",
+      "slug": "drum-bass-bundle-2",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "drum-bass-bundle-2-background.png"
+    },
+    {
+      "productId": "4ce5e019-9f08-4f18-a903-d9776deb625b",
+      "productName": "Drum & Perc Bundle",
+      "slug": "drum-perc-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "drum-perc-bundle-background.png"
+    },
+    {
+      "productId": "8fa7f953-c1d5-4143-a47b-def7876c8fe5",
+      "productName": "Enchanted Melodies MIDI Pack Bundle",
+      "slug": "enchante_melodies_bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "enchante_melodies_bundle-background.png"
+    },
+    {
+      "productId": "088e3794-0e94-4c3b-a255-2ef4d090d6fa",
+      "productName": "Guitar Bundle",
+      "slug": "guitar-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "guitar-bundle-background.png"
+    },
+    {
+      "productId": "0bda2e88-8492-49c5-8d28-6d0808b45309",
+      "productName": "MIDI Mob MIDI Bundle",
+      "slug": "midi-mob-midi-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "midi-mob-midi-bundle-background.png"
+    },
+    {
+      "productId": "847ef5be-32ea-405e-b0b1-023de4247f96",
+      "productName": "MIDI Takeout Bundle",
+      "slug": "midi-takeout-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "midi-takeout-bundle-background.png"
+    },
+    {
+      "productId": "e01d9991-5f18-4c23-a459-bb4e0d951c8b",
+      "productName": "Modern FX Bundle",
+      "slug": "modern-fx-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "modern-fx-bundle-background.png"
+    },
+    {
+      "productId": "d6f94b07-92b6-459d-8005-cebfd5b484f2",
+      "productName": "Modern Song Constructions Bundle",
+      "slug": "modern-song-constructions-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "modern-song-constructions-bundle-background.png"
+    },
+    {
+      "productId": "e0baaf19-2838-484e-bef7-c86f9b55bf25",
+      "productName": "Modern Workstation Bundle",
+      "slug": "modern-workstation-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "modern-workstation-bundle-background.png"
+    },
+    {
+      "productId": "71f9d53b-85dc-4ff6-a6e9-826696af5240",
+      "productName": "Obscura + Royal Family Bundle",
+      "slug": "obscura-royal-family-bundle-black-friday",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "obscura-royal-family-bundle-black-friday-background.png"
+    },
+    {
+      "productId": "0fae3a57-27dc-4019-a8cf-2aad4773b50d",
+      "productName": "Orchestral Plugin Bundle",
+      "slug": "orchestral-plugin-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "orchestral-plugin-bundle-background.png"
+    },
+    {
+      "productId": "7fa22915-acad-4b68-8559-b3756f7c19c9",
+      "productName": "Producer's Arsenal",
+      "slug": "producers-arsenal",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "producers-arsenal-background.png"
+    },
+    {
+      "productId": "6c8e99c7-19df-4861-9918-9e00e87fc295",
+      "productName": "Soundscapes Bundle",
+      "slug": "soundscapes-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "soundscapes-bundle-background.png"
+    },
+    {
+      "productId": "2cfb32e3-b48c-45d5-99aa-ae4cac46e905",
+      "productName": "Summer Sample Pack Bundle",
+      "slug": "summer-sample-pack-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "summer-sample-pack-bundle-background.png"
+    },
+    {
+      "productId": "4d8d2662-af63-44af-810f-1286fba18e2c",
+      "productName": "Ultimate Bundle",
+      "slug": "ultimate-bundle",
+      "prompt": "Collection of musical elements, variety of instruments and effects, comprehensive toolkit visualization, studio arsenal, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "ultimate-bundle-background.png"
+    },
+    {
+      "productId": "f8cc8942-be2b-4749-b248-1c9708d28a16",
+      "productName": "NNAudio Access",
+      "slug": "nnaudio-access",
+      "prompt": "Software interface elements, digital workspace, modern app design, productivity and organization, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "nnaudio-access-background.png"
+    },
+    {
+      "productId": "a617d04c-13cb-403c-8e12-0dcf13603859",
+      "productName": "Freelay",
+      "slug": "freelay-free-delay-module-plugin",
+      "prompt": "Time-based effects visualization, echoing waveforms, repeating patterns in space, delay trails, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "freelay-free-delay-module-plugin-background.png"
+    },
+    {
+      "productId": "ed4723ea-7f3f-4558-9d24-1265773ae4b7",
+      "productName": "FreeQ",
+      "slug": "freeq-free-eq-module-plugin",
+      "prompt": "Frequency spectrum curves, EQ bands visualization, colorful frequency waves, audio spectrum analyzer, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "freeq-free-eq-module-plugin-background.png"
+    },
+    {
+      "productId": "8c9d3944-873e-4761-8601-f7cc5067a10f",
+      "productName": "Freeverb",
+      "slug": "freeverb-free-reverb-module-plugin",
+      "prompt": "Spacious cathedral interior, sound waves expanding outward, ethereal atmosphere, reverb trails, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "freeverb-free-reverb-module-plugin-background.png"
+    },
+    {
+      "productId": "d7cb3189-7e14-4386-afbf-cc2c6ad5cffa",
+      "productName": "Sterfreeo",
+      "slug": "sterfreeo-free-stereo-module-plugin",
+      "prompt": "Stereo field visualization, left and right channels, width expansion, spatial audio waves, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "sterfreeo-free-stereo-module-plugin-background.png"
+    },
+    {
+      "productId": "46aaabea-901f-4893-ad99-ea294b2914cc",
+      "productName": "Cowboy Harp",
+      "slug": "cowboy-harp-free-jaw-harp-plugin",
+      "prompt": "Western desert landscape at sunset, old west atmosphere, guitar strings, horseshoe, rustic wood textures, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "cowboy-harp-free-jaw-harp-plugin-background.png"
+    },
+    {
+      "productId": "bd7fc185-5f90-4fc1-912e-2f41ca77830d",
+      "productName": "Game Boi",
+      "slug": "game-boi-retro-sounds-free-plugin",
+      "prompt": "8-bit pixel art aesthetic, retro gaming console, pixelated waveforms, nostalgic 90s gaming vibes, neon grid, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "game-boi-retro-sounds-free-plugin-background.png"
+    },
+    {
+      "productId": "068f019d-177d-4203-9e4a-27b75ea2926e",
+      "productName": "Strange Tingz",
+      "slug": "strange-tingz-free-80s-plugin",
+      "prompt": "1980s retro aesthetic, neon lights, VHS grain effect, synthwave sunset, vintage synthesizers and cassette tapes, Wide cinematic banner format, professional music production aesthetic, abstract and atmospheric, dark gradient background with purple and teal accents, modern and sleek, high quality",
+      "filename": "strange-tingz-free-80s-plugin-background.png"
+    }
+  ]
+}

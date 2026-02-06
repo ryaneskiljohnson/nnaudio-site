@@ -252,31 +252,19 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
   const cleanedTagline = cleanHtmlText(rawTagline);
   const tagline = cleanedTagline.length > 100 ? cleanedTagline.substring(0, 100).trim() + '...' : cleanedTagline;
   
-  // Check if this is an elite bundle and get the correct slug
-  const getEliteBundleSlug = (name: string, slug?: string): string | null => {
-    // First check slug directly (most reliable)
-    if (slug) {
-      const lowerSlug = slug.toLowerCase();
-      if (lowerSlug === 'producers-arsenal' || lowerSlug === 'ultimate-bundle' || lowerSlug === 'beat-lab') {
-        return lowerSlug;
-      }
-    }
-    
-    // Fallback to checking name
-    const lowerName = name.toLowerCase();
-    if (lowerName.includes("producer's") || lowerName.includes('producers')) {
-      return 'producers-arsenal';
-    }
-    if (lowerName.includes('ultimate')) {
-      return 'ultimate-bundle';
-    }
-    if (lowerName.includes('beat lab')) {
-      return 'beat-lab';
+  // Check if this is an elite bundle and get the correct slug.
+  // ONLY match by exact slug - name-based fallbacks were incorrectly routing
+  // products like "Ultimate Drums & Percs 1" to the Ultimate Bundle page.
+  const getEliteBundleSlug = (slug?: string): string | null => {
+    if (!slug) return null;
+    const lowerSlug = slug.toLowerCase();
+    if (lowerSlug === 'producers-arsenal' || lowerSlug === 'ultimate-bundle' || lowerSlug === 'beat-lab') {
+      return lowerSlug;
     }
     return null;
   };
   
-  const bundleSlug = getEliteBundleSlug(product.name, product.slug);
+  const bundleSlug = getEliteBundleSlug(product.slug);
   const isEliteBundle = bundleSlug !== null;
   
   // Determine the correct route - elite bundles go to bundle pages

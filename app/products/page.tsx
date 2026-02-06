@@ -118,12 +118,10 @@ export default function ProductsPage() {
       );
     }
 
-    // Helper function to check if a product is an elite bundle
-    const isEliteBundle = (product: any) => {
-      const name = product.name.toLowerCase();
-      return name.includes("producer's") || name.includes('producers') || 
-             name.includes('ultimate') || name.includes('beat lab');
-    };
+    // Elite bundles (by exact slug - name-based matching incorrectly included "Ultimate Drums" etc.)
+    const ELITE_BUNDLE_SLUGS = ['producers-arsenal', 'ultimate-bundle', 'beat-lab'];
+    const isEliteBundle = (product: any) =>
+      product.slug && ELITE_BUNDLE_SLUGS.includes(product.slug.toLowerCase());
 
     // Sort products - elite bundles first, then by selected sort option
     filtered.sort((a, b) => {
@@ -136,17 +134,14 @@ export default function ProductsPage() {
       
       // If both are elite bundles, sort them: Producer's Arsenal, Ultimate Bundle, Beat Lab
       if (aIsElite && bIsElite) {
-        const aName = a.name.toLowerCase();
-        const bName = b.name.toLowerCase();
-        
-        const getEliteOrder = (name: string) => {
-          if (name.includes("producer's") || name.includes('producers')) return 0;
-          if (name.includes('ultimate')) return 1;
-          if (name.includes('beat lab')) return 2;
-          return 3;
+        const eliteOrder: Record<string, number> = {
+          'producers-arsenal': 0,
+          'ultimate-bundle': 1,
+          'beat-lab': 2,
         };
-        
-        return getEliteOrder(aName) - getEliteOrder(bName);
+        const aOrder = eliteOrder[a.slug?.toLowerCase()] ?? 3;
+        const bOrder = eliteOrder[b.slug?.toLowerCase()] ?? 3;
+        return aOrder - bOrder;
       }
       
       // For non-elite bundles, use the selected sort option

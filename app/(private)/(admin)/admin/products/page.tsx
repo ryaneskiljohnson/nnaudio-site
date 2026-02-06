@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaPlus, FaEdit, FaTrash, FaEye, FaStar, FaImage, FaSort, FaSortUp, FaSortDown, FaEllipsisV, FaSearch } from "react-icons/fa";
+import { FaPlus, FaEdit, FaTrash, FaEye, FaStar, FaImage, FaSort, FaSortUp, FaSortDown, FaEllipsisV, FaSearch, FaExclamationTriangle } from "react-icons/fa";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -213,6 +213,17 @@ const ProductNameCell = styled(TableCell)`
   font-weight: 600;
   color: var(--text);
   min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const NoDownloadsAlert = styled.span`
+  display: inline-flex;
+  align-items: center;
+  color: var(--warning, #ffc107);
+  flex-shrink: 0;
+  cursor: help;
 `;
 
 const ProductTaglineCell = styled(TableCell)`
@@ -628,6 +639,8 @@ interface Product {
   purchase_count: number;
   average_rating?: number;
   review_count?: number;
+  downloads?: Array<{ path?: string; url?: string }> | null;
+  download_url?: string | null;
 }
 
 type SortField = 'name' | 'tagline' | 'category' | 'price' | 'status' | 'created_at';
@@ -1039,9 +1052,18 @@ export default function ProductsManagementPage() {
                   </ProductImageCell>
                   
                   <ProductNameCell>
-                    {product.name}
+                    <span>{product.name}</span>
                     {product.is_featured && (
                       <FeaturedBadge>Featured</FeaturedBadge>
+                    )}
+                    {product.category !== 'bundle' &&
+                      !(
+                        (product.downloads && Array.isArray(product.downloads) && product.downloads.length > 0) ||
+                        (product.download_url && product.download_url.trim() !== '')
+                      ) && (
+                      <NoDownloadsAlert title="No download links configured">
+                        <FaExclamationTriangle size={16} />
+                      </NoDownloadsAlert>
                     )}
                   </ProductNameCell>
                   

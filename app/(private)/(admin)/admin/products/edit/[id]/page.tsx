@@ -709,6 +709,13 @@ export default function EditProductPage() {
     }
   }, [productId]);
 
+  // When user changes category to bundle (even before saving), fetch bundle data and available products
+  useEffect(() => {
+    if (formData.category === 'bundle' && formData.name && formData.slug && productId) {
+      fetchBundleData(formData.name, formData.slug);
+    }
+  }, [formData.category, formData.name, formData.slug]);
+
   const fetchProduct = async () => {
     try {
       setLoading(true);
@@ -893,7 +900,7 @@ export default function EditProductPage() {
           // Fetch available products to add (excluding bundle products and this bundle itself)
           // Use the fetched bundle products, not the state (which might not be updated yet)
           try {
-            const allProductsResponse = await fetch('/api/products?status=active&limit=1000');
+            const allProductsResponse = await fetch('/api/products?status=all&limit=1000');
             if (!allProductsResponse.ok) {
               console.error(`Failed to fetch available products: HTTP ${allProductsResponse.status}`);
               setAvailableProducts([]);
@@ -933,7 +940,7 @@ export default function EditProductPage() {
           setBundleProducts([]);
           // Still try to fetch available products
           try {
-            const allProductsResponse = await fetch('/api/products?status=active&limit=1000');
+            const allProductsResponse = await fetch('/api/products?status=all&limit=1000');
             if (allProductsResponse.ok) {
               const contentType = allProductsResponse.headers.get('content-type');
               if (contentType && contentType.includes('application/json')) {
@@ -956,7 +963,7 @@ export default function EditProductPage() {
         // or at least allow adding products (we'll create the bundle when first product is added)
         // For now, still fetch available products so the UI can show the add button
         try {
-          const allProductsResponse = await fetch('/api/products?status=active&limit=1000');
+          const allProductsResponse = await fetch('/api/products?status=all&limit=1000');
           if (allProductsResponse.ok) {
             const contentType = allProductsResponse.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
@@ -970,7 +977,7 @@ export default function EditProductPage() {
                 // Actually, let's try to create the bundle now if it doesn't exist
                 if (productId && formData.category === 'bundle') {
                   try {
-                    const createBundleResponse = await fetch('/api/bundles/create-products', {
+                    const createBundleResponse = await fetch('/api/bundles', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
@@ -1016,7 +1023,7 @@ export default function EditProductPage() {
     if (!currentBundleId && formData.category === 'bundle' && productId) {
       try {
         console.log('Creating bundle for product:', formData.name);
-        const createBundleResponse = await fetch('/api/bundles/create-products', {
+        const createBundleResponse = await fetch('/api/bundles', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1034,10 +1041,13 @@ export default function EditProductPage() {
             setBundleId(currentBundleId);
             console.log('Created bundle:', currentBundleId);
           }
+        } else {
+          const errData = await createBundleResponse.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${createBundleResponse.status}`);
         }
-      } catch (createError) {
+      } catch (createError: any) {
         console.error('Error creating bundle:', createError);
-        alert('Failed to create bundle. Please try again.');
+        alert(`Failed to create bundle: ${createError.message || 'Please try again.'}`);
         return;
       }
     }
@@ -1048,22 +1058,11 @@ export default function EditProductPage() {
     }
     
     try {
-      // Try the nested route first, fallback to simpler route
-      let response = await fetch(`/api/bundles/${currentBundleId}/products`, {
+      const response = await fetch('/api/bundles/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product_id: selectedProductToAdd })
+        body: JSON.stringify({ bundle_id: currentBundleId, product_id: selectedProductToAdd })
       });
-      
-      // If 404, try the alternative route
-      if (response.status === 404) {
-        console.log('Trying alternative route...');
-        response = await fetch(`/api/bundles/products`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bundle_id: currentBundleId, product_id: selectedProductToAdd })
-        });
-      }
       
       if (!response.ok) {
         const text = await response.text();
@@ -1794,16 +1793,16 @@ export default function EditProductPage() {
                         <button
                           type="button"
                           onClick={handleAddProductToBundle}
-                          disabled={!selectedProductToAdd || !bundleId}
+                          disabled={!selectedProductToAdd || (!bundleId && !(formData.category === 'bundle' && productId))}
                           style={{
                             padding: '0.75rem 1.5rem',
-                            background: (selectedProductToAdd && bundleId)
+                            background: (selectedProductToAdd && (bundleId || (formData.category === 'bundle' && productId)))
                               ? 'linear-gradient(135deg, #6c63ff, #8a2be2)' 
                               : 'rgba(255, 255, 255, 0.1)',
                             border: 'none',
                             borderRadius: '8px',
                             color: 'white',
-                            cursor: (selectedProductToAdd && bundleId) ? 'pointer' : 'not-allowed',
+                            cursor: (selectedProductToAdd && (bundleId || (formData.category === 'bundle' && productId))) ? 'pointer' : 'not-allowed',
                             fontSize: '1rem',
                             fontWeight: 600
                           }}
