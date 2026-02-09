@@ -26,7 +26,7 @@ import {
   type UserManagementRecord,
 } from "@/app/actions/user-management";
 import {
-  getProductGrants,
+  getProductGrantsForEmails,
   getUserProductGrants,
   grantProduct,
   revokeProductGrant,
@@ -579,20 +579,38 @@ export default function UserManagementPage() {
     try {
       setLoading(true);
       const result = await getUserManagementRecords();
-      
+
       if (result.error) {
         throw new Error(result.error);
       }
 
       const data = result.data || [];
       setRecords(data);
-      
+
       // Store original notes values
       const original: Record<string, string> = {};
-      data.forEach(record => {
-        original[record.user_email] = record.notes || '';
+      data.forEach((record) => {
+        original[record.user_email] = record.notes || "";
       });
       setOriginalNotes(original);
+
+      // Fetch product grants only for these NFR emails (avoids loading 100k+ grants)
+      const emails = data.map((r) => r.user_email);
+      if (emails.length > 0) {
+        const grantsResult = await getProductGrantsForEmails(emails);
+        if (grantsResult.error) {
+          console.error("Error fetching product grants for NFR users:", grantsResult.error);
+        } else if (grantsResult.data) {
+          const grouped: Record<string, ProductGrant[]> = {};
+          grantsResult.data.forEach((grant) => {
+            if (!grouped[grant.user_email]) grouped[grant.user_email] = [];
+            grouped[grant.user_email].push(grant);
+          });
+          setProductGrants(grouped);
+        }
+      } else {
+        setProductGrants({});
+      }
     } catch (err: any) {
       console.error("Error fetching records:", err);
       setError(err.message || "Failed to load user management records");
@@ -686,31 +704,6 @@ export default function UserManagementPage() {
     setUserSearchTimeout(timeout);
   };
 
-  const fetchProductGrants = async () => {
-    try {
-      const result = await getProductGrants();
-
-      if (result.error) {
-        console.error("Error fetching product grants:", result.error);
-        return;
-      }
-
-      if (result.data) {
-        // Group grants by user email
-        const grouped: Record<string, ProductGrant[]> = {};
-        result.data.forEach((grant) => {
-          if (!grouped[grant.user_email]) {
-            grouped[grant.user_email] = [];
-          }
-          grouped[grant.user_email].push(grant);
-        });
-        setProductGrants(grouped);
-      }
-    } catch (err) {
-      console.error("Error fetching product grants:", err);
-    }
-  };
-
   const fetchProducts = async () => {
     try {
       const response = await fetch("/api/products?limit=10000");
@@ -724,10 +717,16 @@ export default function UserManagementPage() {
     }
   };
 
+  /** Refresh product grants for a single email (e.g. after add/revoke in modal). */
+  const refreshGrantsForEmail = async (email: string) => {
+    const result = await getUserProductGrants(email);
+    if (result.error || !result.data) return;
+    setProductGrants((prev) => ({ ...prev, [email]: result.data! }));
+  };
+
   useEffect(() => {
     if (user) {
       fetchRecords();
-      fetchProductGrants();
       fetchProducts();
     }
   }, [user]);
@@ -823,8 +822,6 @@ export default function UserManagementPage() {
           const errors = grantResults.filter(r => !r.success).map(r => r.error).join(', ');
           showNotification('error', `Failed to grant ${failCount} product${failCount !== 1 ? 's' : ''}: ${errors}`);
         }
-        
-        fetchProductGrants();
       }
 
       setShowCreateModal(false);
@@ -1901,7 +1898,7 @@ export default function UserManagementPage() {
                                 const result = await revokeProductGrant(grant.id);
                                 if (result.success) {
                                   showNotification('success', 'Product grant revoked');
-                                  fetchProductGrants();
+                                  if (showGrantModal) refreshGrantsForEmail(showGrantModal);
                                   if (productGrants[showGrantModal]?.length === 1) {
                                     setShowGrantModal(null);
                                   }
@@ -1982,7 +1979,7 @@ export default function UserManagementPage() {
                     setGrantFormNotes('');
                     setGrantFormAmount('0');
                     setProductSearchQuery('');
-                    fetchProductGrants();
+                    if (showGrantModal) refreshGrantsForEmail(showGrantModal);
                   } catch (err: any) {
                     console.error("[Grant Product] Exception:", err);
                     showNotification('error', err.message || 'Failed to grant product');

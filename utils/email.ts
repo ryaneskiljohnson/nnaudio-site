@@ -34,7 +34,9 @@ export async function sendEmail({
   subject,
   text,
   html,
-  from = "Cymasphere Support <support@cymasphere.com>", // Default sender
+  from = process.env.SENDER_EMAIL
+    ? `${process.env.SENDER_NAME || "NNAudio Support"} <${process.env.SENDER_EMAIL}>`
+    : "NNAudio Support <support@nnaud.io>", // Default sender
   replyTo,
   listUnsubscribe,
 }: SendEmailParams) {
@@ -58,12 +60,12 @@ export async function sendEmail({
     const replyToAddresses = replyTo ? (Array.isArray(replyTo) ? replyTo : [replyTo]) : [from.match(/<(.+)>/)?.[1] || from];
 
     // Generate Message-ID for better deliverability
-    const messageId = `<${Date.now()}-${Math.random().toString(36).substring(7)}@cymasphere.com>`;
+    const messageId = `<${Date.now()}-${Math.random().toString(36).substring(7)}@nnaud.io>`;
     const date = new Date().toUTCString();
 
     // Extract email address from "Name <email>" format
     const fromEmail = from.match(/<(.+)>/)?.[1] || from;
-    const fromName = from.match(/^(.+?)\s*</)?.[1] || 'Cymasphere Support';
+    const fromName = from.match(/^(.+?)\s*</)?.[1] || 'NNAudio Support';
 
     // Build email headers
     const headers: string[] = [
@@ -73,7 +75,7 @@ export async function sendEmail({
       `Date: ${date}`,
       `Message-ID: ${messageId}`,
       `MIME-Version: 1.0`,
-      `X-Mailer: Cymasphere Support System`,
+      `X-Mailer: NNAudio Support System`,
       `X-Priority: 3`,
       `Reply-To: ${replyToAddresses.join(', ')}`,
     ];
@@ -84,7 +86,7 @@ export async function sendEmail({
       headers.push(`List-Unsubscribe-Post: List-Unsubscribe=One-Click`);
     } else {
       // Default unsubscribe URL
-      const defaultUnsubscribe = `https://www.cymasphere.com/dashboard/support`;
+      const defaultUnsubscribe = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io'}/dashboard/support`;
       headers.push(`List-Unsubscribe: <${defaultUnsubscribe}>`);
       headers.push(`List-Unsubscribe-Post: List-Unsubscribe=One-Click`);
     }
@@ -132,7 +134,7 @@ export async function sendEmail({
       RawMessage: {
         Data: Buffer.from(rawMessage),
       },
-      ConfigurationSetName: 'cymasphere-email-events',
+      ConfigurationSetName: process.env.SES_CONFIGURATION_SET || 'nnaud-email-events',
     });
 
     try {
@@ -203,7 +205,9 @@ export async function sendBatchEmail({
   subject,
   text,
   html,
-  from = "Cymasphere Support <support@cymasphere.com>",
+  from = process.env.SENDER_EMAIL
+    ? `${process.env.SENDER_NAME || "NNAudio Support"} <${process.env.SENDER_EMAIL}>`
+    : "NNAudio Support <support@nnaud.io>",
   replyTo,
   listUnsubscribe,
 }: SendBatchEmailParams) {
@@ -238,13 +242,13 @@ export async function sendBatchEmail({
 
     // Extract email address from "Name <email>" format
     const fromEmail = from.match(/<(.+)>/)?.[1] || from;
-    const fromName = from.match(/^(.+?)\s*</)?.[1] || 'Cymasphere Support';
+    const fromName = from.match(/^(.+?)\s*</)?.[1] || 'NNAudio Support';
 
     // Use sender's email as the "To" address (required by SES), all actual recipients go in BCC
     const toAddress = fromEmail;
 
     // Generate Message-ID
-    const messageId = `<${Date.now()}-${Math.random().toString(36).substring(7)}@cymasphere.com>`;
+    const messageId = `<${Date.now()}-${Math.random().toString(36).substring(7)}@nnaud.io>`;
     const date = new Date().toUTCString();
 
     // Build email headers with BCC
@@ -256,7 +260,7 @@ export async function sendBatchEmail({
       `Date: ${date}`,
       `Message-ID: ${messageId}`,
       `MIME-Version: 1.0`,
-      `X-Mailer: Cymasphere Support System`,
+      `X-Mailer: NNAudio Support System`,
       `X-Priority: 3`,
       `Reply-To: ${replyToAddresses.join(', ')}`,
     ];
@@ -266,7 +270,7 @@ export async function sendBatchEmail({
       headers.push(`List-Unsubscribe: <${listUnsubscribe}>`);
       headers.push(`List-Unsubscribe-Post: List-Unsubscribe=One-Click`);
     } else {
-      const defaultUnsubscribe = `https://www.cymasphere.com/dashboard/support`;
+      const defaultUnsubscribe = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io'}/dashboard/support`;
       headers.push(`List-Unsubscribe: <${defaultUnsubscribe}>`);
       headers.push(`List-Unsubscribe-Post: List-Unsubscribe=One-Click`);
     }
@@ -305,7 +309,7 @@ export async function sendBatchEmail({
         Data: Buffer.from(rawMessage),
       },
       Destinations: [toAddress, ...bcc], // SES requires all recipients (To + BCC) in Destinations
-      ConfigurationSetName: 'cymasphere-email-events',
+      ConfigurationSetName: process.env.SES_CONFIGURATION_SET || 'nnaud-email-events',
     });
 
     try {

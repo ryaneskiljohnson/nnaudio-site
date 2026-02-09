@@ -83,6 +83,57 @@ export async function getProductGrants(): Promise<{
 }
 
 /**
+ * Get product grants for a list of user emails (admin only).
+ * Use this instead of getProductGrants() when only NFR/user_management emails are needed,
+ * to avoid loading 100k+ rows.
+ * @param emails - Array of user emails (e.g. from user_management)
+ * @returns Grants grouped by user_email; empty array emails return no grants
+ */
+export async function getProductGrantsForEmails(emails: string[]): Promise<{
+  data: ProductGrant[] | null;
+  error: string | null;
+}> {
+  try {
+    const supabase = await createClient();
+
+    if (!(await checkAdmin(supabase))) {
+      return { data: null, error: "Unauthorized" };
+    }
+
+    if (!emails?.length) {
+      return { data: [], error: null };
+    }
+
+    const normalized = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+    const adminSupabase = await createSupabaseServiceRole();
+
+    const { data: grants, error } = await (adminSupabase as any)
+      .from("product_grants")
+      .select(`
+        *,
+        products:product_id (
+          id,
+          name,
+          slug,
+          featured_image_url
+        )
+      `)
+      .in("user_email", normalized)
+      .order("granted_at", { ascending: false });
+
+    if (error) {
+      console.error("[Product Grants] Error fetching grants for emails:", error);
+      return { data: null, error: error.message };
+    }
+
+    return { data: (grants ?? []) as ProductGrant[], error: null };
+  } catch (error: any) {
+    console.error("[Product Grants] Unexpected error:", error);
+    return { data: null, error: error.message || "Internal server error" };
+  }
+}
+
+/**
  * Get product grants for a specific user (admin only)
  */
 export async function getUserProductGrants(userEmail: string): Promise<{

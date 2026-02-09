@@ -605,8 +605,8 @@ async function sendAutomationEmail(subscriber: any, content: any, automationId: 
       subject: emailSubject,
       html: emailHtml,
       text: personalizedContent.text_content,
-      from: 'Cymasphere Support <support@cymasphere.com>',
-      replyTo: 'support@cymasphere.com'
+      from: 'NNAudio Support <support@nnaud.io>',
+      replyTo: 'support@nnaud.io'
     });
 
     if (emailResult.success) {

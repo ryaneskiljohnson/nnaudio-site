@@ -114,7 +114,7 @@ Both options give you full access to all premium features.
 - Built-in help manager provides complete documentation (no separate PDF manual)
 - All help is directly built into the in-app help manager
 - Discord community: https://discord.gg/gXGqqYR47B
-- Email support: support@cymasphere.com
+- Email support: support@nnaud.io
 - Premium support available
 - 24/7 support availability
 
@@ -363,7 +363,7 @@ ${allTicketsContext ? `\n${allTicketsContext}\n` : ''}
 - Use information from the knowledge base above when relevant
 - Keep responses concise but complete
 - Use a friendly, helpful tone
-- If you don't know something, suggest contacting support@cymasphere.com
+- If you don't know something, suggest contacting support@nnaud.io
 - Always be respectful and patient`;
 
     // Generate AI response
@@ -518,6 +518,6 @@ Some common topics I can help with:
 
 Feel free to share more details, and I'll do my best to assist you!
 
-If you need immediate assistance, you can also reach us at support@cymasphere.com or join our Discord community.`;
+If you need immediate assistance, you can also reach us at support@nnaud.io or join our Discord community.`;
 }
 

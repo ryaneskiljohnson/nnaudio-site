@@ -1924,7 +1924,7 @@ async function sendSupportTicketEmailNotification(
                     <tr>
                         <td style="padding: 20px 24px; background-color: #f8f9fa; border-top: 1px solid #e9ecef; text-align: center; font-size: 0.85em; color: #666;">
                             <p style="margin: 0 0 10px 0;">
-                                This is an automated notification from Cymasphere Support.
+                                This is an automated notification from NNAudio Support.
                             </p>
                             <p style="margin: 0;">
                                 <a href="${baseUrl}" style="color: #6c63ff; text-decoration: none;">Visit our website</a> | 
@@ -1974,7 +1974,7 @@ ${
 View and respond to your ticket:
 ${ticketUrl}
 
-This is an automated notification from Cymasphere Support.
+This is an automated notification from NNAudio Support.
     `;
 
     // Send email
@@ -1983,8 +1983,8 @@ This is an automated notification from Cymasphere Support.
       subject: `New Response: ${ticket.ticket_number} - ${ticket.subject}`,
       html: emailHtml,
       text: emailText,
-      from: "Cymasphere Support <support@cymasphere.com>",
-      replyTo: "support@cymasphere.com",
+      from: "NNAudio Support <support@nnaud.io>",
+      replyTo: "support@nnaud.io",
     });
 
     if (emailResult.success) {
@@ -2274,7 +2274,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
                     <tr>
                         <td style="padding: 20px 24px; background-color: #f8f9fa; border-top: 1px solid #e9ecef; text-align: center; font-size: 0.85em; color: #666;">
                             <p style="margin: 0 0 10px 0;">
-                                This is an automated notification from Cymasphere Support.
+                                This is an automated notification from NNAudio Support.
                             </p>
                             <p style="margin: 0;">
                                 <a href="${baseUrl}" style="color: #6c63ff; text-decoration: none;">Visit our website</a> | 
@@ -2326,16 +2326,16 @@ ${
 View and respond to the ticket:
 ${ticketUrl}
 
-This is an automated notification from Cymasphere Support.
+This is an automated notification from NNAudio Support.
     `;
 
     // Send email to admin
     const emailResult = await sendEmail({
-      to: "support@cymasphere.com",
+      to: "support@nnaud.io",
       subject: `New User Response: ${ticket.ticket_number} - ${ticket.subject}`,
       html: emailHtml,
       text: emailText,
-      from: "Cymasphere Support <support@cymasphere.com>",
+      from: "NNAudio Support <support@nnaud.io>",
       replyTo: userEmail,
     });
 

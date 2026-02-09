@@ -222,12 +222,8 @@ export async function getAdminStripeOrders(limit = 50): Promise<{
         }
         throw err;
       }
-      const productOrders = response.data.filter(
-        (pi) =>
-          pi.status === "succeeded" &&
-          pi.metadata?.cart_items /* product purchases only, not subscriptions */
-      );
-      allPaymentIntents.push(...productOrders);
+      const succeeded = response.data.filter((pi) => pi.status === "succeeded");
+      allPaymentIntents.push(...succeeded);
       hasMore =
         response.has_more && allPaymentIntents.length < effectiveLimit;
       if (response.data.length > 0) {
@@ -319,14 +315,31 @@ export async function getAdminStripeOrders(limit = 50): Promise<{
       let items: AdminOrderItem[] = [];
       try {
         const cartItemsStr = pi.metadata?.cart_items;
-        if (cartItemsStr) items = JSON.parse(cartItemsStr);
+        if (cartItemsStr) {
+          items = JSON.parse(cartItemsStr);
+        }
       } catch {
         /* ignore */
       }
+      if (items.length === 0) {
+        const source =
+          pi.metadata?.Reseller ? `Reseller: ${pi.metadata.Reseller}` :
+          pi.metadata?.purchase_type === "lifetime" ? "Lifetime subscription" :
+          pi.metadata?.POnumber ? "Reseller order" :
+          "Stripe payment";
+        items = [{
+          id: pi.id,
+          name: source,
+          price: pi.amount / 100,
+          quantity: 1,
+          product_image: null,
+          product_slug: null,
+        }];
+      }
       items = items.map((item: any) => ({
         ...item,
-        product_image: productMap.get(item.id)?.featured_image_url ?? null,
-        product_slug: productMap.get(item.id)?.slug ?? null,
+        product_image: productMap.get(item.id)?.featured_image_url ?? item.product_image ?? null,
+        product_slug: productMap.get(item.id)?.slug ?? item.product_slug ?? null,
       }));
 
       const promoId = pi.metadata?.promotion_code;
@@ -372,6 +385,7 @@ export async function getAdminStripeOrders(limit = 50): Promise<{
           discount_amount: pi.metadata?.discount_amount,
           total_amount: pi.metadata?.total_amount,
           promotion_code: promotionCodeName ?? pi.metadata?.promotion_code ?? undefined,
+          reseller_name: (pi.metadata?.Reseller as string) ?? undefined,
         },
         customerEmail,
         receiptUrl,

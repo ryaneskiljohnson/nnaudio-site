@@ -457,7 +457,7 @@ export async function POST(request: NextRequest) {
                   html: personalizedHtml,
                   text: personalizedText,
                   from: `${campaign.sender_name || "Cymasphere"} <${
-                    campaign.sender_email || "support@cymasphere.com"
+                    campaign.sender_email || "support@nnaud.io"
                   }>`,
                   replyTo: campaign.reply_to_email || undefined,
                 });
@@ -573,7 +573,7 @@ export async function POST(request: NextRequest) {
               html: personalizedHtml,
               text: personalizedText,
               from: `${campaign.sender_name || "Cymasphere"} <${
-                campaign.sender_email || "support@cymasphere.com"
+                campaign.sender_email || "support@nnaud.io"
               }>`,
               replyTo: campaign.reply_to_email || undefined,
             });

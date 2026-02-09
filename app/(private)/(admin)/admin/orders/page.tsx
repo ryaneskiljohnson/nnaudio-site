@@ -602,7 +602,7 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     fetchOrders();
-  }, [filter, page, debouncedSearch]);
+  }, [filter, filter === "all" ? 1 : page, debouncedSearch]);
 
   const fetchOrders = async () => {
     try {
@@ -617,6 +617,23 @@ export default function AdminOrdersPage() {
           setOrders([]);
           setTotalCount(0);
           setFetchError(result.error ?? "Failed to load purchases");
+        }
+      } else if (filter === "all") {
+        const [stripeResult, grantResult] = await Promise.all([
+          getAdminStripeOrders(50),
+          getAdminGrantOrdersPaginated(1, 100, debouncedSearch, "all"),
+        ]);
+        const stripeOrders = stripeResult.success ? stripeResult.orders : [];
+        const grantOrders = grantResult.success ? grantResult.orders : [];
+        const merged = [...stripeOrders, ...grantOrders].sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        setOrders(merged);
+        setTotalCount(merged.length);
+        if (!stripeResult.success && stripeResult.error) {
+          setFetchError(stripeResult.error);
+        } else if (!grantResult.success && grantResult.error) {
+          setFetchError(grantResult.error);
         }
       } else {
         const rpcFilter =
@@ -655,9 +672,9 @@ export default function AdminOrdersPage() {
     if (filter === "grant" && order.orderType !== "grant") return false;
     if (filter === "redemption" && order.orderType !== "redemption") return false;
 
-    // Client-side search only for Purchases tab (server doesn't support search).
-    // All/Grants/Redemptions are already filtered server-side by debouncedSearch.
-    if (filter === "purchase" && searchTerm) {
+    // Client-side search for Purchases and All tabs (Stripe has no server-side search).
+    // Grants/Redemptions-only are filtered server-side by debouncedSearch.
+    if ((filter === "purchase" || filter === "all") && searchTerm) {
       const term = searchTerm.toLowerCase();
       const matchesEmail =
         order.customerEmail?.toLowerCase().includes(term) ?? false;
@@ -665,7 +682,15 @@ export default function AdminOrdersPage() {
       const matchesItem = order.items.some((i) =>
         i.name.toLowerCase().includes(term)
       );
-      if (!matchesEmail && !matchesOrder && !matchesItem) return false;
+      const matchesReseller =
+        order.metadata?.reseller_name?.toLowerCase().includes(term) ?? false;
+      if (
+        !matchesEmail &&
+        !matchesOrder &&
+        !matchesItem &&
+        !matchesReseller
+      )
+        return false;
     }
     return true;
   });
@@ -722,6 +747,16 @@ export default function AdminOrdersPage() {
     });
     return arr;
   }, [filteredOrders, sortField, sortDirection]);
+
+  const displayedOrders = useMemo(() => {
+    if (filter === "all") {
+      return sortedOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    }
+    return sortedOrders;
+  }, [sortedOrders, filter, page]);
+
+  const effectiveTotalCount =
+    filter === "all" ? filteredOrders.length : totalCount;
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -965,7 +1000,7 @@ export default function AdminOrdersPage() {
                 </tr>
               </TableHead>
               <TableBody>
-                {sortedOrders.map((order) => {
+                {displayedOrders.map((order) => {
                   const isExpanded = expandedOrders.has(order.id);
                   const subtotal = order.items.reduce(
                     (sum, item) =>
@@ -1249,11 +1284,12 @@ export default function AdminOrdersPage() {
         )}
 
         {(filter === "all" || filter === "grant" || filter === "redemption") &&
-          totalCount > 0 && (
+          effectiveTotalCount > 0 && (
           <PaginationBar>
             <PaginationInfo>
               Showing {(page - 1) * PAGE_SIZE + 1}–
-              {Math.min(page * PAGE_SIZE, totalCount)} of {totalCount.toLocaleString()}
+              {Math.min(page * PAGE_SIZE, effectiveTotalCount)} of{" "}
+              {effectiveTotalCount.toLocaleString()}
             </PaginationInfo>
             <PaginationControls>
               <PaginationButton
@@ -1265,10 +1301,10 @@ export default function AdminOrdersPage() {
               <PaginationButton
                 onClick={() =>
                   setPage((p) =>
-                    Math.min(Math.ceil(totalCount / PAGE_SIZE), p + 1)
+                    Math.min(Math.ceil(effectiveTotalCount / PAGE_SIZE), p + 1)
                   )
                 }
-                disabled={page >= Math.ceil(totalCount / PAGE_SIZE)}
+                disabled={page >= Math.ceil(effectiveTotalCount / PAGE_SIZE)}
               >
                 Next
               </PaginationButton>
