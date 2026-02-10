@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/service';
+import { getDownloadFileSize } from '@/utils/product-downloads';
 
 // GET /api/products/[id] - Get single product
 export async function GET(
@@ -175,6 +176,20 @@ export async function PUT(
           stripe_price_id: existingProduct.stripe_price_id,
           stripe_sale_price_id: existingProduct.stripe_sale_price_id,
         };
+
+    // Backfill file_size for downloads when path is set but size missing (so NNAudio Access has stored size)
+    if (Array.isArray(body.downloads) && body.downloads.length > 0) {
+      const enrichedDownloads = await Promise.all(
+        body.downloads.map(async (d: { path?: string; file_size?: number | null; [k: string]: unknown }) => {
+          const pathOrUrl = (d.path || (d as { url?: string }).url)?.trim();
+          const needsSize = pathOrUrl && (d.file_size == null || d.file_size === 0);
+          if (!needsSize) return d;
+          const fileSize = await getDownloadFileSize(pathOrUrl, adminSupabase as any);
+          return fileSize != null ? { ...d, file_size: fileSize } : d;
+        })
+      );
+      body.downloads = enrichedDownloads;
+    }
 
     const { data: product, error } = await (adminSupabase as any)
       .from('products')

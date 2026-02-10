@@ -665,6 +665,8 @@ export default function EditProductPage() {
     file_size?: number | null;
   }>>([]);
   const [downloadsExpanded, setDownloadsExpanded] = useState(true);
+  /** Index of the download row currently fetching file size from path/URL (for loading UI). */
+  const [loadingFileSizeIndex, setLoadingFileSizeIndex] = useState<number | null>(null);
   const [stripeIds, setStripeIds] = useState<{
     stripe_product_id?: string | null;
     stripe_price_id?: string | null;
@@ -1301,6 +1303,29 @@ export default function EditProductPage() {
       [field]: value
     };
     setDownloads(newDownloads);
+  };
+
+  /**
+   * Recalculate file_size from the download path/URL and store it in state.
+   * Called when path changes (onBlur) or when user clicks "Get size from link".
+   */
+  const fetchFileSizeForDownload = async (index: number) => {
+    const pathOrUrl = downloads[index]?.path?.trim();
+    if (!pathOrUrl) return;
+    setLoadingFileSizeIndex(index);
+    try {
+      const res = await fetch(
+        `/api/admin/products/download-file-size?path=${encodeURIComponent(pathOrUrl)}`
+      );
+      const data = await res.json();
+      if (res.ok && data.file_size != null) {
+        handleDownloadChange(index, "file_size", data.file_size);
+      }
+    } catch {
+      // Leave file_size unchanged on error
+    } finally {
+      setLoadingFileSizeIndex(null);
+    }
   };
 
   const addDownload = () => {
@@ -2216,6 +2241,7 @@ export default function EditProductPage() {
                         type="text"
                         value={download.path}
                         onChange={(e) => handleDownloadChange(index, 'path', e.target.value)}
+                        onBlur={() => download.path.trim() && fetchFileSizeForDownload(index)}
                         placeholder="products/apache-flute/plugin_Apache.zip"
                       />
                     </FeatureItem>
@@ -2254,12 +2280,36 @@ export default function EditProductPage() {
                       </FeatureItem>
                       <FeatureItem>
                         <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>File Size (bytes)</Label>
-                        <FeatureInput
-                          type="number"
-                          value={download.file_size || ''}
-                          onChange={(e) => handleDownloadChange(index, 'file_size', e.target.value ? parseInt(e.target.value) : null)}
-                          placeholder="37811823"
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <FeatureInput
+                            type="number"
+                            value={download.file_size || ''}
+                            onChange={(e) => handleDownloadChange(index, 'file_size', e.target.value ? parseInt(e.target.value) : null)}
+                            placeholder="37811823"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => fetchFileSizeForDownload(index)}
+                            disabled={!download.path.trim() || loadingFileSizeIndex === index}
+                            style={{
+                              padding: '0.4rem 0.6rem',
+                              fontSize: '0.8rem',
+                              whiteSpace: 'nowrap',
+                              background: 'rgba(108, 99, 255, 0.2)',
+                              border: '1px solid rgba(108, 99, 255, 0.4)',
+                              borderRadius: '6px',
+                              color: 'var(--text)',
+                              cursor: download.path.trim() && loadingFileSizeIndex !== index ? 'pointer' : 'not-allowed',
+                              opacity: download.path.trim() && loadingFileSizeIndex !== index ? 1 : 0.6,
+                            }}
+                          >
+                            {loadingFileSizeIndex === index ? (
+                              <FaSpinner style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }} />
+                            ) : (
+                              'Get size from link'
+                            )}
+                          </button>
+                        </div>
                       </FeatureItem>
                     </div>
                     <RemoveButton

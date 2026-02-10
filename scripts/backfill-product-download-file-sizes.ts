@@ -1,14 +1,19 @@
 /**
- * @fileoverview Backfills file_size for product downloads that are missing it
- * Fetches file metadata from Supabase storage and updates the products.downloads JSONB
- * Run with: bun run scripts/backfill-product-download-file-sizes.ts
+ * @fileoverview One-time recalculation of file_size for all product downloads.
  * @module scripts/backfill-product-download-file-sizes
+ *
+ * Fetches file size from each download path (Supabase storage or URL) and
+ * updates products.downloads so stored sizes match the current link. Run once
+ * to ensure all download fields are accurate.
+ *
+ * Run with: bun run scripts/backfill-product-download-file-sizes.ts
  */
 
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { getDownloadFileSize } from "@/utils/product-downloads";
 import { resolve } from "path";
 import * as dotenv from "dotenv";
-import * as path from "path";
+import path from "path";
 
 dotenv.config({ path: resolve(__dirname, "../.env.local") });
 
@@ -19,33 +24,11 @@ interface DownloadEntry {
   type?: string;
   version?: string;
   file_size?: number | null;
-}
-
-async function getFileSizeFromStorage(
-  storagePath: string,
-  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>
-): Promise<number | null> {
-  try {
-    const dirPath = path.dirname(storagePath);
-    const fileName = path.basename(storagePath);
-
-    const { data, error } = await supabase.storage
-      .from("product-downloads")
-      .list(dirPath);
-
-    if (error || !data) return null;
-
-    const fileInfo = data.find((f) => f.name === fileName);
-    if (!fileInfo?.metadata?.size) return null;
-
-    return fileInfo.metadata.size as number;
-  } catch {
-    return null;
-  }
+  [k: string]: unknown;
 }
 
 async function main() {
-  console.log("🔧 Backfilling file_size for product downloads\n");
+  console.log("🔧 Recalculating file_size for all product downloads (one-time accuracy pass)\n");
   console.log("=".repeat(60));
 
   const supabase = await createSupabaseServiceRole();
@@ -53,7 +36,6 @@ async function main() {
   const { data: products, error } = await (supabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>)
     .from("products")
     .select("id, name, slug, downloads")
-    .eq("status", "active")
     .not("downloads", "is", null);
 
   if (error) {
@@ -62,7 +44,8 @@ async function main() {
   }
 
   let updatedCount = 0;
-  let skippedCount = 0;
+  let skipCount = 0;
+  let failCount = 0;
 
   for (const product of products || []) {
     const downloads = (product.downloads as DownloadEntry[]) || [];
@@ -72,29 +55,29 @@ async function main() {
     const updatedDownloads: DownloadEntry[] = [];
 
     for (const download of downloads) {
-      const storagePath = download.path || download.url;
-      if (!storagePath || storagePath.startsWith("http")) {
-        skippedCount++;
+      const pathOrUrl = (download.path || download.url)?.trim();
+      if (!pathOrUrl) {
         updatedDownloads.push(download);
+        skipCount++;
         continue;
       }
 
-      if (download.file_size != null && download.file_size > 0) {
-        updatedDownloads.push(download);
-        continue;
-      }
-
-      const fileSize = await getFileSizeFromStorage(storagePath, supabase);
+      const fileSize = await getDownloadFileSize(pathOrUrl, supabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>);
       if (fileSize != null) {
-        hasChanges = true;
-        updatedCount++;
+        const prevSize = download.file_size;
+        if (prevSize !== fileSize) {
+          hasChanges = true;
+          updatedCount++;
+        }
+        const displayPath = pathOrUrl.startsWith("http") ? pathOrUrl.slice(0, 50) + "…" : path.basename(pathOrUrl);
         console.log(
-          `  ✅ ${product.name}: ${path.basename(storagePath)} -> ${(fileSize / 1024 / 1024).toFixed(2)} MB`
+          `  ✅ ${product.name}: ${displayPath} -> ${(fileSize / 1024 / 1024).toFixed(2)} MB`
         );
         updatedDownloads.push({ ...download, file_size: fileSize });
       } else {
-        console.log(`  ⚠️  ${product.name}: Could not get size for ${storagePath}`);
+        console.log(`  ⚠️  ${product.name}: Could not get size for ${pathOrUrl.startsWith("http") ? pathOrUrl.slice(0, 60) + "…" : pathOrUrl}`);
         updatedDownloads.push(download);
+        failCount++;
       }
     }
 
@@ -111,10 +94,9 @@ async function main() {
   }
 
   console.log("\n" + "=".repeat(60));
-  console.log(`✅ Backfill complete: ${updatedCount} downloads updated`);
-  if (skippedCount > 0) {
-    console.log(`   (${skippedCount} skipped - external URLs or already have size)`);
-  }
+  console.log(`✅ Done: ${updatedCount} download file_size values updated/verified`);
+  if (skipCount > 0) console.log(`   (${skipCount} entries had no path/URL)`);
+  if (failCount > 0) console.log(`   (${failCount} could not resolve size)`);
 }
 
 main().catch(console.error);
