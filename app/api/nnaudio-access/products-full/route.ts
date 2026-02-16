@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     )
       .from("products")
       .select(
-        "id, name, slug, featured_image_url, featured_image_url_png, legacy_product_id, downloads, download_version, category"
+        "id, name, slug, featured_image_url, featured_image_url_png, legacy_product_id, downloads, download_version, category, tagline, short_description"
       )
       .in("id", productIdsArray)
       .eq("status", "active");
@@ -230,6 +230,7 @@ export async function POST(request: NextRequest) {
         version,
         bundle_name: bundleName,
         product_type: productType,
+        tagline: (product as { tagline?: string | null; short_description?: string | null }).tagline ?? (product as { short_description?: string | null }).short_description ?? null,
         downloads: downloadsWithUrls,
       });
     }

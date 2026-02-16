@@ -19,6 +19,8 @@ export interface ProductFullItem {
   bundle_name: string | null;
   /** For NNAudio Access filter UI: product category (Instrument Plugins, Packs, etc.) - never bundle name */
   product_type: string | null;
+  /** Short product tagline for display in product list/card */
+  tagline: string | null;
   downloads: DownloadItem[];
 }
 

@@ -358,7 +358,7 @@ export async function POST(request: NextRequest) {
     // Fetch all products (regular products + bundle products, but NOT the bundles themselves)
     const { data: allProducts, error: allProductsError } = await (adminSupabase as any)
       .from("products")
-      .select("id, name, slug, featured_image_url, featured_image_url_png, legacy_product_id")
+      .select("id, name, slug, featured_image_url, featured_image_url_png, legacy_product_id, tagline")
       .in("id", allProductIds)
       .eq("status", "active");
 
@@ -377,7 +377,7 @@ export async function POST(request: NextRequest) {
     // Format response to match WooCommerce downloads format expected by desktop app
     // Use legacy_product_id if available, otherwise fall back to UUID
     // This ensures plugins can check authorization using their legacy IDs
-    const formattedProducts = finalProducts.map((product: { id: string; name?: string; slug?: string; featured_image_url?: string | null; featured_image_url_png?: string | null; legacy_product_id?: string | null }) => {
+    const formattedProducts = finalProducts.map((product: { id: string; name?: string; slug?: string; featured_image_url?: string | null; featured_image_url_png?: string | null; legacy_product_id?: string | null; tagline?: string | null }) => {
       const bundleName = productToBundleMap.get(product.id);
       if (bundleName) {
         console.log(`[NNAudio Access Products] Product ${product.id} (${product.name}) is from bundle: ${bundleName}`);
@@ -392,6 +392,7 @@ export async function POST(request: NextRequest) {
         download_name: product.name, // For version extraction
         image_url: imageUrl, // PNG preferred for desktop app (macOS WebP incompatibility)
         bundle_name: bundleName || null, // Include bundle name if product comes from a bundle
+        tagline: product.tagline || null,
       };
     });
     
