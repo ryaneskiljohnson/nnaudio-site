@@ -618,7 +618,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
   const [sideCartOpen, setSideCartOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
   const { user, signOut } = useAuth();
-  const { getItemCount, items, isLoaded: isCartLoaded } = useCart();
+  const { getItemCount, items, isLoaded: isCartLoaded, suppressCartOpen, clearSuppressCartOpen } = useCart();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const cartItemCount = getItemCount();
   const prevCartItemCountRef = useRef<number>(cartItemCount);
@@ -732,10 +732,14 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
     }
 
     if (cartItemCount > prevCartItemCountRef.current) {
-      setSideCartOpen(true);
+      if (suppressCartOpen) {
+        clearSuppressCartOpen();
+      } else {
+        setSideCartOpen(true);
+      }
     }
     prevCartItemCountRef.current = cartItemCount;
-  }, [cartItemCount, items.length, isCartLoaded]);
+  }, [cartItemCount, items.length, isCartLoaded, suppressCartOpen, clearSuppressCartOpen]);
 
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();

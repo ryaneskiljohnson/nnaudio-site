@@ -13,15 +13,23 @@ export interface CartItem {
   logo_url?: string;
 }
 
+export interface AddItemOptions {
+  /** If false, the side cart will not auto-open for this add (e.g. elite bundle lifetime → checkout). Default true. */
+  openCart?: boolean;
+}
+
 interface CartContextType {
   items: CartItem[];
-  addItem: (item: Omit<CartItem, 'quantity'>) => void;
+  addItem: (item: Omit<CartItem, 'quantity'>, options?: AddItemOptions) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
   isLoaded: boolean;
+  /** When true, header should not auto-open side cart for the last add; clear after reading. */
+  suppressCartOpen: boolean;
+  clearSuppressCartOpen: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -31,6 +39,7 @@ const CART_STORAGE_KEY = 'nnaudio_cart';
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [suppressCartOpen, setSuppressCartOpen] = useState(false);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -59,20 +68,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items, isLoaded]);
 
-  const addItem = useCallback((item: Omit<CartItem, 'quantity'>) => {
+  const addItem = useCallback((item: Omit<CartItem, 'quantity'>, options?: AddItemOptions) => {
+    if (options?.openCart === false) {
+      setSuppressCartOpen(true);
+    }
     setItems((prevItems) => {
       const existingItem = prevItems.find((i) => i.id === item.id);
       if (existingItem) {
-        // If item already exists, increase quantity
         return prevItems.map((i) =>
           i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       } else {
-        // Add new item with quantity 1
         return [...prevItems, { ...item, quantity: 1 }];
       }
     });
   }, []);
+
+  const clearSuppressCartOpen = useCallback(() => setSuppressCartOpen(false), []);
 
   const removeItem = useCallback((id: string) => {
     setItems((prevItems) => prevItems.filter((i) => i.id !== id));
@@ -113,6 +125,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     getTotal,
     getItemCount,
     isLoaded,
+    suppressCartOpen,
+    clearSuppressCartOpen,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { FaCheckCircle, FaArrowLeft, FaShoppingCart, FaHome } from "react-icons/fa";
+import { FaCheckCircle, FaArrowLeft, FaShoppingCart, FaHome, FaArrowRight } from "react-icons/fa";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
 import { BundleWithProducts } from "@/types/bundles";
@@ -379,6 +380,29 @@ const SavingsText = styled.p`
   justify-content: center;
 `;
 
+const SeePricingButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(138, 43, 226, 0.6);
+  }
+`;
+
 const PriceAndCartContainer = styled.div`
   display: flex;
   align-items: center;
@@ -671,6 +695,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
   const [selectedTier, setSelectedTier] = useState<'monthly' | 'annual' | 'lifetime'>('lifetime');
   const [slug, setSlug] = useState<string>('');
   const [showStickyButton, setShowStickyButton] = useState(false);
+  const router = useRouter();
   const { addItem } = useCart();
   const { success } = useToast();
   const topSectionRef = useRef<HTMLDivElement>(null);
@@ -750,9 +775,26 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
   };
 
   const handleSubscribe = (tier: 'monthly' | 'annual' | 'lifetime') => {
-    // TODO: Implement Stripe checkout for bundle subscriptions
-    console.log('Subscribe to bundle:', bundle?.name, 'Tier:', tier);
-    // This will integrate with Stripe checkout
+    if (!bundle?.slug) return;
+    if (tier === 'lifetime' && bundle.pricing?.lifetime) {
+      const lifetime = bundle.pricing.lifetime;
+      addItem(
+        {
+          id: bundle.id,
+          name: bundle.name,
+          slug: bundle.slug,
+          price: lifetime.price ?? 0,
+          sale_price: lifetime.sale_price ?? undefined,
+          featured_image_url: bundle.featured_image_url,
+          logo_url: bundle.logo_url,
+        },
+        { openCart: false }
+      );
+      success(`${bundle.name} added to cart!`, 3000);
+      router.push('/checkout');
+      return;
+    }
+    router.push(`/checkout/bundle?bundle_slug=${encodeURIComponent(bundle.slug)}&tier=${tier}`);
   };
 
   if (loading) {
@@ -846,8 +888,19 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
           </ValueAmount>
           {selectedSavings && selectedSavings.amount > 0 && (
             <SavingsText>
-              Save {formatPrice(selectedSavings.amount)} ({selectedSavings.percent}% off)
+              Save up to {formatPrice(selectedSavings.amount)} ({selectedSavings.percent}% off)
             </SavingsText>
+          )}
+          {(bundle.pricing.monthly || bundle.pricing.annual) && (
+            <SeePricingButton
+              type="button"
+              onClick={() => {
+                document.getElementById('pricing-options')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}
+            >
+              See Pricing Options
+              <FaArrowRight />
+            </SeePricingButton>
           )}
           
           {/* For regular bundles (non-elite), show price and add to cart next to total value */}
@@ -888,7 +941,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
 
         {/* Only show pricing section for elite bundles (with monthly/annual options) */}
         {(bundle.pricing.monthly || bundle.pricing.annual) && (
-          <PricingSection>
+          <PricingSection id="pricing-options">
             <PricingTitle>Choose Your Plan</PricingTitle>
             <PricingGrid>
             {bundle.pricing.monthly && (

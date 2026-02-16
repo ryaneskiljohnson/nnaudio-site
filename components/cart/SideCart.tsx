@@ -424,20 +424,31 @@ export default function SideCart({ isOpen, onClose }: SideCartProps) {
                         <ItemActions>
                           <QuantityControl>
                             <QuantityButton
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateQuantity(item.id, item.quantity - 1);
+                              }}
                               disabled={item.quantity <= 1}
                             >
                               <FaMinus size={10} />
                             </QuantityButton>
                             <Quantity>{item.quantity}</Quantity>
                             <QuantityButton
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateQuantity(item.id, item.quantity + 1);
+                              }}
                             >
                               <FaPlus size={10} />
                             </QuantityButton>
                           </QuantityControl>
                           
-                          <RemoveButton onClick={() => removeItem(item.id)}>
+                          <RemoveButton
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeItem(item.id);
+                              }}
+                            >
                             <FaTrash size={12} />
                           </RemoveButton>
                         </ItemActions>

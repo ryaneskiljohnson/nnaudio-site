@@ -184,6 +184,7 @@ const ProductCount = styled.div`
   margin-bottom: 1rem;
 `;
 
+
 const ViewBundleButton = styled(Link)`
   display: inline-flex;
   align-items: center;
