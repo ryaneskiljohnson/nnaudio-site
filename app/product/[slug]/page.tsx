@@ -1864,33 +1864,26 @@ export default function ProductPage() {
                 <FaDownload /> Download
               </DownloadButton>
             ) : (
-              <>
-                <BuyButton
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    if (product) {
-                      addItem({
-                        id: product.id,
-                        name: product.name,
-                        slug: product.slug,
-                        price: product.price,
-                        sale_price: product.sale_price,
-                        featured_image_url: product.featured_image_url,
-                        logo_url: product.logo_url,
-                      });
-                      success(`${product.name} added to cart!`, 3000);
-                    }
-                  }}
-                >
-                  <FaShoppingCart /> Add to Cart
-                </BuyButton>
-                {hasPurchasedProduct && (
-                  <DownloadButton href="/downloads">
-                    <FaDownload /> Download
-                  </DownloadButton>
-                )}
-              </>
+              <BuyButton
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (product) {
+                    addItem({
+                      id: product.id,
+                      name: product.name,
+                      slug: product.slug,
+                      price: product.price,
+                      sale_price: product.sale_price,
+                      featured_image_url: product.featured_image_url,
+                      logo_url: product.logo_url,
+                    });
+                    success(`${product.name} added to cart!`, 3000);
+                  }
+                }}
+              >
+                <FaShoppingCart /> Add to Cart
+              </BuyButton>
             )}
             
             {product.download_url && (

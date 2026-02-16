@@ -68,6 +68,7 @@ interface BundleMosaicProps {
 
 export default function BundleMosaic({ products, totalCount }: BundleMosaicProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const runIdRef = useRef(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,6 +88,9 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
       setIsLoading(false);
       return;
     }
+
+    // Increment run id so previous run's async callbacks skip drawing (avoids duplicate cells from race).
+    const thisRunId = ++runIdRef.current;
 
     // Set canvas size - use high resolution (4x for retina/HD displays)
     const containerWidth = canvas.offsetWidth || 400;
@@ -116,7 +120,7 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
       return;
     }
 
-    // Randomize order
+    // Randomize order (stable per effect run; runId prevents stale runs from drawing).
     const shuffledUrls = [...imageUrlsToDraw].sort(() => Math.random() - 0.5);
     const count = shuffledUrls.length;
     const cols = Math.ceil(Math.sqrt(count));
@@ -124,19 +128,24 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
     const cellWidth = canvasSize / cols;
     const cellHeight = canvasSize / rows;
 
+    const drawInCell = (col: number, row: number, img: HTMLImageElement) => {
+      if (thisRunId !== runIdRef.current) return;
+      const x = col * cellWidth;
+      const y = row * cellHeight;
+      const size = Math.min(img.width, img.height);
+      const sx = (img.width - size) / 2;
+      const sy = (img.height - size) / 2;
+      ctx.drawImage(img, sx, sy, size, size, x, y, cellWidth, cellHeight);
+    };
+
     const imagePromises = shuffledUrls.map((imageUrl, index) => {
       return new Promise<void>((resolve) => {
+        const col = index % cols;
+        const row = Math.floor(index / cols);
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
-          const col = index % cols;
-          const row = Math.floor(index / cols);
-          const x = col * cellWidth;
-          const y = row * cellHeight;
-          const size = Math.min(img.width, img.height);
-          const sx = (img.width - size) / 2;
-          const sy = (img.height - size) / 2;
-          ctx.drawImage(img, sx, sy, size, size, x, y, cellWidth, cellHeight);
+          drawInCell(col, row, img);
           resolve();
         };
         img.onerror = () => {
@@ -144,14 +153,7 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
             const fallbackImg = new window.Image();
             fallbackImg.crossOrigin = 'anonymous';
             fallbackImg.onload = () => {
-              const col = index % cols;
-              const row = Math.floor(index / cols);
-              const x = col * cellWidth;
-              const y = row * cellHeight;
-              const size = Math.min(fallbackImg.width, fallbackImg.height);
-              const sx = (fallbackImg.width - size) / 2;
-              const sy = (fallbackImg.height - size) / 2;
-              ctx.drawImage(fallbackImg, sx, sy, size, size, x, y, cellWidth, cellHeight);
+              drawInCell(col, row, fallbackImg);
               resolve();
             };
             fallbackImg.onerror = () => resolve();
@@ -166,12 +168,14 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
 
     Promise.all(imagePromises)
       .then(() => {
-        setIsLoading(false);
+        if (thisRunId === runIdRef.current) setIsLoading(false);
       })
       .catch((err) => {
-        console.error('Error creating mosaic:', err);
-        setError('Failed to create mosaic');
-        setIsLoading(false);
+        if (thisRunId === runIdRef.current) {
+          console.error('Error creating mosaic:', err);
+          setError('Failed to create mosaic');
+          setIsLoading(false);
+        }
       });
   }, [products]);
 
