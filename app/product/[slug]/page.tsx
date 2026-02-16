@@ -479,6 +479,16 @@ const CompatibilityValue = styled.span`
   color: rgba(255, 255, 255, 0.7);
 `;
 
+/** Link styled like CompatibilityValue for "Downloaded via NNAudio Access" in specs */
+const CompatibilityValueLink = styled(Link)`
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  &:hover {
+    color: #4ecdc4;
+    text-decoration: underline;
+  }
+`;
+
 const ReviewsSection = styled.div`
   margin-top: 1.5rem;
 `;
@@ -732,6 +742,29 @@ const StickyButton = styled(motion.button)`
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 20px rgba(138, 43, 226, 0.6);
+  }
+`;
+
+/** Sticky bar "Download" link for NNAudio Access (no cart); matches StickyButton look */
+const StickyDownloadLink = styled(Link)`
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 40px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  text-decoration: none;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(138, 43, 226, 0.6);
+    color: white;
   }
 `;
 
@@ -1826,31 +1859,38 @@ export default function ProductPage() {
               )}
             </PriceContainer>
 
-            <BuyButton
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                if (product) {
-                  addItem({
-                    id: product.id,
-                    name: product.name,
-                    slug: product.slug,
-                    price: product.price,
-                    sale_price: product.sale_price,
-                    featured_image_url: product.featured_image_url,
-                    logo_url: product.logo_url,
-                  });
-                  success(`${product.name} added to cart!`, 3000);
-                }
-              }}
-            >
-              <FaShoppingCart /> Add to Cart
-            </BuyButton>
-
-            {hasPurchasedProduct && (
+            {slug === 'nnaudio-access' ? (
               <DownloadButton href="/downloads">
                 <FaDownload /> Download
               </DownloadButton>
+            ) : (
+              <>
+                <BuyButton
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    if (product) {
+                      addItem({
+                        id: product.id,
+                        name: product.name,
+                        slug: product.slug,
+                        price: product.price,
+                        sale_price: product.sale_price,
+                        featured_image_url: product.featured_image_url,
+                        logo_url: product.logo_url,
+                      });
+                      success(`${product.name} added to cart!`, 3000);
+                    }
+                  }}
+                >
+                  <FaShoppingCart /> Add to Cart
+                </BuyButton>
+                {hasPurchasedProduct && (
+                  <DownloadButton href="/downloads">
+                    <FaDownload /> Download
+                  </DownloadButton>
+                )}
+              </>
             )}
             
             {product.download_url && (
@@ -2318,14 +2358,30 @@ export default function ProductPage() {
                 </CompatibilityTitle>
                 <CompatibilityList>
                   {Object.entries(product.specifications).map(([key, value]: [string, any]) => {
-                    // Format value: capitalize RAM if it appears
-                    let formattedValue = typeof value === 'string' ? value : String(value);
-                    formattedValue = formattedValue.replace(/\bram\b/gi, 'RAM');
-                    
+                    // Delivery Format: show "Downloaded via NNAudio Access" (with link) for all products except NNAudio Access and Cymasphere (EXE/PKG)
+                    const isExePkgProduct = slug === 'nnaudio-access' || slug === 'cymasphere';
+                    const isDeliveryFormat = key === 'Delivery Format';
+
+                    let displayContent: React.ReactNode;
+                    if (isDeliveryFormat && !isExePkgProduct) {
+                      displayContent = (
+                        <>
+                          Downloaded via{' '}
+                          <CompatibilityValueLink href="/product/nnaudio-access">
+                            NNAudio Access
+                          </CompatibilityValueLink>
+                        </>
+                      );
+                    } else {
+                      let formattedValue = typeof value === 'string' ? value : String(value);
+                      formattedValue = formattedValue.replace(/\bram\b/gi, 'RAM');
+                      displayContent = formattedValue;
+                    }
+
                     return (
                       <CompatibilityItem key={key}>
                         <CompatibilityKey>{key}:</CompatibilityKey>
-                        <CompatibilityValue>{formattedValue}</CompatibilityValue>
+                        <CompatibilityValue>{displayContent}</CompatibilityValue>
                       </CompatibilityItem>
                     );
                   })}
@@ -2475,26 +2531,32 @@ export default function ProductPage() {
                 )}
               </StickyPrice>
             </StickyProductInfo>
-            <StickyButton
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                if (product) {
-                  addItem({
-                    id: product.id,
-                    name: product.name,
-                    slug: product.slug,
-                    price: product.price,
-                    sale_price: product.sale_price,
-                    featured_image_url: product.featured_image_url,
-                    logo_url: product.logo_url,
-                  });
-                  success(`${product.name} added to cart!`, 3000);
-                }
-              }}
-            >
-              <FaShoppingCart /> Add to Cart
-            </StickyButton>
+            {slug === 'nnaudio-access' ? (
+              <StickyDownloadLink href="/downloads">
+                <FaDownload /> Download
+              </StickyDownloadLink>
+            ) : (
+              <StickyButton
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (product) {
+                    addItem({
+                      id: product.id,
+                      name: product.name,
+                      slug: product.slug,
+                      price: product.price,
+                      sale_price: product.sale_price,
+                      featured_image_url: product.featured_image_url,
+                      logo_url: product.logo_url,
+                    });
+                    success(`${product.name} added to cart!`, 3000);
+                  }
+                }}
+              >
+                <FaShoppingCart /> Add to Cart
+              </StickyButton>
+            )}
           </StickyButtonContent>
         </StickyAddToCartButton>
       )}

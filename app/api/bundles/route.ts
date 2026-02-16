@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/service';
+import { getCanonicalImageKey } from '@/utils/canonicalImageKey';
 
 // GET /api/bundles - List all bundles
 export async function GET(request: NextRequest) {
@@ -31,7 +32,8 @@ export async function GET(request: NextRequest) {
             price,
             sale_price,
             featured_image_url,
-            logo_url
+            logo_url,
+            status
           )
         )
       `)
@@ -70,32 +72,28 @@ export async function GET(request: NextRequest) {
       // Bundles with ONLY lifetime tiers are considered regular one-time purchase bundles
       const isSubscriptionBundle = tiers.some(t => t.subscription_type === 'monthly' || t.subscription_type === 'annual');
 
-      // Extract all products with images for mosaic
+      // Extract all products for mosaic and counts (only active products)
       // For elite subscription bundles (with monthly/annual), filter out bundle products (only include plugins, packs, etc.)
-      // For regular one-time purchase bundles (lifetime only), show all products including bundle products
+      // For regular one-time purchase bundles (lifetime only), show all active products including bundle products
       const allProducts = ((bundle.bundle_products || []) as any[])
         .map((bp: any) => bp.product)
         .filter((p: any) => {
           if (!p) return false;
+          if (p.status !== 'active') return false;
           // Only filter out bundle products for elite subscription bundles
-          // Regular one-time purchase bundles should show all products
           if (isSubscriptionBundle && p.category === 'bundle') return false;
           return true;
         });
       
       const withImages = allProducts.filter((p: any) => p && (p.featured_image_url || p.logo_url));
-      // Deduplicate by product id first (one entry per product), then by canonical image URL (one thumbnail per unique image)
-      const canonicalImageUrl = (url: string) =>
-        (url || '').trim().toLowerCase().replace(/#.*$/, '').replace(/\?.*$/, '').replace(/\/+$/, '') || '';
-      const seenProductId = new Set<string>();
-      const seenImageUrl = new Set<string>();
+      // Deduplicate by canonical image key so the same image is never shown twice (any URL variant → one cell)
+      const seenKey = new Set<string>();
       const productsWithImages = withImages.filter((p: any) => {
-        if (!p?.id || seenProductId.has(p.id)) return false;
-        const url = p.featured_image_url || p.logo_url || '';
-        const canonical = canonicalImageUrl(url);
-        if (!canonical || seenImageUrl.has(canonical)) return false;
-        seenProductId.add(p.id);
-        seenImageUrl.add(canonical);
+        const url = (p.featured_image_url || p.logo_url || '').trim();
+        if (!url) return false;
+        const key = getCanonicalImageKey(url);
+        if (!key || seenKey.has(key)) return false;
+        seenKey.add(key);
         return true;
       });
       
@@ -120,8 +118,11 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Only show bundles that have at least one active product
+    const bundlesWithActiveProducts = transformedBundles?.filter((b: any) => (b.totalProductCount || 0) > 0) ?? [];
+
     // Sort: elite subscription bundles first, then regular bundles, then by display_order
-    const sortedBundles = transformedBundles?.sort((a: any, b: any) => {
+    const sortedBundles = bundlesWithActiveProducts.sort((a: any, b: any) => {
       // Elite subscription bundles (with monthly/annual tiers) come first
       if (a.isSubscriptionBundle && !b.isSubscriptionBundle) return -1;
       if (!a.isSubscriptionBundle && b.isSubscriptionBundle) return 1;

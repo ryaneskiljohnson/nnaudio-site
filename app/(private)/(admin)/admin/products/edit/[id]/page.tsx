@@ -801,6 +801,7 @@ export default function EditProductPage() {
       
       // Find the bundle by matching name or slug - try both API endpoints
       let bundle = null;
+      let productsFromSlug = false;
       
       // Try to get bundle by slug first
       try {
@@ -812,6 +813,11 @@ export default function EditProductPage() {
             if (bundleData.success && bundleData.bundle) {
               bundle = bundleData.bundle;
               console.log('Found bundle by slug:', bundle.name, bundle.id);
+              if (Array.isArray(bundle.bundleProducts) && bundle.bundleProducts.length > 0) {
+                setBundleProducts(bundle.bundleProducts);
+                productsFromSlug = true;
+                console.log('Loaded', bundle.bundleProducts.length, 'products from bundle slug response');
+              }
             }
           }
         }
@@ -849,9 +855,30 @@ export default function EditProductPage() {
       if (bundle && bundle.id) {
         setBundleId(bundle.id);
         
-        // Fetch products in this bundle
-        try {
-          let url = `/api/bundles/${bundle.id}/products`;
+        if (productsFromSlug) {
+          // Already have products from slug response; still fetch available products to add
+          try {
+            const allProductsResponse = await fetch('/api/products?status=all&limit=1000');
+            if (allProductsResponse.ok) {
+              const allProductsData = await allProductsResponse.json();
+              if (allProductsData.success) {
+                const currentProductIds = new Set([
+                  productId,
+                  ...(bundle.bundleProducts.map((bp: any) => bp.product?.id).filter(Boolean))
+                ]);
+                const available = allProductsData.products.filter((p: any) =>
+                  !currentProductIds.has(p.id) && p.category !== 'bundle'
+                );
+                setAvailableProducts(available);
+              }
+            }
+          } catch (e) {
+            console.error('Error fetching available products:', e);
+          }
+        } else {
+          // Fetch products in this bundle
+          try {
+            let url = `/api/bundles/${bundle.id}/products`;
           console.log('Fetching bundle products from:', url);
           let productsResponse = await fetch(url, {
             method: 'GET',
@@ -958,6 +985,7 @@ export default function EditProductPage() {
           } catch (e2) {
             console.error('Error fetching available products after error:', e2);
           }
+        }
         }
       } else {
         console.warn('Bundle not found for product:', productName, 'slug:', productSlug);

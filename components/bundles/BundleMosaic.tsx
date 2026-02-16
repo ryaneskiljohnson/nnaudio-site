@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import styled from 'styled-components';
+import { getCanonicalImageKey } from '@/utils/canonicalImageKey';
 
 const MosaicContainer = styled.div`
   width: 100%;
@@ -98,18 +99,15 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
     // Scale the context to match the high resolution
     ctx.scale(scale, scale);
 
-    // Build list of image URLs we will actually draw. Resolve each product to one URL (featured || logo || fallback), then keep only unique URLs so the same image is never drawn twice.
-    const canonical = (url: string) =>
-      (url || '').trim().toLowerCase().replace(/#.*$/, '').replace(/\?.*$/, '').replace(/\/+$/, '') || '';
-    const seenCanonical = new Set<string>();
+    // One cell per unique image: same canonical key = same image = draw once only.
+    const seenKey = new Set<string>();
     const imageUrlsToDraw: string[] = [];
     for (const p of products) {
       const url = (p.featured_image_url || p.logo_url || '').trim() || NNAUDIO_LOGO;
-      const key = url.startsWith('/') || url.startsWith('http') ? canonical(url) : url;
-      if (key && !seenCanonical.has(key)) {
-        seenCanonical.add(key);
-        imageUrlsToDraw.push(url);
-      }
+      const key = getCanonicalImageKey(url);
+      if (!key || seenKey.has(key)) continue;
+      seenKey.add(key);
+      imageUrlsToDraw.push(url);
     }
 
     // If nothing to draw, bail

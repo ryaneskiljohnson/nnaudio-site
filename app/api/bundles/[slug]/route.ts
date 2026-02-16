@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/service';
 
 // GET /api/bundles/[slug] - Get single bundle with products and pricing
 export async function GET(
@@ -8,15 +9,26 @@ export async function GET(
 ) {
   try {
     const supabase = await createClient();
+    const adminSupabase = await createAdminClient();
     const { slug } = await params;
 
-    // Get bundle (bundles table may not be in generated DB types)
-    const { data: bundle, error: bundleError } = await (supabase as any)
-      .from('bundles')
-      .select('*')
-      .eq('slug', slug)
-      .eq('status', 'active')
-      .single();
+    // Admins can load draft/archived bundles (e.g. for edit modal); public only gets active
+    // Use service role to check admin and fetch bundle so RLS cannot block
+    let restrictActive = true;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: adminById } = await (adminSupabase as any).from('admins').select('user').eq('user', user.id).maybeSingle();
+      const { data: adminByEmail } = user.email
+        ? await (adminSupabase as any).from('admins').select('user').eq('user', user.email).maybeSingle()
+        : { data: null };
+      restrictActive = !(adminById ?? adminByEmail);
+    }
+
+    let bundleQuery = (adminSupabase as any).from('bundles').select('*').eq('slug', slug);
+    if (restrictActive) {
+      bundleQuery = bundleQuery.eq('status', 'active');
+    }
+    const { data: bundle, error: bundleError } = await bundleQuery.single();
 
     if (bundleError || !bundle) {
       return NextResponse.json(
@@ -26,7 +38,7 @@ export async function GET(
     }
 
     // Get subscription tiers
-    const { data: tiers, error: tiersError } = await (supabase as any)
+    const { data: tiers, error: tiersError } = await (adminSupabase as any)
       .from('bundle_subscription_tiers')
       .select('*')
       .eq('bundle_id', (bundle as { id: string }).id)
@@ -37,8 +49,8 @@ export async function GET(
       console.error('Error fetching bundle tiers:', tiersError);
     }
 
-    // Get products in bundle
-    const { data: bundleProducts, error: productsError } = await (supabase as any)
+    // Get products in bundle (service role so all rows returned)
+    const { data: bundleProducts, error: productsError } = await (adminSupabase as any)
       .from('bundle_products')
       .select(`
         id,
@@ -142,6 +154,7 @@ export async function GET(
       bundle: {
         ...bundle,
         products: validProducts,
+        bundleProducts: bundleProducts || [],
         totalValue,
         pricing,
         isSubscriptionBundle,
