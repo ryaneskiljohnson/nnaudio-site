@@ -19,6 +19,11 @@ const nextConfig = {
   },
   // Exclude node-cron and canvas from Edge runtime bundling (they use native modules)
   serverExternalPackages: ['node-cron', 'canvas'],
+  async redirects() {
+    return [
+      { source: '/faq', destination: '/#faq', permanent: false },
+    ];
+  },
   images: {
     remotePatterns: [
       {

@@ -514,7 +514,7 @@ const Footer = () => {
           <FooterAnchor as="a" href="#pricing">
             {getTranslation("header.pricing", "Pricing")}
           </FooterAnchor>
-          <FooterAnchor as="a" href="#faq">
+          <FooterAnchor as="a" href="/#faq">
             {getTranslation("header.faq", "FAQ")}
           </FooterAnchor>
         </FooterColumn>

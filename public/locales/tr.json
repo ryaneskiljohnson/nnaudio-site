@@ -440,13 +440,12 @@
       "answer1": "Evet, aboneliğinizi istediğiniz zaman iptal edebilirsiniz. Mevcut fatura döneminin sonuna kadar premium özelliklere erişiminiz devam edecektir.",
       "question2": "Ücretsiz deneme mevcut mu?",
       "answer2": "Evet, tüm ücretli planlar için 14 günlük ücretsiz deneme sunuyoruz. Kredi kartı gerekmez.",
-      "question3": "Cymasphere'i çevrimdışı kullanabilir miyim?",
-      "answer3": "Cymasphere senkronizasyon ve AI özellikleri için internet bağlantısı gerektirir, ancak sınırlı süreler için çevrimdışı çalışabilirsiniz.",
+      "question3": "NNAudio Access'i çevrimdışı kullanabilir miyim?",
+      "answer3": "Giriş yapmak ve ürün listesini yenilemek için internete ihtiyacınız var; giriş yaptıktan sonra indirdiğiniz kurulum dosyalarıyla çevrimdışı kurabilirsiniz.",
       "question4": "Hangi dosya formatları destekleniyor?",
       "answer4": "MIDI dışa aktarımının yanı sıra analiz ve yeniden armonizasyon için MIDI ve MusicXML dosya içe aktarımını destekliyoruz."
     },
     "processing": "İşleniyor...",
-    "upgradeNow": "Şimdi Yükselt",
     "buyNow": "Şimdi Satın Al"
   },
   "promotion": {
@@ -652,7 +651,7 @@
       "support": "Destek",
       "supportAvailability": "7/24",
       "premiumSupport": "Premium destek mevcut",
-      "supportIntro": "Hesabınızla ilgili yardıma mı ihtiyacınız var veya Cymasphere hakkında sorularınız mı var? Bize mesaj gönderin, en kısa sürede size döneceğiz.",
+      "supportIntro": "Hesabınızla ilgili yardıma mı ihtiyacınız var veya NNAudio hakkında sorularınız mı var? Bize mesaj gönderin, en kısa sürede size döneceğiz.",
       "yourName": "Adınız",
       "yourEmail": "E-postanız",
       "message": "Mesajınız",
@@ -915,64 +914,32 @@
     }
   },
   "faq": {
-    "title": "Sık Sorulan Sorular",
-    "subtitle": "Cymasphere hakkında sık sorulan soruların yanıtlarını bulun",
+    "title": "Frequently Asked Questions",
+    "subtitle": "Find answers about NNAudio products, downloads, and NNAudio Access",
     "questions": [
       {
-        "question": "Cymasphere nedir?",
-        "answer": "Cymasphere, hem bağımsız uygulama hem de DAW için eklenti (AU & VST3) olarak mevcut olan kapsamlı bir şarkı yaratım paketidir. Akıllı akor seslendirme, melodi desen yapısı ve müzik teorisini her seviyedeki beceri için erişilebilir ve sezgisel hale getiren etkileşimli görselleştirme sunan, armoni ve melodi besteleme için entegre araçlar sağlar."
+        "question": "What is NNAudio Access and how do I use it?",
+        "answer": "NNAudio Access is our free desktop app that lists everything you own, lets you download installers, and install or update plugins and packs in one place. Get it from the <a href=\"/product/nnaudio-access\" target=\"_self\" rel=\"noopener noreferrer\">NNAudio Access product page</a> (free), install for macOS or Windows, then log in with your nnaud.io account. You can also download installers from <a href=\"/dashboard\" target=\"_self\" rel=\"noopener noreferrer\">My Products</a> on the website if you prefer."
       },
       {
-        "question": "Cymasphere müzisyenler için hangi sorunları çözer?",
-        "answer": "Cymasphere, etkileyici akor ilerlemeleri oluşturma, tamamlayıcı melodiler geliştirme, yumuşak ses yönlendirmesi yapma ve müzikal ilham bulma gibi yaygın kompozisyon zorluklarını ele alır. Müzik teorisi bilgisi ve pratik uygulama arasındaki köprüyü kurar, herhangi bir beceri seviyesindeki prodüktörler için tüm kompozisyon sürecini daha sezgisel ve erişilebilir hale getirir."
+        "question": "Where do I see my products and how do updates work?",
+        "answer": "Log in and go to <a href=\"/dashboard\" target=\"_self\" rel=\"noopener noreferrer\">Dashboard</a> → <strong>My Products</strong> to see all products linked to your account; the same list appears in NNAudio Access. The app shows when updates are available—download and run the latest installers when you're ready. We don't charge for updates; if you own a product, you get current and future versions."
       },
       {
-        "question": "Şarkı Oluşturucu kompozisyonda nasıl yardımcı olur?",
-        "answer": "Şarkı Oluşturucu, tüm müzikal öğelerin bir araya geldiği merkezi yaratıcı merkezinizdir. Akor ilerlemelerini düzenleyebilir, melodi desenleri oluşturabilir ve birden fazla parçayla komple şarkı yapıları inşa edebilirsiniz. Sistem profesyonel taşıma kontrolleri, etkileşimli zaman çizelgesi, parça başına ayarları olan çoklu parça yönetimi ve kompozisyonunuzun gelişimi boyunca bütünsel bir perspektif sağlayan kapsamlı düzenleme görünümü sunar."
+        "question": "I purchased products before the new site and don't see them in my account. What should I do?",
+        "answer": "If you bought before we launched this website, your order may not be linked yet. <a href=\"/login\" target=\"_self\" rel=\"noopener noreferrer\">Log in</a>, then go to <a href=\"/support\" target=\"_self\" rel=\"noopener noreferrer\">Support</a> and create a ticket with the email you used when you purchased and any order or receipt details. We'll attach your past purchases to your account so they appear under My Products and in NNAudio Access."
       },
       {
-        "question": "Etkileşimli Armoni Paleti nasıl çalışır?",
-        "answer": "Etkileşimli Armoni Paleti, akor ilişkilerini keşfetmek için görsel, jestsel bir arayüz sağlar. Sadece başlangıç akorunu seçin ve palet size armonik olarak ilişkili seçenekleri gösterecek, etkileyici ilerlemeler yapmayı kolaylaştırır. Seslendirmeleri doğrudan zaman çizelgenize sürükleyip bırakabilir, anında ton değiştirebilir ve kişisel armonik kelime dağarcığınızı geliştirmek için özel akor bankaları oluşturabilirsiniz."
+        "question": "What's the difference between subscriptions and one-time purchases?",
+        "answer": "<strong>One-time purchases</strong> (including lifetime): Pay once, keep the product forever with current and future updates. Most plugins, packs, and many <a href=\"/bundles\" target=\"_self\" rel=\"noopener noreferrer\">bundles</a> are sold this way.<br><br><strong>Subscriptions</strong> (monthly or annual): Recurring access while active; if you cancel, access ends when the period ends. Some bundles offer both lifetime and subscription options—check the product or bundle page."
       },
       {
-        "question": "Melodi Desen Yapısını özel kılan nedir?",
-        "answer": "Melodi Desen Yapısı, akor ilerlemelerinizi tamamlayan etkileyici melodiler geliştirmenize yardımcı olur. Armonik seçimlerinize dayalı olarak bağlam uygun melodik desenler önerir, farklı ritmik varyasyonlarla deneme yapmanıza olanak tanır ve akılda kalıcı temalar yapmak için sezgisel araçlar sağlar. Sistem, akor değişiklikleri meydana geldiğinde melodik içeriğinizi akıllıca uyarlar, kompozisyonunuz boyunca müzikal tutarlılığı korur."
+        "question": "What formats and platforms are supported?",
+        "answer": "Plugins are typically AU and VST3 for major DAWs (Logic, Ableton, FL Studio, Cubase, Studio One, Reaper, Bitwig, etc.). Sample packs and MIDI are downloadable content. NNAudio Access runs on macOS and Windows. Check each product page for details."
       },
       {
-        "question": "Desenler akor değişikliklerine nasıl uyum sağlar?",
-        "answer": "Cymasphere'in Dinamik Desen Editörü, melodik desenleri gerçek zamanlı olarak akor ilerlemelerinize uyarlamak için akıllı algoritmalar kullanır. Bir akoru değiştirdiğinizde, sistem melodinizin müzikal amacını korurken armonik tutarlılığı sürdürmek için deseni otomatik olarak ayarlar. Bu hem göreceli hem de mutlak modlarda çalışır, bağlam farkında melodiler veya sabit melodik içerik oluşturma esnekliği sunar."
-      },
-      {
-        "question": "Seslendirme Oluşturucuyu özel kılan nedir?",
-        "answer": "Seslendirme Oluşturucu, uygun ses yönlendirme ilkelerini takip eden zengin, müzikal olarak tatmin edici akor seslendirmeleri oluşturmak için gelişmiş algoritmalar kullanır. Akorlar arasında yumuşak ses geçişlerini sağlamak için akor ilerlemelerini analiz eder, seslendirme genişliği, yoğunluk, çevirmeler ve armonik uzantılar için kontroller sunar. Ayarlar küresel olarak uygulanabilir veya kompozisyonunuzun belirli bölümleri için ayarlanabilir."
-      },
-      {
-        "question": "Bağımsız uygulama ve eklenti arasındaki farklar nelerdir?",
-        "answer": "Bağımsız uygulama ve eklenti sürümleri aynı temel özellikleri ve işlevselliği paylaşır. Bağımsız uygulama bağımsız çalışır, odaklanmış kompozisyon ve keşif için harikadır, eklenti ise sorunsuz prodüksiyon iş akışı için doğrudan DAW'ınıza entegre olur. Yaratıcı sürecinize en uygun sürümü seçebilir veya ihtiyaçlarınıza göre ikisini de kullanabilirsiniz."
-      },
-      {
-        "question": "Cymasphere eklentisi hangi DAW'larla uyumludur?",
-        "answer": "Cymasphere eklentisi (AU & VST3 formatlarında mevcut) Logic Pro, Ableton Live, FL Studio, Cubase, Studio One, Reaper, Bitwig ve Digital Performer dahil çoğu büyük DAW ile uyumludur. Hem macOS hem de Windows platformları desteklenir."
-      },
-      {
-        "question": "Cymasphere yeni başlayanlar için uygun mudur?",
-        "answer": "Kesinlikle! Cymasphere deneyimli besteciler için gelişmiş işlevsellik sunarken, sezgisel arayüzü müzik teorisini yeni başlayanlar için erişilebilir kılar, armoni ve melodi kavramlarını görsel olarak anlamalarına yardımcı olur. Araçların etkileşimli doğası deneyimi ve yaparak öğrenmeyi teşvik eder, başlangıç noktanız ne olursa olsun kompozisyon becerilerini geliştirmek için mükemmel bir platform haline getirir."
-      },
-      {
-        "question": "Cymasphere'i kullanmak için müzik teorisi bilmem gerekir mi?",
-        "answer": "Hayır, bu Cymasphere'in güçlü yanlarından biri! Cymasphere, yaratım yaparken müzik teorisi anlayışınızı geliştirmek için tasarlanmış armonik bir oyun alanıdır. Görsel arayüzler kompozisyon yaparken müzikal ilişkileri anlamanıza yardımcı olur, karmaşık teori kavramlarını yeni başlayanlar için bile sezgisel hale getirir. Hem güçlü bir yaratım aracı hem de becerilerinizi geliştirdikçe sizinle birlikte büyüyen mükemmel bir öğrenme kaynağıdır."
-      },
-      {
-        "question": "Satın almadan önce Cymasphere'i nasıl deneyebilirim?",
-        "answer": "Ücretsiz deneme seçeneklerimizle Cymasphere'i deneyebilirsiniz. Kredi kartı gerektirmeyen 7 günlük ücretsiz deneme veya dosyada kart bulunan 14 günlük ücretsiz deneme (deneme bitene kadar ücretlendirilmez) sunuyoruz. Her iki seçenek de Cymasphere'in sunduğu her şeyi keşfedebilmeniz için tüm premium özelliklere tam erişim sağlar."
-      },
-      {
-        "question": "Güncellemeler için ödeme yapmam gerekir mi?",
-        "answer": "Hayır, tüm Cymasphere müşterileri yazılımın en son sürümüne ek ücret ödemeden erişebilir. Bu, tek seferlik satın alma işlemlerinin parçası olarak tüm gelecek güncellemeleri alan yaşam boyu lisans sahiplerini de içerir. Yazılımı sürekli iyileştirmeye ve tüm kullanıcıların tadını çıkarabileceği yeni özellikler eklemeye kararlıyız."
-      },
-      {
-        "question": "Cymasphere için kullanıcı kılavuzu mevcut mu?",
-        "answer": "Hayır, tüm yardım doğrudan uygulama içi yardım yöneticisine yerleştirilmiştir, yeni özellikleri keşfetmeyi ve öğrenmeyi zahmetsiz hale getirir. Sorular, hata raporları ve diğer sorular <a href=\"https://discord.gg/gXGqqYR47B\" target=\"_blank\" rel=\"noopener noreferrer\">Discord sunucumuz</a> aracılığıyla veya support@cymasphere.com adresine e-posta göndererek iletilebilir."
+        "question": "How do I get help or report a problem?",
+        "answer": "Log in, go to <a href=\"/support\" target=\"_self\" rel=\"noopener noreferrer\">Support</a>, and create a ticket with your issue. You can also email support@nnaud.io."
       }
     ]
   },
@@ -1244,12 +1211,12 @@
   },
   "chat": {
     "language": "tr",
-    "greeting": "Merhaba! Cymasphere asistanınıyım. Müzik prodüksiyonu araçları, fiyatlandırma, özellikleri ve daha fazlası hakkında sorularınızda size yardımcı olabilirim. Ne bilmek istersiniz?",
+    "greeting": "Merhaba! NNAudio asistanınızım. Ürünler, indirmeler, NNAudio Access ve hesabınız hakkında yardımcı olabilirim. Neye ihtiyacınız var?",
     "error_process": "Üzgünüm, şu anda mesajınızı işleyemedim. Lütfen tekrar deneyin.",
     "error_connecting": "Şu anda bağlanmakta zorluk yaşıyorum. Lütfen bir anlık içinde tekrar deneyin.",
     "view_pricing": "Fiyatlandırmayı Görüntüle",
-    "title": "Cymasphere Asistanı",
-    "placeholder": "Cymasphere hakkında bana her şeyi sorun...",
+    "title": "NNAudio Asistanı",
+    "placeholder": "NNAudio hakkında bana sorun...",
     "typing": "Asistan yazıyor",
     "open_label": "Sohbeti Aç",
     "close_label": "Sohbeti Kapat"

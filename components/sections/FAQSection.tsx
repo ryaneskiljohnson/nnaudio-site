@@ -4,18 +4,13 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { 
-  FaMusic, 
-  FaQuestion, 
-  FaPuzzlePiece, 
-  FaSlidersH, 
-  FaPlug, 
-  FaPalette, 
-  FaWaveSquare, 
-  FaLayerGroup, 
-  FaSyncAlt, 
-  FaUserGraduate, 
-  FaBook 
+import {
+  FaDesktop,
+  FaBoxOpen,
+  FaHistory,
+  FaCreditCard,
+  FaPlug,
+  FaHeadset,
 } from "react-icons/fa";
 
 const FAQContainer = styled.section`
@@ -134,24 +129,20 @@ const FAQSection = () => {
   };
 
   const faqIcons = [
-    <FaMusic key="music" />,
-    <FaQuestion key="question" />,
-    <FaLayerGroup key="layer" />,
-    <FaPalette key="palette" />,
-    <FaWaveSquare key="wave" />,
-    <FaSyncAlt key="sync" />,
-    <FaSlidersH key="sliders" />,
-    <FaPuzzlePiece key="puzzle" />,
-    <FaPlug key="plug" />,
-    <FaUserGraduate key="graduate" />,
-    <FaBook key="book" />
+    <FaDesktop key="access" />,      // NNAudio Access / desktop app
+    <FaBoxOpen key="products" />,   // My products / updates
+    <FaHistory key="legacy" />,      // Past purchases / support ticket
+    <FaCreditCard key="billing" />,  // Subscriptions vs one-time
+    <FaPlug key="formats" />,        // Formats & platforms
+    <FaHeadset key="support" />,     // Get help
   ];
 
-  // Get questions and answers from translation files
-  const questionsData = t("faq.questions", { returnObjects: true }) as FAQItem[] || [];
-  
+  // Get questions and answers from translation files (guard: i18n can return string or object if key missing)
+  const raw = t("faq.questions", { returnObjects: true });
+  const questionsData = Array.isArray(raw) ? (raw as FAQItem[]) : [];
+
   const faqItems = questionsData.map((question: FAQItem, index: number) => ({
-    icon: faqIcons[index % faqIcons.length],
+    icon: faqIcons[index] ?? faqIcons[0],
     question: question.question,
     answer: question.answer
   }));

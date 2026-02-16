@@ -413,7 +413,7 @@
     "equivalentTo": "Équivalent à",
     "goToDashboard": "Aller au tableau de bord",
     "manageSubscription": "Gérer l'abonnement",
-    "upgradeNow": "Mettre à niveau maintenant",
+    "upgradeNow": "Mettre à Niveau Maintenant",
     "currentPlan": "Plan actuel",
     "lifetimeOwner": "Propriétaire à vie",
     "noTrialAvailable": "Vous avez déjà utilisé un essai gratuit. Démarrez un abonnement pour continuer à profiter de toutes les fonctionnalités premium.",
@@ -443,71 +443,38 @@
       "or": "ou"
     },
     "processing": "Traitement",
-    "upgradeNow": "Mettre à Niveau Maintenant",
     "buyNow": "Acheter Maintenant"
   },
   "promotion": {
     "viewOffers": "Voir les Offres"
   },
   "faq": {
-    "title": "Questions Fréquemment Posées",
-    "subtitle": "Trouvez des réponses aux questions courantes sur Cymasphere",
+    "title": "Frequently Asked Questions",
+    "subtitle": "Find answers about NNAudio products, downloads, and NNAudio Access",
     "questions": [
       {
-        "question": "Qu'est-ce que Cymasphere ?",
-        "answer": "Cymasphere est une suite complète de création musicale disponible à la fois comme application autonome et comme plugin (AU & VST3) pour votre DAW. Elle offre des outils intégrés pour composer à la fois l'harmonie et la mélodie, avec des voicings d'accords intelligents, la construction de motifs mélodiques, et une visualisation interactive qui rend la théorie musicale accessible et intuitive pour tous les niveaux de compétence."
+        "question": "What is NNAudio Access and how do I use it?",
+        "answer": "NNAudio Access is our free desktop app that lists everything you own, lets you download installers, and install or update plugins and packs in one place. Get it from the <a href=\"/product/nnaudio-access\" target=\"_self\" rel=\"noopener noreferrer\">NNAudio Access product page</a> (free), install for macOS or Windows, then log in with your nnaud.io account. You can also download installers from <a href=\"/dashboard\" target=\"_self\" rel=\"noopener noreferrer\">My Products</a> on the website if you prefer."
       },
       {
-        "question": "Quels problèmes Cymasphere résout-il pour les musiciens ?",
-        "answer": "Cymasphere aborde les défis compositionnels courants comme la création de progressions d'accords convaincantes, le développement de mélodies complémentaires, l'élaboration d'une conduite des voix fluide, et la recherche d'inspiration musicale. Il comble le fossé entre la connaissance de la théorie musicale et l'application pratique, rendant l'ensemble du processus de composition plus intuitif et accessible pour les producteurs de tous niveaux."
+        "question": "Where do I see my products and how do updates work?",
+        "answer": "Log in and go to <a href=\"/dashboard\" target=\"_self\" rel=\"noopener noreferrer\">Dashboard</a> → <strong>My Products</strong> to see all products linked to your account; the same list appears in NNAudio Access. The app shows when updates are available—download and run the latest installers when you're ready. We don't charge for updates; if you own a product, you get current and future versions."
       },
       {
-        "question": "Comment le Créateur de Chansons aide-t-il à la composition ?",
-        "answer": "Le Créateur de Chansons est votre centre créatif où tous les éléments musicaux se rejoignent. Vous pouvez arranger des progressions d'accords, créer des motifs mélodiques, et construire des structures de chansons complètes avec plusieurs pistes. Le système comprend des contrôles de transport professionnels, une chronologie interactive, une gestion multi-pistes avec des réglages par piste, et une vue d'arrangement complète qui vous donne une perspective holistique de votre composition au fur et à mesure qu'elle se développe."
+        "question": "I purchased products before the new site and don't see them in my account. What should I do?",
+        "answer": "If you bought before we launched this website, your order may not be linked yet. <a href=\"/login\" target=\"_self\" rel=\"noopener noreferrer\">Log in</a>, then go to <a href=\"/support\" target=\"_self\" rel=\"noopener noreferrer\">Support</a> and create a ticket with the email you used when you purchased and any order or receipt details. We'll attach your past purchases to your account so they appear under My Products and in NNAudio Access."
       },
       {
-        "question": "Comment fonctionne la Palette d'Harmonie Interactive ?",
-        "answer": "La Palette d'Harmonie Interactive offre une interface visuelle et gestuelle pour explorer les relations entre accords. Sélectionnez simplement un accord de départ et la palette vous montrera des options harmoniquement liées, facilitant la création de progressions convaincantes. Vous pouvez glisser-déposer des voicings directement sur votre chronologie, transposer instantanément des tonalités, et créer des banques d'accords personnalisées pour développer votre vocabulaire harmonique personnel."
+        "question": "What's the difference between subscriptions and one-time purchases?",
+        "answer": "<strong>One-time purchases</strong> (including lifetime): Pay once, keep the product forever with current and future updates. Most plugins, packs, and many <a href=\"/bundles\" target=\"_self\" rel=\"noopener noreferrer\">bundles</a> are sold this way.<br><br><strong>Subscriptions</strong> (monthly or annual): Recurring access while active; if you cancel, access ends when the period ends. Some bundles offer both lifetime and subscription options—check the product or bundle page."
       },
       {
-        "question": "Qu'est-ce qui rend le Constructeur de Motifs Mélodiques spécial ?",
-        "answer": "Le Constructeur de Motifs Mélodiques vous aide à développer des mélodies convaincantes qui complètent vos progressions d'accords. Il suggère des motifs mélodiques contextuellement appropriés basés sur vos choix harmoniques, vous permet d'expérimenter avec différentes variations rythmiques, et fournit des outils intuitifs pour créer des thèmes mémorables. Le système adapte intelligemment votre contenu mélodique lorsque des changements d'accords surviennent, maintenant la cohérence musicale tout au long de votre composition."
+        "question": "What formats and platforms are supported?",
+        "answer": "Plugins are typically AU and VST3 for major DAWs (Logic, Ableton, FL Studio, Cubase, Studio One, Reaper, Bitwig, etc.). Sample packs and MIDI are downloadable content. NNAudio Access runs on macOS and Windows. Check each product page for details."
       },
       {
-        "question": "Comment les motifs s'adaptent-ils aux changements d'accords ?",
-        "answer": "L'Éditeur de Motifs Dynamiques de Cymasphere utilise des algorithmes intelligents pour adapter les motifs mélodiques à vos progressions d'accords en temps réel. Lorsque vous changez un accord, le système ajuste automatiquement le motif pour maintenir la cohérence harmonique tout en préservant l'intention musicale de votre mélodie. Cela fonctionne à la fois en mode relatif et absolu, vous donnant la flexibilité de créer des mélodies contextuelles ou du contenu mélodique fixe selon vos besoins."
-      },
-      {
-        "question": "Qu'est-ce qui rend le Générateur de Voicings spécial ?",
-        "answer": "Le Générateur de Voicings utilise des algorithmes avancés pour créer des voicings d'accords riches et musicalement satisfaisants qui suivent les principes de conduite des voix appropriés. Il analyse les progressions d'accords pour assurer des transitions vocales fluides entre les accords, avec des contrôles pour la largeur des voicings, la densité, les inversions, et les extensions harmoniques. Les réglages peuvent être appliqués globalement ou ajustés pour des sections spécifiques de votre composition."
-      },
-      {
-        "question": "Quelles sont les différences entre l'application autonome et le plugin ?",
-        "answer": "L'application autonome et les versions plugin partagent les mêmes fonctionnalités et fonctionnalités principales. L'application autonome fonctionne indépendamment, ce qui est idéal pour la composition ciblée et l'exploration, tandis que le plugin s'intègre directement à votre DAW pour un flux de travail de production transparent. Vous pouvez choisir quelle version fonctionne le mieux pour votre processus créatif, ou utiliser les deux selon vos besoins."
-      },
-      {
-        "question": "Quels DAWs sont compatibles avec le plugin Cymasphere ?",
-        "answer": "Le plugin Cymasphere (disponible aux formats AU & VST3) est compatible avec la plupart des DAWs majeurs, notamment Logic Pro, Ableton Live, FL Studio, Cubase, Studio One, Reaper, Bitwig, et Digital Performer. Les plateformes macOS et Windows sont toutes deux prises en charge."
-      },
-      {
-        "question": "Cymasphere convient-il aux débutants ?",
-        "answer": "Absolument ! Bien que Cymasphere offre des fonctionnalités avancées pour les compositeurs expérimentés, son interface intuitive rend la théorie musicale accessible aux débutants, les aidant à comprendre visuellement les concepts d'harmonie et de mélodie. La nature interactive des outils encourage l'expérimentation et l'apprentissage par la pratique, ce qui en fait une excellente plateforme pour développer des compétences de composition, quel que soit votre point de départ."
-      },
-      {
-        "question": "Dois-je connaître la théorie musicale pour utiliser Cymasphere ?",
-        "answer": "Non, c'est l'une des forces de Cymasphere ! Cymasphere est un terrain de jeu harmonique conçu pour améliorer votre compréhension de la théorie musicale pendant que vous créez. Les interfaces visuelles vous aident à comprendre les relations musicales pendant que vous composez, rendant les concepts théoriques complexes intuitifs même pour les débutants. C'est à la fois un puissant outil de création et une excellente ressource d'apprentissage qui évolue avec vous au fur et à mesure que vous développez vos compétences."
-      },
-      {
-        "question": "Comment puis-je essayer Cymasphere avant d'acheter ?",
-        "answer": "Vous pouvez essayer Cymasphere avec nos options d'essai gratuit. Nous proposons un essai gratuit de 7 jours sans exiger de carte de crédit, ou un essai gratuit de 14 jours avec une carte enregistrée (qui ne sera pas débitée avant la fin de l'essai). Les deux options vous donnent un accès complet à toutes les fonctionnalités premium afin que vous puissiez explorer tout ce que Cymasphere a à offrir avant de décider d'un plan d'abonnement."
-      },
-      {
-        "question": "Dois-je payer pour les mises à jour ?",
-        "answer": "Non, tous les clients de Cymasphere ont accès à la version la plus récente du logiciel sans frais supplémentaires. Cela inclut les détenteurs de licences à vie, qui reçoivent toutes les futures mises à jour dans le cadre de leur achat unique. Nous nous engageons à améliorer continuellement le logiciel et à ajouter de nouvelles fonctionnalités dont tous les utilisateurs peuvent profiter."
-      },
-      {
-        "question": "Existe-t-il un manuel d'utilisation pour Cymasphere ?",
-        "answer": "Non, toute l'aide est directement intégrée dans le gestionnaire d'aide de l'application, ce qui permet d'explorer et d'apprendre facilement les nouvelles fonctionnalités. Les questions, les rapports de bugs et autres demandes peuvent être adressés à notre <a href=\"https://discord.gg/gXGqqYR47B\" target=\"_blank\" rel=\"noopener noreferrer\">serveur Discord</a> ou par e-mail à support@cymasphere.com."
+        "question": "How do I get help or report a problem?",
+        "answer": "Log in, go to <a href=\"/support\" target=\"_self\" rel=\"noopener noreferrer\">Support</a>, and create a ticket with your issue. You can also email support@nnaud.io."
       }
     ]
   },
@@ -675,7 +642,7 @@
       "support": "Support",
       "supportAvailability": "24/7",
       "premiumSupport": "Support premium disponible",
-      "supportIntro": "Besoin d'aide avec votre compte ou avez-vous des questions sur Cymasphere ? Envoyez-nous un message et nous vous répondrons dès que possible.",
+      "supportIntro": "Besoin d'aide avec votre compte ou avez-vous des questions sur NNAudio ? Envoyez-nous un message et nous vous répondrons dès que possible.",
       "yourName": "Votre Nom",
       "yourEmail": "Votre Email",
       "message": "Votre Message",
@@ -1024,12 +991,12 @@
   },
   "chat": {
     "language": "fr",
-    "greeting": "Bonjour ! Je suis votre assistant Cymasphere. Je peux vous aider avec des questions sur nos outils de production musicale, les prix, les fonctionnalités et bien d'autres. Que voulez-vous savoir ?",
+    "greeting": "Bonjour ! Je suis votre assistant NNAudio. Je peux vous aider avec les produits, téléchargements, NNAudio Access et votre compte. De quoi avez-vous besoin ?",
     "error_process": "Je suis désolé, je n'ai pas pu traiter votre message pour le moment. Veuillez réessayer.",
     "error_connecting": "J'ai du mal à me connecter en ce moment. Veuillez réessayer dans un instant.",
     "view_pricing": "Voir la tarification",
-    "title": "Assistant Cymasphere",
-    "placeholder": "Demandez-moi n'importe quoi sur Cymasphere...",
+    "title": "Assistant NNAudio",
+    "placeholder": "Posez-moi des questions sur NNAudio...",
     "typing": "L'assistant est en train d'écrire",
     "open_label": "Ouvrir le chat",
     "close_label": "Fermer le chat"

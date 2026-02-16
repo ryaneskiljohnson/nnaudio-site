@@ -330,71 +330,38 @@
       "or": "或"
     },
     "processing": "处理中",
-    "upgradeNow": "立即升级",
     "buyNow": "立即购买"
   },
   "promotion": {
     "viewOffers": "查看优惠"
   },
   "faq": {
-    "title": "常见问题",
-    "subtitle": "找到关于Cymasphere的常见问题答案",
+    "title": "Frequently Asked Questions",
+    "subtitle": "Find answers about NNAudio products, downloads, and NNAudio Access",
     "questions": [
       {
-        "question": "什么是Cymasphere？",
-        "answer": "Cymasphere是一个完整的歌曲创作套件，既可作为独立应用程序，也可作为DAW的插件（AU和VST3）。它提供集成工具来作曲和声和旋律，具有智能和弦声部、旋律模式构建和交互式可视化，让所有技能水平的用户都能理解和直观使用音乐理论。"
+        "question": "What is NNAudio Access and how do I use it?",
+        "answer": "NNAudio Access is our free desktop app that lists everything you own, lets you download installers, and install or update plugins and packs in one place. Get it from the <a href=\"/product/nnaudio-access\" target=\"_self\" rel=\"noopener noreferrer\">NNAudio Access product page</a> (free), install for macOS or Windows, then log in with your nnaud.io account. You can also download installers from <a href=\"/dashboard\" target=\"_self\" rel=\"noopener noreferrer\">My Products</a> on the website if you prefer."
       },
       {
-        "question": "Cymasphere为音乐家解决什么问题？",
-        "answer": "Cymasphere解决常见的作曲挑战，如创建引人注目的和弦进行、开发互补旋律、制作平滑的声部进行和寻找音乐灵感。它弥合了音乐理论知识与实际应用之间的差距，使任何技能水平的制作人都能更直观地掌握整个作曲过程。"
+        "question": "Where do I see my products and how do updates work?",
+        "answer": "Log in and go to <a href=\"/dashboard\" target=\"_self\" rel=\"noopener noreferrer\">Dashboard</a> → <strong>My Products</strong> to see all products linked to your account; the same list appears in NNAudio Access. The app shows when updates are available—download and run the latest installers when you're ready. We don't charge for updates; if you own a product, you get current and future versions."
       },
       {
-        "question": "歌曲构建器如何帮助作曲？",
-        "answer": "歌曲构建器是您的中央创意中心，所有音乐元素在此汇聚。您可以编排和弦进行、创建旋律模式，并构建具有多个音轨的完整歌曲结构。系统具有专业传输控制、交互式时间轴、具有每轨设置的多轨管理，以及提供作品发展整体视角的全面编排视图。"
+        "question": "I purchased products before the new site and don't see them in my account. What should I do?",
+        "answer": "If you bought before we launched this website, your order may not be linked yet. <a href=\"/login\" target=\"_self\" rel=\"noopener noreferrer\">Log in</a>, then go to <a href=\"/support\" target=\"_self\" rel=\"noopener noreferrer\">Support</a> and create a ticket with the email you used when you purchased and any order or receipt details. We'll attach your past purchases to your account so they appear under My Products and in NNAudio Access."
       },
       {
-        "question": "交互式和声调色板如何工作？",
-        "answer": "交互式和声调色板为探索和弦关系提供视觉、手势界面。只需选择起始和弦，调色板将显示和声相关选项，轻松制作引人注目的进行。您可以直接将声部拖拽到时间轴，瞬间转调，创建自定义和弦库来发展您的个人和声词汇。"
+        "question": "What's the difference between subscriptions and one-time purchases?",
+        "answer": "<strong>One-time purchases</strong> (including lifetime): Pay once, keep the product forever with current and future updates. Most plugins, packs, and many <a href=\"/bundles\" target=\"_self\" rel=\"noopener noreferrer\">bundles</a> are sold this way.<br><br><strong>Subscriptions</strong> (monthly or annual): Recurring access while active; if you cancel, access ends when the period ends. Some bundles offer both lifetime and subscription options—check the product or bundle page."
       },
       {
-        "question": "旋律模式构造器有什么特别之处？",
-        "answer": "旋律模式构造器帮助您开发与和弦进行互补的引人注目旋律。它根据您的和声选择建议上下文适当的旋律模式，让您实验不同节奏变化，并提供直观工具来制作难忘主题。系统在和弦变化时智能适应您的旋律内容，在整个作品中保持音乐连贯性。"
+        "question": "What formats and platforms are supported?",
+        "answer": "Plugins are typically AU and VST3 for major DAWs (Logic, Ableton, FL Studio, Cubase, Studio One, Reaper, Bitwig, etc.). Sample packs and MIDI are downloadable content. NNAudio Access runs on macOS and Windows. Check each product page for details."
       },
       {
-        "question": "模式如何适应和弦变化？",
-        "answer": "Cymasphere的动态模式编辑器使用智能算法实时将旋律模式适应到您的和弦进行。当您更改和弦时，系统自动调整模式以保持和声连贯性，同时保留旋律的音乐意图。这在相对和绝对模式下都有效，让您灵活创建上下文感知旋律或根据需要的固定旋律内容。"
-      },
-      {
-        "question": "声部生成器有什么特别之处？",
-        "answer": "声部生成器使用高级算法创建丰富、音乐满意的和弦声部，遵循适当的声部进行原则。它分析和弦进行以确保和弦间平滑的声部过渡，具有声部宽度、密度、转位和和声扩展控制。设置可以全局应用或针对作品的特定部分调整。"
-      },
-      {
-        "question": "独立应用和插件版本有什么区别？",
-        "answer": "独立应用和插件版本共享相同的核心功能和特性。独立应用独立工作，非常适合专注作曲和探索，而插件直接与您的DAW集成，实现无缝制作工作流程。您可以选择最适合您创作过程的版本，或根据需要使用两者。"
-      },
-      {
-        "question": "哪些DAW与Cymasphere插件兼容？",
-        "answer": "Cymasphere插件（提供AU和VST3格式）与大多数主要DAW兼容，包括Logic Pro、Ableton Live、FL Studio、Cubase、Studio One、Reaper、Bitwig和Digital Performer。支持macOS和Windows平台。"
-      },
-      {
-        "question": "Cymasphere适合初学者吗？",
-        "answer": "绝对适合！虽然Cymasphere为经验丰富的作曲家提供高级功能，但其直观界面让初学者也能理解音乐理论，帮助他们可视化地理解和声和旋律概念。工具的交互性质鼓励实验和实践学习，使其成为无论起点如何都能发展作曲技能的绝佳平台。"
-      },
-      {
-        "question": "我需要了解音乐理论才能使用Cymasphere吗？",
-        "answer": "不需要，这正是Cymasphere的优势之一！Cymasphere是一个和声游乐场，旨在在您创作时增强您对音乐理论的理解。视觉界面帮助您在作曲时理解音乐关系，即使对初学者来说，复杂的理论概念也变得直观。它既是强大的创作工具，也是随着您技能发展而成长的优秀学习资源。"
-      },
-      {
-        "question": "我如何在购买前试用Cymasphere？",
-        "answer": "您可以通过我们的免费试用选项试用Cymasphere。我们提供7天免费试用（无需信用卡），或14天免费试用（需要存卡，但试用结束前不收费）。两种选项都能完全访问所有高级功能，让您在决定订阅计划前探索Cymasphere的所有功能。"
-      },
-      {
-        "question": "我需要为更新付费吗？",
-        "answer": "不需要，所有Cymasphere客户都可以免费访问软件的最新版本。这包括终身许可证持有者，他们获得所有未来更新作为一次性购买的一部分。我们致力于持续改进软件并添加所有用户都能享受的新功能。"
-      },
-      {
-        "question": "Cymasphere有用户手册吗？",
-        "answer": "没有，所有帮助都直接内置在应用程序的帮助管理器中，让探索和学习新功能变得毫不费力。问题、错误报告和其他询问可以通过我们的<a href=\"https://discord.gg/gXGqqYR47B\" target=\"_blank\" rel=\"noopener noreferrer\">Discord服务器</a>或发送邮件至support@cymasphere.com。"
+        "question": "How do I get help or report a problem?",
+        "answer": "Log in, go to <a href=\"/support\" target=\"_self\" rel=\"noopener noreferrer\">Support</a>, and create a ticket with your issue. You can also email support@nnaud.io."
       }
     ]
   },
@@ -592,7 +559,7 @@
       "support": "支持",
       "supportAvailability": "24/7",
       "premiumSupport": "提供高级支持",
-      "supportIntro": "需要账户帮助或对Cymasphere有疑问？请发送消息，我们将尽快回复。",
+      "supportIntro": "需要账户帮助或对NNAudio有疑问？请发送消息，我们将尽快回复。",
       "yourName": "您的姓名",
       "yourEmail": "您的邮箱",
       "message": "您的消息",
@@ -964,12 +931,12 @@
   },
   "chat": {
     "language": "zh",
-    "greeting": "你好!我是Cymasphere助手。我可以帮助您解答关于我们的音乐制作工具、价格、功能等问题。您想了解什么?",
+    "greeting": "你好!我是NNAudio助手。我可以帮助您了解产品、下载、NNAudio Access和账户。您需要什么?",
     "error_process": "抱歉，我现在无法处理您的消息。请重试。",
     "error_connecting": "我现在遇到连接问题。请稍后重试。",
     "view_pricing": "查看价格",
-    "title": "Cymasphere助手",
-    "placeholder": "问我关于Cymasphere的任何事情...",
+    "title": "NNAudio助手",
+    "placeholder": "问我关于NNAudio的问题...",
     "typing": "助手正在输入",
     "open_label": "打开聊天",
     "close_label": "关闭聊天"

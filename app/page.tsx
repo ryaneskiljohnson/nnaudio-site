@@ -43,10 +43,10 @@ const PricingSection = dynamic(
   }
 );
 
-// const FAQSection = dynamic(() => import("@/components/sections/FAQSection"), {
-//   ssr: true,
-//   loading: () => <div style={{ minHeight: "600px", background: "#0a0a0a" }} />,
-// });
+const FAQSection = dynamic(() => import("@/components/sections/FAQSection"), {
+  ssr: true,
+  loading: () => <div style={{ minHeight: "600px", background: "#0a0a0a" }} />,
+});
 
 // Fallback static products (used if API fails)
 const staticPlugins = [
@@ -530,8 +530,8 @@ export default function Home() {
       {/* Pricing section - Always render */}
       <PricingSection />
       
-      {/* FAQ section */}
-      {/* <FAQSection /> */}
+      {/* FAQ section - bottom of landing page */}
+      <FAQSection />
     </>
   );
 }

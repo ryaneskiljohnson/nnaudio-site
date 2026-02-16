@@ -254,7 +254,7 @@ const NextFooter = () => {
           <FooterLink as="a" href="#pricing">
             Pricing
           </FooterLink>
-          <FooterLink as="a" href="#faq">
+          <FooterLink as="a" href="/#faq">
             FAQ
           </FooterLink>
         </FooterColumn>

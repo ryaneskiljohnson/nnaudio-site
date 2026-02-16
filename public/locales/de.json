@@ -441,71 +441,38 @@
       "or": "oder"
     },
     "processing": "Verarbeitung",
-    "upgradeNow": "Jetzt upgraden",
     "buyNow": "Jetzt kaufen"
   },
   "promotion": {
     "viewOffers": "Angebote Ansehen"
   },
   "faq": {
-    "title": "Häufig gestellte Fragen",
-    "subtitle": "Finden Sie Antworten auf häufige Fragen zu Cymasphere",
+    "title": "Frequently Asked Questions",
+    "subtitle": "Find answers about NNAudio products, downloads, and NNAudio Access",
     "questions": [
       {
-        "question": "Was ist Cymasphere?",
-        "answer": "Cymasphere ist eine vollständige Suite zur Musikerstellung, die sowohl als eigenständige Anwendung als auch als Plugin (AU & VST3) für Ihre DAW verfügbar ist. Es bietet integrierte Werkzeuge zur Komposition von Harmonie und Melodie, mit intelligenten Akkordvoicings, Melodiemusterkonstruktion und interaktiver Visualisierung, die Musiktheorie für alle Kenntnisstufen zugänglich und intuitiv macht."
+        "question": "What is NNAudio Access and how do I use it?",
+        "answer": "NNAudio Access is our free desktop app that lists everything you own, lets you download installers, and install or update plugins and packs in one place. Get it from the <a href=\"/product/nnaudio-access\" target=\"_self\" rel=\"noopener noreferrer\">NNAudio Access product page</a> (free), install for macOS or Windows, then log in with your nnaud.io account. You can also download installers from <a href=\"/dashboard\" target=\"_self\" rel=\"noopener noreferrer\">My Products</a> on the website if you prefer."
       },
       {
-        "question": "Welche Probleme löst Cymasphere für Musiker?",
-        "answer": "Cymasphere adressiert häufige kompositorische Herausforderungen wie das Erstellen überzeugender Akkordprogressionen, die Entwicklung komplementärer Melodien, die Gestaltung flüssiger Stimmführung und das Finden musikalischer Inspiration. Es überbrückt die Lücke zwischen Musiktheoriewissen und praktischer Anwendung und macht den gesamten Kompositionsprozess intuitiver und zugänglicher für Produzenten jeder Kenntnisstufe."
+        "question": "Where do I see my products and how do updates work?",
+        "answer": "Log in and go to <a href=\"/dashboard\" target=\"_self\" rel=\"noopener noreferrer\">Dashboard</a> → <strong>My Products</strong> to see all products linked to your account; the same list appears in NNAudio Access. The app shows when updates are available—download and run the latest installers when you're ready. We don't charge for updates; if you own a product, you get current and future versions."
       },
       {
-        "question": "Wie hilft der Song-Builder bei der Komposition?",
-        "answer": "Der Song-Builder ist Ihr zentraler kreativer Hub, in dem alle musikalischen Elemente zusammenkommen. Sie können Akkordprogressionen arrangieren, Melodiemuster erstellen und komplette Songstrukturen mit mehreren Spuren aufbauen. Das System bietet professionelle Transportsteuerungen, eine interaktive Zeitleiste, Multi-Track-Management mit Einstellungen pro Spur und eine umfassende Arrangement-Ansicht, die Ihnen eine ganzheitliche Perspektive auf Ihre Komposition gibt, während sie sich entwickelt."
+        "question": "I purchased products before the new site and don't see them in my account. What should I do?",
+        "answer": "If you bought before we launched this website, your order may not be linked yet. <a href=\"/login\" target=\"_self\" rel=\"noopener noreferrer\">Log in</a>, then go to <a href=\"/support\" target=\"_self\" rel=\"noopener noreferrer\">Support</a> and create a ticket with the email you used when you purchased and any order or receipt details. We'll attach your past purchases to your account so they appear under My Products and in NNAudio Access."
       },
       {
-        "question": "Wie funktioniert die Interaktive Harmonie-Palette?",
-        "answer": "Die Interaktive Harmonie-Palette bietet eine visuelle, gestische Oberfläche zur Erkundung von Akkordbeziehungen. Wählen Sie einfach einen Startakkord aus, und die Palette zeigt Ihnen harmonisch verwandte Optionen, wodurch es einfach wird, überzeugende Progressionen zu gestalten. Sie können Voicings direkt per Drag-and-Drop auf Ihre Zeitleiste ziehen, sofort Tonarten transponieren und benutzerdefinierte Akkordbanken erstellen, um Ihr persönliches harmonisches Vokabular zu entwickeln."
+        "question": "What's the difference between subscriptions and one-time purchases?",
+        "answer": "<strong>One-time purchases</strong> (including lifetime): Pay once, keep the product forever with current and future updates. Most plugins, packs, and many <a href=\"/bundles\" target=\"_self\" rel=\"noopener noreferrer\">bundles</a> are sold this way.<br><br><strong>Subscriptions</strong> (monthly or annual): Recurring access while active; if you cancel, access ends when the period ends. Some bundles offer both lifetime and subscription options—check the product or bundle page."
       },
       {
-        "question": "Was macht den Melodiemusterkonstruktor besonders?",
-        "answer": "Der Melodiemusterkonstruktor hilft Ihnen, überzeugende Melodien zu entwickeln, die Ihre Akkordprogressionen ergänzen. Er schlägt kontextuell passende melodische Muster basierend auf Ihren harmonischen Entscheidungen vor, ermöglicht Ihnen, mit verschiedenen rhythmischen Variationen zu experimentieren, und bietet intuitive Werkzeuge zur Erstellung einprägsamer Themen. Das System passt Ihren melodischen Inhalt intelligent an, wenn Akkordwechsel auftreten, und erhält die musikalische Kohärenz in Ihrer gesamten Komposition."
+        "question": "What formats and platforms are supported?",
+        "answer": "Plugins are typically AU and VST3 for major DAWs (Logic, Ableton, FL Studio, Cubase, Studio One, Reaper, Bitwig, etc.). Sample packs and MIDI are downloadable content. NNAudio Access runs on macOS and Windows. Check each product page for details."
       },
       {
-        "question": "Wie passen sich Muster an Akkordwechsel an?",
-        "answer": "Der Dynamische Pattern-Editor von Cymasphere verwendet intelligente Algorithmen, um melodische Muster in Echtzeit an Ihre Akkordprogressionen anzupassen. Wenn Sie einen Akkord ändern, passt das System das Muster automatisch an, um harmonische Kohärenz zu erhalten und gleichzeitig die musikalische Absicht Ihrer Melodie zu bewahren. Dies funktioniert sowohl im relativen als auch im absoluten Modus und gibt Ihnen die Flexibilität, kontextbezogene Melodien oder festen melodischen Inhalt nach Bedarf zu erstellen."
-      },
-      {
-        "question": "Was macht den Voicing-Generator besonders?",
-        "answer": "Der Voicing-Generator verwendet fortschrittliche Algorithmen, um reiche, musikalisch befriedigende Akkordvoicings zu erstellen, die den Prinzipien der richtigen Stimmführung folgen. Er analysiert Akkordprogressionen, um reibungslose Stimmübergänge zwischen Akkorden zu gewährleisten, mit Kontrollen für Voicing-Breite, Dichte, Umkehrungen und harmonische Erweiterungen. Einstellungen können global angewendet oder für bestimmte Abschnitte Ihrer Komposition angepasst werden."
-      },
-      {
-        "question": "Was sind die Unterschiede zwischen der Standalone-App und dem Plugin?",
-        "answer": "Die Standalone-App und Plugin-Versionen teilen die gleichen Kernfunktionen und Funktionalitäten. Die Standalone-App arbeitet unabhängig, was sie ideal für fokussierte Komposition und Erkundung macht, während das Plugin sich direkt in Ihre DAW integriert für einen nahtlosen Produktions-Workflow. Sie können wählen, welche Version am besten für Ihren kreativen Prozess geeignet ist, oder je nach Bedarf beide verwenden."
-      },
-      {
-        "question": "Welche DAWs sind mit dem Cymasphere-Plugin kompatibel?",
-        "answer": "Das Cymasphere-Plugin (verfügbar in AU & VST3 Formaten) ist mit den meisten großen DAWs kompatibel, darunter Logic Pro, Ableton Live, FL Studio, Cubase, Studio One, Reaper, Bitwig und Digital Performer. Sowohl macOS als auch Windows-Plattformen werden unterstützt."
-      },
-      {
-        "question": "Ist Cymasphere für Anfänger geeignet?",
-        "answer": "Absolut! Während Cymasphere fortgeschrittene Funktionalität für erfahrene Komponisten bietet, macht seine intuitive Oberfläche Musiktheorie für Anfänger zugänglich und hilft ihnen, Harmonie- und Melodiekonzepte visuell zu verstehen. Die interaktive Natur der Werkzeuge fördert Experimentieren und Lernen durch Tun, was es zu einer ausgezeichneten Plattform für die Entwicklung von Kompositionsfähigkeiten macht, unabhängig von Ihrem Ausgangspunkt."
-      },
-      {
-        "question": "Muss ich Musiktheorie kennen, um Cymasphere zu nutzen?",
-        "answer": "Nein, das ist eine der Stärken von Cymasphere! Cymasphere ist ein harmonischer Spielplatz, der entwickelt wurde, um Ihr Verständnis der Musiktheorie während des Kreationsprozesses zu verbessern. Die visuellen Oberflächen helfen Ihnen, musikalische Beziehungen beim Komponieren zu verstehen und machen komplexe Theoriekonzepte auch für Anfänger intuitiv. Es ist sowohl ein leistungsstarkes Kreationswerkzeug als auch eine ausgezeichnete Lernressource, die mit Ihnen wächst, während Sie Ihre Fähigkeiten entwickeln."
-      },
-      {
-        "question": "Wie kann ich Cymasphere vor dem Kauf ausprobieren?",
-        "answer": "Sie können Cymasphere mit unseren kostenlosen Testoptionen ausprobieren. Wir bieten eine 7-tägige kostenlose Testversion ohne Kreditkartenangabe oder eine 14-tägige kostenlose Testversion mit hinterlegter Karte (die erst nach Ablauf der Testphase belastet wird). Beide Optionen bieten vollen Zugriff auf alle Premium-Funktionen, sodass Sie alles erkunden können, was Cymasphere zu bieten hat, bevor Sie sich für einen Abonnementplan entscheiden."
-      },
-      {
-        "question": "Muss ich für Updates bezahlen?",
-        "answer": "Nein, alle Cymasphere-Kunden haben ohne zusätzliche Kosten Zugriff auf die neueste Version der Software. Dies gilt auch für Inhaber einer lebenslangen Lizenz, die alle zukünftigen Updates als Teil ihres einmaligen Kaufs erhalten. Wir sind bestrebt, die Software kontinuierlich zu verbessern und neue Funktionen hinzuzufügen, die alle Benutzer nutzen können."
-      },
-      {
-        "question": "Gibt es ein Benutzerhandbuch für Cymasphere?",
-        "answer": "Nein, alle Hilfestellungen sind direkt in den In-App-Hilfemanager integriert, was es mühelos macht, neue Funktionen zu erkunden und zu erlernen. Fragen, Fehlerberichte und andere Anfragen können an unseren <a href=\"https://discord.gg/gXGqqYR47B\" target=\"_blank\" rel=\"noopener noreferrer\">Discord-Server</a> gerichtet oder per E-Mail an support@cymasphere.com gesendet werden."
+        "question": "How do I get help or report a problem?",
+        "answer": "Log in, go to <a href=\"/support\" target=\"_self\" rel=\"noopener noreferrer\">Support</a>, and create a ticket with your issue. You can also email support@nnaud.io."
       }
     ]
   },
@@ -672,7 +639,7 @@
       "support": "Support",
       "supportAvailability": "24/7",
       "premiumSupport": "Premium-Support verfügbar",
-      "supportIntro": "Brauchen Sie Hilfe mit Ihrem Konto oder haben Fragen zu Cymasphere? Senden Sie uns eine Nachricht und wir melden uns so schnell wie möglich zurück.",
+      "supportIntro": "Brauchen Sie Hilfe mit Ihrem Konto oder haben Fragen zu NNAudio? Senden Sie uns eine Nachricht und wir melden uns so schnell wie möglich zurück.",
       "yourName": "Ihr Name",
       "yourEmail": "Ihre E-Mail",
       "message": "Ihre Nachricht",
@@ -1030,12 +997,12 @@
   },
   "chat": {
     "language": "de",
-    "greeting": "Hallo! Ich bin dein Cymasphere-Assistent. Ich kann dir bei Fragen zu unseren Musikproduktionswerkzeugen, Preisen, Funktionen und mehr helfen. Was möchtest du wissen?",
+    "greeting": "Hallo! Ich bin dein NNAudio-Assistent. Ich helfe bei Produkten, Downloads, NNAudio Access und deinem Konto. Was brauchst du?",
     "error_process": "Es tut mir leid, ich konnte deine Nachricht gerade nicht verarbeiten. Bitte versuche es erneut.",
     "error_connecting": "Ich habe gerade Schwierigkeiten, mich zu verbinden. Bitte versuche es in einem Moment erneut.",
     "view_pricing": "Preise anzeigen",
-    "title": "Cymasphere-Assistent",
-    "placeholder": "Frag mich alles über Cymasphere...",
+    "title": "NNAudio-Assistent",
+    "placeholder": "Frag mich etwas über NNAudio...",
     "typing": "Der Assistent schreibt",
     "open_label": "Chat öffnen",
     "close_label": "Chat schließen"
