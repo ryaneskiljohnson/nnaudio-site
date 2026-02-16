@@ -2,8 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Allow normal text selection (better UX) */
-/* Text selection is enabled by default - users can select text naturally */
+/* Disable text selection site-wide; keep inputs/textarea selectable for editing */
+html, body, * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
 input, textarea, [contenteditable="true"] {
   -webkit-user-select: text;
   -moz-user-select: text;
