@@ -8,7 +8,6 @@ import {
   FaCheck,
   FaTimes,
   FaPaperPlane,
-  FaLaptop,
   FaExclamationTriangle,
   FaInfoCircle,
   FaDownload,
@@ -17,7 +16,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import LoadingComponent from "@/components/common/LoadingComponent";
-import { fetchUserSessions } from "@/utils/supabase/actions";
 import { useTranslation } from "react-i18next";
 
 const DashboardContainer = styled.div`
@@ -60,9 +58,13 @@ const WelcomeSubtitle = styled.p`
 
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
   margin-bottom: 30px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const StatCard = styled(motion.div)`
@@ -335,9 +337,6 @@ function DashboardPage() {
     message: "",
   });
   const [isContactSubmitting, setIsContactSubmitting] = useState(false);
-  const [deviceCount, setDeviceCount] = useState(0);
-  const [maxDevices, setMaxDevices] = useState(3);
-  const [isLoadingDevices, setIsLoadingDevices] = useState(true);
   const [orderCount, setOrderCount] = useState(0);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
 
@@ -351,30 +350,6 @@ function DashboardPage() {
       day: "numeric",
     });
   };
-
-  // Fetch device count on component mount
-  useEffect(() => {
-    async function fetchDeviceCount() {
-      try {
-        setIsLoadingDevices(true);
-        const { sessions, error } = await fetchUserSessions();
-
-        if (error) {
-          console.error("Error fetching device count:", error);
-        } else {
-          setDeviceCount(sessions?.length || 0);
-        }
-      } catch (err) {
-        console.error("Error in fetchDeviceCount:", err);
-      } finally {
-        setIsLoadingDevices(false);
-      }
-    }
-
-    if (user) {
-      fetchDeviceCount();
-    }
-  }, [user]);
 
   // Fetch order count on component mount
   useEffect(() => {
@@ -408,10 +383,6 @@ function DashboardPage() {
 
   const navigateToDownloads = () => {
     router.push("/downloads");
-  };
-
-  const navigateToSettings = () => {
-    router.push("/settings");
   };
 
   const navigateToOrders = () => {
@@ -589,38 +560,6 @@ function DashboardPage() {
               "dashboard.main.viewPurchasedPlugins",
               "View your purchased plugins"
             )}
-          </StatDescription>
-        </StatCard>
-
-        <StatCard
-          whileHover={{ y: -5, transition: { duration: 0.2 } }}
-          onClick={navigateToSettings}
-        >
-          <StatHeader>
-            <StatTitle>
-              {t("dashboard.main.devices", "Connected Devices")}
-            </StatTitle>
-            <StatIcon color="linear-gradient(90deg, #FF6B6B, #FF8E53)">
-              <FaLaptop />
-            </StatIcon>
-          </StatHeader>
-          <StatValue>
-            {isLoadingDevices ? (
-              <div
-                style={{
-                  minWidth: "60px",
-                  display: "inline-block",
-                  textAlign: "center",
-                }}
-              >
-                <LoadingComponent size="20px" text="" />
-              </div>
-            ) : (
-              `${deviceCount} / ${maxDevices}`
-            )}
-          </StatValue>
-          <StatDescription>
-            {t("dashboard.main.activeDevices", "Active device connections")}
           </StatDescription>
         </StatCard>
 
