@@ -83,8 +83,21 @@ export async function GET(request: NextRequest) {
           return true;
         });
       
-      const productsWithImages = allProducts
-        .filter((p: any) => p && (p.featured_image_url || p.logo_url));
+      const withImages = allProducts.filter((p: any) => p && (p.featured_image_url || p.logo_url));
+      // Deduplicate by product id first (one entry per product), then by canonical image URL (one thumbnail per unique image)
+      const canonicalImageUrl = (url: string) =>
+        (url || '').trim().toLowerCase().replace(/#.*$/, '').replace(/\?.*$/, '').replace(/\/+$/, '') || '';
+      const seenProductId = new Set<string>();
+      const seenImageUrl = new Set<string>();
+      const productsWithImages = withImages.filter((p: any) => {
+        if (!p?.id || seenProductId.has(p.id)) return false;
+        const url = p.featured_image_url || p.logo_url || '';
+        const canonical = canonicalImageUrl(url);
+        if (!canonical || seenImageUrl.has(canonical)) return false;
+        seenProductId.add(p.id);
+        seenImageUrl.add(canonical);
+        return true;
+      });
       
       // Get total count of all products in bundle
       const totalProductCount = allProducts.length;

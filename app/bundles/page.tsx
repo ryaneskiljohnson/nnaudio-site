@@ -324,7 +324,7 @@ export default function BundlesPage() {
   const fetchBundles = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/bundles?status=active');
+      const response = await fetch('/api/bundles?status=active', { cache: 'no-store' });
       const data = await response.json();
 
       if (data.success) {
@@ -407,8 +407,13 @@ export default function BundlesPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        {/* Bundle Featured Image */}
-        {bundle.featured_image_url ? (
+        {/* Bundle image: use live mosaic (deduped) when we have products; otherwise use featured_image_url if set */}
+        {bundle.products && bundle.products.length > 0 ? (
+          <BundleMosaic 
+            products={bundle.products} 
+            totalCount={bundle.totalProductCount || bundle.products.length}
+          />
+        ) : bundle.featured_image_url ? (
           <div style={{
             width: '100%',
             aspectRatio: '1',
@@ -450,11 +455,6 @@ export default function BundlesPage() {
               </div>
             </div>
           </div>
-        ) : bundle.products && bundle.products.length > 0 ? (
-          <BundleMosaic 
-            products={bundle.products} 
-            totalCount={bundle.totalProductCount || bundle.products.length}
-          />
         ) : null}
 
         <BundleHeader>

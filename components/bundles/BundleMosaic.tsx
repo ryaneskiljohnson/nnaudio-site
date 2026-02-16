@@ -98,95 +98,70 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
     // Scale the context to match the high resolution
     ctx.scale(scale, scale);
 
-    // Randomize the order of products
-    const shuffledProducts = [...products].sort(() => Math.random() - 0.5);
+    // Build list of image URLs we will actually draw. Resolve each product to one URL (featured || logo || fallback), then keep only unique URLs so the same image is never drawn twice.
+    const canonical = (url: string) =>
+      (url || '').trim().toLowerCase().replace(/#.*$/, '').replace(/\?.*$/, '').replace(/\/+$/, '') || '';
+    const seenCanonical = new Set<string>();
+    const imageUrlsToDraw: string[] = [];
+    for (const p of products) {
+      const url = (p.featured_image_url || p.logo_url || '').trim() || NNAUDIO_LOGO;
+      const key = url.startsWith('/') || url.startsWith('http') ? canonical(url) : url;
+      if (key && !seenCanonical.has(key)) {
+        seenCanonical.add(key);
+        imageUrlsToDraw.push(url);
+      }
+    }
 
-    // Calculate grid dimensions
-    // Try to make it as square as possible
-    // Use all products, no limit
-    const productCount = shuffledProducts.length;
-    const cols = Math.ceil(Math.sqrt(productCount));
-    const rows = Math.ceil(productCount / cols);
-    
-    // Use the square canvas size for calculations (already scaled)
+    // If nothing to draw, bail
+    if (imageUrlsToDraw.length === 0) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Randomize order
+    const shuffledUrls = [...imageUrlsToDraw].sort(() => Math.random() - 0.5);
+    const count = shuffledUrls.length;
+    const cols = Math.ceil(Math.sqrt(count));
+    const rows = Math.ceil(count / cols);
     const cellWidth = canvasSize / cols;
     const cellHeight = canvasSize / rows;
-    
-    // Track seen featured images to detect duplicates
-    const seenFeaturedImages = new Map<string, boolean>();
-    
-    // Load and draw images
-    const imagePromises = shuffledProducts.map((product, index) => {
+
+    const imagePromises = shuffledUrls.map((imageUrl, index) => {
       return new Promise<void>((resolve) => {
-        const featuredImageUrl = product.featured_image_url;
-        const logoUrl = product.logo_url;
-        
-        // Check if this featured image has been seen before
-        const isDuplicate = featuredImageUrl && seenFeaturedImages.has(featuredImageUrl);
-        
-        // If duplicate, use logo instead; otherwise use featured image, then logo as fallback
-        let imageUrl: string | undefined;
-        if (isDuplicate && logoUrl) {
-          imageUrl = logoUrl;
-        } else {
-          imageUrl = featuredImageUrl || logoUrl;
-          if (featuredImageUrl) {
-            seenFeaturedImages.set(featuredImageUrl, true);
-          }
-        }
-        
-        // If no image at all, use NNAudio logo as fallback
-        if (!imageUrl) {
-          imageUrl = NNAUDIO_LOGO;
-        }
-        
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
-        
         img.onload = () => {
-          // Draw the image
           const col = index % cols;
           const row = Math.floor(index / cols);
           const x = col * cellWidth;
           const y = row * cellHeight;
-          
           const size = Math.min(img.width, img.height);
           const sx = (img.width - size) / 2;
           const sy = (img.height - size) / 2;
-          
           ctx.drawImage(img, sx, sy, size, size, x, y, cellWidth, cellHeight);
           resolve();
         };
-        
         img.onerror = () => {
-          // If image fails to load, try NNAudio logo as fallback
           if (imageUrl !== NNAUDIO_LOGO) {
             const fallbackImg = new window.Image();
             fallbackImg.crossOrigin = 'anonymous';
             fallbackImg.onload = () => {
-          const col = index % cols;
-          const row = Math.floor(index / cols);
-          const x = col * cellWidth;
-          const y = row * cellHeight;
-          
+              const col = index % cols;
+              const row = Math.floor(index / cols);
+              const x = col * cellWidth;
+              const y = row * cellHeight;
               const size = Math.min(fallbackImg.width, fallbackImg.height);
               const sx = (fallbackImg.width - size) / 2;
               const sy = (fallbackImg.height - size) / 2;
-              
               ctx.drawImage(fallbackImg, sx, sy, size, size, x, y, cellWidth, cellHeight);
               resolve();
             };
-            fallbackImg.onerror = () => {
-              // If even the logo fails, just skip it
-              resolve();
-            };
+            fallbackImg.onerror = () => resolve();
             fallbackImg.src = NNAUDIO_LOGO;
           } else {
-            // Logo already failed, just skip it
-          resolve();
+            resolve();
           }
         };
-        
         img.src = imageUrl;
       });
     });

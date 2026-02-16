@@ -3,7 +3,7 @@ import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/service';
 import { getDownloadFileSize } from '@/utils/product-downloads';
 
-// GET /api/products/[id] - Get single product
+// GET /api/products/[id] - Get single product (uses admin client when caller is admin so all fields load)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -12,7 +12,17 @@ export async function GET(
     const supabase = await createClient();
     const { id } = await params;
 
-    const { data: product, error } = await (supabase as any)
+    // If user is admin, use service-role client so we get full product (name, slug, etc.) regardless of RLS
+    let client: any = supabase;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: adminRow } = await supabase.from('admins').select('user').eq('user', user.id).maybeSingle();
+      if (adminRow) {
+        client = await createAdminClient();
+      }
+    }
+
+    const { data: product, error } = await (client as any)
       .from('products')
       .select(`
         *,
@@ -178,6 +188,7 @@ export async function PUT(
         };
 
     // Backfill file_size for downloads when path is set but size missing (so NNAudio Access has stored size)
+    let downloadsPayload = body.downloads;
     if (Array.isArray(body.downloads) && body.downloads.length > 0) {
       const enrichedDownloads = await Promise.all(
         body.downloads.map(async (d: { path?: string; file_size?: number | null; [k: string]: unknown }) => {
@@ -188,12 +199,44 @@ export async function PUT(
           return fileSize != null ? { ...d, file_size: fileSize } : d;
         })
       );
-      body.downloads = enrichedDownloads;
+      downloadsPayload = enrichedDownloads;
+    }
+
+    // Build explicit update payload so name, slug, and all editable fields are persisted (avoids dropped/ignored keys)
+    const updatePayload: Record<string, unknown> = {
+      name: body.name !== undefined ? String(body.name).trim() : undefined,
+      slug: body.slug !== undefined ? String(body.slug).trim() : undefined,
+      tagline: body.tagline !== undefined ? (body.tagline == null ? null : String(body.tagline).trim()) : undefined,
+      description: body.description !== undefined ? (body.description == null ? null : String(body.description)) : undefined,
+      short_description: body.short_description !== undefined ? (body.short_description == null ? null : String(body.short_description).trim()) : undefined,
+      price: body.price !== undefined ? Number(body.price) : undefined,
+      sale_price: body.sale_price !== undefined && body.sale_price !== '' && body.sale_price !== null ? Number(body.sale_price) : body.sale_price === '' || body.sale_price === null ? null : undefined,
+      category: body.category !== undefined ? body.category : undefined,
+      status: body.status !== undefined ? body.status : undefined,
+      is_featured: body.is_featured !== undefined ? Boolean(body.is_featured) : undefined,
+      featured_image_url: body.featured_image_url !== undefined ? (body.featured_image_url == null ? null : String(body.featured_image_url).trim()) : undefined,
+      featured_image_url_png: body.featured_image_url_png !== undefined ? (body.featured_image_url_png == null ? null : String(body.featured_image_url_png).trim()) : undefined,
+      logo_url: body.logo_url !== undefined ? (body.logo_url == null ? null : String(body.logo_url).trim()) : undefined,
+      background_image_url: body.background_image_url !== undefined ? (body.background_image_url == null ? null : String(body.background_image_url).trim()) : undefined,
+      background_video_url: body.background_video_url !== undefined ? (body.background_video_url == null ? null : String(body.background_video_url).trim()) : undefined,
+      demo_video_url: body.demo_video_url !== undefined ? (body.demo_video_url == null ? null : String(body.demo_video_url).trim()) : undefined,
+      meta_title: body.meta_title !== undefined ? (body.meta_title == null ? null : String(body.meta_title).trim()) : undefined,
+      meta_description: body.meta_description !== undefined ? (body.meta_description == null ? null : String(body.meta_description)) : undefined,
+      meta_keywords: body.meta_keywords !== undefined ? (body.meta_keywords == null ? null : String(body.meta_keywords)) : undefined,
+      legacy_product_id: body.legacy_product_id !== undefined ? (body.legacy_product_id == null || body.legacy_product_id === '' ? null : String(body.legacy_product_id).trim()) : undefined,
+      features: Array.isArray(body.features) ? body.features : undefined,
+      audio_samples: Array.isArray(body.audio_samples) ? body.audio_samples : undefined,
+      downloads: downloadsPayload !== undefined ? downloadsPayload : undefined,
+    };
+    // Omit keys that were not sent (undefined) so we don't overwrite with undefined
+    const cleanedPayload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(updatePayload)) {
+      if (v !== undefined) cleanedPayload[k] = v;
     }
 
     const { data: product, error } = await (adminSupabase as any)
       .from('products')
-      .update(body)
+      .update(cleanedPayload)
       .eq('id', id)
       .select()
       .single();

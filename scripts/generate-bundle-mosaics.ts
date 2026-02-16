@@ -221,15 +221,28 @@ async function generateAllMosaics() {
         return true;
       });
     
-    const productsWithImages = allProducts
-      .filter((p: any) => p && (p.featured_image_url || p.logo_url));
+    const withImages = allProducts.filter((p: any) => p && (p.featured_image_url || p.logo_url));
+    // Deduplicate by product id then by canonical image URL (no duplicate thumbnails)
+    const canonicalImageUrl = (url: string) =>
+      (url || '').trim().toLowerCase().replace(/#.*$/, '').replace(/\?.*$/, '').replace(/\/+$/, '') || '';
+    const seenProductId = new Set<string>();
+    const seenImageUrl = new Set<string>();
+    const productsWithImages = withImages.filter((p: any) => {
+      if (!p?.id || seenProductId.has(p.id)) return false;
+      const url = p.featured_image_url || p.logo_url || '';
+      const canonical = canonicalImageUrl(url);
+      if (!canonical || seenImageUrl.has(canonical)) return false;
+      seenProductId.add(p.id);
+      seenImageUrl.add(canonical);
+      return true;
+    });
 
     if (productsWithImages.length === 0) {
       console.log(`⏭️  Skipping ${bundle.name} - no products with images`);
       continue;
     }
 
-    console.log(`Generating mosaic for ${bundle.name} (${productsWithImages.length} products)...`);
+    console.log(`Generating mosaic for ${bundle.name} (${productsWithImages.length} unique thumbnails)...`);
 
     try {
       // Generate high-resolution square mosaic (2000x2000)
