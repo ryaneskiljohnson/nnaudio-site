@@ -156,6 +156,27 @@ const PricingSection = styled.div`
   border-radius: 8px;
 `;
 
+const ValueRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const ValueLabel = styled.span`
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const StrikethroughValue = styled.span`
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+  text-decoration: line-through;
+`;
+
 const PricingRow = styled.div`
   display: flex;
   justify-content: space-between;
@@ -284,6 +305,7 @@ interface BundleWithPricing extends Bundle {
     logo_url?: string;
   }>;
   totalProductCount?: number;
+  totalValue?: number;
   isSubscriptionBundle?: boolean;
   bundle_type?: string;
 }
@@ -503,6 +525,14 @@ export default function BundlesPage() {
         ) : (
           <>
             <PricingSection>
+              {bundle.totalValue != null && bundle.totalValue > 0 && (
+                <ValueRow>
+                  <ValueLabel>Value:</ValueLabel>
+                  <StrikethroughValue>
+                    {formatPrice(bundle.totalValue)}
+                  </StrikethroughValue>
+                </ValueRow>
+              )}
               {bundle.pricing?.lifetime && (
                 <PricingRow>
                   <PricingLabel>Lifetime:</PricingLabel>
@@ -520,6 +550,7 @@ export default function BundlesPage() {
                     {formatPrice(
                       bundle.pricing.annual.sale_price || bundle.pricing.annual.price
                     )}
+                    /year
                   </PricingValue>
                 </PricingRow>
               )}
@@ -530,6 +561,7 @@ export default function BundlesPage() {
                     {formatPrice(
                       bundle.pricing.monthly.sale_price || bundle.pricing.monthly.price
                     )}
+                    /month
                   </PricingValue>
                 </PricingRow>
               )}

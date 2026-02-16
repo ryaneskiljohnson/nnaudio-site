@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
             id,
             name,
             category,
+            price,
+            sale_price,
             featured_image_url,
             logo_url
           )
@@ -87,11 +89,18 @@ export async function GET(request: NextRequest) {
       // Get total count of all products in bundle
       const totalProductCount = allProducts.length;
 
+      // Compute total value (sum of product prices) for strikethrough on listing
+      const totalValue = allProducts.reduce((sum: number, p: any) => {
+        const price = (p.sale_price != null && p.sale_price > 0) ? p.sale_price : (p.price ?? 0);
+        return sum + (typeof price === 'number' ? price : 0);
+      }, 0);
+
       return {
         ...bundle,
         pricing,
         products: productsWithImages, // All products with images for mosaic
         totalProductCount, // Total count of all products
+        totalValue, // Sum of product prices for display (e.g. strikethrough on elite cards)
         isSubscriptionBundle, // Flag to identify elite subscription bundles (bundles with monthly/annual tiers)
         bundle_subscription_tiers: undefined, // Remove nested data
         bundle_products: undefined, // Remove nested data
