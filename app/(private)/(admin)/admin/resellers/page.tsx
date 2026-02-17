@@ -25,6 +25,7 @@ import {
   FaKey,
   FaBan,
   FaUndo,
+  FaFilePdf,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import styled, { keyframes } from "styled-components";
@@ -1186,6 +1187,40 @@ export default function ResellersPage() {
     }
   };
 
+  /**
+   * @brief Download branded PDF with redemption instructions for nnaud.io
+   * @param productName - Optional product name to include in the PDF
+   */
+  const handleDownloadRedeemInstructionsPdf = async (productName?: string) => {
+    try {
+      const params = new URLSearchParams();
+      if (productName?.trim()) params.set("product_name", productName.trim());
+      const url = `/api/admin/reseller-codes/redeem-instructions-pdf${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        showNotification("error", data.error || "Failed to download PDF");
+        return;
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition");
+      const match = disposition?.match(/filename="?([^";]+)"?/);
+      const filename = match?.[1] ?? "nnaudio-redeem-instructions.pdf";
+      const objectUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(objectUrl);
+      document.body.removeChild(a);
+      showNotification("success", "Redemption instructions PDF downloaded");
+    } catch (error) {
+      console.error("Error downloading redemption instructions PDF:", error);
+      showNotification("error", "Failed to download PDF");
+    }
+  };
+
   const handleAddCodes = (product: Product) => {
     setSelectedProductForCodes(product);
     setCodesInput("");
@@ -1775,9 +1810,18 @@ export default function ResellersPage() {
                 <ModalTitle>
                   <FaStore /> {selectedReseller.name}
                 </ModalTitle>
-                <CloseButton onClick={() => setShowDetailsModal(false)}>
-                  <FaTimes />
-                </CloseButton>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <DownloadButton
+                    type="button"
+                    onClick={() => handleDownloadRedeemInstructionsPdf()}
+                    title="Download branded PDF with instructions for redeeming serial codes on nnaud.io"
+                  >
+                    <FaFilePdf /> Redemption instructions (PDF)
+                  </DownloadButton>
+                  <CloseButton onClick={() => setShowDetailsModal(false)}>
+                    <FaTimes />
+                  </CloseButton>
+                </div>
               </ModalHeader>
 
               <ModalBody>
@@ -1974,9 +2018,18 @@ export default function ResellersPage() {
                 <ModalTitle>
                   <FaEye /> Codes - {selectedProductForCodes.name}
                 </ModalTitle>
-                <CloseButton onClick={() => setShowCodesModal(false)}>
-                  <FaTimes />
-                </CloseButton>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <DownloadButton
+                    type="button"
+                    onClick={() => handleDownloadRedeemInstructionsPdf(selectedProductForCodes.name)}
+                    title="Download instructions PDF for this product"
+                  >
+                    <FaFilePdf /> Instructions (PDF)
+                  </DownloadButton>
+                  <CloseButton onClick={() => setShowCodesModal(false)}>
+                    <FaTimes />
+                  </CloseButton>
+                </div>
               </ModalHeader>
 
               <ModalBody>
