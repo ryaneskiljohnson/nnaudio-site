@@ -4,6 +4,7 @@ import { SubscriptionType } from "@/utils/supabase/types";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { cancelSubscription } from "./actions";
 import Stripe from "stripe";
+import { stripe } from "./client";
 
 export type CustomerPurchasedProResponse = {
   success: boolean;
@@ -53,7 +54,6 @@ export async function customerPurchasedProFromSupabase(
     
     if (lifetimePriceId) {
       try {
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
         console.log(`[customerPurchasedProFromSupabase] Checking invoices FIRST for customer ${customer_id}...`);
         const invoices = await stripe.invoices.list({
           customer: customer_id,
@@ -69,10 +69,11 @@ export async function customerPurchasedProFromSupabase(
           const hasMetadata = invoice.metadata?.purchase_type === 'lifetime';
           
           // Check if invoice line items contain lifetime price ID
-          const hasLifetimePrice = invoice.lines.data.some(line => 
-            line.price?.id === lifetimePriceId || 
-            (lifetimePriceId2 && line.price?.id === lifetimePriceId2)
-          );
+          const hasLifetimePrice = invoice.lines.data.some(line => {
+            const priceRef = line.pricing?.price_details?.price;
+            const priceId = typeof priceRef === "string" ? priceRef : priceRef?.id;
+            return priceId === lifetimePriceId || (lifetimePriceId2 != null && priceId === lifetimePriceId2);
+          });
 
           if (hasMetadata || hasLifetimePrice) {
             console.log(`[customerPurchasedProFromSupabase] ✅ Lifetime invoice found: ${invoice.id} (metadata: ${hasMetadata}, price: ${hasLifetimePrice})`);
@@ -412,9 +413,6 @@ export async function deleteUserAccount(
     const stripeCustomerId = profile?.customer_id;
 
     if (stripeCustomerId) {
-      // Get Stripe instance
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
       try {
         // Get all subscriptions for this customer
         const subscriptions = await stripe.subscriptions.list({

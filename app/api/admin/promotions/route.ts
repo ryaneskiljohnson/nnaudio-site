@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import Stripe from 'stripe';
-import { pstDateToUTC } from '@/utils/timezoneUtils';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import Stripe from "stripe";
+import { pstDateToUTC } from "@/utils/timezoneUtils";
+import { stripe } from "@/utils/stripe/client";
 
 /**
  * GET - Fetch all promotions

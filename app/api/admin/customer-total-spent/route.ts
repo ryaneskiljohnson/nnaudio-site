@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { checkAdmin } from '@/app/actions/user-management';
-import Stripe from 'stripe';
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/utils/supabase/server";
+import { checkAdmin } from "@/app/actions/user-management";
+import { stripe } from "@/utils/stripe/client";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,23 +10,20 @@ export async function GET(request: NextRequest) {
     // Check admin authorization
     if (!(await checkAdmin(supabase))) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: "Unauthorized" },
         { status: 401 }
       );
     }
 
     const { searchParams } = new URL(request.url);
-    const customerId = searchParams.get('customerId');
+    const customerId = searchParams.get("customerId");
 
     if (!customerId) {
       return NextResponse.json(
-        { error: 'customerId is required' },
+        { error: "customerId is required" },
         { status: 400 }
       );
     }
-
-    // Initialize Stripe
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
     // Fetch all charges for this customer - most accurate method
     // Charges are the source of truth for actual money charged

@@ -5,6 +5,9 @@ const nextConfig = {
     styledComponents: true,
   },
   transpilePackages: ['react-icons'],
+  // Next.js 16 uses Turbopack by default; we use webpack for build (see script --webpack).
+  // Empty turbopack so Next doesn't error when it sees a webpack config.
+  turbopack: {},
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb', // Increase limit to 10MB for file uploads
@@ -12,7 +15,7 @@ const nextConfig = {
     // Turbopack config moved to top-level (deprecated in experimental)
   },
   // Exclude node-cron and canvas from Edge runtime bundling (they use native modules)
-  serverExternalPackages: ['node-cron', 'canvas'],
+  serverExternalPackages: ['node-cron', 'canvas', '@aws-sdk/client-ses', '@aws-sdk/client-sesv2'],
   async redirects() {
     return [
       { source: '/faq', destination: '/#faq', permanent: false },

@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/service';
 import { syncProductToStripe } from '@/utils/stripe/product-sync';
-import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+import { stripe, type Stripe } from "@/utils/stripe/client";
 
 /**
  * POST /api/bundles/create-products

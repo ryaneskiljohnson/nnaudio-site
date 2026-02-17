@@ -8,10 +8,9 @@ import { resolve } from "path";
 config({ path: resolve(process.cwd(), ".env.local") });
 
 import Stripe from "stripe";
+import { getStripeClient } from "../utils/stripe/client";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
+const stripe = getStripeClient(process.env.STRIPE_SECRET_KEY!);
 
 async function main() {
   console.log("Fetching Stripe payment intents...\n");

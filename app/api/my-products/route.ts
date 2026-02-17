@@ -3,10 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import Stripe from "stripe";
 import { requireUuid } from "@/utils/validation";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
+import { stripe } from "@/utils/stripe/client";
 
 export async function GET(request: NextRequest) {
   try {

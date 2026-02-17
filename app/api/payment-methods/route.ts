@@ -5,12 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-import { createClient } from '@/utils/supabase/server';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+import Stripe from "stripe";
+import { createClient } from "@/utils/supabase/server";
+import { stripe } from "@/utils/stripe/client";
 
 /**
  * @brief Fetches all payment methods for the authenticated user

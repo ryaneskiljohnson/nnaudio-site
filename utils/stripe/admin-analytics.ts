@@ -3,8 +3,7 @@
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { SubscriptionType } from "@/utils/supabase/types";
 import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { stripe } from "@/utils/stripe/client";
 
 export interface AdminDashboardStats {
   totalUsers: number;
@@ -684,8 +683,9 @@ export async function getTrialUsersByType(): Promise<{
         // 2. If current_period_start <= trial_end but subscription is active, they might be in grace period
         //    In this case, we check if the subscription was created before trial_end (meaning they converted)
         //    and the status is active (meaning payment succeeded)
-        const hasPaidAfterTrial = subscription.current_period_start && 
-                                 subscription.current_period_start > subscription.trial_end;
+        const subWithPeriod = subscription as Stripe.Subscription & { current_period_start?: number; trial_end?: number };
+        const hasPaidAfterTrial = subWithPeriod.current_period_start &&
+                                 subWithPeriod.current_period_start > (subWithPeriod.trial_end ?? 0);
 
         // A conversion means:
         // - Subscription is active (not canceled, not past_due, etc.)

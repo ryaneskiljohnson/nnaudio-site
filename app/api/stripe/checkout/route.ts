@@ -3,8 +3,7 @@ import Stripe from "stripe";
 import { PlanType } from "@/types/stripe";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { randomUUID } from "crypto";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { stripe } from "@/utils/stripe/client";
 
 /**
  * Map price_id to plan name for Meta tracking
@@ -325,9 +324,11 @@ async function hasCustomerPurchasedLifetime(customerId: string): Promise<boolean
 
     const hasLifetimeInvoice = invoices.data.some(invoice => {
       if (invoice.status !== 'paid') return false;
-      return invoice.lines.data.some(line => 
-        line.price?.id === lifetimePriceId
-      );
+      return invoice.lines.data.some(line => {
+        const priceRef = line.pricing?.price_details?.price;
+        const priceId = typeof priceRef === 'string' ? priceRef : priceRef?.id;
+        return priceId === lifetimePriceId;
+      });
     });
 
     if (hasLifetimeInvoice) {

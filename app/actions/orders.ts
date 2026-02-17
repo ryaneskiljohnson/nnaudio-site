@@ -2,11 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
-import Stripe from "stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
+import { stripe, type Stripe } from "@/utils/stripe/client";
 
 export interface OrderItem {
   id: string;
@@ -151,22 +147,30 @@ export async function getOrders(): Promise<{
       }
     }
 
-    // Include paid subscription invoices: their payment_intent may not always appear in paymentIntents.list
+    // Include paid subscription invoices: payment intents may not always appear in paymentIntents.list
     if (profile?.customer_id) {
       try {
         const paidInvoices = await stripe.invoices.list({
           customer: profile.customer_id,
           status: "paid",
           limit: 100,
+          expand: ["data.payments"],
         });
         for (const inv of paidInvoices.data) {
-          const piId = typeof inv.payment_intent === "string" ? inv.payment_intent : inv.payment_intent?.id;
-          if (piId && inv.subscription && !allPaymentIntents.has(piId)) {
-            try {
-              const pi = await stripe.paymentIntents.retrieve(piId);
-              if (pi.status === "succeeded") allPaymentIntents.set(pi.id, pi);
-            } catch {
-              // ignore
+          if (!inv.parent?.subscription_details?.subscription) continue;
+          const payments = inv.payments?.data ?? [];
+          for (const invoicePayment of payments) {
+            const paymentRef = invoicePayment.payment?.payment_intent;
+            const piId =
+              typeof paymentRef === "string" ? paymentRef : paymentRef?.id;
+            if (piId && !allPaymentIntents.has(piId)) {
+              try {
+                const pi = await stripe.paymentIntents.retrieve(piId);
+                if (pi.status === "succeeded")
+                  allPaymentIntents.set(pi.id, pi);
+              } catch {
+                // ignore
+              }
             }
           }
         }
@@ -248,14 +252,16 @@ export async function getOrders(): Promise<{
         }
 
         // Subscription/bundle orders: build items from invoice or PI metadata when cart_items is empty
-        if (items.length === 0 && (pi.invoice || pi.metadata?.bundle_slug || pi.metadata?.checkout_type === "bundle")) {
+        // PaymentIntent may include invoice (for invoice-backed PIs); not in current Stripe SDK types
+        const piInvoiceRef = (pi as Stripe.PaymentIntent & { invoice?: string | Stripe.Invoice }).invoice;
+        if (items.length === 0 && (piInvoiceRef || pi.metadata?.bundle_slug || pi.metadata?.checkout_type === "bundle")) {
           try {
-            if (pi.invoice) {
-              const invoice = await stripe.invoices.retrieve(
-                typeof pi.invoice === "string" ? pi.invoice : pi.invoice.id,
-                { expand: ["subscription"] }
-              );
-              const sub = invoice.subscription as Stripe.Subscription | null;
+            if (piInvoiceRef) {
+              const invoiceId = typeof piInvoiceRef === "string" ? piInvoiceRef : piInvoiceRef.id;
+              const invoice = await stripe.invoices.retrieve(invoiceId, {
+                expand: ["parent.subscription_details.subscription"],
+              });
+              const sub = (invoice.parent?.subscription_details?.subscription ?? null) as Stripe.Subscription | null;
               const bundleSlug = (typeof sub?.metadata?.bundle_slug === "string" && sub.metadata.bundle_slug)
                 ? sub.metadata.bundle_slug
                 : (pi.metadata?.bundle_slug as string | undefined);
@@ -273,7 +279,7 @@ export async function getOrders(): Promise<{
               const amount = (invoice.amount_paid ?? pi.amount) / 100;
               items = [
                 {
-                  id: invoice.subscription && typeof invoice.subscription === "object" ? (invoice.subscription as Stripe.Subscription).id : pi.id,
+                  id: sub && typeof sub === "object" ? sub.id : pi.id,
                   name: lineLabel,
                   price: amount,
                   quantity: 1,
@@ -380,11 +386,10 @@ export async function getOrders(): Promise<{
         }
 
         // Try to get invoice if available
-        if (pi.invoice) {
+        if (piInvoiceRef) {
           try {
-            const invoice = await stripe.invoices.retrieve(
-              typeof pi.invoice === "string" ? pi.invoice : pi.invoice.id
-            );
+            const invoiceIdForReceipt = typeof piInvoiceRef === "string" ? piInvoiceRef : piInvoiceRef.id;
+            const invoice = await stripe.invoices.retrieve(invoiceIdForReceipt);
             invoiceId = invoice.id;
             if (!receiptUrl && invoice.hosted_invoice_url) {
               receiptUrl = invoice.hosted_invoice_url;

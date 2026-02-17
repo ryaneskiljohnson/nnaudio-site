@@ -534,15 +534,16 @@ const HeroSection = () => {
               Object.entries(preset.effects).forEach(
                 ([effectType, effectParams]) => {
                   // Type assertion for effect type
-                  const effect = effectsChain.getEffect(
+                  const effect = effectsChain.getEffect?.(
                     effectType as EffectType
                   );
                   if (effect) {
+                    const effectWithSet = effect as { set?: (o: Record<string, unknown>) => void };
                     Object.entries(
                       effectParams as Record<string, unknown>
                     ).forEach(([paramKey, paramValue]) => {
                       try {
-                        effect.set({ [paramKey]: paramValue });
+                        effectWithSet.set?.({ [paramKey]: paramValue });
                       } catch (effectError) {
                         console.warn(
                           `Error setting effect param ${effectType}.${paramKey}:`,

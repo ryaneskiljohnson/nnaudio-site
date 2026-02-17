@@ -9,6 +9,7 @@
 
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import Stripe from "stripe";
+import { stripe } from "@/utils/stripe/client";
 
 export interface AccessibleProductsResult {
   productIds: Set<string>;
@@ -24,10 +25,6 @@ export interface GetAccessibleProductIdsOptions {
   /** Optional array to collect timing metrics (for products-full debugging) */
   timings?: { phase: string; ms: number }[];
 }
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
 
 function elapsed(start: number): number {
   return Math.round(Date.now() - start);

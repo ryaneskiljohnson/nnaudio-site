@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+import { stripe } from "@/utils/stripe/client";
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,9 +35,21 @@ export async function POST(request: NextRequest) {
     }
 
     const promotionCode = promotionCodes.data[0];
-    const coupon = typeof promotionCode.coupon === 'string'
-      ? await stripe.coupons.retrieve(promotionCode.coupon)
-      : promotionCode.coupon;
+    const promotion = promotionCode.promotion;
+    const couponRef = promotion?.type === "coupon" ? promotion.coupon : null;
+    const coupon =
+      couponRef == null
+        ? null
+        : typeof couponRef === "string"
+          ? await stripe.coupons.retrieve(couponRef)
+          : couponRef;
+
+    if (!coupon) {
+      return NextResponse.json(
+        { error: 'Invalid promo code' },
+        { status: 400 }
+      );
+    }
 
     // Check if coupon is valid
     if (!coupon.valid) {

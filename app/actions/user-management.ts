@@ -7,6 +7,7 @@ import {
   getUsersForCRMCount,
   getAdditionalUserData,
 } from "@/utils/stripe/admin-analytics";
+import { stripe } from "@/utils/stripe/client";
 import { fetchProfile } from "@/utils/supabase/actions";
 import { sendEmail } from "@/utils/email";
 
@@ -3136,9 +3137,6 @@ export async function getCustomerPurchasesAdmin(customerId: string): Promise<{
       return { purchases: [], error: "Unauthorized" };
     }
 
-    const Stripe = (await import("stripe")).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
     const paymentIntents = await stripe.paymentIntents.list({
       customer: customerId,
       limit: 100,
@@ -3149,17 +3147,23 @@ export async function getCustomerPurchasesAdmin(customerId: string): Promise<{
     const invoices = await stripe.invoices.list({
       customer: customerId,
       limit: 100,
+      expand: ["data.payments"],
     });
 
-    // Create a map of payment intent IDs to their invoices
-    const piToInvoiceMap = new Map<string, import('stripe').Stripe.Invoice>();
+    // Create a map of payment intent IDs to their invoices (2026 API: payment_intent is on invoice payments)
+    const piToInvoiceMap = new Map<string, import("stripe").Stripe.Invoice>();
     invoices.data.forEach((inv) => {
-      if (inv.payment_intent && typeof inv.payment_intent === "string") {
-        piToInvoiceMap.set(inv.payment_intent, inv);
+      const payments = inv.payments?.data ?? [];
+      for (const invoicePayment of payments) {
+        const paymentRef = invoicePayment.payment?.payment_intent;
+        const piId = typeof paymentRef === "string" ? paymentRef : paymentRef?.id;
+        if (piId) piToInvoiceMap.set(piId, inv);
       }
     });
 
+    type PiWithInvoice = import("stripe").Stripe.PaymentIntent & { invoice?: import("stripe").Stripe.Invoice };
     const purchases = paymentIntents.data.map((pi) => {
+      const piWithInvoice = pi as PiWithInvoice;
       // Determine description from metadata, invoice, or amount
       let description = "One-time purchase";
 
@@ -3170,18 +3174,17 @@ export async function getCustomerPurchasesAdmin(customerId: string): Promise<{
       // Check if this payment intent is linked to an invoice (subscription payment)
       else if (piToInvoiceMap.has(pi.id)) {
         const invoice = piToInvoiceMap.get(pi.id)!;
-        if (invoice.subscription) {
-          // It's a subscription payment
+        if (invoice.parent?.subscription_details?.subscription) {
           description = "Subscription payment";
         } else {
           description = "One-time purchase";
         }
       }
-      // Check if payment intent has invoice in expanded data
+      // Check if payment intent has invoice in expanded data (invoice not in SDK types for 2026)
       else if (
-        pi.invoice &&
-        typeof pi.invoice === "object" &&
-        "subscription" in pi.invoice
+        piWithInvoice.invoice &&
+        typeof piWithInvoice.invoice === "object" &&
+        piWithInvoice.invoice.parent?.subscription_details?.subscription
       ) {
         description = "Subscription payment";
       } else if (pi.amount === 0) {
@@ -3230,9 +3233,6 @@ export async function getCustomerInvoicesAdmin(customerId: string): Promise<{
     if (!(await checkAdmin(supabase))) {
       return { invoices: [], error: "Unauthorized" };
     }
-
-    const Stripe = (await import("stripe")).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
     const invoices = await stripe.invoices.list({
       customer: customerId,

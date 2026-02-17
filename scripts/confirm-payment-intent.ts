@@ -1,5 +1,5 @@
-import Stripe from "stripe";
 import * as dotenv from "dotenv";
+import { getStripeClient } from "../utils/stripe/client";
 
 dotenv.config({ path: ".env.local" });
 
@@ -9,9 +9,7 @@ if (!stripeKey) {
   process.exit(1);
 }
 
-const stripe = new Stripe(stripeKey, {
-  apiVersion: "2025-02-24.acacia",
-});
+const stripe = getStripeClient(stripeKey);
 
 const PAYMENT_INTENT_ID = process.argv[2] || "pi_3SgsS8EtE1HSKUzY1eludNvJ";
 

@@ -1,6 +1,9 @@
 /**
- * @fileoverview Next.js middleware: Supabase session refresh and security headers.
- * @module middleware
+ * @fileoverview Next.js proxy: Supabase session refresh and security headers.
+ * @module proxy
+ *
+ * Replaces deprecated middleware.ts (Next.js 16+). Used only for routing
+ * (redirects, headers); auth is enforced in server layouts.
  */
 
 import { NextResponse, type NextRequest } from "next/server";
@@ -38,11 +41,11 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
 const PROTECTED_PREFIXES = ["/dashboard", "/admin"];
 
 /**
- * Middleware entry: refreshes Supabase session, enforces auth for protected paths, applies security headers.
+ * Proxy entry: refreshes Supabase session, enforces auth for protected paths, applies security headers.
  * @param request - The incoming request
  * @returns Response with session cookies and security headers
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { response: supabaseResponse, user } = await updateSession(request);
 
   const path = request.nextUrl.pathname;

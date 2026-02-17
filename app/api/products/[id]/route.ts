@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { createAdminClient } from '@/utils/supabase/service';
-import { getDownloadFileSize } from '@/utils/product-downloads';
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/service";
+import { getDownloadFileSize } from "@/utils/product-downloads";
+import { stripe } from "@/utils/stripe/client";
 
 // GET /api/products/[id] - Get single product (uses admin client when caller is admin so all fields load)
 export async function GET(
@@ -375,15 +376,6 @@ export async function DELETE(
     // Delete from Stripe if product exists there
     if (product?.stripe_product_id) {
       try {
-        const Stripe = (await import('stripe')).default;
-        if (!process.env.STRIPE_SECRET_KEY) {
-          throw new Error('STRIPE_SECRET_KEY not configured');
-        }
-        
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-          apiVersion: '2025-02-24.acacia',
-        });
-
         // Archive prices first (can't delete prices that have been used)
         if (product.stripe_price_id) {
           try {

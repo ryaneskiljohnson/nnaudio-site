@@ -7,7 +7,7 @@
 import "dotenv/config";
 import { config } from "dotenv";
 import path from "path";
-import Stripe from "stripe";
+import { getStripeClient } from "../utils/stripe/client";
 
 // Load .env.local (Next.js convention)
 config({ path: path.resolve(process.cwd(), ".env.local") });
@@ -21,9 +21,7 @@ async function main() {
     process.exit(1);
   }
 
-  const stripe = new Stripe(key, {
-    apiVersion: "2025-02-24.acacia",
-  });
+  const stripe = getStripeClient(key);
 
   console.log("Looking up Stripe customer by email:", EMAIL);
 

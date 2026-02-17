@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Stripe from 'stripe';
-import { createClient } from '@/utils/supabase/server';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+import Stripe from "stripe";
+import { createClient } from "@/utils/supabase/server";
+import { stripe } from "@/utils/stripe/client";
 
 interface CartItem {
   id: string;
@@ -107,11 +104,16 @@ export async function POST(request: NextRequest) {
         }
 
         if (promotionCode) {
-          const coupon = typeof promotionCode.coupon === 'string'
-            ? await stripe.coupons.retrieve(promotionCode.coupon)
-            : promotionCode.coupon;
+          const promotion = promotionCode.promotion;
+          const couponRef = promotion?.type === "coupon" ? promotion.coupon : null;
+          const coupon =
+            couponRef == null
+              ? null
+              : typeof couponRef === "string"
+                ? await stripe.coupons.retrieve(couponRef)
+                : couponRef;
 
-          if (coupon.valid) {
+          if (coupon?.valid) {
             // Calculate discount amount
             if (coupon.percent_off) {
               discountAmount = (totalAmount * coupon.percent_off) / 100;

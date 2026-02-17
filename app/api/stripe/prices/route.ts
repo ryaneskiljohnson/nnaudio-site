@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { PlanType, PriceData, PricesResponse } from "@/types/stripe";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { stripe } from "@/utils/stripe/client";
 
 export async function GET(): Promise<NextResponse<PricesResponse>> {
   try {

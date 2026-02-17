@@ -1,7 +1,7 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { Document } from "@langchain/core/documents";
-import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
-import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { MemoryVectorStore } from "@langchain/classic/vectorstores/memory";
 import { OpenAIEmbeddings } from "@langchain/openai";
 
 // Cymasphere website content (this would normally be scraped/updated dynamically)
@@ -236,7 +236,7 @@ class CymasphereRAG {
     }
 
     const results = await this.vectorStore!.similaritySearch(query, 3);
-    return results.map(doc => doc.pageContent).join('\n\n');
+    return results.map((doc: Document) => doc.pageContent).join('\n\n');
   }
 
   /** Extract NEPQ state from conversation (implementation on prototype). */

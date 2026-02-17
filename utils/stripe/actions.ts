@@ -4,8 +4,7 @@ import Stripe from "stripe";
 import { SubscriptionType } from "@/utils/supabase/types";
 import { PlanType, PriceData } from "@/types/stripe";
 import { createClient } from "@/utils/supabase/server";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+import { stripe } from "@/utils/stripe/client";
 
 /**
  * Server action to initiate checkout process
@@ -498,7 +497,7 @@ export async function getUpcomingInvoice(customerId: string | null): Promise<{
       return { amount: 0, error: "No customer ID provided", due_date: null };
     }
 
-    const upcomingInvoice = await stripe.invoices.retrieveUpcoming({
+    const upcomingInvoice = await stripe.invoices.createPreview({
       customer: customerId,
     });
 
@@ -653,7 +652,7 @@ export async function checkExistingCustomer(email: string): Promise<{
     // Check if customer has any prior transactions (completed charges or paid invoices)
     const hasPriorTransactions =
       charges.data.some((charge) => charge.paid) ||
-      invoices.data.some((invoice) => invoice.paid) ||
+      invoices.data.some((invoice) => invoice.status === "paid") ||
       subscriptions.data.some(
         (sub) =>
           sub.status === "trialing" ||
@@ -879,10 +878,10 @@ export async function refundInvoice(
       out_of_band_amount: creditNote.out_of_band_amount,
       pdf: creditNote.pdf,
       reason: creditNote.reason,
-      refund: creditNote.refund,
+      refunds: creditNote.refunds,
       status: creditNote.status,
       subtotal: creditNote.subtotal,
-      tax_amounts: creditNote.tax_amounts,
+      total_taxes: creditNote.total_taxes,
       total: creditNote.total,
       type: creditNote.type,
       voided_at: creditNote.voided_at,
@@ -984,10 +983,10 @@ export async function getInvoiceCreditNotes(
       out_of_band_amount: creditNote.out_of_band_amount,
       pdf: creditNote.pdf,
       reason: creditNote.reason,
-      refund: creditNote.refund,
+      refunds: creditNote.refunds,
       status: creditNote.status,
       subtotal: creditNote.subtotal,
-      tax_amounts: creditNote.tax_amounts,
+      total_taxes: creditNote.total_taxes,
       total: creditNote.total,
       type: creditNote.type,
       voided_at: creditNote.voided_at,
@@ -1088,7 +1087,7 @@ export async function createPromotionCode(
 ): Promise<{ success: boolean; promotionCode?: any; error?: string }> {
   try {
     const promotionCodeData: Stripe.PromotionCodeCreateParams = {
-      coupon: couponId,
+      promotion: { type: "coupon", coupon: couponId },
       max_redemptions: maxRedemptions,
     };
 
@@ -1104,32 +1103,35 @@ export async function createPromotionCode(
 
     const promotionCode = await stripe.promotionCodes.create(promotionCodeData);
 
-    // Serialize the promotion code object to plain object
+    // Serialize the promotion code object to plain object (2026 API: coupon is under promotion)
+    const promoCoupon = promotionCode.promotion?.type === "coupon" ? promotionCode.promotion.coupon : null;
     const serializedPromotionCode = {
       id: promotionCode.id,
       object: promotionCode.object,
       active: promotionCode.active,
       code: promotionCode.code,
       coupon:
-        typeof promotionCode.coupon === "string"
-          ? promotionCode.coupon
-          : {
-              id: promotionCode.coupon.id,
-              object: promotionCode.coupon.object,
-              amount_off: promotionCode.coupon.amount_off,
-              created: promotionCode.coupon.created,
-              currency: promotionCode.coupon.currency,
-              duration: promotionCode.coupon.duration,
-              duration_in_months: promotionCode.coupon.duration_in_months,
-              livemode: promotionCode.coupon.livemode,
-              max_redemptions: promotionCode.coupon.max_redemptions,
-              metadata: promotionCode.coupon.metadata,
-              name: promotionCode.coupon.name,
-              percent_off: promotionCode.coupon.percent_off,
-              redeem_by: promotionCode.coupon.redeem_by,
-              times_redeemed: promotionCode.coupon.times_redeemed,
-              valid: promotionCode.coupon.valid,
-            },
+        promoCoupon == null
+          ? null
+          : typeof promoCoupon === "string"
+            ? promoCoupon
+            : {
+                id: promoCoupon.id,
+                object: promoCoupon.object,
+                amount_off: promoCoupon.amount_off,
+                created: promoCoupon.created,
+                currency: promoCoupon.currency,
+                duration: promoCoupon.duration,
+                duration_in_months: promoCoupon.duration_in_months,
+                livemode: promoCoupon.livemode,
+                max_redemptions: promoCoupon.max_redemptions,
+                metadata: promoCoupon.metadata,
+                name: promoCoupon.name,
+                percent_off: promoCoupon.percent_off,
+                redeem_by: promoCoupon.redeem_by,
+                times_redeemed: promoCoupon.times_redeemed,
+                valid: promoCoupon.valid,
+              },
       created: promotionCode.created,
       customer: promotionCode.customer,
       expires_at: promotionCode.expires_at,
@@ -1260,26 +1262,30 @@ export async function listPromotionCodes(options?: {
         object: promotionCode.object,
         active: promotionCode.active,
         code: promotionCode.code,
-        coupon:
-          typeof promotionCode.coupon === "string"
-            ? promotionCode.coupon
-            : {
-                id: promotionCode.coupon.id,
-                object: promotionCode.coupon.object,
-                amount_off: promotionCode.coupon.amount_off,
-                created: promotionCode.coupon.created,
-                currency: promotionCode.coupon.currency,
-                duration: promotionCode.coupon.duration,
-                duration_in_months: promotionCode.coupon.duration_in_months,
-                livemode: promotionCode.coupon.livemode,
-                max_redemptions: promotionCode.coupon.max_redemptions,
-                metadata: promotionCode.coupon.metadata,
-                name: promotionCode.coupon.name,
-                percent_off: promotionCode.coupon.percent_off,
-                redeem_by: promotionCode.coupon.redeem_by,
-                times_redeemed: promotionCode.coupon.times_redeemed,
-                valid: promotionCode.coupon.valid,
-              },
+        coupon: (() => {
+          const c = promotionCode.promotion?.type === "coupon" ? promotionCode.promotion.coupon : null;
+          return c == null
+            ? null
+            : typeof c === "string"
+              ? c
+              : {
+                  id: c.id,
+                  object: c.object,
+                  amount_off: c.amount_off,
+                  created: c.created,
+                  currency: c.currency,
+                  duration: c.duration,
+                  duration_in_months: c.duration_in_months,
+                  livemode: c.livemode,
+                  max_redemptions: c.max_redemptions,
+                  metadata: c.metadata,
+                  name: c.name,
+                  percent_off: c.percent_off,
+                  redeem_by: c.redeem_by,
+                  times_redeemed: c.times_redeemed,
+                  valid: c.valid,
+                };
+        })(),
         created: promotionCode.created,
         customer: promotionCode.customer,
         expires_at: promotionCode.expires_at,
@@ -1391,10 +1397,11 @@ export async function cancelSubscriptionAdmin(
   reason?: string
 ): Promise<{ success: boolean; subscription?: any; error?: string }> {
   try {
-    const subscription = await stripe.subscriptions.cancel(subscriptionId, {
+    const response = await stripe.subscriptions.cancel(subscriptionId, {
       invoice_now: false,
       prorate: false,
     });
+    const subscription = response as unknown as Stripe.Subscription;
 
     // Serialize the subscription object
     const serializedSubscription = {
@@ -1404,8 +1411,8 @@ export async function cancelSubscriptionAdmin(
       cancel_at_period_end: subscription.cancel_at_period_end,
       canceled_at: subscription.canceled_at,
       created: subscription.created,
-      current_period_end: subscription.current_period_end,
-      current_period_start: subscription.current_period_start,
+      current_period_end: (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
+      current_period_start: (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
       customer:
         typeof subscription.customer === "string"
           ? subscription.customer
@@ -1457,8 +1464,8 @@ export async function reactivateSubscription(
       cancel_at_period_end: subscription.cancel_at_period_end,
       canceled_at: subscription.canceled_at,
       created: subscription.created,
-      current_period_end: subscription.current_period_end,
-      current_period_start: subscription.current_period_start,
+      current_period_end: (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
+      current_period_start: (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
       customer:
         typeof subscription.customer === "string"
           ? subscription.customer
@@ -1532,8 +1539,8 @@ export async function changeSubscriptionPlan(
       cancel_at_period_end: subscription.cancel_at_period_end,
       canceled_at: subscription.canceled_at,
       created: subscription.created,
-      current_period_end: subscription.current_period_end,
-      current_period_start: subscription.current_period_start,
+      current_period_end: (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
+      current_period_start: (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
       customer:
         typeof subscription.customer === "string"
           ? subscription.customer
@@ -1594,8 +1601,8 @@ export async function getSubscriptionDetails(
       cancel_at_period_end: subscription.cancel_at_period_end,
       canceled_at: subscription.canceled_at,
       created: subscription.created,
-      current_period_end: subscription.current_period_end,
-      current_period_start: subscription.current_period_start,
+      current_period_end: (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
+      current_period_start: (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
       customer:
         typeof subscription.customer === "string"
           ? subscription.customer
@@ -1661,8 +1668,8 @@ export async function getCustomerSubscriptions(
       cancel_at_period_end: subscription.cancel_at_period_end,
       canceled_at: subscription.canceled_at,
       created: subscription.created,
-      current_period_end: subscription.current_period_end,
-      current_period_start: subscription.current_period_start,
+      current_period_end: (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
+      current_period_start: (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
       customer:
         typeof subscription.customer === "string"
           ? subscription.customer

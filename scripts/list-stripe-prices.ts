@@ -1,12 +1,10 @@
-import Stripe from 'stripe';
-import * as dotenv from 'dotenv';
+import * as dotenv from "dotenv";
+import { getStripeClient, type Stripe } from "../utils/stripe/client";
 
 // Load environment variables
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: ".env.local" });
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+const stripe = getStripeClient(process.env.STRIPE_SECRET_KEY!);
 
 async function listStripePrices() {
   try {

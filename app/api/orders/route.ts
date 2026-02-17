@@ -3,10 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import Stripe from "stripe";
 import { requireUuid } from "@/utils/validation";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
+import { stripe } from "@/utils/stripe/client";
 
 export async function GET(request: NextRequest) {
   try {
@@ -157,6 +154,7 @@ export async function GET(request: NextRequest) {
     // Transform payment intents into orders
     const orders = await Promise.all(
       successfulPayments.map(async (pi) => {
+        const piInvoiceRef = (pi as import("stripe").Stripe.PaymentIntent & { invoice?: string | import("stripe").Stripe.Invoice }).invoice;
         // Parse cart items from metadata
         let items: any[] = [];
         try {
@@ -277,11 +275,10 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Try to get invoice if available
-        if (pi.invoice) {
-          const invoice = await stripe.invoices.retrieve(
-            typeof pi.invoice === "string" ? pi.invoice : pi.invoice.id
-          );
+        // Try to get invoice if available (invoice not on PaymentIntent type in 2026 SDK)
+        if (piInvoiceRef) {
+          const invoiceIdFromPi = typeof piInvoiceRef === "string" ? piInvoiceRef : piInvoiceRef.id;
+          const invoice = await stripe.invoices.retrieve(invoiceIdFromPi);
           invoiceId = invoice.id;
           if (!receiptUrl && invoice.hosted_invoice_url) {
             receiptUrl = invoice.hosted_invoice_url;

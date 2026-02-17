@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import Stripe from "stripe";
 import * as dotenv from "dotenv";
+import { getStripeClient } from "../utils/stripe/client";
 
 dotenv.config({ path: ".env.local" });
 
@@ -14,9 +14,7 @@ if (!supabaseUrl || !supabaseKey || !stripeKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
-const stripe = new Stripe(stripeKey, {
-  apiVersion: "2025-02-24.acacia",
-});
+const stripe = getStripeClient(stripeKey);
 
 const USER_EMAIL = "support@newnationllc.com";
 

@@ -15,7 +15,7 @@ import { resolve } from "path";
 // Load .env.local
 config({ path: resolve(process.cwd(), ".env.local") });
 
-import Stripe from "stripe";
+import type { Stripe } from "../utils/stripe/client";
 import { createClient } from "@supabase/supabase-js";
 
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
@@ -31,7 +31,8 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   process.exit(1);
 }
 
-const stripe = new Stripe(STRIPE_KEY, { apiVersion: "2025-02-24.acacia" });
+const { getStripeClient } = await import("../utils/stripe/client");
+const stripe = getStripeClient(STRIPE_KEY);
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 async function main() {

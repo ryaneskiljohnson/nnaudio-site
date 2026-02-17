@@ -9,10 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
-});
+import { stripe } from "@/utils/stripe/client";
 
 type BundleTier = "monthly" | "annual" | "lifetime";
 
@@ -198,10 +195,17 @@ export async function POST(request: NextRequest) {
         // Same flow (double-call or retry): return existing subscription's payment intent so checkout can complete
         const subWithInvoice = await stripe.subscriptions.retrieve(
           recentWithThisPrice.id,
-          { expand: ["latest_invoice.payment_intent"] }
+          { expand: ["latest_invoice", "latest_invoice.payments", "latest_invoice.payments.data.payment.payment_intent"] }
         );
-        const latestInvoice = subWithInvoice.latest_invoice as Stripe.Invoice;
-        const paymentIntent = latestInvoice?.payment_intent as Stripe.PaymentIntent | undefined;
+        const latestInvoice = subWithInvoice.latest_invoice as Stripe.Invoice | null;
+        const firstPayment = latestInvoice?.payments?.data?.[0];
+        const paymentRef = firstPayment?.payment?.payment_intent;
+        const paymentIntent =
+          typeof paymentRef === "object" && paymentRef !== null
+            ? paymentRef
+            : typeof paymentRef === "string"
+              ? await stripe.paymentIntents.retrieve(paymentRef)
+              : undefined;
         if (paymentIntent?.client_secret) {
           return NextResponse.json({
             clientSecret: paymentIntent.client_secret,
@@ -255,11 +259,15 @@ export async function POST(request: NextRequest) {
             if (list.data.length > 0) promotionCode = list.data[0];
           }
           if (promotionCode) {
+            const promotion = promotionCode.promotion;
+            const couponRef = promotion?.type === "coupon" ? promotion.coupon : null;
             const coupon =
-              typeof promotionCode.coupon === "string"
-                ? await stripe.coupons.retrieve(promotionCode.coupon)
-                : promotionCode.coupon;
-            if (coupon.valid) {
+              couponRef == null
+                ? null
+                : typeof couponRef === "string"
+                  ? await stripe.coupons.retrieve(couponRef)
+                  : couponRef;
+            if (coupon?.valid) {
               if (coupon.percent_off) {
                 discountAmount = (amountDollars * coupon.percent_off) / 100;
               } else if (coupon.amount_off) {
@@ -324,11 +332,9 @@ export async function POST(request: NextRequest) {
           });
           if (list.data.length > 0) promotionCode = list.data[0];
         }
-        if (promotionCode?.coupon) {
-          couponId =
-            typeof promotionCode.coupon === "string"
-              ? promotionCode.coupon
-              : promotionCode.coupon.id;
+        const promoCoupon = promotionCode?.promotion?.type === "coupon" ? promotionCode.promotion.coupon : null;
+        if (promoCoupon) {
+          couponId = typeof promoCoupon === "string" ? promoCoupon : promoCoupon.id;
         }
       } catch (e) {
         console.error("Bundle setup subscription promo lookup:", e);
@@ -344,7 +350,7 @@ export async function POST(request: NextRequest) {
       payment_settings: {
         save_default_payment_method: "on_subscription",
       },
-      expand: ["latest_invoice.payment_intent"],
+      expand: ["latest_invoice", "latest_invoice.payments", "latest_invoice.payments.data.payment.payment_intent"],
       metadata: {
         bundle_id: bundle.id,
         bundle_slug: bundle.slug,
@@ -353,10 +359,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const latestInvoice = subscription.latest_invoice as Stripe.Invoice;
-    const paymentIntent = latestInvoice?.payment_intent as
-      | Stripe.PaymentIntent
-      | undefined;
+    const latestInvoice = subscription.latest_invoice as Stripe.Invoice | null;
+    const firstPayment = latestInvoice?.payments?.data?.[0];
+    const paymentRef = firstPayment?.payment?.payment_intent;
+    const paymentIntent =
+      typeof paymentRef === "object" && paymentRef !== null
+        ? paymentRef
+        : typeof paymentRef === "string"
+          ? await stripe.paymentIntents.retrieve(paymentRef)
+          : undefined;
 
     if (!paymentIntent?.client_secret) {
       return NextResponse.json(
