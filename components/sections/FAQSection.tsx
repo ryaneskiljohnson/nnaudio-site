@@ -140,14 +140,32 @@ const FAQSection = () => {
     <FaHeadset key="support" />,     // Get help
   ];
 
-  // Get questions and answers from translation files (guard: i18n can return string or object if key missing)
-  const raw = t("faq.questions", { returnObjects: true });
-  const questionsData = Array.isArray(raw) ? (raw as FAQItem[]) : [];
+  // Support both formats: faq.questions[] (en, de, es, ...) and legacy faq.question1/answer1, ... (e.g. tr)
+  const faqRaw = t("faq", { returnObjects: true });
+  const faqObj = typeof faqRaw === "object" && faqRaw !== null ? (faqRaw as Record<string, unknown>) : {};
+  let questionsData: FAQItem[] = [];
 
-  const faqItems = questionsData.map((question: FAQItem, index: number) => ({
+  if (Array.isArray(faqObj.questions)) {
+    questionsData = (faqObj.questions as FAQItem[]).filter(
+      (q) => typeof q?.question === "string" && typeof q?.answer === "string"
+    );
+  } else {
+    const legacy: FAQItem[] = [];
+    let i = 1;
+    while (typeof faqObj[`question${i}`] === "string" && typeof faqObj[`answer${i}`] === "string") {
+      legacy.push({
+        question: faqObj[`question${i}`] as string,
+        answer: faqObj[`answer${i}`] as string,
+      });
+      i += 1;
+    }
+    questionsData = legacy;
+  }
+
+  const faqItems = questionsData.map((item: FAQItem, index: number) => ({
     icon: faqIcons[index] ?? faqIcons[0],
-    question: question.question,
-    answer: question.answer
+    question: item.question,
+    answer: item.answer,
   }));
 
   if (languageLoading) {

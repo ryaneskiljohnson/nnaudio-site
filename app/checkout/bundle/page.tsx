@@ -8,7 +8,7 @@
  * @module app/checkout/bundle
  */
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import { motion } from "framer-motion";
@@ -1169,7 +1169,7 @@ function BundlePaymentForm({
   );
 }
 
-export default function BundleCheckoutPage() {
+function BundleCheckoutPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -1447,5 +1447,13 @@ export default function BundleCheckoutPage() {
         </CheckoutContainer>
       </Content>
     </Container>
+  );
+}
+
+export default function BundleCheckoutPage() {
+  return (
+    <Suspense fallback={<CheckoutPageSkeleton />}>
+      <BundleCheckoutPageInner />
+    </Suspense>
   );
 }
