@@ -71,9 +71,11 @@ export async function POST(request: NextRequest) {
     // Check cache first
     const cached = getUserProductCache(userId);
     if (cached) {
-      console.log(
-        `[products-full] CACHE HIT userId=${userId.slice(0, 8)}... total=${elapsed(requestStart)}ms`
-      );
+      if (process.env.NODE_ENV !== "production") {
+        console.log(
+          `[products-full] CACHE HIT total=${elapsed(requestStart)}ms`
+        );
+      }
       return new Response(JSON.stringify(cached), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -108,9 +110,11 @@ export async function POST(request: NextRequest) {
       const timingStr = timings
         .map((t) => `${t.phase}=${t.ms}ms`)
         .join(" | ");
-      console.log(
-        `[products-full] CACHE MISS (0 products) userId=${userId.slice(0, 8)}... total=${elapsed(requestStart)}ms | ${timingStr}`
-      );
+      if (process.env.NODE_ENV !== "production") {
+        console.log(
+          `[products-full] CACHE MISS (0 products) total=${elapsed(requestStart)}ms | ${timingStr}`
+        );
+      }
       return new Response(JSON.stringify(response), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -141,7 +145,9 @@ export async function POST(request: NextRequest) {
       .eq("status", "active");
 
     if (productsError || !products) {
-      console.error("[products-full] Error fetching products:", productsError);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[products-full] Error fetching products:", productsError);
+      }
       return new Response(formatError("Unable to fetch products"), {
         status: 500,
       });
@@ -247,16 +253,20 @@ export async function POST(request: NextRequest) {
     const timingStr = timings
       .map((t) => `${t.phase}=${t.ms}ms`)
       .join(" | ");
-    console.log(
-      `[products-full] CACHE MISS userId=${userId.slice(0, 8)}... total=${totalMs}ms | ${timingStr}`
-    );
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        `[products-full] CACHE MISS total=${totalMs}ms | ${timingStr}`
+      );
+    }
 
     return new Response(JSON.stringify(response), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("[products-full] Error:", error);
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[products-full] Error:", error);
+    }
     return new Response(formatError("Unable to handle request"), {
       status: 500,
     });

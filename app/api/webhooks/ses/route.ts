@@ -1,111 +1,140 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
+/**
+ * @fileoverview AWS SES/SNS webhook: receives SNS notifications (delivery, bounce, etc.) and subscription confirmations.
+ * @module app/api/webhooks/ses/route
+ */
 
-// Create Supabase client with service role key for webhook processing
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import MessageValidator from "sns-validator";
+
+const validator = new MessageValidator();
+
+/** Allowed SNS host pattern for SubscribeURL (prevents SSRF). */
+const SNS_HOST_PATTERN = /^sns\.[a-zA-Z0-9-]{3,}\.amazonaws\.com(\.cn)?$/;
+
+/**
+ * Verifies that a URL is a valid AWS SNS endpoint (https + allowed host).
+ * @param urlString - URL to check
+ * @returns true if safe to fetch
+ */
+function isAllowedSnsUrl(urlString: string): boolean {
+  try {
+    const u = new URL(urlString);
+    return u.protocol === "https:" && SNS_HOST_PATTERN.test(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validates the raw SNS message body and returns the parsed message if valid.
+ * In development, skips signature verification.
+ * @param body - Raw request body string
+ * @returns Validated SNS message or null if invalid
+ */
+async function verifySnsMessage(
+  body: string
+): Promise<Record<string, unknown> | null> {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(body) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    return parsed;
+  }
+
+  return new Promise((resolve) => {
+    validator.validate(parsed, (err: Error | null) => {
+      if (err) {
+        console.error("❌ SNS signature verification failed:", err.message);
+        resolve(null);
+        return;
+      }
+      resolve(parsed);
+    });
+  });
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Verify SNS signature (for production security)
-function verifySignature(payload: string, headers: any): boolean {
-  // For development, skip signature verification
-  if (process.env.NODE_ENV === 'development') {
-    return true;
-  }
-  
-  // In production, you should verify the SNS signature
-  // This is a simplified version - implement full SNS signature verification
-  const signature = headers['x-amz-sns-signature'];
-  const signingCertUrl = headers['x-amz-sns-signing-cert-url'];
-  
-  // TODO: Implement proper SNS signature verification
-  // For now, return true but log a warning
-  console.warn('⚠️ SNS signature verification not implemented - this should be done in production');
-  return true;
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
-    const headers = Object.fromEntries(request.headers.entries());
-    
-    console.log('📬 SES Webhook received:', {
-      contentType: headers['content-type'],
-      userAgent: headers['user-agent'],
-      bodyLength: body.length
-    });
 
-    // Verify the request is from AWS SNS
-    if (!verifySignature(body, headers)) {
-      console.error('❌ Invalid SNS signature');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    const snsMessage = await verifySnsMessage(body);
+    if (!snsMessage) {
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
-    let message;
-    try {
-      const snsMessage = JSON.parse(body);
-      
-      // Handle SNS subscription confirmation
-      if (snsMessage.Type === 'SubscriptionConfirmation') {
-        console.log('🔔 SNS Subscription confirmation received');
-        console.log('Subscribe URL:', snsMessage.SubscribeURL);
-        
-        // Auto-confirm subscription (optional - you might want to do this manually)
-        if (snsMessage.SubscribeURL) {
-          try {
-            await fetch(snsMessage.SubscribeURL);
-            console.log('✅ SNS subscription confirmed automatically');
-          } catch (error) {
-            console.error('❌ Failed to confirm SNS subscription:', error);
-          }
+    const messageType = snsMessage.Type as string;
+
+    if (messageType === "SubscriptionConfirmation") {
+      const subscribeUrl = snsMessage.SubscribeURL as string | undefined;
+      if (subscribeUrl && isAllowedSnsUrl(subscribeUrl)) {
+        try {
+          await fetch(subscribeUrl);
+          console.log("✅ SNS subscription confirmed");
+        } catch (error) {
+          console.error("❌ Failed to confirm SNS subscription:", error);
         }
-        
-        return NextResponse.json({ message: 'Subscription confirmed' });
+      } else if (subscribeUrl) {
+        console.warn("⚠️ SubscribeURL rejected (not an allowed SNS URL)");
       }
-      
-      // Handle SNS notification
-      if (snsMessage.Type === 'Notification') {
-        message = JSON.parse(snsMessage.Message);
-      } else {
-        message = snsMessage;
-      }
-    } catch (error) {
-      console.error('❌ Failed to parse SNS message:', error);
-      return NextResponse.json({ error: 'Invalid message format' }, { status: 400 });
+      return NextResponse.json({ message: "Subscription confirmed" });
     }
 
-    console.log('📧 SES Event received:', {
-      eventType: message.eventType,
-      messageId: message.mail?.messageId,
-      timestamp: message.mail?.timestamp
+    let message: Record<string, unknown>;
+    if (messageType === "Notification") {
+      const inner = snsMessage.Message;
+      message =
+        typeof inner === "string"
+          ? (JSON.parse(inner) as Record<string, unknown>)
+          : (inner as Record<string, unknown>);
+    } else {
+      message = snsMessage;
+    }
+
+    const eventType = message.eventType as string | undefined;
+    const mail = message.mail as Record<string, unknown> | undefined;
+
+    console.log("📧 SES Event received:", {
+      eventType,
+      messageId: mail?.messageId,
+      timestamp: mail?.timestamp,
     });
 
-    // Log the webhook for debugging
-    await supabase.from('email_webhook_logs').insert({
-      provider: 'ses',
-      event_type: message.eventType,
+    await supabase.from("email_webhook_logs").insert({
+      provider: "ses",
+      event_type: eventType,
       webhook_data: message,
-      processed: false
+      processed: false,
     });
 
-    // Process the SES event
     await processSESEvent(message);
 
-    return NextResponse.json({ message: 'Webhook processed successfully' });
+    return NextResponse.json({ message: "Webhook processed successfully" });
   } catch (error) {
-    console.error('❌ Error processing SES webhook:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error("❌ Error processing SES webhook:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
 
-async function processSESEvent(event: any) {
+async function processSESEvent(event: Record<string, unknown>) {
   const { eventType, mail } = event;
-  const messageId = mail?.messageId;
-  
+  const mailObj = mail as Record<string, unknown> | undefined;
+  const messageId = mailObj?.messageId as string | undefined;
+
   if (!messageId) {
-    console.warn('⚠️ No messageId in SES event, skipping');
+    console.warn("⚠️ No messageId in SES event, skipping");
     return;
   }
 
@@ -113,19 +142,19 @@ async function processSESEvent(event: any) {
 
   try {
     switch (eventType) {
-      case 'send':
+      case "send":
         await handleSendEvent(event);
         break;
-      case 'delivery':
+      case "delivery":
         await handleDeliveryEvent(event);
         break;
-      case 'bounce':
+      case "bounce":
         await handleBounceEvent(event);
         break;
-      case 'complaint':
+      case "complaint":
         await handleComplaintEvent(event);
         break;
-      case 'reject':
+      case "reject":
         await handleRejectEvent(event);
         break;
       default:
@@ -136,17 +165,14 @@ async function processSESEvent(event: any) {
   }
 }
 
-async function handleSendEvent(event: any) {
-  const { mail } = event;
-  const messageId = mail.messageId;
-  
-  console.log(`📤 Handling send event for message ${messageId}`);
-  
-  // Find the email send record by message_id
+async function handleSendEvent(event: Record<string, unknown>) {
+  const mail = event.mail as Record<string, unknown>;
+  const messageId = mail.messageId as string;
+
   const { data: emailSend, error } = await supabase
-    .from('email_sends')
-    .select('*')
-    .eq('message_id', messageId)
+    .from("email_sends")
+    .select("*")
+    .eq("message_id", messageId)
     .single();
 
   if (error || !emailSend) {
@@ -154,29 +180,24 @@ async function handleSendEvent(event: any) {
     return;
   }
 
-  // Update the send record
   await supabase
-    .from('email_sends')
+    .from("email_sends")
     .update({
-      status: 'sent',
-      sent_at: new Date(mail.timestamp).toISOString()
+      status: "sent",
+      sent_at: new Date((mail.timestamp as string) || 0).toISOString(),
     })
-    .eq('id', emailSend.id);
-
-  console.log(`✅ Updated send record ${emailSend.id} to 'sent' status`);
+    .eq("id", emailSend.id);
 }
 
-async function handleDeliveryEvent(event: any) {
-  const { mail, delivery } = event;
-  const messageId = mail.messageId;
-  
-  console.log(`📬 Handling delivery event for message ${messageId}`);
-  
-  // Find the email send record
+async function handleDeliveryEvent(event: Record<string, unknown>) {
+  const mail = event.mail as Record<string, unknown>;
+  const delivery = event.delivery as Record<string, unknown>;
+  const messageId = mail.messageId as string;
+
   const { data: emailSend, error } = await supabase
-    .from('email_sends')
-    .select('*')
-    .eq('message_id', messageId)
+    .from("email_sends")
+    .select("*")
+    .eq("message_id", messageId)
     .single();
 
   if (error || !emailSend) {
@@ -184,34 +205,32 @@ async function handleDeliveryEvent(event: any) {
     return;
   }
 
-  // Update the send record to delivered
   await supabase
-    .from('email_sends')
+    .from("email_sends")
     .update({
-      status: 'delivered',
-      delivered_at: new Date(delivery.timestamp).toISOString()
+      status: "delivered",
+      delivered_at: new Date((delivery.timestamp as string) || 0).toISOString(),
     })
-    .eq('id', emailSend.id);
+    .eq("id", emailSend.id);
 
-  // Update campaign delivery count
-  await supabase.rpc('increment_campaign_delivered', {
-    campaign_id: emailSend.campaign_id
+  await supabase.rpc("increment_campaign_delivered", {
+    campaign_id: emailSend.campaign_id,
   });
-
-  console.log(`✅ Updated send record ${emailSend.id} to 'delivered' status`);
 }
 
-async function handleBounceEvent(event: any) {
-  const { mail, bounce } = event;
-  const messageId = mail.messageId;
-  
-  console.log(`🚫 Handling bounce event for message ${messageId}`);
-  
-  // Find the email send record
+async function handleBounceEvent(event: Record<string, unknown>) {
+  const mail = event.mail as Record<string, unknown>;
+  const bounce = event.bounce as Record<string, unknown>;
+  const messageId = mail.messageId as string;
+  const bouncedRecipients = (bounce.bouncedRecipients as Record<string, unknown>[]) || [];
+  const bounceReason =
+    (bouncedRecipients[0] as Record<string, unknown>)?.diagnosticCode ||
+    "Unknown bounce reason";
+
   const { data: emailSend, error } = await supabase
-    .from('email_sends')
-    .select('*')
-    .eq('message_id', messageId)
+    .from("email_sends")
+    .select("*")
+    .eq("message_id", messageId)
     .single();
 
   if (error || !emailSend) {
@@ -219,51 +238,40 @@ async function handleBounceEvent(event: any) {
     return;
   }
 
-  // Update the send record to bounced
-  const bounceReason = bounce.bouncedRecipients?.[0]?.diagnosticCode || 'Unknown bounce reason';
-  
   await supabase
-    .from('email_sends')
+    .from("email_sends")
     .update({
-      status: 'bounced',
-      bounced_at: new Date(bounce.timestamp).toISOString(),
-      bounce_reason: bounceReason
+      status: "bounced",
+      bounced_at: new Date((bounce.timestamp as string) || 0).toISOString(),
+      bounce_reason: String(bounceReason),
     })
-    .eq('id', emailSend.id);
+    .eq("id", emailSend.id);
 
-  // Update campaign bounce count
-  await supabase.rpc('increment_campaign_bounced', {
-    campaign_id: emailSend.campaign_id
+  await supabase.rpc("increment_campaign_bounced", {
+    campaign_id: emailSend.campaign_id,
   });
 
-  // If it's a hard bounce, mark subscriber as bounced
-  if (bounce.bounceType === 'Permanent') {
+  if (bounce.bounceType === "Permanent") {
     await supabase
-      .from('subscribers')
+      .from("subscribers")
       .update({
-        status: 'bounced',
-        bounce_reason: bounceReason,
-        bounced_at: new Date(bounce.timestamp).toISOString()
+        status: "bounced",
+        bounce_reason: String(bounceReason),
+        bounced_at: new Date((bounce.timestamp as string) || 0).toISOString(),
       })
-      .eq('id', emailSend.subscriber_id);
-    
-    console.log(`🚫 Marked subscriber ${emailSend.subscriber_id} as bounced (hard bounce)`);
+      .eq("id", emailSend.subscriber_id);
   }
-
-  console.log(`✅ Updated send record ${emailSend.id} to 'bounced' status`);
 }
 
-async function handleComplaintEvent(event: any) {
-  const { mail, complaint } = event;
-  const messageId = mail.messageId;
-  
-  console.log(`⚠️ Handling complaint (spam) event for message ${messageId}`);
-  
-  // Find the email send record
+async function handleComplaintEvent(event: Record<string, unknown>) {
+  const mail = event.mail as Record<string, unknown>;
+  const complaint = event.complaint as Record<string, unknown>;
+  const messageId = mail.messageId as string;
+
   const { data: emailSend, error } = await supabase
-    .from('email_sends')
-    .select('*')
-    .eq('message_id', messageId)
+    .from("email_sends")
+    .select("*")
+    .eq("message_id", messageId)
     .single();
 
   if (error || !emailSend) {
@@ -271,34 +279,30 @@ async function handleComplaintEvent(event: any) {
     return;
   }
 
-  // Mark subscriber as complained (spam)
   await supabase
-    .from('subscribers')
+    .from("subscribers")
     .update({
-      status: 'complained',
-      complained_at: new Date(complaint.timestamp).toISOString()
+      status: "complained",
+      complained_at: new Date(
+        (complaint.timestamp as string) || 0
+      ).toISOString(),
     })
-    .eq('id', emailSend.subscriber_id);
+    .eq("id", emailSend.subscriber_id);
 
-  // Update campaign spam count
-  await supabase.rpc('increment_campaign_spam', {
-    campaign_id: emailSend.campaign_id
+  await supabase.rpc("increment_campaign_spam", {
+    campaign_id: emailSend.campaign_id,
   });
-
-  console.log(`⚠️ Marked subscriber ${emailSend.subscriber_id} as complained (spam)`);
 }
 
-async function handleRejectEvent(event: any) {
-  const { mail, reject } = event;
-  const messageId = mail.messageId;
-  
-  console.log(`❌ Handling reject event for message ${messageId}`);
-  
-  // Find the email send record
+async function handleRejectEvent(event: Record<string, unknown>) {
+  const mail = event.mail as Record<string, unknown>;
+  const reject = event.reject as Record<string, unknown>;
+  const messageId = mail.messageId as string;
+
   const { data: emailSend, error } = await supabase
-    .from('email_sends')
-    .select('*')
-    .eq('message_id', messageId)
+    .from("email_sends")
+    .select("*")
+    .eq("message_id", messageId)
     .single();
 
   if (error || !emailSend) {
@@ -306,14 +310,12 @@ async function handleRejectEvent(event: any) {
     return;
   }
 
-  // Update the send record to rejected
   await supabase
-    .from('email_sends')
+    .from("email_sends")
     .update({
-      status: 'rejected',
-      bounce_reason: reject.reason || 'Email rejected by SES'
+      status: "rejected",
+      bounce_reason:
+        (reject.reason as string) || "Email rejected by SES",
     })
-    .eq('id', emailSend.id);
-
-  console.log(`❌ Updated send record ${emailSend.id} to 'rejected' status`);
-} 
+    .eq("id", emailSend.id);
+}

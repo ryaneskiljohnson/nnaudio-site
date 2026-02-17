@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
+import DOMPurify from "isomorphic-dompurify";
 import {
   FaApple,
   FaWindows,
@@ -1233,7 +1234,7 @@ export default function GettingStartedWizard() {
                       {instruction.steps.map((step, stepIndex) => (
                         <li
                           key={stepIndex}
-                          dangerouslySetInnerHTML={{ __html: step }}
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(step) }}
                         />
                       ))}
                     </ol>

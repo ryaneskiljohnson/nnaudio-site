@@ -46,6 +46,7 @@ import {
   MetaEvent,
   META_EVENT_NAMES,
 } from '@/utils/meta-conversions-api';
+import { checkRateLimit, getClientIp } from '@/utils/rateLimit';
 
 // Type for request body
 interface MetaEventRequest {
@@ -81,32 +82,6 @@ const TEST_MODE = process.env.NODE_ENV === 'development';
 // Meta API endpoint
 const META_API_VERSION = 'v18.0';
 const META_API_ENDPOINT = `https://graph.facebook.com/${META_API_VERSION}/${PIXEL_ID}/events`;
-
-/**
- * Rate limiting in-memory store (in production, use Redis)
- * Key: IP address, Value: timestamp of last request
- */
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-/**
- * Check rate limiting
- */
-function checkRateLimit(ip: string, maxRequests: number = 100, windowSecs: number = 60): boolean {
-  const now = Date.now();
-  const entry = rateLimitStore.get(ip);
-
-  if (!entry || now > entry.resetTime) {
-    rateLimitStore.set(ip, { count: 1, resetTime: now + windowSecs * 1000 });
-    return true;
-  }
-
-  if (entry.count >= maxRequests) {
-    return false;
-  }
-
-  entry.count++;
-  return true;
-}
 
 /**
  * Log event to Supabase for debugging/compliance
@@ -242,14 +217,10 @@ function handleMetaResponse(response: Response, data: any) {
  * Main POST handler
  */
 export async function POST(request: NextRequest) {
-  // Get client IP for rate limiting
-  const clientIp =
-    request.headers.get('x-forwarded-for')?.split(',')[0] ||
-    request.headers.get('x-real-ip') ||
-    '127.0.0.1';
+  const clientIp = getClientIp(request);
 
-  // Rate limiting check
-  if (!checkRateLimit(clientIp)) {
+  // Rate limiting: 100 requests per minute per IP
+  if (!checkRateLimit(clientIp, 100, 60)) {
     console.warn(`⚠️ Rate limit exceeded for IP: ${clientIp}`);
     return NextResponse.json(
       { error: 'Too many requests' },

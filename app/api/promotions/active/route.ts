@@ -52,11 +52,18 @@ export async function GET(request: NextRequest) {
     // Return highest priority promotion
     const activePromotion = filtered.length > 0 ? filtered[0] : null;
 
-    return NextResponse.json({
-      success: true,
-      promotion: activePromotion,
-      count: filtered.length,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        promotion: activePromotion,
+        count: filtered.length,
+      },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=30",
+        },
+      }
+    );
   } catch (error) {
     console.error('Error in GET /api/promotions/active:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

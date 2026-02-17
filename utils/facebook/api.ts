@@ -419,31 +419,48 @@ export class FacebookAdsAPI {
   }
 }
 
-// Utility functions for token management
+/** Cookie name for Facebook access token (httpOnly on server). Do not store token in localStorage. */
+export const FACEBOOK_TOKEN_COOKIE_NAME = 'facebook_access_token';
+
+/**
+ * Returns the Facebook token from client localStorage. Prefer passing a server-side getter to createFacebookAPI instead.
+ * @deprecated Use httpOnly cookie and pass getToken from API route (request.cookies) for security.
+ */
 export function getStoredFacebookToken(): string | null {
-  // In a real app, this would retrieve from secure storage (database, encrypted session, etc.)
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('facebook_access_token');
+    return localStorage.getItem(FACEBOOK_TOKEN_COOKIE_NAME);
   }
   return null;
 }
 
+/**
+ * Stores the token in localStorage (client only). Used only for backward compatibility.
+ * Server-side OAuth callback stores the token in an httpOnly cookie instead.
+ * @deprecated Server callback now uses httpOnly cookie; avoid storing tokens in localStorage.
+ */
 export function storeFacebookToken(token: string): void {
-  // In a real app, this would store securely (database, encrypted session, etc.)
   if (typeof window !== 'undefined') {
-    localStorage.setItem('facebook_access_token', token);
+    localStorage.setItem(FACEBOOK_TOKEN_COOKIE_NAME, token);
   }
 }
 
+/** Removes the token from localStorage (client only). For server cookie, call POST /api/facebook-ads/disconnect. */
 export function removeFacebookToken(): void {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('facebook_access_token');
+    localStorage.removeItem(FACEBOOK_TOKEN_COOKIE_NAME);
   }
 }
 
-// Helper function to create API instance
-export function createFacebookAPI(adAccountId: string): FacebookAdsAPI | null {
-  const token = getStoredFacebookToken();
+/**
+ * Creates a Facebook API instance. On the server, pass a getter that reads the token from request cookies.
+ * @param adAccountId - Facebook Ad Account ID
+ * @param getToken - Optional. Server-side: pass () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null
+ */
+export function createFacebookAPI(
+  adAccountId: string,
+  getToken?: () => string | null
+): FacebookAdsAPI | null {
+  const token = getToken ? getToken() : getStoredFacebookToken();
   if (!token) {
     return null;
   }

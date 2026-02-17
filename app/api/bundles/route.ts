@@ -136,11 +136,18 @@ export async function GET(request: NextRequest) {
       return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
     });
 
-    return NextResponse.json({
-      success: true,
-      bundles: sortedBundles,
-      count: sortedBundles?.length || 0
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        bundles: sortedBundles,
+        count: sortedBundles?.length || 0,
+      },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        },
+      }
+    );
   } catch (error: any) {
     console.error('Unexpected error in GET /api/bundles:', error);
     return NextResponse.json(

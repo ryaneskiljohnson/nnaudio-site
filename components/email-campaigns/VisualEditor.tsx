@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
+import DOMPurify from "isomorphic-dompurify";
 import { 
   FaFont, 
   FaHeading,
@@ -1220,7 +1221,7 @@ export default function VisualEditor({
           // More complex case: the selected text might span across HTML tags
           // Use a temporary element to help with the replacement
           const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = currentHtml;
+          tempDiv.innerHTML = DOMPurify.sanitize(currentHtml);
           
           // Use the Selection API on the temporary element
           const walker = document.createTreeWalker(
@@ -1297,13 +1298,13 @@ export default function VisualEditor({
         }
         
                  console.log('🔄 New HTML content:', newHtml);
-         editingElementDOM.innerHTML = newHtml;
+         editingElementDOM.innerHTML = DOMPurify.sanitize(newHtml);
          console.log('✅ Link applied while preserving HTML structure');
        } else {
           // No selection info, append link to the end
           const displayText = linkText?.trim() || 'Click here';
           const linkHtml = `<a href="${linkUrl.trim()}" target="_blank" rel="noopener noreferrer">${displayText}</a>`;
-          editingElementDOM.innerHTML += ' ' + linkHtml;
+          editingElementDOM.innerHTML += ' ' + DOMPurify.sanitize(linkHtml);
           console.log('✅ Link appended to element (no selection)');
         }
       
@@ -1490,7 +1491,7 @@ export default function VisualEditor({
             // Fallback: apply to entire element
             const currentText = editingElementDOM.textContent || '';
             const styledContent = `<span style="${styleProperty}: ${selectedColor};">${currentText}</span>`;
-            editingElementDOM.innerHTML = styledContent;
+            editingElementDOM.innerHTML = DOMPurify.sanitize(styledContent);
             console.log('✅ Fallback: Color applied to entire element');
           }
         } else {
@@ -1498,7 +1499,7 @@ export default function VisualEditor({
           const currentText = editingElementDOM.textContent || '';
           const styleProperty = colorPickerType === 'text' ? 'color' : 'background-color';
           const styledContent = `<span style="${styleProperty}: ${selectedColor};">${currentText}</span>`;
-          editingElementDOM.innerHTML = styledContent;
+          editingElementDOM.innerHTML = DOMPurify.sanitize(styledContent);
           console.log('✅ Color applied to entire element (no selection)');
         }
       } else {
@@ -1506,7 +1507,7 @@ export default function VisualEditor({
         const currentText = editingElementDOM.textContent || '';
         const styleProperty = colorPickerType === 'text' ? 'color' : 'background-color';
         const styledContent = `<span style="${styleProperty}: ${selectedColor};">${currentText}</span>`;
-        editingElementDOM.innerHTML = styledContent;
+        editingElementDOM.innerHTML = DOMPurify.sanitize(styledContent);
         console.log('✅ Color applied to entire element (no selection API)');
       }
       
@@ -1924,7 +1925,7 @@ export default function VisualEditor({
         } else {
           content = element.content || (element.type === 'header' ? 'Enter header text...' : 'Enter your text...');
         }
-        domElement.innerHTML = content;
+        domElement.innerHTML = DOMPurify.sanitize(content);
         domElement.focus();
         console.log('🎯 Set DOM content for editing:', domElement.innerHTML);
       }
@@ -2012,9 +2013,9 @@ export default function VisualEditor({
       if (editingElementDOM && originalElement) {
         // Restore the original content to the DOM
         if (originalElement.type === 'footer') {
-          editingElementDOM.innerHTML = originalElement.footerText || `© ${new Date().getFullYear()} NNAud.io All rights reserved.`;
+          editingElementDOM.innerHTML = DOMPurify.sanitize(originalElement.footerText || `© ${new Date().getFullYear()} NNAud.io All rights reserved.`);
         } else {
-          editingElementDOM.innerHTML = originalElement.content || '';
+          editingElementDOM.innerHTML = DOMPurify.sanitize(originalElement.content || '');
         }
       }
     }
@@ -2462,7 +2463,7 @@ export default function VisualEditor({
                     selectElement(element.id);
               }
             }}
-                dangerouslySetInnerHTML={!isEditing ? { __html: element.content || 'Enter header text...' } : undefined}
+                dangerouslySetInnerHTML={!isEditing ? { __html: DOMPurify.sanitize(element.content || 'Enter header text...') } : undefined}
                 data-element-id={element.id}
                             style={{
                   fontSize: element.fontSize || (element.headerType === 'h1' ? '32px' : 
@@ -2576,7 +2577,7 @@ export default function VisualEditor({
                     selectElement(element.id);
               }
             }}
-                dangerouslySetInnerHTML={!isEditing ? { __html: element.content || 'Enter your text...' } : undefined}
+                dangerouslySetInnerHTML={!isEditing ? { __html: DOMPurify.sanitize(element.content || 'Enter your text...') } : undefined}
                 data-element-id={element.id}
             style={{
               fontSize: element.fontSize || '16px',
@@ -2768,7 +2769,7 @@ export default function VisualEditor({
                   width: element.fullWidth ? '100%' : 'auto',
                   textAlign: element.textAlign || 'center'
                 }}
-                dangerouslySetInnerHTML={{ __html: element.content }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(element.content) }}
               />
             )}
             
@@ -3207,11 +3208,11 @@ export default function VisualEditor({
             ) : (
               <div
                 dangerouslySetInnerHTML={{ 
-                  __html: (() => {
+                  __html: DOMPurify.sanitize((() => {
                     const year = new Date().getFullYear();
                     const footerText = element.footerText || ('© ' + year + ' NNAud.io All rights reserved.');
                     return String(footerText).replace(/\$\{/g, '&#36;{');
-                  })()
+                  })())
                 }}
                 data-element-id={element.id}
                 style={{ marginBottom: '1rem' }}
@@ -3988,7 +3989,7 @@ export default function VisualEditor({
                     // Helper function to strip HTML tags for text-only view
                     const stripHtml = (html: string) => {
                       const div = document.createElement('div');
-                      div.innerHTML = html;
+                      div.innerHTML = DOMPurify.sanitize(html);
                       return div.textContent || div.innerText || '';
                     };
                     

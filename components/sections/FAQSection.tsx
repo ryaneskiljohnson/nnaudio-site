@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import DOMPurify from "isomorphic-dompurify";
 import {
   FaDesktop,
   FaBoxOpen,
@@ -182,7 +183,7 @@ const FAQSection = () => {
                 }}
                 transition={{ duration: 0.3 }}
               >
-                <p dangerouslySetInnerHTML={{ __html: faq.answer }} />
+                <p dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(faq.answer) }} />
               </Answer>
             </FAQItem>
           </motion.div>

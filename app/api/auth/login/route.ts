@@ -5,6 +5,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Profile } from "@/utils/supabase/types";
 import { createServerClient } from "@supabase/ssr";
 import { Database } from "@/database.types";
+import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
+import { validateCsrfToken } from "@/utils/csrf";
 
 interface ProfileWithEmail extends Profile {
   email: string;
@@ -47,7 +49,38 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<LoginResponse>> {
   try {
+    const clientIp = getClientIp(request);
+    if (!checkRateLimit(clientIp, 10, 60)) {
+      return NextResponse.json(
+        {
+          user: null,
+          access_token: null,
+          refresh_token: null,
+          expires_at: null,
+          error: {
+            code: "rate_limited",
+            message: "Too many login attempts. Please try again later.",
+          },
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await request.formData();
+
+    const csrfToken = body.get("csrf_token")?.toString();
+    if (!validateCsrfToken(request, csrfToken)) {
+      return NextResponse.json(
+        {
+          user: null,
+          access_token: null,
+          refresh_token: null,
+          expires_at: null,
+          error: { code: "invalid_csrf", message: "Invalid security token. Please refresh the page and try again." },
+        },
+        { status: 403 }
+      );
+    }
 
     const email = body.get("email")?.toString();
     const password = body.get("password")?.toString();
@@ -58,10 +91,6 @@ export async function POST(
         "email and password fields are required"
       );
 
-    // Extract client IP and device info from request headers for security tracking
-    const clientIp =
-      request.headers.get("x-forwarded-for")?.split(",")[0] ||
-      request.headers.get("x-real-ip");
     const userAgent = request.headers.get("user-agent");
 
     // Allow both Cymasphere app and web browser user agents
@@ -162,11 +191,13 @@ export async function POST(
           );
           const subscriptionCheck = await updateUserProStatus(user.id);
 
-          console.log(`[Login] Subscription check for ${user.email}:`, {
-            subscription: subscriptionCheck.subscription,
-            source: subscriptionCheck.source,
-            expiration: subscriptionCheck.subscriptionExpiration,
-          });
+          if (process.env.NODE_ENV !== "production") {
+            console.log("[Login] Subscription check:", {
+              subscription: subscriptionCheck.subscription,
+              source: subscriptionCheck.source,
+              expiration: subscriptionCheck.subscriptionExpiration,
+            });
+          }
 
           // Update profile with subscription info
           const finalProfileWithSubscription = {
@@ -178,9 +209,9 @@ export async function POST(
             email: user.email,
           };
 
-          console.log(
-            `[Login] Returning profile with subscription: ${finalProfileWithSubscription.subscription}`
-          );
+          if (process.env.NODE_ENV !== "production") {
+            console.log("[Login] Returning profile with subscription:", finalProfileWithSubscription.subscription);
+          }
 
           return ok(
             finalProfileWithSubscription,
@@ -189,7 +220,9 @@ export async function POST(
             session.expires_at || null
           );
         } catch (error) {
-          console.error("[Login] Error checking subscription:", error);
+          if (process.env.NODE_ENV !== "production") {
+            console.error("[Login] Error checking subscription:", error);
+          }
           // Continue with original profile if subscription check fails
         }
 

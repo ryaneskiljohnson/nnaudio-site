@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createFacebookAPI, CAMPAIGN_OBJECTIVES } from '@/utils/facebook/api';
+import { createFacebookAPI, CAMPAIGN_OBJECTIVES, FACEBOOK_TOKEN_COOKIE_NAME } from '@/utils/facebook/api';
 
 export async function GET(
   request: NextRequest,
@@ -93,7 +93,8 @@ export async function GET(
     }
 
     const mockAdAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID || '123456789';
-    const facebookAPI = createFacebookAPI(mockAdAccountId);
+    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
+    const facebookAPI = createFacebookAPI(mockAdAccountId, getToken);
     
     if (!facebookAPI) {
       return NextResponse.json({
@@ -163,7 +164,8 @@ export async function PUT(
     }
 
     const mockAdAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID || '123456789';
-    const facebookAPI = createFacebookAPI(mockAdAccountId);
+    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
+    const facebookAPI = createFacebookAPI(mockAdAccountId, getToken);
     
     if (!facebookAPI) {
       return NextResponse.json({
@@ -237,7 +239,8 @@ export async function DELETE(
     }
 
     const mockAdAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID || '123456789';
-    const facebookAPI = createFacebookAPI(mockAdAccountId);
+    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
+    const facebookAPI = createFacebookAPI(mockAdAccountId, getToken);
     
     if (!facebookAPI) {
       return NextResponse.json({

@@ -11,6 +11,7 @@ import LoadingComponent from "@/components/common/LoadingComponent";
 import PrimaryButton from "@/components/common/PrimaryButton";
 import { useTranslation } from "react-i18next";
 import useLanguage from "@/hooks/useLanguage";
+import { getSafeRedirectUrl } from "@/utils/redirectValidation";
 
 const AuthContainer = styled.div`
   min-height: 100vh;
@@ -305,7 +306,8 @@ function SearchParamsHandler({
   useEffect(() => {
     const redirect = searchParams?.get("redirect");
     if (redirect) {
-      setRedirectAfterLogin(redirect);
+      const safeRedirect = getSafeRedirectUrl(redirect);
+      if (safeRedirect) setRedirectAfterLogin(safeRedirect);
     }
 
     // Handle checkout complete param
@@ -355,12 +357,8 @@ function SignUp() {
   // Check if user is already logged in
   useEffect(() => {
     if (user) {
-      // Redirect to dashboard or home
-      if (redirectAfterLogin) {
-        router.push(redirectAfterLogin);
-      } else {
-        router.push(`/dashboard`);
-      }
+      const safeRedirect = getSafeRedirectUrl(redirectAfterLogin || null);
+      router.push(safeRedirect ?? "/dashboard");
     }
   }, [user, router, redirectAfterLogin]);
 

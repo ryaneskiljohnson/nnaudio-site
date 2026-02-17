@@ -2,37 +2,47 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
+import { registerSchema } from "@/utils/apiSchemas";
+import { validateCsrfToken } from "@/utils/csrf";
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse request body
+    const clientIp = getClientIp(request);
+    if (!checkRateLimit(clientIp, 10, 60)) {
+      return NextResponse.json(
+        { success: false, error: "Too many registration attempts. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const data = await request.formData();
-    const email = data.get("email")?.toString();
-    const password = data.get("password")?.toString();
-    const name = data.get("name")?.toString();
-
-    // Validate inputs
-    if (!email) {
+    const csrfToken = data.get("csrf_token")?.toString();
+    if (!validateCsrfToken(request, csrfToken)) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Email is required",
-        },
+        { success: false, error: "Invalid security token. Please refresh the page and try again." },
+        { status: 403 }
+      );
+    }
+
+    const raw = {
+      email: data.get("email")?.toString() ?? "",
+      password: data.get("password")?.toString() ?? "",
+      name: data.get("name")?.toString(),
+    };
+
+    const parsed = registerSchema.safeParse(raw);
+    if (!parsed.success) {
+      const first = parsed.error.flatten().fieldErrors;
+      const message = first.email?.[0] ?? first.password?.[0] ?? "Invalid input";
+      return NextResponse.json(
+        { success: false, error: message },
         { status: 400 }
       );
     }
 
-    if (!password) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Password is required",
-        },
-        { status: 400 }
-      );
-    }
+    const { email, password, name } = parsed.data;
 
-    // Initialize Supabase client directly with environment variables
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -81,13 +91,17 @@ export async function POST(request: NextRequest) {
           });
 
         if (subscriberError) {
-          console.error('Failed to create subscriber:', subscriberError);
+          if (process.env.NODE_ENV !== "production") {
+            console.error("Failed to create subscriber:", subscriberError);
+          }
           // Don't fail the signup if subscriber creation fails
-        } else {
-          console.log('Subscriber created successfully for user:', authData.user.id);
+        } else if (process.env.NODE_ENV !== "production") {
+          console.log("Subscriber created successfully");
         }
       } catch (subscriberError) {
-        console.error('Error creating subscriber:', subscriberError);
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Error creating subscriber:", subscriberError);
+        }
         // Don't fail the signup if subscriber creation fails
       }
     }

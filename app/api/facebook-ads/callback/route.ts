@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { storeFacebookToken } from '@/utils/facebook/api';
+
+const COOKIE_NAME = 'facebook_access_token';
+const COOKIE_MAX_AGE_DAYS = 60;
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+const REDIRECT_URL = `${BASE_URL}/admin/ad-manager`;
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,32 +15,38 @@ export async function GET(request: NextRequest) {
     // Check for OAuth errors
     if (error) {
       console.error('Facebook OAuth error:', error);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/admin/ad-manager?error=oauth_denied`);
+      return NextResponse.redirect(`${REDIRECT_URL}?error=oauth_denied`);
     }
 
     // Verify state parameter for CSRF protection
     if (state !== 'facebook_ads_connect') {
       console.error('Invalid state parameter');
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/admin/ad-manager?error=invalid_state`);
+      return NextResponse.redirect(`${REDIRECT_URL}?error=invalid_state`);
     }
 
     if (!code) {
       console.error('No authorization code received');
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/admin/ad-manager?error=no_code`);
+      return NextResponse.redirect(`${REDIRECT_URL}?error=no_code`);
     }
 
     // Exchange authorization code for access token
     const accessToken = await exchangeCodeForToken(code);
     
     if (!accessToken) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/admin/ad-manager?error=token_exchange_failed`);
+      return NextResponse.redirect(`${REDIRECT_URL}?error=token_exchange_failed`);
     }
 
-    // Store the access token (in production, this would be stored securely in database)
-    storeFacebookToken(accessToken);
+    // Store the access token in an httpOnly cookie (not localStorage) to prevent XSS theft
+    const response = NextResponse.redirect(`${REDIRECT_URL}?connected=true`);
+    response.cookies.set(COOKIE_NAME, accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * COOKIE_MAX_AGE_DAYS,
+    });
 
-    // Redirect back to Ad Manager with success
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/admin/ad-manager?connected=true`);
+    return response;
   } catch (error) {
     console.error('Error handling Facebook OAuth callback:', error);
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/admin/ad-manager?error=callback_failed`);

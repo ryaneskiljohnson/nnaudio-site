@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import Stripe from "stripe";
+import { requireUuid } from "@/utils/validation";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-02-24.acacia",
@@ -147,21 +148,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Method 2: Search by user_id in metadata (5 second timeout)
-    stripePromises.push(
-      withTimeout(
-        stripe.paymentIntents.search({
-          query: `metadata['user_id']:'${userId}'`,
-          limit: 100,
-        }),
-        5000
-      ).then(searchResult => {
-        searchResult.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
-        console.log(`[NNAudio Access Products] Found ${searchResult.data.length} payment intents by user_id metadata`);
-      }).catch(error => {
-        console.log("[NNAudio Access Products] Search API not available or error/timeout:", error.message);
-      })
-    );
+    // Method 2: Search by user_id in metadata (5 second timeout). Only if userId is a valid UUID.
+    const safeUserId = requireUuid(userId);
+    if (safeUserId) {
+      stripePromises.push(
+        withTimeout(
+          stripe.paymentIntents.search({
+            query: `metadata['user_id']:'${safeUserId}'`,
+            limit: 100,
+          }),
+          5000
+        ).then(searchResult => {
+          searchResult.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
+          console.log(`[NNAudio Access Products] Found ${searchResult.data.length} payment intents by user_id metadata`);
+        }).catch(error => {
+          console.log("[NNAudio Access Products] Search API not available or error/timeout:", error.message);
+        })
+      );
+    }
 
     // Method 3: Search by email (5 second timeout)
     if (profile?.email) {

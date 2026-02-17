@@ -1,28 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendEmail } from "@/utils/email";
+import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
+import { contactSchema } from "@/utils/apiSchemas";
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse the request body
+    const clientIp = getClientIp(request);
+    if (!checkRateLimit(clientIp, 10, 60)) {
+      return NextResponse.json(
+        { success: false, error: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
-    const { name, email, subject, message, userId = null } = body;
-
-    // Validate required fields
-    if (!email || !subject || !message) {
+    const parsed = contactSchema.safeParse(body);
+    if (!parsed.success) {
+      const first = parsed.error.flatten().fieldErrors;
+      const message =
+        first.email?.[0] ?? first.subject?.[0] ?? first.message?.[0] ?? "Invalid input";
       return NextResponse.json(
-        { success: false, error: "Missing required fields" },
+        { success: false, error: message },
         { status: 400 }
       );
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid email address" },
-        { status: 400 }
-      );
-    }
+    const { name, email, subject, message, userId = null } = parsed.data;
 
     // Create email content
     const emailSubject = subject;

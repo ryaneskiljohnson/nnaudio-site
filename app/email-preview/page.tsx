@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import DOMPurify from 'isomorphic-dompurify';
 
 function EmailPreviewContent() {
   const router = useRouter();
@@ -131,7 +132,7 @@ function EmailPreviewContent() {
         />
       ) : (
         <div
-          dangerouslySetInnerHTML={{ __html: bodyHtml || '<div style="font-family:Arial,sans-serif;padding:20px">No preview HTML.</div>' }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(bodyHtml || '<div style="font-family:Arial,sans-serif;padding:20px">No preview HTML.</div>') }}
           style={{ position: 'absolute', inset: 0, overflow: 'auto', background: '#ffffff' }}
         />
       )}

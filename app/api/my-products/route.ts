@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import Stripe from "stripe";
+import { requireUuid } from "@/utils/validation";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-02-24.acacia",
@@ -54,15 +55,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Method 2: Search by user_id in metadata
-    try {
-      const searchResult = await stripe.paymentIntents.search({
-        query: `metadata['user_id']:'${user.id}'`,
-        limit: 100,
-      });
-      searchResult.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
-    } catch (error) {
-      console.log("Search API not available");
+    // Method 2: Search by user_id in metadata (only if user.id is a valid UUID)
+    const safeUserId = requireUuid(user.id);
+    if (safeUserId) {
+      try {
+        const searchResult = await stripe.paymentIntents.search({
+          query: `metadata['user_id']:'${safeUserId}'`,
+          limit: 100,
+        });
+        searchResult.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
+      } catch (error) {
+        console.log("Search API not available");
+      }
     }
 
     // Method 3: Search by email

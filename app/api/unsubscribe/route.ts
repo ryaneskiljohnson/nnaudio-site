@@ -2,37 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServiceRole } from '@/utils/supabase/service';
 import { createClient } from '@/utils/supabase/server';
 import { verifyUnsubscribeToken } from '@/utils/email-campaigns/unsubscribe-tokens';
-
-// Rate limiting in-memory store (in production, use Redis)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-/**
- * Check rate limiting
- */
-function checkRateLimit(ip: string, maxRequests: number = 10, windowSecs: number = 60): boolean {
-  const now = Date.now();
-  const entry = rateLimitStore.get(ip);
-
-  if (!entry || now > entry.resetTime) {
-    rateLimitStore.set(ip, { count: 1, resetTime: now + windowSecs * 1000 });
-    return true;
-  }
-
-  if (entry.count >= maxRequests) {
-    return false;
-  }
-
-  entry.count++;
-  return true;
-}
+import { checkRateLimit, getClientIp } from '@/utils/rateLimit';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get client IP for rate limiting
-    const clientIp =
-      request.headers.get('x-forwarded-for')?.split(',')[0] ||
-      request.headers.get('x-real-ip') ||
-      '127.0.0.1';
+    const clientIp = getClientIp(request);
 
     // Rate limiting check (10 requests per minute per IP)
     if (!checkRateLimit(clientIp, 10, 60)) {

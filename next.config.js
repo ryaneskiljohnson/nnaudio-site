@@ -1,12 +1,6 @@
 /** @type {import('next').NextConfig} */
 
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   compiler: {
     styledComponents: true,
   },
@@ -22,6 +16,19 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/faq', destination: '/#faq', permanent: false },
+    ];
+  },
+  async headers() {
+    const allowedOrigin = process.env.ALLOWED_ORIGIN || process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io';
+    return [
+      {
+        source: '/api/nnaudio-access/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: allowedOrigin },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+        ],
+      },
     ];
   },
   images: {

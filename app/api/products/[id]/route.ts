@@ -69,17 +69,24 @@ export async function GET(
       ? approvedReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / approvedReviews.length
       : 0;
 
-    return NextResponse.json({
-      success: true,
-      product: {
-        ...product,
-        average_rating: avgRating,
-        review_count: approvedReviews.length,
-        reviews: approvedReviews,
-        related_products: relatedProducts,
-        product_reviews: undefined
+    return NextResponse.json(
+      {
+        success: true,
+        product: {
+          ...product,
+          average_rating: avgRating,
+          review_count: approvedReviews.length,
+          reviews: approvedReviews,
+          related_products: relatedProducts,
+          product_reviews: undefined,
+        },
+      },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        },
       }
-    });
+    );
   } catch (error: any) {
     console.error('Unexpected error in GET /api/products/[id]:', error);
     return NextResponse.json(

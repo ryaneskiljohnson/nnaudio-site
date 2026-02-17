@@ -149,22 +149,29 @@ export async function GET(
     // Bundles with ONLY lifetime tiers are considered regular one-time purchase bundles
     const isSubscriptionBundle = (tiers || []).some((t: any) => t.subscription_type === 'monthly' || t.subscription_type === 'annual');
 
-    return NextResponse.json({
-      success: true,
-      bundle: {
-        ...bundle,
-        products: validProducts,
-        bundleProducts: bundleProducts || [],
-        totalValue,
-        pricing,
-        isSubscriptionBundle,
-        savings: {
-          monthly: calculateSavings(pricing.monthly, 'monthly'),
-          annual: calculateSavings(pricing.annual, 'annual'),
-          lifetime: calculateSavings(pricing.lifetime, 'lifetime'),
+    return NextResponse.json(
+      {
+        success: true,
+        bundle: {
+          ...bundle,
+          products: validProducts,
+          bundleProducts: bundleProducts || [],
+          totalValue,
+          pricing,
+          isSubscriptionBundle,
+          savings: {
+            monthly: calculateSavings(pricing.monthly, 'monthly'),
+            annual: calculateSavings(pricing.annual, 'annual'),
+            lifetime: calculateSavings(pricing.lifetime, 'lifetime'),
+          },
+        },
+      },
+      {
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
         },
       }
-    });
+    );
   } catch (error: any) {
     console.error('Unexpected error in GET /api/bundles/[slug]:', error);
     return NextResponse.json(

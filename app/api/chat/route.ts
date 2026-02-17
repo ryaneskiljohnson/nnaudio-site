@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { cymasphereRAG } from '@/lib/rag';
+import { checkRateLimit, getClientIp } from '@/utils/rateLimit';
+import { chatSchema } from '@/utils/apiSchemas';
 
 interface ChatMessage {
   id: string;
@@ -568,17 +570,26 @@ function generateFallbackResponse(message: string, language: string = 'en'): str
 
 export async function POST(request: NextRequest) {
   try {
-    const body: ChatRequest = await request.json();
-    const { message, conversationHistory, language } = body;
-    
-    if (!message || typeof message !== 'string') {
+    const clientIp = getClientIp(request);
+    if (!checkRateLimit(clientIp, 30, 60)) {
       return NextResponse.json(
-        { error: 'Message is required' },
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      );
+    }
+
+    const body = await request.json();
+    const parsed = chatSchema.safeParse(body);
+    if (!parsed.success) {
+      const first = parsed.error.flatten().fieldErrors;
+      const errMsg = first.message?.[0] ?? 'Invalid request';
+      return NextResponse.json(
+        { error: errMsg },
         { status: 400 }
       );
     }
-    
-    // Use provided language or default to English
+
+    const { message, conversationHistory, language } = parsed.data;
     const chatLanguage = language || 'en';
     console.log(`[chat-api] Processing message in language: ${chatLanguage}`);
     
