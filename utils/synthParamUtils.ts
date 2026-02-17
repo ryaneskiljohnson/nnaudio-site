@@ -2,12 +2,12 @@
  * Utility functions to handle synth and effect parameter updates
  */
 
-// Define interfaces for the Tone.js objects we're working with
-interface ToneSignal {
+// Define interfaces for synth/effect parameter shapes (library-agnostic)
+interface SignalValue {
   value: number;
 }
 
-interface ToneEnvelope {
+interface EnvelopeParams {
   attack?: number;
   decay?: number;
   sustain?: number;
@@ -15,29 +15,29 @@ interface ToneEnvelope {
   [key: string]: number | undefined;
 }
 
-interface ToneSynth {
-  envelope?: ToneEnvelope;
-  detune?: ToneSignal | number;
-  volume?: ToneSignal | number;
-  voices?: Array<ToneSynth> | Record<string, ToneSynth>;
-  modulationIndex?: ToneSignal;
-  harmonicity?: ToneSignal;
+interface SynthLike {
+  envelope?: EnvelopeParams;
+  detune?: SignalValue | number;
+  volume?: SignalValue | number;
+  voices?: Array<SynthLike> | Record<string, SynthLike>;
+  modulationIndex?: SignalValue;
+  harmonicity?: SignalValue;
   modulation?: {
     padFilter?: {
-      frequency: ToneSignal;
-      Q: ToneSignal;
+      frequency: SignalValue;
+      Q: SignalValue;
     };
     vibrato?: {
-      depth: ToneSignal;
-      frequency: ToneSignal;
+      depth: SignalValue;
+      frequency: SignalValue;
     };
     phaser?: {
-      frequency: ToneSignal;
-      depth: ToneSignal;
+      frequency: SignalValue;
+      depth: SignalValue;
     };
     autoPanner?: {
-      frequency: ToneSignal;
-      depth: ToneSignal;
+      frequency: SignalValue;
+      depth: SignalValue;
     };
   };
   get?: (param: string) => unknown;
@@ -45,27 +45,27 @@ interface ToneSynth {
   [key: string]: unknown;
 }
 
-interface ToneEffect {
-  wet?: ToneSignal;
-  dry?: ToneSignal;
+interface EffectLike {
+  wet?: SignalValue;
+  dry?: SignalValue;
   set?: (params: Record<string, unknown>) => void;
   [key: string]: unknown;
 }
 
-interface EffectsChain {
+interface EffectsChainParam {
   masterVolume?: {
-    volume: ToneSignal;
+    volume: SignalValue;
   };
-  [key: string]: ToneEffect | undefined;
+  [key: string]: EffectLike | undefined;
 }
 
 type SynthType = "polysynth" | "fmsynth" | "padsynth" | string;
 type ParameterMapping = Record<string, unknown>;
 
 /**
- * Type guard to check if an object is a ToneSignal
+ * Type guard to check if an object is a SignalValue (.value)
  */
-function isToneSignal(obj: unknown): obj is ToneSignal {
+function isSignalValue(obj: unknown): obj is SignalValue {
   return obj !== null && typeof obj === "object" && "value" in obj;
 }
 
@@ -77,7 +77,7 @@ function isToneSignal(obj: unknown): obj is ToneSignal {
  * @param value - The new value for the parameter
  */
 export const updateSynthParameter = (
-  synth: ToneSynth,
+  synth: SynthLike,
   synthType: SynthType,
   param: string,
   value: number
@@ -114,7 +114,7 @@ export const updateSynthParameter = (
         synth.envelope[envParam] = value;
         return;
       } else if (synth.set) {
-        // 2. Use the set method available on many Tone.js instruments
+        // 2. Use the set method available on many synth instruments
         synth.set({ envelope: { [envParam]: value } });
         return;
       } else {
@@ -158,15 +158,15 @@ export const updateSynthParameter = (
 
 /**
  * Handles a polyVolume parameter by properly setting the volume on the synth
- * Volume is a special parameter that needs careful handling due to how Tone.js manages it
+ * Volume is a special parameter that needs careful handling for signal/value synths.
  */
-function handleVolumeParameter(synth: ToneSynth, value: number): boolean {
+function handleVolumeParameter(synth: SynthLike, value: number): boolean {
   console.log(`Setting volume to ${value}dB`);
 
   // Try multiple approaches to ensure volume is set
   try {
     // First approach: use volume.value if available
-    if (synth.volume && isToneSignal(synth.volume)) {
+    if (synth.volume && isSignalValue(synth.volume)) {
       synth.volume.value = parseFloat(String(value));
       console.log(`Set volume to ${value}dB using volume.value`);
       return true;
@@ -208,7 +208,7 @@ function handleVolumeParameter(synth: ToneSynth, value: number): boolean {
  * Helper function to handle PolySynth parameters
  */
 function handlePolySynthParameter(
-  synth: ToneSynth,
+  synth: SynthLike,
   param: string,
   value: number
 ): void {
@@ -247,7 +247,7 @@ function handlePolySynthParameter(
   } else if (param === "detune") {
     // Handle detune parameter
     try {
-      if (synth.detune && isToneSignal(synth.detune)) {
+      if (synth.detune && isSignalValue(synth.detune)) {
         synth.detune.value = value;
       } else if (synth.set) {
         synth.set({ detune: value });
@@ -255,8 +255,8 @@ function handlePolySynthParameter(
 
       // Also try to set detune on individual voices if this is a PolySynth
       if (synth.voices && Array.isArray(synth.voices)) {
-        synth.voices.forEach((voice: ToneSynth) => {
-          if (voice.detune && isToneSignal(voice.detune)) {
+        synth.voices.forEach((voice: SynthLike) => {
+          if (voice.detune && isSignalValue(voice.detune)) {
             voice.detune.value = value;
           }
         });
@@ -286,20 +286,20 @@ function handlePolySynthParameter(
  * Helper function to handle FMSynth parameters
  */
 function handleFMSynthParameter(
-  synth: ToneSynth,
+  synth: SynthLike,
   param: string,
   value: number
 ): void {
   if (param === "modulationIndex") {
     // Try multiple ways to set modulationIndex
-    if (synth.modulationIndex && isToneSignal(synth.modulationIndex)) {
+    if (synth.modulationIndex && isSignalValue(synth.modulationIndex)) {
       synth.modulationIndex.value = value;
     } else if (synth.set) {
       synth.set({ modulationIndex: value });
     }
   } else if (param === "harmonicity") {
     // Try multiple ways to set harmonicity
-    if (synth.harmonicity && isToneSignal(synth.harmonicity)) {
+    if (synth.harmonicity && isSignalValue(synth.harmonicity)) {
       synth.harmonicity.value = value;
     } else if (synth.set) {
       synth.set({ harmonicity: value });
@@ -323,7 +323,7 @@ function handleFMSynthParameter(
  * @param value - The new parameter value
  */
 const handlePadSynthParameter = (
-  synth: ToneSynth,
+  synth: SynthLike,
   param: string,
   value: number
 ): void => {
@@ -351,7 +351,7 @@ const handlePadSynthParameter = (
     let atLeastOneSuccess = false;
 
     // Apply to each voice individually
-    Object.entries(synth.voices as Record<string, ToneSynth>).forEach(
+    Object.entries(synth.voices as Record<string, SynthLike>).forEach(
       ([voiceName, voice]) => {
         try {
           if (!voice) {
@@ -373,7 +373,7 @@ const handlePadSynthParameter = (
             return; // Exit this voice's setup once successful
           }
 
-          // Strategy 2: Using the voice's set method (most common for Tone.js)
+          // Strategy 2: Using the voice's set method
           if (voice.set) {
             try {
               voice.set({ envelope: { [envParam]: value } });
@@ -411,7 +411,7 @@ const handlePadSynthParameter = (
           ) {
             let voiceSuccess = false;
 
-            voice.voices.forEach((innerVoice: ToneSynth, index: number) => {
+            voice.voices.forEach((innerVoice: SynthLike, index: number) => {
               if (!innerVoice) return;
 
               try {
@@ -477,12 +477,12 @@ const handlePadSynthParameter = (
   if (param === "detune") {
     let atLeastOneSuccess = false;
 
-    Object.entries(synth.voices as Record<string, ToneSynth>).forEach(
+    Object.entries(synth.voices as Record<string, SynthLike>).forEach(
       ([voiceName, voice]) => {
         try {
           if (!voice) return;
 
-          if (voice.detune && isToneSignal(voice.detune)) {
+          if (voice.detune && isSignalValue(voice.detune)) {
             voice.detune.value = value;
             console.log(
               `Set detune=${value} on ${voiceName} using detune.value`
@@ -515,12 +515,12 @@ const handlePadSynthParameter = (
   if (param === "volume") {
     let atLeastOneSuccess = false;
 
-    Object.entries(synth.voices as Record<string, ToneSynth>).forEach(
+    Object.entries(synth.voices as Record<string, SynthLike>).forEach(
       ([voiceName, voice]) => {
         try {
           if (!voice) return;
 
-          if (voice.volume && isToneSignal(voice.volume)) {
+          if (voice.volume && isSignalValue(voice.volume)) {
             voice.volume.value = value;
             console.log(
               `Set volume=${value} on ${voiceName} using volume.value`
@@ -632,7 +632,7 @@ const handlePadSynthParameter = (
 };
 
 /**
- * Map legacy parameter names to the new Tone.js parameter structure
+ * Map legacy parameter names to the synth/effect parameter structure.
  */
 function mapLegacyParameter(param: string): ParameterMapping | null {
   const paramMappings: Record<string, ParameterMapping> = {
@@ -699,7 +699,7 @@ function setPropByPath(obj: unknown, path: string, value: unknown): void {
       current[lastPart] !== null &&
       "value" in (current[lastPart] as object)
     ) {
-      // Handle Tone.js Signal objects which have a .value property
+      // Handle signal objects which have a .value property
       (current[lastPart] as { value: unknown }).value = value;
     } else {
       current[lastPart] = value;
@@ -717,7 +717,7 @@ function setPropByPath(obj: unknown, path: string, value: unknown): void {
  * @param value - The new value for the parameter
  */
 export const updateEffectParameter = (
-  effectsChain: EffectsChain,
+  effectsChain: EffectsChainParam,
   effectType: string,
   param: string,
   value: number | string
@@ -751,12 +751,12 @@ export const updateEffectParameter = (
 
     // Handle special parameters
     if (param === "wet" || param === "dry") {
-      if (effect[param] && isToneSignal(effect[param])) {
+      if (effect[param] && isSignalValue(effect[param])) {
         effect[param].value = parsedValue;
       } else if (effect.set) {
         effect.set({ [param]: parsedValue });
       }
-    } else if (effect[param] && isToneSignal(effect[param])) {
+    } else if (effect[param] && isSignalValue(effect[param])) {
       // Handle audio params
       effect[param].value = parsedValue;
     } else if (typeof effect[param] !== "undefined") {

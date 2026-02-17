@@ -1,25 +1,40 @@
-// Lazy import Tone.js to avoid automatic AudioContext initialization
-let Tone: any = null;
-
 // Add interface for window with webkitAudioContext
 interface WindowWithWebAudio extends Window {
   AudioContext: typeof AudioContext;
   webkitAudioContext?: typeof AudioContext;
 }
 
-// Initialize with simple web audio API instead of Tone.js synths
+// Web Audio API only
 let audioContext: AudioContext | null = null;
 let convolver: ConvolverNode | null = null;
 let initialized = false;
-let toneInitialized = false;
 
-// Lazy load Tone.js only when needed
-const loadTone = async () => {
-  if (!Tone) {
-    Tone = await import("tone");
+const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+/** Transpose a note name by semitones (e.g. "C4" + 4 => "E4"). */
+function transposeNote(note: string, semitones: number): string {
+  const match = note.match(/^([A-G]#?)(-?\d+)$/);
+  if (!match) return note;
+  const [, name, octStr] = match;
+  let octave = parseInt(octStr, 10);
+  let index = NOTE_NAMES.indexOf(name);
+  if (index === -1) return note;
+  index += semitones;
+  while (index < 0) {
+    index += 12;
+    octave -= 1;
   }
-  return Tone;
-};
+  while (index >= 12) {
+    index -= 12;
+    octave += 1;
+  }
+  return NOTE_NAMES[index] + octave;
+}
+
+/** Convert MIDI note number to frequency (A4 = 69 = 440 Hz). */
+function midiToFreq(midi: number): number {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
 
 // Add a click counter to prevent spam clicking
 let activeLydianChords = 0;
@@ -312,12 +327,7 @@ const buildChordVoicing = (
     intervals = [...intervals, ...extensions];
   }
 
-  // Convert intervals to actual notes
-  const notes = intervals.map((interval) => {
-    // Using Tone.js only for note calculation
-    return Tone.Frequency(rootNote).transpose(interval).toNote();
-  });
-
+  const notes = intervals.map((interval) => transposeNote(rootNote, interval));
   return notes;
 };
 
@@ -366,16 +376,9 @@ export const playChordPad = async (chordRoot: string): Promise<void> => {
   const chordType = chordConfig.type;
   const extensions = chordConfig.extensions || [];
 
-  // Get the bass note (two octaves lower)
-  const bassRoot = Tone.Frequency(rootNote).transpose(-24).toNote();
-
-  // Get the higher bass note (one octave lower)
-  const bassRootHigher = Tone.Frequency(rootNote).transpose(-12).toNote();
-
-  // Fifth above the bass
-  const bassFifth = Tone.Frequency(rootNote)
-    .transpose(-12 + 7)
-    .toNote();
+  const bassRoot = transposeNote(rootNote, -24);
+  const bassRootHigher = transposeNote(rootNote, -12);
+  const bassFifth = transposeNote(rootNote, -12 + 7);
 
   // Get the chord voicing with extensions if present
   const chordVoicing = buildChordVoicing(rootNote, chordType, extensions);
@@ -403,184 +406,46 @@ export const playChordPad = async (chordRoot: string): Promise<void> => {
   });
 };
 
-// Play Lydian Maj7 chord
+// Play Lydian Maj7 chord (Web Audio only)
 export const playLydianMaj7Chord = async (): Promise<void> => {
-  // Prevent spam clicking by limiting the number of simultaneous chord sounds
-  if (activeLydianChords >= MAX_ACTIVE_CHORDS) {
-    console.log(
-      `Too many active chords (${activeLydianChords}). Ignoring click.`
-    );
-    return;
-  }
+  if (activeLydianChords >= MAX_ACTIVE_CHORDS) return;
+  if (!initialized) await initAudio();
+  if (!audioContext) return;
 
-  // Ensure Tone.js is loaded before using it
-  if (!Tone) {
-    try {
-      Tone = await loadTone();
-    } catch (error) {
-      console.error("Failed to load Tone.js:", error);
-      return;
-    }
-  }
-  
-  // Initialize Tone.js context if needed
-  if (Tone && Tone.context && Tone.context.state !== 'running') {
-    try {
-      await Tone.start();
-    } catch (error) {
-      console.error("Failed to start Tone.js context:", error);
-      return;
-    }
-  }
-
-  // Increment the counter
   activeLydianChords++;
 
-  // Create a synth with extremely short envelope settings
-  const synth = new Tone.PolySynth(Tone.Synth, {
-    oscillator: {
-      type: "sine",
-    },
-    envelope: {
-      attack: 0.1, // Keep attack fast
-      decay: 0.1, // Keep decay fast
-      sustain: 0.2, // Keep sustain low
-      release: 0.8, // Increased from 0.5 to 0.8 to blend better with reverb
-    },
-  }).toDestination();
-
-  // Keep volume low
-  synth.volume.value = -17; // Increased from -20 to -17 (approx. 3dB louder)
-
-  // Enhanced reverb with more presence
-  const reverb = new Tone.Reverb({
-    decay: 7.0, // Increased from 5.0 to 7.0 for longer tail
-    wet: 0.95, // Increased from 0.8 to 0.95 for more pronounced reverb
-    preDelay: 0.03, // Increased from 0.02 to 0.03 for more depth
-  }).toDestination();
-  synth.connect(reverb);
-
-  // Possible chord types
   const chordTypes = [
-    {
-      name: "Maj7(9)",
-      intervals: [0, 4, 7, 11, 14], // 1, 3, 5, 7, 9
-    },
-    {
-      name: "Maj7(#11)",
-      intervals: [0, 4, 7, 11, 18], // 1, 3, 5, 7, #11
-    },
-    {
-      name: "Min(add9)",
-      intervals: [0, 3, 7, 14], // 1, b3, 5, 9
-    },
-    {
-      name: "Maj(add9)",
-      intervals: [0, 4, 7, 14], // 1, 3, 5, 9
-    },
-    {
-      name: "Min7(9)",
-      intervals: [0, 3, 7, 10, 14], // 1, b3, 5, b7, 9
-    },
+    { name: "Maj7(9)", intervals: [0, 4, 7, 11, 14] },
+    { name: "Maj7(#11)", intervals: [0, 4, 7, 11, 18] },
+    { name: "Min(add9)", intervals: [0, 3, 7, 14] },
+    { name: "Maj(add9)", intervals: [0, 4, 7, 14] },
+    { name: "Min7(9)", intervals: [0, 3, 7, 10, 14] },
   ];
-
-  // Possible root notes (MIDI numbers for octave 3)
-  const rootNotes = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59]; // C3 to B3
-
-  // Select a random chord type and root note
-  const randomChordType =
-    chordTypes[Math.floor(Math.random() * chordTypes.length)];
+  const rootNotes = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59];
+  const randomChordType = chordTypes[Math.floor(Math.random() * chordTypes.length)];
   const randomRoot = rootNotes[Math.floor(Math.random() * rootNotes.length)];
 
-  // Build the chord notes
-  const chordNotes = randomChordType.intervals.map(
-    (interval) => randomRoot + interval
-  );
-
-  // Get bass note (an octave lower)
+  const chordNotes = randomChordType.intervals.map((i) => randomRoot + i);
   const bassNote = randomRoot - 12;
-
-  // Get fifth note
   const fifthNote = randomRoot - 12 + 7;
+  const rootName = NOTE_NAMES[randomRoot % 12];
 
-  // Calculate note name for logging
-  const noteNames = [
-    "C",
-    "C#",
-    "D",
-    "D#",
-    "E",
-    "F",
-    "F#",
-    "G",
-    "G#",
-    "A",
-    "A#",
-    "B",
-  ];
-  const rootName = noteNames[randomRoot % 12];
-
-  console.log(
-    `Logo click: Playing random ${rootName} ${randomChordType.name} chord (active: ${activeLydianChords})`
-  );
-
-  // Sort chord notes from low to high to create a more natural strum
   const sortedChordNotes = [...chordNotes].sort((a, b) => a - b);
+  if (sortedChordNotes.length >= 3) sortedChordNotes[2] += 12;
 
-  // Add octave shift to the "2nd voice" (the 3rd in the sequence)
-  if (sortedChordNotes.length >= 3) {
-    // The 3rd note (index 2) should be shifted up an octave
-    sortedChordNotes[2] += 12;
-  }
+  playNote(midiToFreq(bassNote), 0.8, 0, 0.42);
+  playNote(midiToFreq(fifthNote), 0.6, 0.03, 0.28);
 
-  // Play the bass note first
-  synth.triggerAttack(
-    Tone.Frequency(bassNote, "midi").toFrequency(),
-    Tone.now(),
-    0.42
-  );
-
-  // Play the fifth after a short delay
-  synth.triggerAttack(
-    Tone.Frequency(fifthNote, "midi").toFrequency(),
-    Tone.now() + 0.03,
-    0.28
-  );
-
-  // Define a more pronounced strum effect
-  const strumBaseDelay = 0.05; // Base delay between notes
-
-  // Play the chord notes with a strum effect
+  const strumBaseDelay = 0.05;
   sortedChordNotes.forEach((note, index) => {
-    // Create a more noticeable strum with progressively longer delays
     const strumDelay = strumBaseDelay * (index + 1) * 1.2;
-
-    // Calculate velocity with a gradual curve
     const noteVelocity = Math.max(0.14, 0.42 - index * 0.056);
-
-    synth.triggerAttack(
-      Tone.Frequency(note, "midi").toFrequency(),
-      Tone.now() + 0.06 + strumDelay, // Add strum timing
-      noteVelocity
-    );
+    playNote(midiToFreq(note), 0.5, 0.06 + strumDelay, noteVelocity);
   });
 
-  // Release the notes quickly but leave enough time for reverb to develop
   setTimeout(() => {
-    synth.releaseAll();
-
-    // Dispose the synth and reverb after the reverb tail has finished
-    setTimeout(() => {
-      synth.dispose();
-      reverb.dispose();
-
-      // Decrement the counter after chord is fully complete
-      activeLydianChords--;
-      console.log(
-        `Chord cleanup complete. Active chords: ${activeLydianChords}`
-      );
-    }, 5000); // Wait 5 seconds to match the reverb decay time
-  }, 700); // Keep releasing notes after 0.7 seconds (still extremely short)
+    activeLydianChords--;
+  }, 2500);
 };
 
 // Drum sound generators

@@ -10,7 +10,6 @@ import React, {
 import { useTranslation } from "react-i18next";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
-import * as Tone from "tone";
 import { getPresetById } from "@/utils/presets";
 import { createSynth, disposeSynth, DisposableSynth } from "@/utils/synthUtils";
 import useEffectsChain from "@/hooks/useEffectsChain";
@@ -472,13 +471,7 @@ const HeroSection = () => {
       if (!effectsChain) return;
 
       try {
-        // Initialize audio context if needed
-        if (Tone.context.state !== "running") {
-          await Tone.start();
-          setAudioContextStarted(true);
-        }
-
-        // Create a new synth using the same approach as Try Me section
+        // Create a new synth (stub returns null; no synth engine)
         const newSynth = createSynth("polysynth", effectsChain);
 
         // Store in ref
@@ -591,12 +584,6 @@ const HeroSection = () => {
   // Update the playNote function to assign proper octaves
   const playNote = async (noteName: string): Promise<void> => {
     try {
-      // Make sure audio context is started
-      if (Tone.context.state !== "running") {
-        await Tone.start();
-        setAudioContextStarted(true);
-      }
-
       // Add octave information to the note if it doesn't have one
       let noteWithOctave = noteName;
       if (!noteName.match(/\d/)) {
@@ -636,12 +623,6 @@ const HeroSection = () => {
   // Add a function to play all notes in the current chord
   const playChord = useCallback(async () => {
     try {
-      // Make sure audio context is started
-      if (Tone.context.state !== "running") {
-        await Tone.start();
-        setAudioContextStarted(true);
-      }
-
       // Get the current chord's notes
       const currentChord = chordProgression[currentChordIndex];
       console.log(`Playing chord ${currentChord.name}`);
