@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import useLanguage from "@/hooks/useLanguage";
 import {
   FaDesktop,
   FaBoxOpen,
@@ -12,6 +13,7 @@ import {
   FaPlug,
   FaHeadset,
 } from "react-icons/fa";
+import FAQSectionSkeleton from "@/components/skeletons/FAQSectionSkeleton";
 
 const FAQContainer = styled.section`
   padding: 100px 20px;
@@ -120,6 +122,7 @@ interface FAQItem {
 const FAQSection = () => {
   const [expandedFaqs, setExpandedFaqs] = useState<ExpandedFaqs>({});
   const { t } = useTranslation();
+  const { isLoading: languageLoading } = useLanguage();
 
   const toggleFaq = (index: number) => {
     setExpandedFaqs((prev) => ({
@@ -146,6 +149,10 @@ const FAQSection = () => {
     question: question.question,
     answer: question.answer
   }));
+
+  if (languageLoading) {
+    return <FAQSectionSkeleton />;
+  }
 
   return (
     <FAQContainer id="faq">
