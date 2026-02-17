@@ -76,6 +76,25 @@ const CardTitle = styled.h3`
   gap: 0.75rem;
 `;
 
+const PaymentMethodsHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+
+  .payment-methods-header-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .payment-methods-header-text p {
+    color: var(--text-secondary);
+    margin: 0.25rem 0 0 0;
+    font-size: 0.95rem;
+  }
+`;
+
 const Button = styled.button`
   background: linear-gradient(135deg, #6c63ff 0%, #4ecdc4 100%);
   color: white;
@@ -1013,16 +1032,32 @@ export default function BillingPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
       >
-        <CardTitle>
-          <FaCreditCard />
-          {t("dashboard.billing.paymentMethods", "Payment Methods")}
-        </CardTitle>
-        <p style={{ color: "var(--text-secondary)", marginBottom: "1rem" }}>
-          {t(
-            "dashboard.billing.paymentMethodsDesc",
-            "Update your saved payment method for future purchases."
+        <PaymentMethodsHeader>
+          <div className="payment-methods-header-text">
+            <CardTitle style={{ marginBottom: 0 }}>
+              <FaCreditCard />
+              {t("dashboard.billing.paymentMethods", "Payment Methods")}
+            </CardTitle>
+            <p>
+              {t(
+                "dashboard.billing.paymentMethodsDesc",
+                "Update your saved payment method for future purchases."
+              )}
+            </p>
+          </div>
+          {hasCustomerId && !paymentMethodsLoading && !addCardClientSecret && (
+            <Button
+              onClick={handleStartAddCard}
+              disabled={addCardLoading}
+              style={{ flexShrink: 0 }}
+            >
+              <FaPlus />
+              {addCardLoading
+                ? t("common.loading", "Loading...")
+                : t("dashboard.billing.addPaymentMethod", "Add New Card")}
+            </Button>
           )}
-        </p>
+        </PaymentMethodsHeader>
         {!hasCustomerId ? (
           <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
             {t(
@@ -1089,7 +1124,7 @@ export default function BillingPage() {
                 {t("dashboard.billing.noPaymentMethods", "No payment methods saved yet.")}
               </p>
             )}
-            {addCardClientSecret ? (
+            {addCardClientSecret && (
               <AddCardFormWrap>
                 <Elements
                   stripe={stripePromise}
@@ -1107,17 +1142,6 @@ export default function BillingPage() {
                   />
                 </Elements>
               </AddCardFormWrap>
-            ) : (
-              <Button
-                onClick={handleStartAddCard}
-                disabled={addCardLoading}
-                style={{ marginTop: "1rem" }}
-              >
-                <FaPlus />
-                {addCardLoading
-                  ? t("common.loading", "Loading...")
-                  : t("dashboard.billing.addPaymentMethod", "Add New Card")}
-              </Button>
             )}
             {hasCustomerId && (
               <AddCardSecurityNotice style={{ marginTop: "1.5rem" }}>
