@@ -12,6 +12,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { formatProductDownloadFileSize } from "@/utils/product-downloads";
 
 const DownloadsContainer = styled.div`
   width: 100%;
@@ -381,11 +382,8 @@ function Downloads() {
             (file) => file.name === "NNAudio_Installer.pkg"
           );
 
-          const formatFileSize = (bytes: number | null | undefined): string => {
-            if (!bytes) return "Unknown";
-            const mb = bytes / (1024 * 1024);
-            return `${mb.toFixed(2)} MB`;
-          };
+          const formatFileSize = (bytes: number | null | undefined): string =>
+            formatProductDownloadFileSize(bytes) || "Unknown";
 
           const formatDate = (
             dateString: string | null | undefined

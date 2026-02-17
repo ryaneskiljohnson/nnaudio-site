@@ -12,6 +12,24 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const PRODUCT_DOWNLOADS_BUCKET = "product-downloads";
 
 /**
+ * @brief Format product download file size for display (KB or MB, or GB if large).
+ * @param bytes Size in bytes, or null/undefined
+ * @returns Human-readable string e.g. "512 KB", "36.07 MB", or "" when no size
+ * @example formatProductDownloadFileSize(1024) === "1.0 KB"
+ * @example formatProductDownloadFileSize(37811823) === "36.07 MB"
+ */
+export function formatProductDownloadFileSize(
+  bytes: number | null | undefined
+): string {
+  if (bytes == null || bytes < 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+/**
  * @brief Get file size in bytes from a Supabase storage path.
  * @param storagePath Path in product-downloads bucket (e.g. products/slug/file.zip)
  * @param supabase Admin/service Supabase client (must have storage access)

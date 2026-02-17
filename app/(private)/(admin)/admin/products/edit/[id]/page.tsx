@@ -9,6 +9,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import StorageFilePicker from "@/components/admin/StorageFilePicker";
+import { formatProductDownloadFileSize } from "@/utils/product-downloads";
 
 const Container = styled.div`
   padding: 2rem;
@@ -2307,36 +2308,20 @@ export default function EditProductPage() {
                         />
                       </FeatureItem>
                       <FeatureItem>
-                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>File Size (bytes)</Label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <FeatureInput
-                            type="number"
-                            value={download.file_size || ''}
-                            onChange={(e) => handleDownloadChange(index, 'file_size', e.target.value ? parseInt(e.target.value) : null)}
-                            placeholder="37811823"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => fetchFileSizeForDownload(index)}
-                            disabled={!download.path.trim() || loadingFileSizeIndex === index}
-                            style={{
-                              padding: '0.4rem 0.6rem',
-                              fontSize: '0.8rem',
-                              whiteSpace: 'nowrap',
-                              background: 'rgba(108, 99, 255, 0.2)',
-                              border: '1px solid rgba(108, 99, 255, 0.4)',
-                              borderRadius: '6px',
-                              color: 'var(--text)',
-                              cursor: download.path.trim() && loadingFileSizeIndex !== index ? 'pointer' : 'not-allowed',
-                              opacity: download.path.trim() && loadingFileSizeIndex !== index ? 1 : 0.6,
-                            }}
-                          >
-                            {loadingFileSizeIndex === index ? (
-                              <FaSpinner style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }} />
-                            ) : (
-                              'Get size from link'
-                            )}
-                          </button>
+                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>File Size</Label>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                          {loadingFileSizeIndex === index ? (
+                            <>
+                              <FaSpinner style={{ animation: 'spin 1s linear infinite', display: 'inline-block', marginRight: '0.5rem' }} />
+                              Calculating…
+                            </>
+                          ) : download.file_size != null && download.file_size > 0 ? (
+                            formatProductDownloadFileSize(download.file_size)
+                          ) : download.path.trim() ? (
+                            '—'
+                          ) : (
+                            'Set path above and blur to calculate'
+                          )}
                         </div>
                       </FeatureItem>
                     </div>
