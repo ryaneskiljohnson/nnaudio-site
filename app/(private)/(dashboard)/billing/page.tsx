@@ -43,7 +43,7 @@ const CARD_ELEMENT_OPTIONS = {
       iconColor: "#ff5e62",
     },
   },
-  hidePostalCode: false,
+  hidePostalCode: true, // ZIP collected in billing address section above
 };
 
 const BillingContainer = styled.div`
@@ -121,7 +121,19 @@ interface PaymentMethodItem {
   } | null;
   created: number;
   isDefault?: boolean;
-  isSource?: boolean; // true if legacy Stripe Source, false if PaymentMethod
+  isSource?: boolean;
+  billing_details?: {
+    name: string | null;
+    email: string | null;
+    address: {
+      line1: string | null;
+      line2?: string | null;
+      city: string | null;
+      state: string | null;
+      postal_code: string | null;
+      country: string | null;
+    } | null;
+  } | null;
 }
 
 const SubscriptionRow = styled.div`
@@ -179,72 +191,91 @@ const SubscriptionActions = styled.div`
   flex-shrink: 0;
 `;
 
-const PaymentMethodsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
+const PaymentMethodsList = styled.div`
   margin-top: 1rem;
 `;
 
-const PaymentMethodCard = styled.div<{ $isDefault?: boolean }>`
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid ${(props) => props.$isDefault ? 'rgba(108, 99, 255, 0.5)' : 'rgba(255, 255, 255, 0.08)'};
-  border-radius: 12px;
+const PaymentMethodRow = styled.div<{ $isDefault?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
   padding: 1.25rem;
-  position: relative;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 1rem;
   transition: border-color 0.2s, box-shadow 0.2s;
 
+  &:last-child {
+    margin-bottom: 0;
+  }
   &:hover {
-    border-color: ${(props) => props.$isDefault ? 'rgba(108, 99, 255, 0.7)' : 'rgba(255, 255, 255, 0.15)'};
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: rgba(108, 99, 255, 0.25);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+    gap: 0.75rem;
   }
 `;
 
-const CardBrand = styled.div`
-  font-weight: 600;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  color: var(--text);
-  margin-bottom: 0.5rem;
+const CardInfoColumn = styled.div`
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  min-width: 180px;
 `;
 
-const CardNumber = styled.div`
-  font-size: 1.1rem;
+const CardBrand = styled.span`
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: var(--text);
+`;
+
+const CardNumber = styled.span`
+  font-size: 0.95rem;
   font-weight: 500;
   color: var(--text);
-  margin-bottom: 0.5rem;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
 `;
 
-const CardExpiry = styled.div`
+const CardExpiry = styled.span`
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+`;
+
+const CardBilling = styled.div`
+  flex: 1;
+  min-width: 0;
   font-size: 0.85rem;
   color: var(--text-secondary);
-  margin-bottom: 0.75rem;
+  line-height: 1.4;
+  padding-left: 1rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+
+  @media (max-width: 768px) {
+    padding-left: 0;
+    border-left: none;
+    width: 100%;
+  }
 `;
 
 const DefaultBadge = styled.span`
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  background: rgba(34, 197, 94, 0.2);
+  background: rgba(34, 197, 94, 0.15);
   color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.4);
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  margin-left: 0.25rem;
 `;
 
 const CardActions = styled.div`
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  flex-shrink: 0;
+  margin-left: auto;
 `;
 
 const SmallButton = styled.button<{ $variant?: 'danger' | 'primary' }>`
@@ -293,6 +324,38 @@ const AddCardFormWrap = styled.div`
 
 const AddCardFormGroup = styled.div`
   margin-bottom: 1.5rem;
+`;
+
+const AddCardFormRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const AddCardInput = styled.input`
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: #4ecdc4;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
 `;
 
 const AddCardLabel = styled.label`
@@ -547,9 +610,18 @@ const ConfirmButton = styled.button<{ $variant?: "danger" | "secondary" }>`
   }
 `;
 
+type AddCardBillingFields = {
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+};
+
 /**
  * Inline form to add a card via SetupIntent (no redirect, no "save for faster checkout" prompt).
- * Styled to match checkout: labels, card field, security notice, Powered by Stripe.
+ * Captures billing address and card; styled to match checkout.
  */
 function AddCardForm({
   clientSecret,
@@ -568,6 +640,18 @@ function AddCardForm({
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [billing, setBilling] = useState<AddCardBillingFields>({
+    name: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+    country: "US",
+  });
+
+  const updateBilling = (field: keyof AddCardBillingFields, value: string) => {
+    setBilling((prev) => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -577,6 +661,30 @@ function AddCardForm({
       setError("Card field not ready. Please refresh.");
       return;
     }
+    if (!billing.name.trim()) {
+      setError("Billing name is required.");
+      return;
+    }
+    if (!billing.address.trim()) {
+      setError("Billing address is required.");
+      return;
+    }
+    if (!billing.city.trim()) {
+      setError("City is required.");
+      return;
+    }
+    if (!billing.state.trim()) {
+      setError("State is required.");
+      return;
+    }
+    if (!billing.zip.trim()) {
+      setError("ZIP code is required.");
+      return;
+    }
+    if (!billing.country.trim()) {
+      setError("Country is required.");
+      return;
+    }
     setProcessing(true);
     setError(null);
     try {
@@ -584,7 +692,15 @@ function AddCardForm({
         payment_method: {
           card: cardEl,
           billing_details: {
+            name: billing.name.trim(),
             email: userEmail || undefined,
+            address: {
+              line1: billing.address.trim(),
+              city: billing.city.trim(),
+              state: billing.state.trim(),
+              postal_code: billing.zip.trim(),
+              country: billing.country.trim(),
+            },
           },
         },
       });
@@ -603,8 +719,76 @@ function AddCardForm({
   return (
     <form onSubmit={handleSubmit}>
       <p style={{ color: "rgba(255,255,255,0.7)", marginBottom: "1rem", fontSize: "0.9rem", lineHeight: 1.5 }}>
-        {t("dashboard.billing.addCardInlineDesc", "Enter your card details below. Your payment method will be saved for future purchases and subscriptions.")}
+        {t("dashboard.billing.addCardInlineDesc", "Enter your billing details and card below. Your payment method will be saved for future purchases and subscriptions.")}
       </p>
+
+      <AddCardFormGroup>
+        <AddCardLabel>{t("dashboard.billing.billingName", "Billing name")} *</AddCardLabel>
+        <AddCardInput
+          type="text"
+          value={billing.name}
+          onChange={(e) => updateBilling("name", e.target.value)}
+          placeholder="Full name on card"
+          required
+        />
+      </AddCardFormGroup>
+
+      <AddCardFormGroup>
+        <AddCardLabel>{t("dashboard.billing.billingAddress", "Billing address")} *</AddCardLabel>
+        <AddCardInput
+          type="text"
+          value={billing.address}
+          onChange={(e) => updateBilling("address", e.target.value)}
+          placeholder="Street address"
+          required
+        />
+      </AddCardFormGroup>
+
+      <AddCardFormRow>
+        <AddCardFormGroup style={{ marginBottom: 0 }}>
+          <AddCardLabel>{t("dashboard.billing.city", "City")} *</AddCardLabel>
+          <AddCardInput
+            type="text"
+            value={billing.city}
+            onChange={(e) => updateBilling("city", e.target.value)}
+            placeholder="City"
+            required
+          />
+        </AddCardFormGroup>
+        <AddCardFormGroup style={{ marginBottom: 0 }}>
+          <AddCardLabel>{t("dashboard.billing.state", "State")} *</AddCardLabel>
+          <AddCardInput
+            type="text"
+            value={billing.state}
+            onChange={(e) => updateBilling("state", e.target.value)}
+            placeholder="State"
+            required
+          />
+        </AddCardFormGroup>
+      </AddCardFormRow>
+
+      <AddCardFormRow>
+        <AddCardFormGroup style={{ marginBottom: 0 }}>
+          <AddCardLabel>{t("dashboard.billing.zip", "ZIP code")} *</AddCardLabel>
+          <AddCardInput
+            type="text"
+            value={billing.zip}
+            onChange={(e) => updateBilling("zip", e.target.value)}
+            placeholder="ZIP"
+            required
+          />
+        </AddCardFormGroup>
+        <AddCardFormGroup style={{ marginBottom: 0 }}>
+          <AddCardLabel>{t("dashboard.billing.country", "Country")} *</AddCardLabel>
+          <AddCardInput
+            type="text"
+            value={billing.country}
+            onChange={(e) => updateBilling("country", e.target.value)}
+            placeholder="Country"
+            required
+          />
+        </AddCardFormGroup>
+      </AddCardFormRow>
 
       <AddCardFormGroup>
         <AddCardLabel>{t("dashboard.billing.cardInformation", "Card information")} *</AddCardLabel>
@@ -850,23 +1034,34 @@ export default function BillingPage() {
           <LoadingComponent text={t("common.loading", "Loading...")} />
         ) : (
           <>
-            <PaymentMethodsGrid>
+            <PaymentMethodsList>
               {paymentMethods.map((pm) => (
-                <PaymentMethodCard key={pm.id} $isDefault={pm.isDefault}>
-                  {pm.isDefault && (
-                    <DefaultBadge>
-                      <FaCheckCircle /> {t("dashboard.billing.default", "Default")}
-                    </DefaultBadge>
+                <PaymentMethodRow key={pm.id} $isDefault={pm.isDefault}>
+                  <CardInfoColumn>
+                    <FaCreditCard style={{ color: "var(--text-secondary)", flexShrink: 0 }} />
+                    <CardBrand>{pm.card?.brand.toUpperCase() || "CARD"}</CardBrand>
+                    <CardNumber>•••• {pm.card?.last4 || "****"}</CardNumber>
+                    <CardExpiry>
+                      {pm.card?.exp_month}/{pm.card?.exp_year}
+                    </CardExpiry>
+                    {pm.isDefault && (
+                      <DefaultBadge>{t("dashboard.billing.default", "Default")}</DefaultBadge>
+                    )}
+                  </CardInfoColumn>
+                  {pm.billing_details && (pm.billing_details.name || pm.billing_details.address?.line1 || pm.billing_details.address?.city) && (
+                    <CardBilling>
+                      {pm.billing_details.name && <span style={{ fontWeight: 500, color: "var(--text)" }}>{pm.billing_details.name}</span>}
+                      {pm.billing_details.name && (pm.billing_details.address?.line1 || pm.billing_details.address?.city) && " · "}
+                      {pm.billing_details.address?.line1 && <span>{pm.billing_details.address.line1}</span>}
+                      {(pm.billing_details.address?.city || pm.billing_details.address?.state || pm.billing_details.address?.postal_code) && (
+                        <span>
+                          {" "}
+                          {[pm.billing_details.address.city, pm.billing_details.address.state, pm.billing_details.address.postal_code].filter(Boolean).join(", ")}
+                        </span>
+                      )}
+                      {pm.billing_details.address?.country && <span> {pm.billing_details.address.country}</span>}
+                    </CardBilling>
                   )}
-                  <CardBrand>
-                    <FaCreditCard />
-                    {pm.card?.brand.toUpperCase() || "CARD"}
-                  </CardBrand>
-                  <CardNumber>•••• •••• •••• {pm.card?.last4 || "****"}</CardNumber>
-                  <CardExpiry>
-                    {t("dashboard.billing.expires", "Expires")}{" "}
-                    {pm.card?.exp_month}/{pm.card?.exp_year}
-                  </CardExpiry>
                   <CardActions>
                     <SmallButton
                       $variant="danger"
@@ -886,9 +1081,9 @@ export default function BillingPage() {
                         : t("dashboard.billing.remove", "Remove")}
                     </SmallButton>
                   </CardActions>
-                </PaymentMethodCard>
+                </PaymentMethodRow>
               ))}
-            </PaymentMethodsGrid>
+            </PaymentMethodsList>
             {paymentMethods.length === 0 && (
               <p style={{ color: "var(--text-secondary)", marginBottom: "1rem" }}>
                 {t("dashboard.billing.noPaymentMethods", "No payment methods saved yet.")}
@@ -923,6 +1118,27 @@ export default function BillingPage() {
                   ? t("common.loading", "Loading...")
                   : t("dashboard.billing.addPaymentMethod", "Add New Card")}
               </Button>
+            )}
+            {hasCustomerId && (
+              <AddCardSecurityNotice style={{ marginTop: "1.5rem" }}>
+                <AddCardSecurityText>
+                  <FaShieldAlt />
+                  <span>
+                    {t(
+                      "dashboard.billing.secureNotice",
+                      "Your payment information is encrypted and secure. We never store your card details."
+                    )}
+                  </span>
+                </AddCardSecurityText>
+                <AddCardStripeBadge>
+                  <AddCardStripeLogoImage src="/stripe.webp" alt="Stripe" />
+                  <AddCardStripeLogoText>
+                    {t("dashboard.billing.poweredByStripe", "Powered by")}{" "}
+                    <span className="stripe-name">Stripe</span>{" "}
+                    {t("dashboard.billing.secureCheckout", "• Secure checkout")}
+                  </AddCardStripeLogoText>
+                </AddCardStripeBadge>
+              </AddCardSecurityNotice>
             )}
           </>
         )}

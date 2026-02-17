@@ -45,12 +45,14 @@ export async function POST(request: NextRequest) {
       email,
       customerId,
       promotionCodeId,
+      paymentMethodId,
     }: {
       bundle_slug: string;
       tier: BundleTier;
       email?: string;
       customerId?: string;
       promotionCodeId?: string;
+      paymentMethodId?: string;
     } = body;
 
     if (!bundle_slug || !tier) {
@@ -160,6 +162,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // If using a saved payment method, verify it belongs to this customer
+    if (paymentMethodId && resolvedCustomerId) {
+      try {
+        const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+        const pmCustomerId =
+          typeof pm.customer === "string" ? pm.customer : pm.customer?.id;
+        if (pmCustomerId !== resolvedCustomerId) {
+          return NextResponse.json(
+            { error: "Payment method does not belong to this customer" },
+            { status: 403 }
+          );
+        }
+      } catch (e: any) {
+        return NextResponse.json(
+          { error: e.message || "Invalid payment method" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Check for existing subscription BEFORE creating one. Handle double-call: return existing PI if sub was just created.
     if (tier === "monthly" || tier === "annual") {
       const subs = await stripe.subscriptions.list({
@@ -263,6 +285,7 @@ export async function POST(request: NextRequest) {
         amount: amountCents,
         currency: "usd",
         customer: resolvedCustomerId,
+        ...(paymentMethodId && { payment_method: paymentMethodId }),
         automatic_payment_methods: { enabled: true },
         metadata: {
           checkout_type: "bundle",
@@ -316,6 +339,7 @@ export async function POST(request: NextRequest) {
       customer: resolvedCustomerId,
       items: [{ price: stripePriceId }],
       ...(couponId && { coupon: couponId }),
+      ...(paymentMethodId && { default_payment_method: paymentMethodId }),
       payment_behavior: "default_incomplete",
       payment_settings: {
         save_default_payment_method: "on_subscription",

@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
 
     console.log('[Customer]', profile.customer_id, 'Default PM:', defaultPaymentMethodId, 'Default Source:', defaultSourceId);
 
-    // Format payment methods for frontend
+    // Format payment methods for frontend (include billing_details when present)
     const formattedMethods = paymentMethods.data.map((pm) => ({
       id: pm.id,
       type: pm.type,
@@ -137,9 +137,21 @@ export async function GET(request: NextRequest) {
       created: pm.created,
       isDefault: pm.id === defaultPaymentMethodId,
       isSource: false,
+      billing_details: pm.billing_details ? {
+        name: pm.billing_details.name ?? null,
+        email: pm.billing_details.email ?? null,
+        address: pm.billing_details.address ? {
+          line1: pm.billing_details.address.line1 ?? null,
+          line2: pm.billing_details.address.line2 ?? null,
+          city: pm.billing_details.address.city ?? null,
+          state: pm.billing_details.address.state ?? null,
+          postal_code: pm.billing_details.address.postal_code ?? null,
+          country: pm.billing_details.address.country ?? null,
+        } : null,
+      } : null,
     }));
 
-    // Format legacy sources (cards)
+    // Format legacy sources (cards) - sources do not have billing_details on the object
     const formattedSources = sources.data.map((source: any) => ({
       id: source.id,
       type: 'card',
@@ -151,7 +163,8 @@ export async function GET(request: NextRequest) {
       },
       created: source.created,
       isDefault: source.id === defaultSourceId,
-      isSource: true, // Mark as legacy source
+      isSource: true,
+      billing_details: null,
     }));
 
     // Combine both
