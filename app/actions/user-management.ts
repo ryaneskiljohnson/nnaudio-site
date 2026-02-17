@@ -773,13 +773,14 @@ export async function updateUserProfileFromStripe(userId: string): Promise<{
 export async function getAdditionalUserDataAdmin(userIds: string[]): Promise<{
   lastActive: Record<string, string>;
   totalSpent: Record<string, number>;
+  orderCount: Record<string, number>;
   error?: string;
 }> {
   try {
     const supabase = await createClient();
 
     if (!(await checkAdmin(supabase))) {
-      return { lastActive: {}, totalSpent: {}, error: "Unauthorized" };
+      return { lastActive: {}, totalSpent: {}, orderCount: {}, error: "Unauthorized" };
     }
 
     const result = await getAdditionalUserData(userIds);
@@ -789,6 +790,7 @@ export async function getAdditionalUserDataAdmin(userIds: string[]): Promise<{
     return {
       lastActive: {},
       totalSpent: {},
+      orderCount: {},
       error:
         error instanceof Error
           ? error.message

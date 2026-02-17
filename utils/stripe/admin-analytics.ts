@@ -45,6 +45,8 @@ export interface UserData {
   createdAt: string;
   lastActive?: string;
   totalSpent: number;
+  /** Number of paid orders (Stripe charges). -1 while loading. */
+  orderCount?: number;
   hasNfr?: boolean;
 }
 
@@ -1352,7 +1354,6 @@ export async function getAllUsersForCRM(
       subscription: "subscription",
       createdAt: "updated_at", // Using updated_at as created_at equivalent
       email: "email", // Email is now available in profiles table (synced from auth.users)
-      trialExpiration: "trial_expiration",
     };
 
     // Apply sorting to the query if the field can be sorted in the database
@@ -1509,6 +1510,7 @@ export async function getAllUsersForCRM(
         createdAt: profile.updated_at || new Date().toISOString(),
         lastActive: profile.updated_at || new Date().toISOString(), // Default to join date, will be updated if session data exists
         totalSpent: -1, // -1 indicates loading, will be updated when data loads
+        orderCount: -1, // -1 indicates loading, will be updated when additional data loads
         hasNfr,
       });
     }
@@ -1533,12 +1535,14 @@ export async function getAllUsersForCRM(
 export async function getAdditionalUserData(userIds: string[]): Promise<{
   lastActive: Record<string, string>;
   totalSpent: Record<string, number>;
+  orderCount: Record<string, number>;
 }> {
   const lastActiveMap: Record<string, string> = {};
   const totalSpentMap: Record<string, number> = {};
+  const orderCountMap: Record<string, number> = {};
 
-  if (userIds.length === 0) {
-    return { lastActive: lastActiveMap, totalSpent: totalSpentMap };
+    if (userIds.length === 0) {
+    return { lastActive: lastActiveMap, totalSpent: totalSpentMap, orderCount: orderCountMap };
   }
 
   try {
@@ -1600,18 +1604,18 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
 
     if (profilesError) {
       console.error("Error fetching customer IDs:", profilesError);
-      return { lastActive: lastActiveMap, totalSpent: totalSpentMap };
+      return { lastActive: lastActiveMap, totalSpent: totalSpentMap, orderCount: orderCountMap };
     }
 
     const customerIds =
       profiles?.map((p) => p.customer_id).filter((id): id is string => !!id) ||
       [];
 
-    // Fetch Stripe data for totalSpent using Charges API - most accurate method
-    // Charges represent actual money that was successfully charged to the customer
+    // Fetch Stripe data for totalSpent and orderCount using Charges API
     if (customerIds.length > 0) {
       try {
         const chargesMap = new Map<string, number>();
+        const ordersCountMap = new Map<string, number>();
 
         // Fetch charges directly from Stripe API for each customer
         const chargePromises = customerIds.map(async (customerId) => {
@@ -1622,31 +1626,24 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
             });
 
             // Use a Set to track charge IDs to prevent double counting
-            // (in case there are any duplicates in the response)
             const seenChargeIds = new Set<string>();
 
-            // Sum all successful, paid charges that haven't been fully refunded
-            // amount_refunded is the amount that was refunded, so we subtract it
-            const totalSpentCents = charges.data
-              .filter((charge) => {
-                // Only count each charge once (deduplicate by ID)
-                if (seenChargeIds.has(charge.id)) {
-                  return false;
-                }
-                seenChargeIds.add(charge.id);
-                
-                // Only count paid, non-refunded charges
-                return charge.paid && !charge.refunded;
-              })
-              .reduce((sum, charge) => {
-                // amount is the original charge amount, amount_refunded is what was refunded
-                // So net amount = amount - amount_refunded
-                const netAmount = charge.amount - (charge.amount_refunded || 0);
-                return sum + netAmount;
-              }, 0);
+            const paidCharges = charges.data.filter((charge) => {
+              if (seenChargeIds.has(charge.id)) return false;
+              seenChargeIds.add(charge.id);
+              return charge.paid && !charge.refunded;
+            });
+
+            const totalSpentCents = paidCharges.reduce((sum, charge) => {
+              const netAmount = charge.amount - (charge.amount_refunded || 0);
+              return sum + netAmount;
+            }, 0);
 
             if (totalSpentCents > 0) {
               chargesMap.set(customerId, totalSpentCents);
+            }
+            if (paidCharges.length > 0) {
+              ordersCountMap.set(customerId, paidCharges.length);
             }
           } catch (err) {
             console.error(
@@ -1658,8 +1655,7 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
 
         await Promise.allSettled(chargePromises);
 
-        // Map customer IDs to user IDs and calculate totalSpent
-        // Convert from cents to dollars
+        // Map customer IDs to user IDs for totalSpent and orderCount
         profiles?.forEach((profile) => {
           if (profile.customer_id) {
             const totalCents = chargesMap.get(profile.customer_id) || 0;
@@ -1667,6 +1663,8 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
             if (total > 0) {
               totalSpentMap[profile.id] = total;
             }
+            const count = ordersCountMap.get(profile.customer_id) ?? 0;
+            orderCountMap[profile.id] = count;
           }
         });
       } catch (stripeErr) {
@@ -1674,10 +1672,10 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
       }
     }
 
-    return { lastActive: lastActiveMap, totalSpent: totalSpentMap };
+    return { lastActive: lastActiveMap, totalSpent: totalSpentMap, orderCount: orderCountMap };
   } catch (error) {
     console.error("Error fetching additional user data:", error);
-    return { lastActive: lastActiveMap, totalSpent: totalSpentMap };
+    return { lastActive: lastActiveMap, totalSpent: totalSpentMap, orderCount: orderCountMap };
   }
 }
 

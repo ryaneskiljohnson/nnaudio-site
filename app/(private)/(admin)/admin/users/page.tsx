@@ -336,8 +336,8 @@ const Table = styled.table`
   } /* Subscription */
   th:nth-child(4),
   td:nth-child(4) {
-    width: 50px;
-  } /* Trial */
+    width: 60px;
+  } /* Orders */
   th:nth-child(5),
   td:nth-child(5) {
     width: 110px;
@@ -547,41 +547,6 @@ const SubscriptionCell = styled(TableCell)`
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-`;
-
-const TrialBadge = styled.span`
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  background-color: rgba(255, 193, 7, 0.2);
-  color: #ffc107;
-  border: 1px solid rgba(255, 193, 7, 0.4);
-  white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-`;
-
-const TrialCell = styled(TableCell)`
-  padding: 0.5rem;
-`;
-
-const TrialBadgeBox = styled.span<{ $isActive?: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 24px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background-color: ${(props) =>
-    props.$isActive ? "rgba(34, 197, 94, 0.2)" : "rgba(156, 163, 175, 0.2)"};
-  color: ${(props) => (props.$isActive ? "#22c55e" : "#9ca3af")};
-  border: 1px solid
-    ${(props) =>
-      props.$isActive ? "rgba(34, 197, 94, 0.4)" : "rgba(156, 163, 175, 0.4)"};
 `;
 
 const SupportTicketsCount = styled.div`
@@ -1613,12 +1578,17 @@ export default function AdminCRM() {
                   additionalData.totalSpent[user.id] !== undefined
                     ? additionalData.totalSpent[user.id]
                     : 0, // Default to 0 if no data found
+                orderCount:
+                  additionalData.orderCount?.[user.id] !== undefined
+                    ? additionalData.orderCount[user.id]
+                    : 0,
               }));
 
               // Apply client-side sorting for fields that can't be sorted server-side
               if (
                 sortField === "lastActive" ||
                 sortField === "totalSpent" ||
+                sortField === "orderCount" ||
                 sortField === "supportTickets"
               ) {
                 updatedUsers = [...updatedUsers].sort((a, b) => {
@@ -1631,6 +1601,9 @@ export default function AdminCRM() {
                   } else if (sortField === "totalSpent") {
                     aValue = a.totalSpent;
                     bValue = b.totalSpent;
+                  } else if (sortField === "orderCount") {
+                    aValue = a.orderCount ?? -1;
+                    bValue = b.orderCount ?? -1;
                   } else if (sortField === "supportTickets") {
                     aValue = supportTicketCounts[a.id]?.total || 0;
                     bValue = supportTicketCounts[b.id]?.total || 0;
@@ -1728,6 +1701,7 @@ export default function AdminCRM() {
     if (
       sortField === "lastActive" ||
       sortField === "totalSpent" ||
+      sortField === "orderCount" ||
       sortField === "supportTickets"
     ) {
       setUsers((prevUsers) => {
@@ -1736,6 +1710,7 @@ export default function AdminCRM() {
           (u) =>
             (sortField === "lastActive" && u.lastActive) ||
             (sortField === "totalSpent" && u.totalSpent !== -1) ||
+            (sortField === "orderCount" && (u.orderCount ?? -1) !== -1) ||
             (sortField === "supportTickets" &&
               supportTicketCounts[u.id] !== undefined)
         );
@@ -1752,6 +1727,9 @@ export default function AdminCRM() {
           } else if (sortField === "totalSpent") {
             aValue = a.totalSpent;
             bValue = b.totalSpent;
+          } else if (sortField === "orderCount") {
+            aValue = a.orderCount ?? -1;
+            bValue = b.orderCount ?? -1;
           } else if (sortField === "supportTickets") {
             aValue = supportTicketCounts[a.id]?.total || 0;
             bValue = supportTicketCounts[b.id]?.total || 0;
@@ -1800,11 +1778,10 @@ export default function AdminCRM() {
       "subscription",
       "createdAt",
       "email",
-      "trialExpiration",
     ];
 
     // Fields that need client-side sorting (from external sources)
-    const clientSortableFields = ["lastActive", "totalSpent", "supportTickets"];
+    const clientSortableFields = ["lastActive", "totalSpent", "orderCount", "supportTickets"];
 
     const allSortableFields = [
       ...serverSortableFields,
@@ -1833,9 +1810,9 @@ export default function AdminCRM() {
       "subscription",
       "createdAt",
       "email",
-      "trialExpiration",
       "lastActive",
       "totalSpent",
+      "orderCount",
       "supportTickets",
     ];
     const isSortable = allSortableFields.includes(field as string);
@@ -2929,10 +2906,10 @@ export default function AdminCRM() {
                     </TableHeaderCell>
                     <TableHeaderCell
                       $sortable={true}
-                      onClick={() => handleSort("trialExpiration")}
+                      onClick={() => handleSort("orderCount" as keyof UserData)}
                     >
-                      Trial
-                      {getSortIcon("trialExpiration")}
+                      Orders
+                      {getSortIcon("orderCount" as keyof UserData)}
                     </TableHeaderCell>
                     <TableHeaderCell
                       $sortable={true}
@@ -2975,6 +2952,7 @@ export default function AdminCRM() {
                           key={`loading-placeholder-${i}`}
                           style={{ pointerEvents: "none" }}
                         >
+                          <TableCell>&nbsp;</TableCell>
                           <TableCell>&nbsp;</TableCell>
                           <TableCell>&nbsp;</TableCell>
                           <TableCell>&nbsp;</TableCell>
@@ -3052,21 +3030,16 @@ export default function AdminCRM() {
                                 />
                               )}
                           </SubscriptionCell>
-                          <TrialCell>
-                            {(() => {
-                              const trialInfo = getTrialInfo(
-                                userData.trialExpiration,
-                                userData.createdAt,
-                                userData.subscriptionExpiration
-                              );
-                              if (!trialInfo) return null;
-                              return (
-                                <TrialBadgeBox $isActive={trialInfo.isActive}>
-                                  {trialInfo.days}
-                                </TrialBadgeBox>
-                              );
-                            })()}
-                          </TrialCell>
+                          <TableCell>
+                            {userData.orderCount === undefined ||
+                            userData.orderCount === -1 ? (
+                              <LoadingSpinner
+                                style={{ display: "inline-block" }}
+                              />
+                            ) : (
+                              userData.orderCount
+                            )}
+                          </TableCell>
                           <JoinDateTableCell>
                             {formatDateTimeNoLeadingZero(userData.createdAt)}
                           </JoinDateTableCell>
