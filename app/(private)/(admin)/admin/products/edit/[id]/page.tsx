@@ -1336,7 +1336,7 @@ export default function EditProductPage() {
 
   /**
    * Recalculate file_size from the download path/URL and store it in state.
-   * Called when path changes (onBlur) or when user clicks "Get size from link".
+   * Called automatically when the path field is blurred (user leaves the field).
    */
   const fetchFileSizeForDownload = async (index: number) => {
     const pathOrUrl = downloads[index]?.path?.trim();
@@ -2320,7 +2320,7 @@ export default function EditProductPage() {
                           ) : download.path.trim() ? (
                             '—'
                           ) : (
-                            'Set path above and blur to calculate'
+                            'Calculated when you enter the path above'
                           )}
                         </div>
                       </FeatureItem>

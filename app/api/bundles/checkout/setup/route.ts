@@ -160,19 +160,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check for existing subscription BEFORE creating one. Handle double-call: return existing PI if sub was just created.
     if (tier === "monthly" || tier === "annual") {
       const subs = await stripe.subscriptions.list({
         customer: resolvedCustomerId,
         status: "all",
         limit: 100,
       });
+      const twoMinutesAgo = Math.floor(Date.now() / 1000) - 120;
+      const withThisPrice = subs.data.filter((s) =>
+        s.items.data.some((item) => item.price.id === stripePriceId)
+      );
+      const recentWithThisPrice = withThisPrice.find((s) => s.created >= twoMinutesAgo);
+      if (recentWithThisPrice) {
+        // Same flow (double-call or retry): return existing subscription's payment intent so checkout can complete
+        const subWithInvoice = await stripe.subscriptions.retrieve(
+          recentWithThisPrice.id,
+          { expand: ["latest_invoice.payment_intent"] }
+        );
+        const latestInvoice = subWithInvoice.latest_invoice as Stripe.Invoice;
+        const paymentIntent = latestInvoice?.payment_intent as Stripe.PaymentIntent | undefined;
+        if (paymentIntent?.client_secret) {
+          return NextResponse.json({
+            clientSecret: paymentIntent.client_secret,
+            paymentIntentId: paymentIntent.id,
+            subscriptionId: recentWithThisPrice.id,
+            type: "subscription",
+          });
+        }
+      }
       const active = subs.data.filter((s) =>
         ["active", "trialing", "past_due"].includes(s.status)
       );
-      const hasThisPrice = active.some((s) =>
+      const existingActiveSub = active.find((s) =>
         s.items.data.some((item) => item.price.id === stripePriceId)
       );
-      if (hasThisPrice) {
+      if (existingActiveSub) {
         return NextResponse.json(
           {
             error:
