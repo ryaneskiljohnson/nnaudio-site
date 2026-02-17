@@ -781,10 +781,6 @@ export default function PromotionsPage() {
           <FaBullhorn />
           <h3>No Promotions Yet</h3>
           <p>Create your first promotional campaign to get started</p>
-          <Button $variant="primary" onClick={handleCreate}>
-            <FaPlus />
-            Create Your First Promotion
-          </Button>
         </EmptyState>
       ) : (
         <Table>
