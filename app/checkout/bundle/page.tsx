@@ -8,7 +8,7 @@
  * @module app/checkout/bundle
  */
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styled from "styled-components";
 import { motion } from "framer-motion";
@@ -23,6 +23,8 @@ import {
 } from "@stripe/react-stripe-js";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
+import { SearchableSelect } from "@/components/common/SearchableSelect";
+import { COUNTRIES, getStateOptions } from "@/lib/countries-states";
 import {
   FaHome,
   FaChevronRight,
@@ -546,6 +548,25 @@ type AppliedPromo = {
   promotionCodeId: string;
 };
 
+/** Saved payment method from GET /api/payment-methods */
+type SavedPaymentMethod = {
+  id: string;
+  card: { brand: string; last4: string } | null;
+  isDefault?: boolean;
+  billing_details?: {
+    name: string | null;
+    email: string | null;
+    address: {
+      line1: string | null;
+      line2?: string | null;
+      city: string | null;
+      state: string | null;
+      postal_code: string | null;
+      country: string | null;
+    } | null;
+  } | null;
+};
+
 function BundlePromoCodeSection({
   amount,
   appliedPromo,
@@ -646,6 +667,50 @@ function BundlePromoCodeSection({
   );
 }
 
+const PaymentMethodOption = styled.label<{ $selected?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: ${(p) => (p.$selected ? "rgba(78, 205, 196, 0.12)" : "rgba(255, 255, 255, 0.05)")};
+  border: 1px solid ${(p) => (p.$selected ? "rgba(78, 205, 196, 0.4)" : "rgba(255, 255, 255, 0.1)")};
+  border-radius: 10px;
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  input {
+    margin: 0;
+    accent-color: #4ecdc4;
+  }
+`;
+
+const PaymentMethodLabel = styled.span`
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
+`;
+
+const UseOtherLabel = styled.span`
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+`;
+
+const SavedCardBilling = styled.div`
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+`;
+
 function BundlePaymentForm({
   bundleSlug,
   tier,
@@ -653,6 +718,8 @@ function BundlePaymentForm({
   billingFields,
   onBillingFieldsChange,
   appliedPromo,
+  savedPaymentMethods = [],
+  paymentMethodsLoading = false,
 }: {
   bundleSlug: string;
   tier: TierKey;
@@ -670,6 +737,8 @@ function BundlePaymentForm({
   billingFields: BillingFields;
   onBillingFieldsChange: (f: BillingFields) => void;
   appliedPromo: AppliedPromo | null;
+  savedPaymentMethods?: SavedPaymentMethod[];
+  paymentMethodsLoading?: boolean;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -679,6 +748,12 @@ function BundlePaymentForm({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const defaultPm = savedPaymentMethods.find((pm) => pm.isDefault) ?? savedPaymentMethods[0];
+  const [selectedSavedPmId, setSelectedSavedPmId] = useState<string | null>(
+    defaultPm?.id ?? null
+  );
+  const [useOtherPaymentMethod, setUseOtherPaymentMethod] = useState(false);
 
   const {
     email,
@@ -702,63 +777,79 @@ function BundlePaymentForm({
   );
   const isSubscription = tier === "monthly" || tier === "annual";
 
+  const hasSavedMethods = savedPaymentMethods.length > 0;
+  const showBillingAndCard = !hasSavedMethods || useOtherPaymentMethod;
+  const payingWithSavedCard = hasSavedMethods && !useOtherPaymentMethod && selectedSavedPmId;
+  const waitingForPaymentMethods = paymentMethodsLoading && user?.profile?.customer_id;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements) {
+    if (!stripe) {
       setError("Payment could not be initialized. Please refresh.");
       return;
     }
 
-    const requiredEmail = email?.trim();
+    const requiredEmail = email?.trim() || user?.email?.trim();
     if (!requiredEmail) {
       setError("Email address is required");
       return;
     }
-    if (!billingName.trim()) {
-      setError("Billing name is required");
-      return;
-    }
-    if (!billingAddress.trim()) {
-      setError("Billing address is required");
-      return;
-    }
-    if (!billingCity.trim()) {
-      setError("City is required");
-      return;
-    }
-    if (!billingState.trim()) {
-      setError("State is required");
-      return;
-    }
-    if (!billingZip.trim()) {
-      setError("ZIP code is required");
-      return;
-    }
 
-    const cardElement = elements.getElement(CardElement);
-    if (!cardElement) {
-      setError("Card element not found. Please refresh.");
-      return;
+    if (showBillingAndCard) {
+      if (!billingName.trim()) {
+        setError("Billing name is required");
+        return;
+      }
+      if (!billingAddress.trim()) {
+        setError("Billing address is required");
+        return;
+      }
+      if (!billingCity.trim()) {
+        setError("City is required");
+        return;
+      }
+      if (!billingState.trim()) {
+        setError("State is required");
+        return;
+      }
+      if (!billingZip.trim()) {
+        setError("ZIP code is required");
+        return;
+      }
+      if (!elements) {
+        setError("Payment form not ready. Please refresh.");
+        return;
+      }
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) {
+        setError("Card element not found. Please refresh.");
+        return;
+      }
     }
 
     setIsProcessing(true);
     setError(null);
 
     try {
+      const setupBody: Record<string, unknown> = {
+        bundle_slug: bundleSlug,
+        tier,
+        email: requiredEmail,
+        ...(user?.profile?.customer_id && {
+          customerId: user.profile.customer_id,
+        }),
+        ...(appliedPromo && {
+          promotionCodeId: appliedPromo.promotionCodeId,
+        }),
+      };
+      if (payingWithSavedCard) {
+        setupBody.paymentMethodId = selectedSavedPmId;
+      }
+
       const setupRes = await fetch("/api/bundles/checkout/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bundle_slug: bundleSlug,
-          tier,
-          email: requiredEmail,
-          ...(user?.profile?.customer_id && {
-            customerId: user.profile.customer_id,
-          }),
-          ...(appliedPromo && {
-            promotionCodeId: appliedPromo.promotionCodeId,
-          }),
-        }),
+        body: JSON.stringify(setupBody),
       });
 
       const setupData = await setupRes.json();
@@ -768,30 +859,47 @@ function BundlePaymentForm({
         return;
       }
 
-      const { error: confirmError } = await stripe.confirmCardPayment(
-        setupData.clientSecret,
-        {
-          payment_method: {
-            card: cardElement,
-            billing_details: {
-              name: billingName,
-              email: requiredEmail,
-              address: {
-                line1: billingAddress,
-                city: billingCity,
-                state: billingState,
-                postal_code: billingZip,
-                country: billingCountry,
+      if (payingWithSavedCard) {
+        const { error: confirmError } = await stripe.confirmCardPayment(
+          setupData.clientSecret,
+          { payment_method: selectedSavedPmId! }
+        );
+        if (confirmError) {
+          setError(confirmError.message || "Payment failed");
+          setIsProcessing(false);
+          return;
+        }
+      } else {
+        const cardElement = elements!.getElement(CardElement);
+        if (!cardElement) {
+          setError("Card element not found. Please refresh.");
+          setIsProcessing(false);
+          return;
+        }
+        const { error: confirmError } = await stripe.confirmCardPayment(
+          setupData.clientSecret,
+          {
+            payment_method: {
+              card: cardElement,
+              billing_details: {
+                name: billingName,
+                email: requiredEmail,
+                address: {
+                  line1: billingAddress,
+                  city: billingCity,
+                  state: billingState,
+                  postal_code: billingZip,
+                  country: billingCountry,
+                },
               },
             },
-          },
+          }
+        );
+        if (confirmError) {
+          setError(confirmError.message || "Payment failed");
+          setIsProcessing(false);
+          return;
         }
-      );
-
-      if (confirmError) {
-        setError(confirmError.message || "Payment failed");
-        setIsProcessing(false);
-        return;
       }
 
       setSuccess(true);
@@ -830,6 +938,76 @@ function BundlePaymentForm({
         )}
       </PlanSummary>
 
+      {waitingForPaymentMethods && (
+        <FormGroup>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "1rem 0", color: "rgba(255,255,255,0.8)" }}>
+            <ButtonSpinner />
+            <span>Loading payment methods...</span>
+          </div>
+        </FormGroup>
+      )}
+
+      {!waitingForPaymentMethods && hasSavedMethods && (
+        <FormGroup>
+          <Label>Payment method</Label>
+          {savedPaymentMethods.map((pm) => (
+            <PaymentMethodOption
+              key={pm.id}
+              $selected={!useOtherPaymentMethod && selectedSavedPmId === pm.id}
+            >
+              <input
+                type="radio"
+                name="paymentMethod"
+                checked={!useOtherPaymentMethod && selectedSavedPmId === pm.id}
+                onChange={() => {
+                  setUseOtherPaymentMethod(false);
+                  setSelectedSavedPmId(pm.id);
+                }}
+              />
+              <PaymentMethodLabel>
+                {pm.card?.brand?.toUpperCase() ?? "CARD"} •••• {pm.card?.last4 ?? "****"}
+                {pm.isDefault && " (default)"}
+              </PaymentMethodLabel>
+            </PaymentMethodOption>
+          ))}
+          <PaymentMethodOption $selected={useOtherPaymentMethod}>
+            <input
+              type="radio"
+              name="paymentMethod"
+              checked={useOtherPaymentMethod}
+              onChange={() => setUseOtherPaymentMethod(true)}
+            />
+            <UseOtherLabel>Use other payment method</UseOtherLabel>
+          </PaymentMethodOption>
+        </FormGroup>
+      )}
+
+      {!waitingForPaymentMethods && payingWithSavedCard && (() => {
+        const selectedPm = savedPaymentMethods.find((pm) => pm.id === selectedSavedPmId);
+        const bd = selectedPm?.billing_details;
+        const addr = bd?.address;
+        const hasAny = bd?.name || addr?.line1 || addr?.city || addr?.state || addr?.postal_code || addr?.country;
+        if (!hasAny) return null;
+        return (
+          <FormGroup>
+            <Label>Billing address on file</Label>
+            <SavedCardBilling>
+              {bd?.name && <div style={{ fontWeight: 600, marginBottom: "0.35rem" }}>{bd.name}</div>}
+              {addr?.line1 && <div>{addr.line1}</div>}
+              {addr?.line2 && <div>{addr.line2}</div>}
+              {(addr?.city || addr?.state || addr?.postal_code) && (
+                <div>
+                  {[addr.city, addr.state, addr.postal_code].filter(Boolean).join(", ")}
+                </div>
+              )}
+              {addr?.country && <div>{addr.country}</div>}
+            </SavedCardBilling>
+          </FormGroup>
+        );
+      })()}
+
+      {!waitingForPaymentMethods && showBillingAndCard && (
+        <>
       <FormGroup>
         <Label>Email address *</Label>
         <Input
@@ -890,12 +1068,16 @@ function BundlePaymentForm({
         </FormGroup>
         <FormGroup>
           <Label>State *</Label>
-          <Input
-            type="text"
+          <SearchableSelect
             value={billingState}
-            onChange={(e) => update("billingState", e.target.value)}
-            placeholder="State"
+            onChange={(v) => update("billingState", v)}
+            options={getStateOptions(billingCountry)}
+            placeholder="State or region"
             required
+            allowCustomValue
+            getLabelForValue={(v) =>
+              getStateOptions(billingCountry).find((o) => o.value === v || o.label === v)?.label ?? v
+            }
           />
         </FormGroup>
       </FormRow>
@@ -913,12 +1095,13 @@ function BundlePaymentForm({
         </FormGroup>
         <FormGroup>
           <Label>Country *</Label>
-          <Input
-            type="text"
+          <SearchableSelect
             value={billingCountry}
-            onChange={(e) => update("billingCountry", e.target.value)}
+            onChange={(v) => update("billingCountry", v)}
+            options={COUNTRIES}
             placeholder="Country"
             required
+            getLabelForValue={(v) => COUNTRIES.find((c) => c.value === v)?.label}
           />
         </FormGroup>
       </FormRow>
@@ -929,6 +1112,8 @@ function BundlePaymentForm({
           <CardElement options={CARD_ELEMENT_OPTIONS} />
         </CardElementContainer>
       </FormGroup>
+        </>
+      )}
 
       {error && (
         <ErrorMessage>
@@ -946,7 +1131,7 @@ function BundlePaymentForm({
 
       <SubmitButton
         type="submit"
-        disabled={!stripe || isProcessing}
+        disabled={!stripe || isProcessing || !!waitingForPaymentMethods}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
@@ -984,7 +1169,7 @@ function BundlePaymentForm({
   );
 }
 
-export default function BundleCheckoutPage() {
+function BundleCheckoutPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -1016,6 +1201,8 @@ export default function BundleCheckoutPage() {
     billingCountry: "US",
   });
   const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
 
   const tier: TierKey | null =
     tierParam && ["monthly", "annual", "lifetime"].includes(tierParam)
@@ -1027,6 +1214,31 @@ export default function BundleCheckoutPage() {
       setBillingFields((prev) => ({ ...prev, email: user.email || "" }));
     }
   }, [user, billingFields.email]);
+
+  useEffect(() => {
+    if (!user?.profile?.customer_id) {
+      setSavedPaymentMethods([]);
+      setPaymentMethodsLoading(false);
+      return;
+    }
+    setPaymentMethodsLoading(true);
+    fetch("/api/payment-methods")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.paymentMethods)) {
+          setSavedPaymentMethods(
+            data.paymentMethods.map((pm: SavedPaymentMethod) => ({
+              id: pm.id,
+              card: pm.card,
+              isDefault: pm.isDefault,
+              billing_details: pm.billing_details ?? null,
+            }))
+          );
+        }
+      })
+      .catch(() => setSavedPaymentMethods([]))
+      .finally(() => setPaymentMethodsLoading(false));
+  }, [user?.profile?.customer_id]);
 
   useEffect(() => {
     if (!bundleSlug || !tier) {
@@ -1144,6 +1356,8 @@ export default function BundleCheckoutPage() {
                 billingFields={billingFields}
                 onBillingFieldsChange={setBillingFields}
                 appliedPromo={appliedPromo}
+                savedPaymentMethods={savedPaymentMethods}
+                paymentMethodsLoading={paymentMethodsLoading}
               />
             </Elements>
           </CheckoutForm>
@@ -1233,5 +1447,13 @@ export default function BundleCheckoutPage() {
         </CheckoutContainer>
       </Content>
     </Container>
+  );
+}
+
+export default function BundleCheckoutPage() {
+  return (
+    <Suspense fallback={<CheckoutPageSkeleton />}>
+      <BundleCheckoutPageInner />
+    </Suspense>
   );
 }

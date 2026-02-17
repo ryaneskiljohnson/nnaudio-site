@@ -47,6 +47,7 @@ const BundlesGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
+  align-items: stretch;
   
   @media (max-width: 968px) {
     grid-template-columns: 1fr;
@@ -54,6 +55,9 @@ const BundlesGrid = styled.div`
 `;
 
 const BundleCard = styled(motion.div)<{ $neonColor?: string }>`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   background: ${props => props.$neonColor 
     ? `rgba(${props.$neonColor}, 0.15)` 
     : 'rgba(255, 255, 255, 0.05)'};
@@ -96,6 +100,13 @@ const BundleCard = styled(motion.div)<{ $neonColor?: string }>`
       ? `0 12px 40px rgba(${props.$neonColor}, 0.5), 0 0 20px rgba(${props.$neonColor}, 0.3)` 
       : '0 8px 32px rgba(78, 205, 196, 0.2)'};
   }
+`;
+
+const BundleCardBody = styled.div`
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 `;
 
 const BundleHeader = styled.div`
@@ -205,6 +216,13 @@ const ProductCount = styled.div`
   margin-bottom: 1rem;
 `;
 
+
+const BundleCardFooter = styled.div`
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
 
 const ViewBundleButton = styled(Link)`
   display: inline-flex;
@@ -407,69 +425,71 @@ export default function BundlesPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        {/* Bundle image: use live mosaic (deduped) when we have products; otherwise use featured_image_url if set */}
-        {bundle.products && bundle.products.length > 0 ? (
-          <BundleMosaic 
-            products={bundle.products} 
-            totalCount={bundle.totalProductCount || bundle.products.length}
-          />
-        ) : bundle.featured_image_url ? (
-          <div style={{
-            width: '100%',
-            aspectRatio: '1',
-            marginBottom: '1.5rem',
-            borderRadius: '12px',
-            overflow: 'hidden',
-            position: 'relative',
-            background: 'rgba(0, 0, 0, 0.3)'
-          }}>
-            <Image
-              src={bundle.featured_image_url}
-              alt={bundle.name}
-              fill
-              style={{ objectFit: 'cover' }}
-              unoptimized
+        <BundleCardBody>
+          {/* Bundle image: use live mosaic (deduped) when we have products; otherwise use featured_image_url if set */}
+          {bundle.products && bundle.products.length > 0 ? (
+            <BundleMosaic 
+              products={bundle.products} 
+              totalCount={bundle.totalProductCount || bundle.products.length}
             />
+          ) : bundle.featured_image_url ? (
             <div style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              background: 'linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent)',
-              padding: '1rem',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'flex-end'
+              width: '100%',
+              aspectRatio: '1',
+              marginBottom: '1.5rem',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              position: 'relative',
+              background: 'rgba(0, 0, 0, 0.3)'
             }}>
+              <Image
+                src={bundle.featured_image_url}
+                alt={bundle.name}
+                fill
+                style={{ objectFit: 'cover' }}
+                unoptimized
+              />
               <div style={{
-                background: 'linear-gradient(135deg, #FFD700, #FFA500)',
-                color: '#000',
-                padding: '0.6rem 1.2rem',
-                borderRadius: '25px',
-                fontSize: '0.95rem',
-                fontWeight: 700,
-                boxShadow: '0 4px 12px rgba(255, 215, 0, 0.4)',
-                letterSpacing: '0.5px'
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                background: 'linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent)',
+                padding: '1rem',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-end'
               }}>
-                {bundle.totalProductCount || 0} {bundle.totalProductCount === 1 ? 'Product' : 'Products'} Included
+                <div style={{
+                  background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                  color: '#000',
+                  padding: '0.6rem 1.2rem',
+                  borderRadius: '25px',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  boxShadow: '0 4px 12px rgba(255, 215, 0, 0.4)',
+                  letterSpacing: '0.5px'
+                }}>
+                  {bundle.totalProductCount || 0} {bundle.totalProductCount === 1 ? 'Product' : 'Products'} Included
+                </div>
               </div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        <BundleHeader>
-          <BundleName>{bundle.name}</BundleName>
-          {bundle.tagline && (
-            <BundleTagline>{bundle.tagline}</BundleTagline>
-          )}
-          {bundle.short_description && (
-            <BundleDescription>{bundle.short_description}</BundleDescription>
-          )}
-        </BundleHeader>
+          <BundleHeader>
+            <BundleName>{bundle.name}</BundleName>
+            {bundle.tagline && (
+              <BundleTagline>{bundle.tagline}</BundleTagline>
+            )}
+            {bundle.short_description && (
+              <BundleDescription>{bundle.short_description}</BundleDescription>
+            )}
+          </BundleHeader>
+        </BundleCardBody>
 
         {/* For non-elite bundles, show sale price with cart icon */}
         {!(bundle.pricing?.monthly || bundle.pricing?.annual) && bundle.pricing?.lifetime ? (
-          <>
+          <BundleCardFooter>
             <SalePriceContainer>
               {bundle.pricing.lifetime.sale_price ? (
                 <>
@@ -521,9 +541,9 @@ export default function BundlesPage() {
               View Bundle Contents
               <FaArrowRight />
             </ViewBundleButton>
-          </>
+          </BundleCardFooter>
         ) : (
-          <>
+          <BundleCardFooter>
             <PricingSection>
               {bundle.totalValue != null && bundle.totalValue > 0 && (
                 <ValueRow>
@@ -570,7 +590,7 @@ export default function BundlesPage() {
               View Bundle Contents
               <FaArrowRight />
             </ViewBundleButton>
-          </>
+          </BundleCardFooter>
         )}
       </BundleCard>
     );

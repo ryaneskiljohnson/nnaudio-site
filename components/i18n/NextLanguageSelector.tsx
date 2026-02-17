@@ -113,6 +113,9 @@ const LangOption = styled.div<{ $isActive: boolean }>`
   }
 `;
 
+// Set to false to show the language selector again
+const HIDE_LANGUAGE_SELECTOR = true;
+
 const NextLanguageSelector = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -159,6 +162,8 @@ const NextLanguageSelector = () => {
       console.error("Error changing language:", error);
     }
   };
+
+  if (HIDE_LANGUAGE_SELECTOR) return null;
 
   return (
     <Container ref={dropdownRef}>

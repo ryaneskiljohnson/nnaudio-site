@@ -2,8 +2,6 @@
  * Utility functions for MIDI handling
  */
 // Removing unused import
-// import * as Tone from 'tone';
-
 // Define MIDIOutput interface if not already available
 interface MIDIOutput {
   send: (data: number[]) => void;

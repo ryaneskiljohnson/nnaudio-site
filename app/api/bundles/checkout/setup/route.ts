@@ -45,12 +45,14 @@ export async function POST(request: NextRequest) {
       email,
       customerId,
       promotionCodeId,
+      paymentMethodId,
     }: {
       bundle_slug: string;
       tier: BundleTier;
       email?: string;
       customerId?: string;
       promotionCodeId?: string;
+      paymentMethodId?: string;
     } = body;
 
     if (!bundle_slug || !tier) {
@@ -160,19 +162,62 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // If using a saved payment method, verify it belongs to this customer
+    if (paymentMethodId && resolvedCustomerId) {
+      try {
+        const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+        const pmCustomerId =
+          typeof pm.customer === "string" ? pm.customer : pm.customer?.id;
+        if (pmCustomerId !== resolvedCustomerId) {
+          return NextResponse.json(
+            { error: "Payment method does not belong to this customer" },
+            { status: 403 }
+          );
+        }
+      } catch (e: any) {
+        return NextResponse.json(
+          { error: e.message || "Invalid payment method" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Check for existing subscription BEFORE creating one. Handle double-call: return existing PI if sub was just created.
     if (tier === "monthly" || tier === "annual") {
       const subs = await stripe.subscriptions.list({
         customer: resolvedCustomerId,
         status: "all",
         limit: 100,
       });
+      const twoMinutesAgo = Math.floor(Date.now() / 1000) - 120;
+      const withThisPrice = subs.data.filter((s) =>
+        s.items.data.some((item) => item.price.id === stripePriceId)
+      );
+      const recentWithThisPrice = withThisPrice.find((s) => s.created >= twoMinutesAgo);
+      if (recentWithThisPrice) {
+        // Same flow (double-call or retry): return existing subscription's payment intent so checkout can complete
+        const subWithInvoice = await stripe.subscriptions.retrieve(
+          recentWithThisPrice.id,
+          { expand: ["latest_invoice.payment_intent"] }
+        );
+        const latestInvoice = subWithInvoice.latest_invoice as Stripe.Invoice;
+        const paymentIntent = latestInvoice?.payment_intent as Stripe.PaymentIntent | undefined;
+        if (paymentIntent?.client_secret) {
+          return NextResponse.json({
+            clientSecret: paymentIntent.client_secret,
+            paymentIntentId: paymentIntent.id,
+            subscriptionId: recentWithThisPrice.id,
+            type: "subscription",
+          });
+        }
+      }
       const active = subs.data.filter((s) =>
         ["active", "trialing", "past_due"].includes(s.status)
       );
-      const hasThisPrice = active.some((s) =>
+      const existingActiveSub = active.find((s) =>
         s.items.data.some((item) => item.price.id === stripePriceId)
       );
-      if (hasThisPrice) {
+      if (existingActiveSub) {
         return NextResponse.json(
           {
             error:
@@ -240,6 +285,7 @@ export async function POST(request: NextRequest) {
         amount: amountCents,
         currency: "usd",
         customer: resolvedCustomerId,
+        ...(paymentMethodId && { payment_method: paymentMethodId }),
         automatic_payment_methods: { enabled: true },
         metadata: {
           checkout_type: "bundle",
@@ -293,6 +339,7 @@ export async function POST(request: NextRequest) {
       customer: resolvedCustomerId,
       items: [{ price: stripePriceId }],
       ...(couponId && { coupon: couponId }),
+      ...(paymentMethodId && { default_payment_method: paymentMethodId }),
       payment_behavior: "default_incomplete",
       payment_settings: {
         save_default_payment_method: "on_subscription",

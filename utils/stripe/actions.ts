@@ -3,6 +3,7 @@
 import Stripe from "stripe";
 import { SubscriptionType } from "@/utils/supabase/types";
 import { PlanType, PriceData } from "@/types/stripe";
+import { createClient } from "@/utils/supabase/server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -683,19 +684,69 @@ export async function checkExistingCustomer(email: string): Promise<{
   }
 }
 
+const DEFAULT_RETURN_URL = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/dashboard`;
+
 /**
- * Creates a Stripe customer portal session for managing billing
- * @param customerId The Stripe customer ID
+ * Creates a Stripe customer portal session for managing billing.
+ * Resolves the Stripe customer ID server-side from the authenticated user's profile
+ * so the portal always opens for the logged-in user (not a client-supplied customer ID).
+ * @param options.flow - When "payment_method_update", opens the portal directly to add/update
+ *   payment method only (no subscription management). Omit for full portal (subscriptions + payment methods).
  * @returns URL to the customer portal
  */
 export async function createCustomerPortalSession(
-  customerId: string
+  options?: { flow?: "payment_method_update" }
 ): Promise<{ url: string | null; error?: string }> {
   try {
-    const session = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard`,
-    });
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { url: null, error: "Not authenticated" };
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("customer_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.customer_id) {
+      return {
+        url: null,
+        error: "No billing customer linked. Complete a purchase to add a payment method.",
+      };
+    }
+
+    // Sync the Stripe customer's email with the logged-in user so Stripe's form is pre-filled
+    const email = user.email?.trim();
+    if (email) {
+      try {
+        await stripe.customers.update(profile.customer_id, { email: email.toLowerCase() });
+      } catch (updateErr) {
+        console.warn("Could not update Stripe customer email before portal:", updateErr);
+      }
+    }
+
+    const returnUrl = DEFAULT_RETURN_URL;
+    const params: Stripe.BillingPortal.SessionCreateParams = {
+      customer: profile.customer_id,
+      return_url: returnUrl,
+    };
+
+    if (options?.flow === "payment_method_update") {
+      params.flow_data = {
+        type: "payment_method_update",
+        after_completion: {
+          type: "redirect",
+          redirect: { return_url: returnUrl },
+        },
+      };
+    }
+
+    const session = await stripe.billingPortal.sessions.create(params);
 
     return { url: session.url };
   } catch (error) {

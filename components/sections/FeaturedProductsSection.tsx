@@ -5,9 +5,11 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaShoppingCart } from "react-icons/fa";
 import { cleanHtmlText } from "@/utils/stringUtils";
 import ProductCard from "@/components/products/ProductCard";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/contexts/ToastContext";
 
 const SectionContainer = styled.section`
   padding: 70px 20px;
@@ -167,6 +169,52 @@ const PremierImageContainer = styled.div`
   
   @media (max-width: 768px) {
     max-width: 100%;
+  }
+`;
+
+const PremierCartButton = styled.button`
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 3;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(138, 43, 226, 0.5);
+  transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+  
+  ${PremierImageContainer}:hover & {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
+  &:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 24px rgba(138, 43, 226, 0.6);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  svg {
+    font-size: 1.25rem;
+  }
+  
+  @media (max-width: 768px) {
+    width: 44px;
+    height: 44px;
+    bottom: 0.75rem;
+    right: 0.75rem;
   }
 `;
 
@@ -379,6 +427,8 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
   const [translateX, setTranslateX] = useState(0);
   const sliderRef = useRef<HTMLDivElement>(null);
   const [cardWidth, setCardWidth] = useState(0);
+  const { addItem } = useCart();
+  const { success } = useToast();
   
   // Split products: first is premier, rest go in slider
   const premierProduct = products.length > 0 ? products[0] : null;
@@ -517,6 +567,28 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
                       style={{ objectFit: 'cover' }}
                     />
                   </div>
+                  {!premierProduct.hasMultiplePricing && (
+                    <PremierCartButton
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const priceNum = parseFloat(String(premierProduct.price).replace(/[^0-9.]/g, '')) || 0;
+                        addItem({
+                          id: String(premierProduct.id),
+                          name: premierProduct.name,
+                          slug: premierProduct.slug || '',
+                          price: priceNum,
+                          featured_image_url: premierProduct.thumbnail || premierProduct.logo || undefined,
+                          logo_url: premierProduct.logo || undefined,
+                        });
+                        success(`${premierProduct.name} added to cart!`, 3000);
+                      }}
+                      aria-label={`Add ${premierProduct.name} to cart`}
+                    >
+                      <FaShoppingCart />
+                    </PremierCartButton>
+                  )}
                   <PremierContent>
                     <PremierTitle>{premierProduct.name}</PremierTitle>
                     <PremierDescription>

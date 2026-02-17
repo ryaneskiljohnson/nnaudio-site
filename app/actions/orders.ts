@@ -36,6 +36,8 @@ export interface Order {
     redemption_code?: string;
     reseller_name?: string;
     notes?: string | null;
+    bundle_slug?: string;
+    tier?: string;
   };
   receiptUrl: string | null;
   invoiceId: string | null;
@@ -149,6 +151,30 @@ export async function getOrders(): Promise<{
       }
     }
 
+    // Include paid subscription invoices: their payment_intent may not always appear in paymentIntents.list
+    if (profile?.customer_id) {
+      try {
+        const paidInvoices = await stripe.invoices.list({
+          customer: profile.customer_id,
+          status: "paid",
+          limit: 100,
+        });
+        for (const inv of paidInvoices.data) {
+          const piId = typeof inv.payment_intent === "string" ? inv.payment_intent : inv.payment_intent?.id;
+          if (piId && inv.subscription && !allPaymentIntents.has(piId)) {
+            try {
+              const pi = await stripe.paymentIntents.retrieve(piId);
+              if (pi.status === "succeeded") allPaymentIntents.set(pi.id, pi);
+            } catch {
+              // ignore
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[Orders] Error fetching paid invoices:", error);
+      }
+    }
+
     paymentIntents = Array.from(allPaymentIntents.values());
 
     // Filter to only successful payment intents (completed orders)
@@ -218,6 +244,60 @@ export async function getOrders(): Promise<{
             } catch (error) {
               console.error("Error fetching product details:", error);
             }
+          }
+        }
+
+        // Subscription/bundle orders: build items from invoice or PI metadata when cart_items is empty
+        if (items.length === 0 && (pi.invoice || pi.metadata?.bundle_slug || pi.metadata?.checkout_type === "bundle")) {
+          try {
+            if (pi.invoice) {
+              const invoice = await stripe.invoices.retrieve(
+                typeof pi.invoice === "string" ? pi.invoice : pi.invoice.id,
+                { expand: ["subscription"] }
+              );
+              const sub = invoice.subscription as Stripe.Subscription | null;
+              const bundleSlug = (typeof sub?.metadata?.bundle_slug === "string" && sub.metadata.bundle_slug)
+                ? sub.metadata.bundle_slug
+                : (pi.metadata?.bundle_slug as string | undefined);
+              const tier = (typeof sub?.metadata?.tier === "string" && sub.metadata.tier)
+                ? sub.metadata.tier
+                : (pi.metadata?.tier as string | undefined);
+              const bundleName =
+                (bundleSlug && bundleSlug.length > 0)
+                  ? bundleSlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+                  : null;
+              const lineLabel =
+                bundleName && tier
+                  ? `${bundleName} (${tier})`
+                  : invoice.lines?.data?.[0]?.description ?? "Subscription";
+              const amount = (invoice.amount_paid ?? pi.amount) / 100;
+              items = [
+                {
+                  id: invoice.subscription && typeof invoice.subscription === "object" ? (invoice.subscription as Stripe.Subscription).id : pi.id,
+                  name: lineLabel,
+                  price: amount,
+                  quantity: 1,
+                  product_image: null,
+                  product_slug: bundleSlug ?? null,
+                },
+              ];
+            } else if (pi.metadata?.bundle_slug) {
+              const bundleSlug = pi.metadata.bundle_slug as string;
+              const tier = (pi.metadata.tier as string) ?? "";
+              const bundleName = bundleSlug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+              items = [
+                {
+                  id: pi.id,
+                  name: tier ? `${bundleName} (${tier})` : bundleName,
+                  price: pi.amount / 100,
+                  quantity: 1,
+                  product_image: null,
+                  product_slug: bundleSlug,
+                },
+              ];
+            }
+          } catch (err) {
+            console.error("Error building subscription/bundle order items:", err);
           }
         }
 
@@ -321,12 +401,14 @@ export async function getOrders(): Promise<{
           status: pi.status,
           amount: pi.amount / 100,
           currency: pi.currency.toUpperCase(),
-          items: items,
+          items,
           metadata: {
             original_total: pi.metadata?.original_total,
             discount_amount: pi.metadata?.discount_amount,
             total_amount: pi.metadata?.total_amount,
             promotion_code: promotionCodeName || pi.metadata?.promotion_code,
+            bundle_slug: pi.metadata?.bundle_slug,
+            tier: pi.metadata?.tier,
           },
           receiptUrl,
           invoiceId,

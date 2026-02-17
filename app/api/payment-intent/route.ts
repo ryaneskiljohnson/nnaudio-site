@@ -18,7 +18,7 @@ interface CartItem {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { items, promotionCodeId, savePaymentMethod } = body;
+    const { items, promotionCodeId, savePaymentMethod, paymentMethodId } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -157,6 +157,31 @@ export async function POST(request: NextRequest) {
         const price = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
         return sum + price * item.quantity;
       }, 0)) - totalAmount);
+    }
+
+    // If paymentMethodId provided (saved card), verify it belongs to the customer
+    if (paymentMethodId) {
+      if (!stripeCustomerId) {
+        return NextResponse.json(
+          { error: 'Sign in to use a saved payment method' },
+          { status: 400 }
+        );
+      }
+      try {
+        const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+        if (pm.customer !== stripeCustomerId) {
+          return NextResponse.json(
+            { error: 'Payment method does not belong to this account' },
+            { status: 400 }
+          );
+        }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Invalid payment method';
+        return NextResponse.json(
+          { error: message },
+          { status: 400 }
+        );
+      }
     }
 
     // Build line items for metadata
