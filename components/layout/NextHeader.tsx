@@ -27,14 +27,6 @@ import SideCart from "@/components/cart/SideCart";
 // Import translations directly to avoid hook ordering issues
 import i18next from "i18next";
 
-// Import audio utilities dynamically to avoid SSR issues
-const playSound = async () => {
-  if (typeof window !== "undefined") {
-    const { playLydianMaj7Chord } = await import("../../utils/audioUtils");
-    playLydianMaj7Chord();
-  }
-};
-
 // Fallback values for common keys (used when translations not yet loaded)
 const TRANSLATION_FALLBACKS: Record<string, string> = {
   "common.navigation": "Navigation",

@@ -10,9 +10,6 @@ import React, {
 import { useTranslation } from "react-i18next";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
-import { getPresetById } from "@/utils/presets";
-import { createSynth, disposeSynth, DisposableSynth } from "@/utils/synthUtils";
-import useEffectsChain from "@/hooks/useEffectsChain";
 import dynamic from "next/dynamic";
 
 const HeroContainer = styled.section`
@@ -407,23 +404,9 @@ const HeroSection = () => {
     console.log("Hero section mounted, set initial chord to C Major");
   }, []);
 
-  // Define allowed effect types for the effectsChain.getEffect method
-  type EffectType =
-    | "delay"
-    | "reverb"
-    | "compressor"
-    | "limiter"
-    | "chorus"
-    | "stereoWidener"
-    | "softClipper"
-    | "masterVolume";
-
-  const [audioContextStarted, setAudioContextStarted] = useState(false);
   const [videoLoaded, setVideoLoaded] = useState(true); // Start as true for immediate fade-in
   const [videoError, setVideoError] = useState(false);
   const [textContentLoaded, setTextContentLoaded] = useState(false); // Track when text content is ready
-  const effectsChain = useEffectsChain();
-  const synthRef = useRef<DisposableSynth>(null);
 
   // Create fixed animation offsets for each position
   const positionAnimationOffsets = useRef([
@@ -461,239 +444,6 @@ const HeroSection = () => {
       console.log("Client-side re-measurement complete:", widths);
     }
   }, [titleWords]);
-
-  // Use the synth in a way consistent with the Try Me section
-  // Defer initialization to avoid blocking FCP
-  useEffect(() => {
-    let localSynth: DisposableSynth = null;
-
-    const initializeSynth = async () => {
-      if (!effectsChain) return;
-
-      try {
-        // Create a new synth (stub returns null; no synth engine)
-        const newSynth = createSynth("polysynth", effectsChain);
-
-        // Store in ref
-        synthRef.current = newSynth;
-        localSynth = newSynth;
-
-        // Apply the preset using the exact same method as in SynthesizerContainer
-        if (newSynth) {
-          try {
-            const preset = getPresetById("atmospheric");
-            console.log(
-              `Applying atmospheric preset to hero section floating notes`
-            );
-
-            // Apply synth parameters exactly as in SynthesizerContainer.js
-            if (preset.synthParams) {
-              Object.entries(preset.synthParams).forEach(
-                ([paramKey, paramValue]) => {
-                  if (typeof paramValue === "object" && paramValue !== null) {
-                    // Handle nested objects like oscillator.type
-                    Object.entries(
-                      paramValue as Record<string, unknown>
-                    ).forEach(([nestedKey, nestedValue]) => {
-                      try {
-                        // Use type assertion
-                        const typedSynth = newSynth as unknown as {
-                          set: (params: Record<string, unknown>) => void;
-                        };
-                        typedSynth.set({
-                          [paramKey]: { [nestedKey]: nestedValue },
-                        });
-                      } catch (paramError) {
-                        console.warn(
-                          `Error setting nested param ${paramKey}.${nestedKey}:`,
-                          paramError
-                        );
-                      }
-                    });
-                  } else {
-                    // Handle direct parameters
-                    try {
-                      // Use type assertion
-                      const typedSynth = newSynth as unknown as {
-                        set: (params: Record<string, unknown>) => void;
-                      };
-                      typedSynth.set({ [paramKey]: paramValue });
-                    } catch (paramError) {
-                      console.warn(
-                        `Error setting param ${paramKey}:`,
-                        paramError
-                      );
-                    }
-                  }
-                }
-              );
-            }
-
-            // Apply effects using the exact same approach
-            if (preset.effects && effectsChain) {
-              Object.entries(preset.effects).forEach(
-                ([effectType, effectParams]) => {
-                  // Type assertion for effect type
-                  const effect = effectsChain.getEffect?.(
-                    effectType as EffectType
-                  );
-                  if (effect) {
-                    const effectWithSet = effect as { set?: (o: Record<string, unknown>) => void };
-                    Object.entries(
-                      effectParams as Record<string, unknown>
-                    ).forEach(([paramKey, paramValue]) => {
-                      try {
-                        effectWithSet.set?.({ [paramKey]: paramValue });
-                      } catch (effectError) {
-                        console.warn(
-                          `Error setting effect param ${effectType}.${paramKey}:`,
-                          effectError
-                        );
-                      }
-                    });
-                  }
-                }
-              );
-            }
-          } catch (error) {
-            console.error("Error applying atmospheric preset:", error);
-          }
-        }
-      } catch (error) {
-        console.error("Error initializing synth in HeroSection:", error);
-      }
-    };
-
-    // Defer synth initialization to after FCP (1.5 seconds)
-    const timerId = setTimeout(() => {
-      initializeSynth();
-    }, 1500);
-
-    // Clean up
-    return () => {
-      clearTimeout(timerId);
-      if (localSynth) {
-        try {
-          disposeSynth(localSynth);
-        } catch (error) {
-          console.error("Error disposing synth:", error);
-        }
-      }
-    };
-  }, [effectsChain]);
-
-  // Update the playNote function to assign proper octaves
-  const playNote = async (noteName: string): Promise<void> => {
-    try {
-      // Add octave information to the note if it doesn't have one
-      let noteWithOctave = noteName;
-      if (!noteName.match(/\d/)) {
-        // Default octave is 4 for middle register
-        // Adjust octave based on note position in the scale for better spread
-        if (["A", "A#", "Bb", "B"].includes(noteName)) {
-          noteWithOctave = `${noteName}3`; // Lower octave for A, Bb, B
-        } else if (["C", "C#", "Db", "D", "D#", "Eb"].includes(noteName)) {
-          noteWithOctave = `${noteName}4`; // Middle octave for C through E
-        } else {
-          noteWithOctave = `${noteName}4`; // Middle octave for F through G#
-        }
-      }
-
-      console.log(`Playing note ${noteWithOctave} with atmospheric preset`);
-
-      // Exactly follow the pattern from SynthesizerContainer.js for playing notes
-      if (synthRef.current) {
-        // Check for _disposed property to avoid playing disposed synths
-        const synth = synthRef.current as unknown as {
-          _disposed?: boolean;
-          triggerAttackRelease: (
-            notes: string | string[],
-            duration: string
-          ) => void;
-        };
-        if (!synth._disposed) {
-          // Use the proper note with octave for correct pitch
-          synth.triggerAttackRelease(noteWithOctave, "0.5s");
-        }
-      }
-    } catch (error) {
-      console.error("Error playing note:", error, noteName);
-    }
-  };
-
-  // Add a function to play all notes in the current chord
-  const playChord = useCallback(async () => {
-    try {
-      // Get the current chord's notes
-      const currentChord = chordProgression[currentChordIndex];
-      console.log(`Playing chord ${currentChord.name}`);
-
-      // Play each note in the chord with proper octave assignment
-      if (synthRef.current) {
-        // Check for _disposed property to avoid playing disposed synths
-        const synth = synthRef.current as unknown as {
-          _disposed?: boolean;
-          triggerAttackRelease: (
-            notes: string | string[],
-            duration: string
-          ) => void;
-        };
-        if (!synth._disposed) {
-          const notesWithOctaves = currentChord.notes.map((note) => {
-            // Add octave information to the note if it doesn't have one
-            if (!note.match(/\d/)) {
-              // Default octave is 4 for middle register
-              // Adjust octave based on note position in the scale for better spread
-              if (["A", "A#", "Bb", "B"].includes(note)) {
-                return `${note}3`; // Lower octave for A, Bb, B
-              } else if (["C", "C#", "Db", "D", "D#", "Eb"].includes(note)) {
-                return `${note}4`; // Middle octave for C through E
-              } else {
-                return `${note}4`; // Middle octave for F through G#
-              }
-            }
-            return note;
-          });
-
-          // Add a bass note (root of the chord) 2 octaves lower
-          const rootNote = currentChord.notes[0]; // The first note is the root
-          let bassNote;
-
-          // Determine the correct octave for the bass note (2 octaves lower than normal)
-          if (!rootNote.match(/\d/)) {
-            if (["A", "A#", "Bb", "B"].includes(rootNote)) {
-              bassNote = `${rootNote}1`; // 2 octaves below A3, B3, etc.
-            } else {
-              bassNote = `${rootNote}2`; // 2 octaves below C4, D4, etc.
-            }
-          } else {
-            // If the note already has an octave number, subtract 2
-            const noteWithoutOctave = rootNote.replace(/\d/, "");
-            const matchResult = rootNote.match(/\d/);
-            if (matchResult) {
-              const octave = parseInt(matchResult[0]);
-              bassNote = `${noteWithoutOctave}${octave - 2}`;
-            } else {
-              bassNote = `${noteWithoutOctave}2`; // Fallback if no match
-            }
-          }
-
-          // Add the bass note to the array of notes to play
-          const allNotes = [...notesWithOctaves, bassNote];
-          console.log(
-            `Playing chord with notes: ${notesWithOctaves.join(
-              ", "
-            )} and bass note: ${bassNote}`
-          );
-
-          // Play all notes simultaneously
-          synth.triggerAttackRelease(allNotes, "0.8s");
-        }
-      }
-    } catch (error) {
-      console.error("Error playing chord:", error);
-    }
-  }, [chordProgression, currentChordIndex, setAudioContextStarted, synthRef]);
 
   // Turn moveToNextChord into a useCallback
   const moveToNextChord = useCallback((): void => {
@@ -813,7 +563,6 @@ const HeroSection = () => {
     chordProgression,
     initialPositions,
     displayedChord,
-    playChord,
   ]);
 
   // Change chord every 4 seconds
@@ -1050,9 +799,6 @@ const HeroSection = () => {
     titleWords,
     currentWordIndex,
     t,
-    audioContextStarted,
-    playChord,
-    synthRef,
     wordMeasureRef,
     centerWordWidth,
     isMobile,
@@ -1257,12 +1003,10 @@ const HeroSection = () => {
               textShadow:
                 "0px 2px 3px rgba(0,0,0,0.5), 0px 1px 5px rgba(0,0,0,0.5)",
               zIndex: 2,
-              cursor: "pointer",
               boxShadow:
                 "0 10px 20px rgba(0, 0, 0, 0.2), inset 0 4px 10px rgba(255, 255, 255, 0.3), inset 0 -4px 10px rgba(0, 0, 0, 0.2)",
               ...position,
             }}
-            title={t("hero.tooltips.playNote", "Click to play this note")}
             // Keep backgroundColor as an animated property during transitions
             initial={{ opacity: 0, scale: 0.8 }}
             animate={textContentLoaded ? {
@@ -1299,7 +1043,6 @@ const HeroSection = () => {
               scale: { duration: 0.6, delay: 0.3 + animationOffset.delay },
               backgroundColor: { duration: 0.6, delay: 0.3 + animationOffset.delay }
             }}
-            onClick={() => playNote(note)}
             whileHover={{
               scale: 1.1,
               transition: { duration: 0.2 },
@@ -1367,7 +1110,6 @@ const HeroSection = () => {
     positionAnimationOffsets,
     pitchColors,
     t,
-    playNote,
     textContentLoaded
   ]);
 
@@ -1390,16 +1132,13 @@ const HeroSection = () => {
           maxWidth: "200px",
           margin: "0 auto",
           boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
-          cursor: "pointer",
         }}
-        title={t("hero.tooltips.playChord", "Click to play the chord")}
         initial={{ opacity: 0 }}
         animate={{ opacity: textContentLoaded ? 1 : 0 }}
         exit={{ opacity: 0 }}
         transition={{
           opacity: { duration: 0.7, delay: textContentLoaded ? 1.0 : 0 },
         }}
-        onClick={playChord}
         whileHover={{
           scale: 1.05,
           boxShadow: "0 6px 16px rgba(0, 0, 0, 0.3)",
@@ -1413,7 +1152,6 @@ const HeroSection = () => {
     currentChordIndex,
     chordProgression,
     t,
-    playChord,
     textContentLoaded
   ]);
 
