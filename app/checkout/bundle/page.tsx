@@ -31,6 +31,8 @@ import {
   FaExclamationCircle,
   FaShieldAlt,
 } from "react-icons/fa";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import CheckoutPageSkeleton from "@/components/skeletons/CheckoutPageSkeleton";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -283,7 +285,7 @@ const SuccessMessage = styled.div`
   gap: 0.5rem;
 `;
 
-const LoadingSpinner = styled.div`
+const ButtonSpinner = styled.div`
   display: inline-block;
   width: 16px;
   height: 16px;
@@ -739,7 +741,7 @@ function BundlePaymentForm({
       >
         {isProcessing ? (
           <>
-            <LoadingSpinner />
+            <ButtonSpinner />
             Processing...
           </>
         ) : (
@@ -866,30 +868,21 @@ export default function BundleCheckoutPage() {
   }, [loading, bundle, tier, addItem, router]);
 
   if (loading || !bundleSlug || !tier) {
-    return (
-      <Container>
-        <Content>
-          <Title>Loading...</Title>
-        </Content>
-      </Container>
-    );
+    return <CheckoutPageSkeleton />;
   }
 
   if (!bundle) {
     return null;
   }
 
-  // Lifetime uses cart checkout; we redirect in useEffect — show brief message
+  // Lifetime uses cart checkout; we redirect in useEffect — show centered spinner
   if (tier === "lifetime") {
     return (
-      <Container>
-        <Content>
-          <Title>Taking you to checkout...</Title>
-          <p style={{ color: "rgba(255,255,255,0.7)" }}>
-            Adding bundle to cart and redirecting to checkout.
-          </p>
-        </Content>
-      </Container>
+      <LoadingSpinner
+        fullScreen
+        size="medium"
+        text="Taking you to checkout..."
+      />
     );
   }
 

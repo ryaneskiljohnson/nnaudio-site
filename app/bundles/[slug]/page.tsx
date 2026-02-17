@@ -729,21 +729,28 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
     });
   }, [params]);
 
-  // Handle scroll to show/hide sticky button for non-elite bundles
+  // Handle scroll to show/hide sticky button
   useEffect(() => {
     const handleScroll = () => {
-      if (!topSectionRef.current) return;
-      
-      const topBottom = topSectionRef.current.offsetTop + topSectionRef.current.offsetHeight;
       const scrollPosition = window.scrollY;
-      
-      // Show sticky button when scrolled past the top section
-      setShowStickyButton(scrollPosition > topBottom - 100);
+      const isElite = bundle?.pricing?.monthly || bundle?.pricing?.annual;
+
+      if (topSectionRef.current) {
+        const topBottom = topSectionRef.current.offsetTop + topSectionRef.current.offsetHeight;
+        // Show when scrolled past the top section
+        const pastTopSection = scrollPosition > topBottom - 100;
+        // For regular bundles, also show after a short scroll so the bar appears sooner
+        const regularBundleShowAfterScroll = !isElite && scrollPosition > 300;
+        setShowStickyButton(pastTopSection || regularBundleShowAfterScroll);
+      } else {
+        // Fallback: show after any scroll so bar can appear (e.g. if ref not ready)
+        setShowStickyButton(scrollPosition > 300);
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll(); // Check initial position
-    
+
     return () => window.removeEventListener('scroll', handleScroll);
   }, [bundle]);
 
@@ -1099,12 +1106,13 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
         </ProductsSection>
       </Content>
 
-      {/* Sticky button for non-elite bundles */}
-      {showStickyButton && bundle && !(bundle.pricing.monthly || bundle.pricing.annual) && bundle.pricing.lifetime && (
+      {/* Sticky bar: elite bundles = "See Pricing" (scroll to pricing), non-elite = Add to Cart */}
+      {showStickyButton && bundle && ((bundle.pricing?.monthly || bundle.pricing?.annual) || bundle.pricing?.lifetime) && (
         <StickyAddToCartButton
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 20, x: '-50%' }}
+          animate={{ opacity: 1, y: 0, x: '-50%' }}
+          exit={{ opacity: 0, y: 20, x: '-50%' }}
+          transition={{ duration: 0.3 }}
         >
           <StickyButtonContent>
             <StickyBundleImage>
@@ -1128,38 +1136,53 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
             </StickyBundleImage>
             <StickyBundleInfo>
               <StickyBundleName>{bundle.name}</StickyBundleName>
-              <StickyPrice>
-                <StickyPriceMain>
-                  {formatPrice(bundle.pricing.lifetime.sale_price || bundle.pricing.lifetime.price)}
-                </StickyPriceMain>
-                {bundle.pricing.lifetime.sale_price && (
-                  <StickyPriceOriginal>
-                    {formatPrice(bundle.pricing.lifetime.price)}
-                  </StickyPriceOriginal>
-                )}
-              </StickyPrice>
+              {/* Elite bundles: no price in bar; non-elite: show lifetime price */}
+              {!(bundle.pricing.monthly || bundle.pricing.annual) && bundle.pricing.lifetime && (
+                <StickyPrice>
+                  <StickyPriceMain>
+                    {formatPrice(bundle.pricing.lifetime.sale_price || bundle.pricing.lifetime.price)}
+                  </StickyPriceMain>
+                  {bundle.pricing.lifetime.sale_price && (
+                    <StickyPriceOriginal>
+                      {formatPrice(bundle.pricing.lifetime.price)}
+                    </StickyPriceOriginal>
+                  )}
+                </StickyPrice>
+              )}
             </StickyBundleInfo>
-            <StickyButton
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                if (bundle?.pricing?.lifetime) {
-                  const lifetime = bundle.pricing.lifetime;
-                  addItem({
-                    id: bundle.id,
-                    name: bundle.name,
-                    slug: bundle.slug,
-                    price: lifetime.price ?? 0,
-                    sale_price: lifetime.sale_price ?? undefined,
-                    featured_image_url: bundle.featured_image_url,
-                    logo_url: bundle.logo_url,
-                  });
-                  success(`${bundle.name} added to cart!`, 3000);
-                }
-              }}
-            >
-              <FaShoppingCart /> Add to Cart
-            </StickyButton>
+            {(bundle.pricing.monthly || bundle.pricing.annual) ? (
+              <StickyButton
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  document.getElementById('pricing-options')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+              >
+                See Pricing <FaArrowRight />
+              </StickyButton>
+            ) : (
+              <StickyButton
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (bundle?.pricing?.lifetime) {
+                    const lifetime = bundle.pricing.lifetime;
+                    addItem({
+                      id: bundle.id,
+                      name: bundle.name,
+                      slug: bundle.slug,
+                      price: lifetime.price ?? 0,
+                      sale_price: lifetime.sale_price ?? undefined,
+                      featured_image_url: bundle.featured_image_url,
+                      logo_url: bundle.logo_url,
+                    });
+                    success(`${bundle.name} added to cart!`, 3000);
+                  }
+                }}
+              >
+                <FaShoppingCart /> Add to Cart
+              </StickyButton>
+            )}
           </StickyButtonContent>
         </StickyAddToCartButton>
       )}
