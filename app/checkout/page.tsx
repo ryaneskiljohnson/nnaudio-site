@@ -11,6 +11,9 @@ import { Elements, CardElement, useStripe, useElements } from "@stripe/react-str
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { FaHome, FaChevronRight, FaLock, FaCheckCircle, FaExclamationCircle, FaShieldAlt } from "react-icons/fa";
+import { SearchableSelect } from "@/components/common/SearchableSelect";
+import { COUNTRIES, getStateOptions } from "@/lib/countries-states";
+import CheckoutPageSkeleton from "@/components/skeletons/CheckoutPageSkeleton";
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -502,6 +505,69 @@ const SaveCardNote = styled.div`
   padding-left: 0.25rem;
 `;
 
+const PaymentMethodOption = styled.label<{ $selected?: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: ${(p) => (p.$selected ? "rgba(78, 205, 196, 0.12)" : "rgba(255, 255, 255, 0.05)")};
+  border: 1px solid ${(p) => (p.$selected ? "rgba(78, 205, 196, 0.4)" : "rgba(255, 255, 255, 0.1)")};
+  border-radius: 10px;
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  input {
+    margin: 0;
+    accent-color: #4ecdc4;
+  }
+`;
+
+const PaymentMethodLabel = styled.span`
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
+`;
+
+const UseOtherLabel = styled.span`
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+`;
+
+const SavedCardBilling = styled.div`
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+`;
+
+/** Saved payment method from GET /api/payment-methods */
+type SavedPaymentMethod = {
+  id: string;
+  card: { brand: string; last4: string } | null;
+  isDefault?: boolean;
+  billing_details?: {
+    name: string | null;
+    email: string | null;
+    address: {
+      line1: string | null;
+      line2?: string | null;
+      city: string | null;
+      state: string | null;
+      postal_code: string | null;
+      country: string | null;
+    } | null;
+  } | null;
+};
+
 // Payment Form Component
 function PaymentForm({ 
   items, 
@@ -509,7 +575,9 @@ function PaymentForm({
   appliedPromo, 
   onOrderComplete,
   billingFields,
-  onBillingFieldsChange
+  onBillingFieldsChange,
+  savedPaymentMethods = [],
+  paymentMethodsLoading = false,
 }: { 
   items: any[]; 
   total: number; 
@@ -533,6 +601,8 @@ function PaymentForm({
     billingZip: string;
     billingCountry: string;
   }) => void;
+  savedPaymentMethods?: SavedPaymentMethod[];
+  paymentMethodsLoading?: boolean;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -545,10 +615,27 @@ function PaymentForm({
   const [success, setSuccess] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [savePaymentMethod, setSavePaymentMethod] = useState(false);
+
+  const defaultPm = savedPaymentMethods.find((pm) => pm.isDefault) ?? savedPaymentMethods[0];
+  const [selectedSavedPmId, setSelectedSavedPmId] = useState<string | null>(defaultPm?.id ?? null);
+  const [useOtherPaymentMethod, setUseOtherPaymentMethod] = useState(false);
   
   // Use billing fields from props
   const { email, billingName, billingAddress, billingCity, billingState, billingZip, billingCountry } = billingFields;
-  
+
+  const hasSavedMethods = savedPaymentMethods.length > 0;
+  const showBillingAndCard = !hasSavedMethods || useOtherPaymentMethod;
+  const payingWithSavedCard = hasSavedMethods && !useOtherPaymentMethod && !!selectedSavedPmId;
+  const waitingForPaymentMethods = paymentMethodsLoading && !!user?.profile?.customer_id;
+
+  // When saved methods load, default to first/default PM; keep selection in sync
+  useEffect(() => {
+    if (savedPaymentMethods.length === 0) return;
+    const def = savedPaymentMethods.find((pm) => pm.isDefault) ?? savedPaymentMethods[0];
+    const currentInList = selectedSavedPmId && savedPaymentMethods.some((pm) => pm.id === selectedSavedPmId);
+    if (def && (!selectedSavedPmId || !currentInList)) setSelectedSavedPmId(def.id);
+  }, [savedPaymentMethods, selectedSavedPmId]);
+
   // Helper to update billing fields
   const updateBillingField = (field: string, value: string) => {
     onBillingFieldsChange({
@@ -627,8 +714,15 @@ function PaymentForm({
       return;
     }
 
-    if (!stripe || !elements) {
+    if (!stripe) {
       setError('Payment could not be initialized. Please refresh and try again.');
+      setIsProcessing(false);
+      return;
+    }
+
+    // When using card element we need elements; when paying with saved card we do not
+    if (showBillingAndCard && !elements) {
+      setError('Payment form not ready. Please refresh and try again.');
       setIsProcessing(false);
       return;
     }
@@ -636,55 +730,56 @@ function PaymentForm({
     setIsProcessing(true);
     setError(null);
 
-    // Validate required fields
     if (!email.trim()) {
       setError('Email address is required');
       setIsProcessing(false);
       return;
     }
 
-    if (!billingName.trim()) {
-      setError('Billing name is required');
-      setIsProcessing(false);
-      return;
-    }
-
-    if (!billingAddress.trim()) {
-      setError('Billing address is required');
-      setIsProcessing(false);
-      return;
-    }
-
-    if (!billingCity.trim()) {
-      setError('City is required');
-      setIsProcessing(false);
-      return;
-    }
-
-    if (!billingState.trim()) {
-      setError('State is required');
-      setIsProcessing(false);
-      return;
-    }
-
-    if (!billingZip.trim()) {
-      setError('ZIP code is required');
-      setIsProcessing(false);
-      return;
+    if (showBillingAndCard) {
+      if (!billingName.trim()) {
+        setError('Billing name is required');
+        setIsProcessing(false);
+        return;
+      }
+      if (!billingAddress.trim()) {
+        setError('Billing address is required');
+        setIsProcessing(false);
+        return;
+      }
+      if (!billingCity.trim()) {
+        setError('City is required');
+        setIsProcessing(false);
+        return;
+      }
+      if (!billingState.trim()) {
+        setError('State is required');
+        setIsProcessing(false);
+        return;
+      }
+      if (!billingZip.trim()) {
+        setError('ZIP code is required');
+        setIsProcessing(false);
+        return;
+      }
     }
 
     try {
-      // Always create a fresh payment intent before confirming
+      const piBody: Record<string, unknown> = {
+        items,
+        promotionCodeId: appliedPromo ? appliedPromo.promotionCodeId : undefined,
+        savePaymentMethod: showBillingAndCard ? savePaymentMethod : false,
+      };
+      if (payingWithSavedCard && selectedSavedPmId) {
+        piBody.paymentMethodId = selectedSavedPmId;
+      }
+
       const piResponse = await fetch('/api/payment-intent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          items,
-          promotionCodeId: appliedPromo ? appliedPromo.promotionCodeId : undefined,
-          savePaymentMethod: savePaymentMethod,
-        }),
+        body: JSON.stringify(piBody),
       });
 
       const piData = await piResponse.json();
@@ -715,51 +810,51 @@ function PaymentForm({
 
       setClientSecret(piData.clientSecret);
 
-      // Ensure Stripe and Elements are ready
-      if (!stripe || !elements) {
-        setError('Payment system not ready. Please wait a moment and try again.');
-        setIsProcessing(false);
-        return;
-      }
+      let stripeError: import('@stripe/stripe-js').StripeError | undefined;
+      let paymentIntent: import('@stripe/stripe-js').PaymentIntent | null = null;
 
-      // Wait a brief moment for elements to be fully ready
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      const cardElement = elements.getElement(CardElement);
-
-      if (!cardElement) {
-        setError('Card element not found. Please refresh the page and try again.');
-        setIsProcessing(false);
-        return;
-      }
-
-      const confirmOptions: any = {
-        payment_method: {
-          card: cardElement,
-          billing_details: {
-            name: billingName,
-            email: email,
-            address: {
-              line1: billingAddress,
-              city: billingCity,
-              state: billingState,
-              postal_code: billingZip,
-              country: billingCountry,
+      if (payingWithSavedCard && selectedSavedPmId) {
+        const result = await stripe.confirmCardPayment(piData.clientSecret, {
+          payment_method: selectedSavedPmId,
+        });
+        stripeError = result.error ?? undefined;
+        paymentIntent = result.paymentIntent ?? null;
+      } else {
+        if (!elements) {
+          setError('Payment form not ready. Please wait a moment and try again.');
+          setIsProcessing(false);
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        const cardElement = elements.getElement(CardElement);
+        if (!cardElement) {
+          setError('Card element not found. Please refresh the page and try again.');
+          setIsProcessing(false);
+          return;
+        }
+        const confirmOptions = {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: billingName,
+              email: email,
+              address: {
+                line1: billingAddress,
+                city: billingCity,
+                state: billingState,
+                postal_code: billingZip,
+                country: billingCountry,
+              },
             },
           },
-        },
-      };
-
-      // If saving payment method, ensure it's attached to the customer
-      if (savePaymentMethod && piData.paymentIntentId) {
-        // The payment method will be automatically attached when setup_future_usage is set
-        // But we can also explicitly set it as the default if needed
+        };
+        const result = await stripe.confirmCardPayment(piData.clientSecret, confirmOptions);
+        stripeError = result.error ?? undefined;
+        paymentIntent = result.paymentIntent ?? null;
       }
 
-      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(piData.clientSecret, confirmOptions);
-
       if (stripeError) {
-        setError(stripeError.message || 'Payment failed');
+        setError(stripeError.message ?? 'Payment failed');
         setIsProcessing(false);
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         // If savePaymentMethod is enabled, verify the payment method is attached
@@ -834,6 +929,76 @@ function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit}>
+      {waitingForPaymentMethods && (
+        <FormGroup>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 0', color: 'rgba(255,255,255,0.8)' }}>
+            <LoadingSpinner />
+            <span>Loading payment methods...</span>
+          </div>
+        </FormGroup>
+      )}
+
+      {!waitingForPaymentMethods && hasSavedMethods && (
+        <FormGroup>
+          <Label>Payment method</Label>
+          {savedPaymentMethods.map((pm) => (
+            <PaymentMethodOption
+              key={pm.id}
+              $selected={!useOtherPaymentMethod && selectedSavedPmId === pm.id}
+            >
+              <input
+                type="radio"
+                name="paymentMethod"
+                checked={!useOtherPaymentMethod && selectedSavedPmId === pm.id}
+                onChange={() => {
+                  setUseOtherPaymentMethod(false);
+                  setSelectedSavedPmId(pm.id);
+                }}
+              />
+              <PaymentMethodLabel>
+                {pm.card?.brand?.toUpperCase() ?? 'CARD'} •••• {pm.card?.last4 ?? '****'}
+                {pm.isDefault && ' (default)'}
+              </PaymentMethodLabel>
+            </PaymentMethodOption>
+          ))}
+          <PaymentMethodOption $selected={useOtherPaymentMethod}>
+            <input
+              type="radio"
+              name="paymentMethod"
+              checked={useOtherPaymentMethod}
+              onChange={() => setUseOtherPaymentMethod(true)}
+            />
+            <UseOtherLabel>Use other payment method</UseOtherLabel>
+          </PaymentMethodOption>
+        </FormGroup>
+      )}
+
+      {!waitingForPaymentMethods && payingWithSavedCard && (() => {
+        const selectedPm = savedPaymentMethods.find((pm) => pm.id === selectedSavedPmId);
+        const bd = selectedPm?.billing_details;
+        const addr = bd?.address;
+        const hasAny = bd?.name || addr?.line1 || addr?.city || addr?.state || addr?.postal_code || addr?.country;
+        if (!hasAny) return null;
+        return (
+          <FormGroup>
+            <Label>Billing address on file</Label>
+            <SavedCardBilling>
+              {bd?.name && <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>{bd.name}</div>}
+              {addr?.line1 && <div>{addr.line1}</div>}
+              {addr?.line2 && <div>{addr.line2}</div>}
+              {(addr?.city || addr?.state || addr?.postal_code) && (
+                <div>
+                  {[addr.city, addr.state, addr.postal_code].filter(Boolean).join(', ')}
+                </div>
+              )}
+              {addr?.country && <div>{addr.country}</div>}
+            </SavedCardBilling>
+          </FormGroup>
+        );
+      })()}
+
+      {!waitingForPaymentMethods && (
+        <>
       <FormGroup>
         <Label>Email Address *</Label>
         <Input
@@ -852,7 +1017,7 @@ function PaymentForm({
         )}
       </FormGroup>
 
-      {!isFreeOrder && (
+      {!isFreeOrder && showBillingAndCard && (
         <>
           <FormGroup>
             <Label>Billing Name *</Label>
@@ -889,12 +1054,16 @@ function PaymentForm({
             </FormGroup>
             <FormGroup>
               <Label>State *</Label>
-              <Input
-                type="text"
+              <SearchableSelect
                 value={billingState}
-                onChange={(e) => updateBillingField('billingState', e.target.value)}
-                placeholder="State"
+                onChange={(v) => updateBillingField("billingState", v)}
+                options={getStateOptions(billingCountry)}
+                placeholder="State or region"
                 required
+                allowCustomValue
+                getLabelForValue={(v) =>
+                  getStateOptions(billingCountry).find((o) => o.value === v || o.label === v)?.label ?? v
+                }
               />
             </FormGroup>
           </FormRow>
@@ -912,12 +1081,13 @@ function PaymentForm({
             </FormGroup>
             <FormGroup>
               <Label>Country *</Label>
-              <Input
-                type="text"
+              <SearchableSelect
                 value={billingCountry}
-                onChange={(e) => updateBillingField('billingCountry', e.target.value)}
+                onChange={(v) => updateBillingField("billingCountry", v)}
+                options={COUNTRIES}
                 placeholder="Country"
                 required
+                getLabelForValue={(v) => COUNTRIES.find((c) => c.value === v)?.label}
               />
             </FormGroup>
           </FormRow>
@@ -947,6 +1117,8 @@ function PaymentForm({
           </FormGroup>
         </>
       )}
+        </>
+      )}
 
       {error && (
         <ErrorMessage>
@@ -964,7 +1136,12 @@ function PaymentForm({
 
       <PayButton
         type="submit"
-        disabled={!stripe || isProcessing || !clientSecret}
+        disabled={
+          !stripe ||
+          isProcessing ||
+          (waitingForPaymentMethods && !!user?.profile?.customer_id) ||
+          (!isFreeOrder && !payingWithSavedCard && !clientSecret)
+        }
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
@@ -1108,14 +1285,16 @@ function PromoCodeSection({
 }
 
 export default function CheckoutPage() {
-  const { items, getTotal } = useCart();
+  const { items, getTotal, isLoaded: cartLoaded } = useCart();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const total = getTotal();
   const [appliedDiscount, setAppliedDiscount] = useState<{ amount: number; percent: number; code: string } | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: { amount: number; percent: number }; promotionCodeId: string } | null>(null);
   const [orderComplete, setOrderComplete] = useState(false);
-  
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
+
   // Billing fields state - moved to parent to persist across component remounts
   const [billingFields, setBillingFields] = useState({
     email: user?.email || '',
@@ -1134,15 +1313,42 @@ export default function CheckoutPage() {
     }
   }, [user, billingFields.email]);
 
-  // Redirect if cart is empty
+  // Fetch saved payment methods when user has a Stripe customer
   useEffect(() => {
-    if (items.length === 0 && !orderComplete) {
+    if (!user?.profile?.customer_id) {
+      setSavedPaymentMethods([]);
+      setPaymentMethodsLoading(false);
+      return;
+    }
+    setPaymentMethodsLoading(true);
+    fetch('/api/payment-methods')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.paymentMethods)) {
+          setSavedPaymentMethods(
+            data.paymentMethods.map((pm: SavedPaymentMethod) => ({
+              id: pm.id,
+              card: pm.card,
+              isDefault: pm.isDefault,
+              billing_details: pm.billing_details ?? null,
+            }))
+          );
+        }
+      })
+      .catch(() => setSavedPaymentMethods([]))
+      .finally(() => setPaymentMethodsLoading(false));
+  }, [user?.profile?.customer_id]);
+
+  // Redirect if cart is empty (only after cart has loaded from localStorage)
+  useEffect(() => {
+    if (cartLoaded && items.length === 0 && !orderComplete) {
       router.push('/cart');
     }
-  }, [items, router, orderComplete]);
+  }, [cartLoaded, items, router, orderComplete]);
 
-  if (items.length === 0 && !orderComplete) {
-    return null;
+  // Skeleton until cart loaded, auth loaded, and we have items. (Subscription waits for bundle fetch; we wait for cart + auth so we know if user has customer_id before rendering form.)
+  if (!cartLoaded || authLoading || (cartLoaded && items.length === 0 && !orderComplete)) {
+    return <CheckoutPageSkeleton />;
   }
 
   const finalTotal = Math.max(appliedDiscount ? total - appliedDiscount.amount : total, 0);
@@ -1182,6 +1388,8 @@ export default function CheckoutPage() {
                 onOrderComplete={() => setOrderComplete(true)}
                 billingFields={billingFields}
                 onBillingFieldsChange={setBillingFields}
+                savedPaymentMethods={savedPaymentMethods}
+                paymentMethodsLoading={paymentMethodsLoading}
               />
             </Elements>
           </CheckoutForm>

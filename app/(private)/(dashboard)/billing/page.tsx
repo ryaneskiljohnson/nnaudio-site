@@ -27,6 +27,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { createCustomerPortalSession } from "@/utils/stripe/actions";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import { useTranslation } from "react-i18next";
+import { SearchableSelect } from "@/components/common/SearchableSelect";
+import { COUNTRIES, getStateOptions } from "@/lib/countries-states";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -776,12 +778,16 @@ function AddCardForm({
         </AddCardFormGroup>
         <AddCardFormGroup style={{ marginBottom: 0 }}>
           <AddCardLabel>{t("dashboard.billing.state", "State")} *</AddCardLabel>
-          <AddCardInput
-            type="text"
+          <SearchableSelect
             value={billing.state}
-            onChange={(e) => updateBilling("state", e.target.value)}
-            placeholder="State"
+            onChange={(v) => updateBilling("state", v)}
+            options={getStateOptions(billing.country)}
+            placeholder={t("dashboard.billing.stateOrRegion", "State or region")}
             required
+            allowCustomValue
+            getLabelForValue={(v) =>
+              getStateOptions(billing.country).find((o) => o.value === v || o.label === v)?.label ?? v
+            }
           />
         </AddCardFormGroup>
       </AddCardFormRow>
@@ -799,12 +805,13 @@ function AddCardForm({
         </AddCardFormGroup>
         <AddCardFormGroup style={{ marginBottom: 0 }}>
           <AddCardLabel>{t("dashboard.billing.country", "Country")} *</AddCardLabel>
-          <AddCardInput
-            type="text"
+          <SearchableSelect
             value={billing.country}
-            onChange={(e) => updateBilling("country", e.target.value)}
-            placeholder="Country"
+            onChange={(v) => updateBilling("country", v)}
+            options={COUNTRIES}
+            placeholder={t("dashboard.billing.country", "Country")}
             required
+            getLabelForValue={(v) => COUNTRIES.find((c) => c.value === v)?.label}
           />
         </AddCardFormGroup>
       </AddCardFormRow>

@@ -23,6 +23,8 @@ import {
 } from "@stripe/react-stripe-js";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
+import { SearchableSelect } from "@/components/common/SearchableSelect";
+import { COUNTRIES, getStateOptions } from "@/lib/countries-states";
 import {
   FaHome,
   FaChevronRight,
@@ -1066,12 +1068,16 @@ function BundlePaymentForm({
         </FormGroup>
         <FormGroup>
           <Label>State *</Label>
-          <Input
-            type="text"
+          <SearchableSelect
             value={billingState}
-            onChange={(e) => update("billingState", e.target.value)}
-            placeholder="State"
+            onChange={(v) => update("billingState", v)}
+            options={getStateOptions(billingCountry)}
+            placeholder="State or region"
             required
+            allowCustomValue
+            getLabelForValue={(v) =>
+              getStateOptions(billingCountry).find((o) => o.value === v || o.label === v)?.label ?? v
+            }
           />
         </FormGroup>
       </FormRow>
@@ -1089,12 +1095,13 @@ function BundlePaymentForm({
         </FormGroup>
         <FormGroup>
           <Label>Country *</Label>
-          <Input
-            type="text"
+          <SearchableSelect
             value={billingCountry}
-            onChange={(e) => update("billingCountry", e.target.value)}
+            onChange={(v) => update("billingCountry", v)}
+            options={COUNTRIES}
             placeholder="Country"
             required
+            getLabelForValue={(v) => COUNTRIES.find((c) => c.value === v)?.label}
           />
         </FormGroup>
       </FormRow>
