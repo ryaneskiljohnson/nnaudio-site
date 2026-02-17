@@ -307,12 +307,15 @@ const OrderSummary = styled.div`
   border-radius: 20px;
   padding: 2rem;
   height: fit-content;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
   position: sticky;
   top: 140px;
 
   @media (max-width: 968px) {
     position: relative;
     top: 0;
+    max-height: none;
   }
 `;
 
@@ -361,6 +364,99 @@ const SummaryTotal = styled.div`
   font-size: 1.3rem;
   font-weight: 700;
   color: #4ecdc4;
+`;
+
+const PromoCodeContainerSidebar = styled.div`
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const PromoCodeLabel = styled.label`
+  display: block;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+`;
+
+const PromoCodeInputGroup = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const PromoCodeInput = styled.input`
+  flex: 1;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: white;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: #4ecdc4;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: none;
+  }
+`;
+
+const ApplyPromoButton = styled.button`
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const PromoCodeSuccess = styled.div`
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  border-radius: 8px;
+  color: #4ecdc4;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+
+const RemovePromoButton = styled.button`
+  background: none;
+  border: none;
+  color: #4ecdc4;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  padding: 0;
+  margin-left: 0.5rem;
+
+  &:hover {
+    opacity: 0.8;
+  }
 `;
 
 const SecurityNotice = styled.div`
@@ -444,12 +540,119 @@ type BillingFields = {
   billingCountry: string;
 };
 
+type AppliedPromo = {
+  code: string;
+  discount: { amount: number; percent: number };
+  promotionCodeId: string;
+};
+
+function BundlePromoCodeSection({
+  amount,
+  appliedPromo,
+  onPromoApplied,
+  onPromoRemoved,
+}: {
+  amount: number;
+  appliedPromo: AppliedPromo | null;
+  onPromoApplied: (p: AppliedPromo) => void;
+  onPromoRemoved: () => void;
+}) {
+  const [promoCode, setPromoCode] = useState("");
+  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
+
+  const handleApply = async () => {
+    if (!promoCode.trim()) {
+      setPromoCodeError("Please enter a promo code");
+      return;
+    }
+    setIsValidatingPromo(true);
+    setPromoCodeError(null);
+    try {
+      const res = await fetch("/api/promo-code/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: promoCode.trim(), amount }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        onPromoApplied({
+          code: data.promotionCode.code,
+          discount: data.discount,
+          promotionCodeId: data.promotionCode.id,
+        });
+        setPromoCode("");
+      } else {
+        setPromoCodeError(data.error || "Invalid promo code");
+      }
+    } catch (err: any) {
+      setPromoCodeError(err.message || "Failed to validate promo code");
+    } finally {
+      setIsValidatingPromo(false);
+    }
+  };
+
+  return (
+    <PromoCodeContainerSidebar>
+      <PromoCodeLabel>Promo Code</PromoCodeLabel>
+      {appliedPromo ? (
+        <PromoCodeSuccess>
+          <span>
+            ✓ {appliedPromo.code} (
+            {appliedPromo.discount.percent > 0
+              ? `${appliedPromo.discount.percent}% off`
+              : `$${appliedPromo.discount.amount.toFixed(2)} off`}
+            )
+          </span>
+          <RemovePromoButton type="button" onClick={onPromoRemoved}>
+            Remove
+          </RemovePromoButton>
+        </PromoCodeSuccess>
+      ) : (
+        <>
+          <PromoCodeInputGroup>
+            <PromoCodeInput
+              type="text"
+              value={promoCode}
+              onChange={(e) => {
+                setPromoCode(e.target.value.toUpperCase());
+                setPromoCodeError(null);
+              }}
+              placeholder="Enter code"
+              disabled={isValidatingPromo}
+            />
+            <ApplyPromoButton
+              type="button"
+              onClick={handleApply}
+              disabled={isValidatingPromo || !promoCode.trim()}
+            >
+              {isValidatingPromo ? "..." : "Apply"}
+            </ApplyPromoButton>
+          </PromoCodeInputGroup>
+          {promoCodeError && (
+            <div
+              style={{
+                marginTop: "0.5rem",
+                fontSize: "0.8rem",
+                color: "#ff5e62",
+              }}
+            >
+              {promoCodeError}
+            </div>
+          )}
+        </>
+      )}
+    </PromoCodeContainerSidebar>
+  );
+}
+
 function BundlePaymentForm({
   bundleSlug,
   tier,
   bundle,
   billingFields,
   onBillingFieldsChange,
+  appliedPromo,
 }: {
   bundleSlug: string;
   tier: TierKey;
@@ -466,6 +669,7 @@ function BundlePaymentForm({
   };
   billingFields: BillingFields;
   onBillingFieldsChange: (f: BillingFields) => void;
+  appliedPromo: AppliedPromo | null;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -492,6 +696,10 @@ function BundlePaymentForm({
 
   const displayPrice =
     bundle.pricing[tier]?.sale_price ?? bundle.pricing[tier]?.price ?? 0;
+  const finalDisplayPrice = Math.max(
+    0,
+    displayPrice - (appliedPromo?.discount.amount ?? 0)
+  );
   const isSubscription = tier === "monthly" || tier === "annual";
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -546,6 +754,9 @@ function BundlePaymentForm({
           email: requiredEmail,
           ...(user?.profile?.customer_id && {
             customerId: user.profile.customer_id,
+          }),
+          ...(appliedPromo && {
+            promotionCodeId: appliedPromo.promotionCodeId,
           }),
         }),
       });
@@ -744,12 +955,12 @@ function BundlePaymentForm({
             <ButtonSpinner />
             Processing...
           </>
-        ) : (
+          ) : (
           <>
             <FaLock />
             {isSubscription
-              ? `Start ${tier === "monthly" ? "monthly" : "annual"} subscription — ${formatPrice(displayPrice)}/${tier === "monthly" ? "mo" : "yr"}`
-              : `Pay ${formatPrice(displayPrice)}`}
+              ? `Start ${tier === "monthly" ? "monthly" : "annual"} subscription — ${formatPrice(finalDisplayPrice)}/${tier === "monthly" ? "mo" : "yr"}`
+              : `Pay ${formatPrice(finalDisplayPrice)}`}
           </>
         )}
       </SubmitButton>
@@ -804,6 +1015,7 @@ export default function BundleCheckoutPage() {
     billingZip: "",
     billingCountry: "US",
   });
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
 
   const tier: TierKey | null =
     tierParam && ["monthly", "annual", "lifetime"].includes(tierParam)
@@ -931,12 +1143,19 @@ export default function BundleCheckoutPage() {
                 bundle={bundle}
                 billingFields={billingFields}
                 onBillingFieldsChange={setBillingFields}
+                appliedPromo={appliedPromo}
               />
             </Elements>
           </CheckoutForm>
 
           <OrderSummary>
             <SectionTitle>Order summary</SectionTitle>
+            <BundlePromoCodeSection
+              amount={displayPrice}
+              appliedPromo={appliedPromo}
+              onPromoApplied={setAppliedPromo}
+              onPromoRemoved={() => setAppliedPromo(null)}
+            />
             <SummaryItem>
               <SummaryImage>
                 {(bundle.featured_image_url || bundle.logo_url) ? (
@@ -985,9 +1204,30 @@ export default function BundleCheckoutPage() {
                 )}
               </SummaryDetails>
             </SummaryItem>
+            {appliedPromo && appliedPromo.discount.amount > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "0.95rem",
+                  color: "rgba(255,255,255,0.8)",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <span>Discount ({appliedPromo.code})</span>
+                <span style={{ color: "#4ecdc4" }}>
+                  -{formatPrice(appliedPromo.discount.amount)}
+                </span>
+              </div>
+            )}
             <SummaryTotal>
               <span>{tier === "monthly" || tier === "annual" ? "Due today" : "Total"}</span>
-              <span>{formatPrice(displayPrice)}{tier === "monthly" ? "/mo" : tier === "annual" ? "/yr" : ""}</span>
+              <span>
+                {formatPrice(
+                  Math.max(0, displayPrice - (appliedPromo?.discount.amount ?? 0))
+                )}
+                {tier === "monthly" ? "/mo" : tier === "annual" ? "/yr" : ""}
+              </span>
             </SummaryTotal>
           </OrderSummary>
         </CheckoutContainer>

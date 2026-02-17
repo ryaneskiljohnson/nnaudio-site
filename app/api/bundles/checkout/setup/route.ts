@@ -44,11 +44,13 @@ export async function POST(request: NextRequest) {
       tier,
       email,
       customerId,
+      promotionCodeId,
     }: {
       bundle_slug: string;
       tier: BundleTier;
       email?: string;
       customerId?: string;
+      promotionCodeId?: string;
     } = body;
 
     if (!bundle_slug || !tier) {
@@ -183,10 +185,52 @@ export async function POST(request: NextRequest) {
     }
 
     if (tier === "lifetime") {
-      const amountCents = Math.round(
-        (tierRow.sale_price ?? tierRow.price ?? 0) * 100
-      );
-      if (amountCents < 50) {
+      let amountDollars = tierRow.sale_price ?? tierRow.price ?? 0;
+      let discountAmount = 0;
+      let resolvedPromoId: string | undefined;
+
+      if (promotionCodeId) {
+        try {
+          let promotionCode: Stripe.PromotionCode | null = null;
+          if (promotionCodeId.startsWith("promo_")) {
+            try {
+              promotionCode = await stripe.promotionCodes.retrieve(
+                promotionCodeId
+              );
+            } catch {
+              /* ignore */
+            }
+          }
+          if (!promotionCode) {
+            const list = await stripe.promotionCodes.list({
+              code: promotionCodeId.toUpperCase(),
+              active: true,
+              limit: 1,
+            });
+            if (list.data.length > 0) promotionCode = list.data[0];
+          }
+          if (promotionCode) {
+            const coupon =
+              typeof promotionCode.coupon === "string"
+                ? await stripe.coupons.retrieve(promotionCode.coupon)
+                : promotionCode.coupon;
+            if (coupon.valid) {
+              if (coupon.percent_off) {
+                discountAmount = (amountDollars * coupon.percent_off) / 100;
+              } else if (coupon.amount_off) {
+                discountAmount = coupon.amount_off / 100;
+              }
+              amountDollars = Math.max(0, amountDollars - discountAmount);
+              resolvedPromoId = promotionCode.id;
+            }
+          }
+        } catch (e) {
+          console.error("Bundle setup promo apply error:", e);
+        }
+      }
+
+      const amountCents = Math.round(amountDollars * 100);
+      if (amountCents > 0 && amountCents < 50) {
         return NextResponse.json(
           { error: "Invalid tier price" },
           { status: 400 }
@@ -203,6 +247,7 @@ export async function POST(request: NextRequest) {
           bundle_slug: bundle.slug,
           tier: "lifetime",
           purchase_type: "bundle_lifetime",
+          ...(resolvedPromoId && { promotion_code: resolvedPromoId }),
         },
       });
       return NextResponse.json({
@@ -212,9 +257,42 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    let couponId: string | undefined;
+    if (promotionCodeId) {
+      try {
+        let promotionCode: Stripe.PromotionCode | null = null;
+        if (promotionCodeId.startsWith("promo_")) {
+          try {
+            promotionCode = await stripe.promotionCodes.retrieve(
+              promotionCodeId
+            );
+          } catch {
+            /* ignore */
+          }
+        }
+        if (!promotionCode) {
+          const list = await stripe.promotionCodes.list({
+            code: promotionCodeId.toUpperCase(),
+            active: true,
+            limit: 1,
+          });
+          if (list.data.length > 0) promotionCode = list.data[0];
+        }
+        if (promotionCode?.coupon) {
+          couponId =
+            typeof promotionCode.coupon === "string"
+              ? promotionCode.coupon
+              : promotionCode.coupon.id;
+        }
+      } catch (e) {
+        console.error("Bundle setup subscription promo lookup:", e);
+      }
+    }
+
     const subscription = await stripe.subscriptions.create({
       customer: resolvedCustomerId,
       items: [{ price: stripePriceId }],
+      ...(couponId && { coupon: couponId }),
       payment_behavior: "default_incomplete",
       payment_settings: {
         save_default_payment_method: "on_subscription",
@@ -224,6 +302,7 @@ export async function POST(request: NextRequest) {
         bundle_id: bundle.id,
         bundle_slug: bundle.slug,
         tier,
+        ...(promotionCodeId && { promotion_code: promotionCodeId }),
       },
     });
 

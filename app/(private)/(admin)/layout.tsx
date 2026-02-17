@@ -72,6 +72,12 @@ const Sidebar = styled.div<SidebarProps>`
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   transition: transform 0.3s ease;
 
+  nav {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
   &::before {
     content: "";
     position: absolute;

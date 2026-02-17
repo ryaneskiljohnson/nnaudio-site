@@ -169,12 +169,15 @@ const OrderSummary = styled.div`
   border-radius: 20px;
   padding: 2rem;
   height: fit-content;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
   position: sticky;
   top: 140px;
-  
+
   @media (max-width: 968px) {
     position: relative;
     top: 0;
+    max-height: none;
   }
 `;
 
