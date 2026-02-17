@@ -5,8 +5,7 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FaShoppingCart, FaArrowRight } from "react-icons/fa";
+import { FaShoppingCart } from "react-icons/fa";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
 import { cleanHtmlText } from "@/utils/stringUtils";
@@ -141,39 +140,6 @@ const CartButton = styled(motion.button)`
   }
 `;
 
-const ViewPricingButton = styled(motion.button)`
-  width: 100%;
-  padding: 12px 24px;
-  border-radius: 50px;
-  background: linear-gradient(135deg, #6c63ff, #8a2be2);
-  border: none;
-  color: white;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
-  transition: all 0.3s ease;
-  margin-top: 0.5rem;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(108, 99, 255, 0.5);
-    background: linear-gradient(135deg, #7c73ff, #9a3bf2);
-  }
-  
-  &:active {
-    transform: translateY(0);
-  }
-  
-  svg {
-    font-size: 0.9rem;
-  }
-`;
-
 interface ProductCardProps {
   product: {
     id: string | number;
@@ -232,7 +198,6 @@ function formatProductType(category: string | undefined, productName?: string): 
 function ProductCard({ product, index = 0, showCartButton = true, showPluginType = true }: ProductCardProps) {
   const { addItem } = useCart();
   const { success } = useToast();
-  const router = useRouter();
   const [imageError, setImageError] = React.useState(false);
 
   // NNAudio logo fallback
@@ -252,9 +217,7 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
   const cleanedTagline = cleanHtmlText(rawTagline);
   const tagline = cleanedTagline.length > 100 ? cleanedTagline.substring(0, 100).trim() + '...' : cleanedTagline;
   
-  // Check if this is an elite bundle and get the correct slug.
-  // ONLY match by exact slug - name-based fallbacks were incorrectly routing
-  // products like "Ultimate Drums & Percs 1" to the Ultimate Bundle page.
+  // Bundles use the bundle page, not the product page. Elite bundles use normalized slugs.
   const getEliteBundleSlug = (slug?: string): string | null => {
     if (!slug) return null;
     const lowerSlug = slug.toLowerCase();
@@ -263,13 +226,15 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
     }
     return null;
   };
-  
-  const bundleSlug = getEliteBundleSlug(product.slug);
-  const isEliteBundle = bundleSlug !== null;
-  
-  // Determine the correct route - elite bundles go to bundle pages
-  const productUrl = product.slug 
-    ? (isEliteBundle ? `/bundles/${bundleSlug}` : `/product/${product.slug}`)
+
+  const isBundle = product.category === 'bundle';
+  const bundleRouteSlug = isBundle && product.slug
+    ? (getEliteBundleSlug(product.slug) ?? product.slug)
+    : null;
+
+  // Determine the correct route - all bundles go to bundle pages, everything else to product page
+  const productUrl = product.slug
+    ? (bundleRouteSlug ? `/bundles/${bundleRouteSlug}` : `/product/${product.slug}`)
     : '#';
 
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -334,20 +299,6 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
           {showPluginType && formatProductType(product.category, product.name) && (
             <PluginType>{formatProductType(product.category, product.name)}</PluginType>
           )}
-          {isEliteBundle ? (
-            <ViewPricingButton
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                router.push(`/bundles/${bundleSlug}`);
-              }}
-            >
-              View Pricing
-              <FaArrowRight />
-            </ViewPricingButton>
-          ) : (
           <PriceRow>
             <ProductPrice>
               {product.sale_price && product.sale_price > 0 ? (
@@ -391,7 +342,6 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
               </CartButton>
             )}
           </PriceRow>
-          )}
         </ProductInfo>
       </Link>
     </ProductCardContainer>
