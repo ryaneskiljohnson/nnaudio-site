@@ -59,12 +59,11 @@ export async function GET(request: NextRequest) {
     console.log('[Payment Methods] Customer ID:', profile.customer_id);
 
     // Fetch customer to get default payment method and sources
-    let customer;
+    let rawCustomer: Stripe.Customer | Stripe.DeletedCustomer;
     try {
-      customer = await stripe.customers.retrieve(profile.customer_id, {
+      rawCustomer = await stripe.customers.retrieve(profile.customer_id, {
         expand: ['default_source'],
       });
-      console.log('[Payment Methods] Customer retrieved:', customer.id, 'Email:', customer.email);
     } catch (stripeError: any) {
       console.error('[Payment Methods] Stripe customer retrieve error:', stripeError.message);
       return NextResponse.json({
@@ -72,13 +71,24 @@ export async function GET(request: NextRequest) {
         details: stripeError.message
       }, { status: 500 });
     }
-    
+
+    if (rawCustomer.deleted) {
+      return NextResponse.json({
+        success: true,
+        paymentMethods: [],
+        defaultPaymentMethodId: null,
+      });
+    }
+
+    const customer = rawCustomer as Stripe.Customer;
+    console.log('[Payment Methods] Customer retrieved:', customer.id, 'Email:', customer.email ?? '(none)');
+
     const defaultPaymentMethodId =
       typeof customer.invoice_settings?.default_payment_method === 'string'
         ? customer.invoice_settings.default_payment_method
         : customer.invoice_settings?.default_payment_method?.id || null;
 
-    const defaultSourceId = 
+    const defaultSourceId =
       typeof customer.default_source === 'string'
         ? customer.default_source
         : customer.default_source?.id || null;
