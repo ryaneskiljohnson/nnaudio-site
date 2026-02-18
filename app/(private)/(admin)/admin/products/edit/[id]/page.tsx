@@ -10,6 +10,7 @@ import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import StorageFilePicker from "@/components/admin/StorageFilePicker";
 import { formatProductDownloadFileSize } from "@/utils/product-downloads";
+import { DemoVideosManager } from "@/app/components/admin/DemoVideosManager";
 
 const Container = styled.div`
   padding: 2rem;
@@ -121,6 +122,34 @@ const CollapsibleContent = styled.div<{ $isOpen: boolean }>`
   overflow: hidden;
   transition: max-height 0.3s ease;
   margin-top: ${props => props.$isOpen ? '1rem' : '0'};
+`;
+
+const TabBar = styled.nav`
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0;
+  flex-wrap: wrap;
+`;
+
+const Tab = styled.button<{ $active: boolean }>`
+  padding: 10px 18px;
+  background: ${props => props.$active ? 'rgba(78, 205, 196, 0.15)' : 'transparent'};
+  color: ${props => props.$active ? 'var(--text)' : 'var(--text-secondary)'};
+  border: none;
+  border-bottom: 2px solid ${props => props.$active ? 'var(--primary)' : 'transparent'};
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  font-weight: ${props => props.$active ? '600' : '500'};
+  font-size: 0.95rem;
+  margin-bottom: -1px;
+  transition: background 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    background: ${props => props.$active ? 'rgba(78, 205, 196, 0.2)' : 'rgba(255, 255, 255, 0.05)'};
+    color: var(--text);
+  }
 `;
 
 const FormGroup = styled.div`
@@ -396,6 +425,9 @@ const ReorderButton = styled.button`
 `;
 
 const RemoveButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 10px 16px;
   background: rgba(255, 94, 98, 0.2);
   color: #ff5e62;
@@ -657,6 +689,8 @@ export default function EditProductPage() {
   
   const [features, setFeatures] = useState<Array<{ title: string; description?: string; image_url?: string; gif_url?: string }>>([{ title: '' }]);
   const [audioSamples, setAudioSamples] = useState<{url: string, name: string}[]>([]);
+  const [demoVideos, setDemoVideos] = useState<Array<{ url: string; order: number }>>([]);
+  const [featuresExpanded, setFeaturesExpanded] = useState(true);
   const [audioSamplesExpanded, setAudioSamplesExpanded] = useState(true);
   const [downloads, setDownloads] = useState<Array<{
     path: string;
@@ -666,6 +700,8 @@ export default function EditProductPage() {
     file_size?: number | null;
   }>>([]);
   const [downloadsExpanded, setDownloadsExpanded] = useState(true);
+  /** Active tab on edit product page. */
+  const [activeTab, setActiveTab] = useState<'basic' | 'pricing' | 'media' | 'content' | 'downloads' | 'seo'>('basic');
   /** Index of the download row currently fetching file size from path/URL (for loading UI). */
   const [loadingFileSizeIndex, setLoadingFileSizeIndex] = useState<number | null>(null);
   const [stripeIds, setStripeIds] = useState<{
@@ -764,6 +800,22 @@ export default function EditProductPage() {
               name: audio.name || audio.title || ''
             }))
           : []);
+          
+        // Load demo videos - support both new demo_videos array and legacy demo_video_url
+        if (product.demo_videos && Array.isArray(product.demo_videos)) {
+          setDemoVideos(product.demo_videos.map((video: any, index: number) => ({
+            url: video.url || '',
+            order: video.order || (index + 1)
+          })));
+        } else if (product.demo_video_url) {
+          // Migrate legacy single video URL to new format
+          setDemoVideos([{
+            url: product.demo_video_url,
+            order: 1
+          }]);
+        } else {
+          setDemoVideos([]);
+        }
         
         // Load downloads array
         setDownloads(product.downloads && Array.isArray(product.downloads)
@@ -1394,6 +1446,12 @@ export default function EditProductPage() {
             url: s.url.trim(),
             name: s.name.trim() || s.url.split('/').pop() || 'Audio Sample'
           })),
+        demo_videos: demoVideos
+          .filter(v => v.url.trim() !== '')
+          .map(v => ({
+            url: v.url.trim(),
+            order: v.order
+          })),
         downloads: downloads
           .filter(d => d.path.trim() !== '')
           .map(d => ({
@@ -1467,6 +1525,28 @@ export default function EditProductPage() {
       </Header>
 
       <Form onSubmit={handleSubmit}>
+        <TabBar>
+          <Tab type="button" $active={activeTab === 'basic'} onClick={() => setActiveTab('basic')}>
+            Basic
+          </Tab>
+          <Tab type="button" $active={activeTab === 'pricing'} onClick={() => setActiveTab('pricing')}>
+            Pricing
+          </Tab>
+          <Tab type="button" $active={activeTab === 'media'} onClick={() => setActiveTab('media')}>
+            Media
+          </Tab>
+          <Tab type="button" $active={activeTab === 'content'} onClick={() => setActiveTab('content')}>
+            Features
+          </Tab>
+          <Tab type="button" $active={activeTab === 'downloads'} onClick={() => setActiveTab('downloads')}>
+            Downloads
+          </Tab>
+          <Tab type="button" $active={activeTab === 'seo'} onClick={() => setActiveTab('seo')}>
+            SEO
+          </Tab>
+        </TabBar>
+
+        {activeTab === 'basic' && (
         <FormSection>
           <SectionTitle>Basic Information</SectionTitle>
           
@@ -1540,7 +1620,9 @@ export default function EditProductPage() {
             />
           </FormGroup>
         </FormSection>
+        )}
 
+        {activeTab === 'pricing' && (
         <FormSection>
           <SectionTitle>Pricing & Category</SectionTitle>
           
@@ -1947,7 +2029,9 @@ export default function EditProductPage() {
             </CheckboxLabel>
           </FormGroup>
         </FormSection>
+        )}
 
+        {activeTab === 'media' && (
         <FormSection>
           <SectionTitle>Media & Assets</SectionTitle>
           
@@ -2100,160 +2184,172 @@ export default function EditProductPage() {
           </FormGroup>
 
           <FormGroup>
-            <Label>Demo Video URL</Label>
-            <Input
-              type="url"
-              name="demo_video_url"
-              value={formData.demo_video_url}
-              onChange={handleChange}
-              placeholder="YouTube or Vimeo URL"
+            <Label>Demo Videos</Label>
+            <DemoVideosManager 
+              videos={demoVideos}
+              onChange={setDemoVideos}
             />
           </FormGroup>
-        </FormSection>
 
-        <FormSection>
-          <SectionTitle>Features</SectionTitle>
-          
-          <FeaturesList>
-            {features.map((feature, index) => (
-              <FeatureCard key={index}>
-                <FeatureHeader>
-                  <DragHandle>
-                    <FaGripVertical />
-                  </DragHandle>
-                  <div style={{ flex: 1, fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                    Feature {index + 1} of {features.length}
-                  </div>
-                  <ReorderButtons>
-                    <ReorderButton
-                      type="button"
-                      onClick={() => moveFeatureUp(index)}
-                      disabled={index === 0}
-                      title="Move up"
-                    >
-                      <FaArrowUp />
-                    </ReorderButton>
-                    <ReorderButton
-                      type="button"
-                      onClick={() => moveFeatureDown(index)}
-                      disabled={index === features.length - 1}
-                      title="Move down"
-                    >
-                      <FaArrowDown />
-                    </ReorderButton>
-                  </ReorderButtons>
-                </FeatureHeader>
-                <FeatureItem>
-                  <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Feature Title</Label>
-                  <FeatureInput
-                    type="text"
-                    value={feature.title}
-                    onChange={(e) => handleFeatureChange(index, 'title', e.target.value)}
-                    placeholder="Enter feature title"
-                  />
-                </FeatureItem>
-                <FeatureItem>
-                  <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Description</Label>
-                  <FeatureInput
-                    type="text"
-                    value={feature.description || ''}
-                    onChange={(e) => handleFeatureChange(index, 'description', e.target.value)}
-                    placeholder="Enter feature description"
-                  />
-                </FeatureItem>
-                <FeatureItem>
-                  <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Image/GIF URL</Label>
-                  <StorageFilePicker
-                    value={feature.image_url || feature.gif_url || ''}
-                    onChange={(url) => handleFeatureChange(index, 'image_url', url)}
-                    bucket="product-images"
-                    accept="image/*"
-                    placeholder="Enter URL or browse files..."
-                  />
-                </FeatureItem>
-                {feature.image_url && (
-                  <div style={{ marginTop: '0.5rem', maxWidth: '100%', display: 'flex', justifyContent: 'flex-start' }}>
-                    <Image
-                      src={feature.image_url}
-                      alt={feature.title}
-                      width={600}
-                      height={400}
-                      style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', objectFit: 'contain' }}
-                      unoptimized={feature.image_url.endsWith('.gif')}
-                    />
-                  </div>
-                )}
-                {features.length > 1 && (
-                  <RemoveButton
-                    type="button"
-                    onClick={() => removeFeature(index)}
-                    style={{ marginTop: '0.5rem' }}
-                  >
-                    <FaTrash /> Remove Feature
-                  </RemoveButton>
-                )}
-              </FeatureCard>
-            ))}
-          </FeaturesList>
-          
-          <AddButton type="button" onClick={addFeature}>
-            <FaPlus /> Add Feature
-          </AddButton>
+          <FormSection>
+            <CollapsibleSectionTitle onClick={() => setAudioSamplesExpanded(!audioSamplesExpanded)}>
+              <SectionTitle>Audio Samples {audioSamples.length > 0 && `(${audioSamples.length})`}</SectionTitle>
+              {audioSamplesExpanded ? <FaChevronUp /> : <FaChevronDown />}
+            </CollapsibleSectionTitle>
+            
+            <CollapsibleContent $isOpen={audioSamplesExpanded}>
+              {audioSamples.length === 0 ? (
+                <div style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                  No audio samples. Click "Add Audio Sample" to add one.
+                </div>
+              ) : (
+                <ScrollableList>
+                  <FeaturesList>
+                    {audioSamples.map((audio, index) => (
+                      <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                        <FeatureItem>
+                          <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Audio URL</Label>
+                          <StorageFilePicker
+                            value={audio.url}
+                            onChange={(url) => handleAudioSampleChange(index, 'url', url)}
+                            bucket="audio-samples"
+                            accept="audio/*"
+                            placeholder="Enter URL or browse files..."
+                          />
+                        </FeatureItem>
+                        <FeatureItem>
+                          <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Audio Name</Label>
+                          <FeatureInput
+                            type="text"
+                            value={audio.name}
+                            onChange={(e) => handleAudioSampleChange(index, 'name', e.target.value)}
+                            placeholder="Sample Name"
+                          />
+                          <RemoveButton
+                            type="button"
+                            onClick={() => removeAudioSample(index)}
+                          >
+                            <FaTrash /> Remove
+                          </RemoveButton>
+                        </FeatureItem>
+                      </div>
+                    ))}
+                  </FeaturesList>
+                </ScrollableList>
+              )}
+              
+              <AddButton type="button" onClick={addAudioSample}>
+                <FaPlus /> Add Audio Sample
+              </AddButton>
+            </CollapsibleContent>
+          </FormSection>
         </FormSection>
+        )}
 
+        {activeTab === 'content' && (
         <FormSection>
-          <CollapsibleSectionTitle onClick={() => setAudioSamplesExpanded(!audioSamplesExpanded)}>
-            <SectionTitle>Audio Samples {audioSamples.length > 0 && `(${audioSamples.length})`}</SectionTitle>
-            {audioSamplesExpanded ? <FaChevronUp /> : <FaChevronDown />}
+          <CollapsibleSectionTitle onClick={() => setFeaturesExpanded(!featuresExpanded)}>
+            <SectionTitle>Features {features.length > 0 && `(${features.length})`}</SectionTitle>
+            {featuresExpanded ? <FaChevronUp /> : <FaChevronDown />}
           </CollapsibleSectionTitle>
           
-          <CollapsibleContent $isOpen={audioSamplesExpanded}>
-            {audioSamples.length === 0 ? (
+          <CollapsibleContent $isOpen={featuresExpanded}>
+            {features.length === 0 ? (
               <div style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                No audio samples. Click "Add Audio Sample" to add one.
+                No features added yet. Click "Add Feature" to add one.
               </div>
             ) : (
-              <ScrollableList>
                 <FeaturesList>
-                  {audioSamples.map((audio, index) => (
-                    <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                  {features.map((feature, index) => (
+                    <FeatureCard key={index}>
+                      <FeatureHeader>
+                        <DragHandle>
+                          <FaGripVertical />
+                        </DragHandle>
+                        <div style={{ flex: 1, fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                          Feature {index + 1} of {features.length}
+                        </div>
+                        <ReorderButtons>
+                          <ReorderButton
+                            type="button"
+                            onClick={() => moveFeatureUp(index)}
+                            disabled={index === 0}
+                            title="Move up"
+                          >
+                            <FaArrowUp />
+                          </ReorderButton>
+                          <ReorderButton
+                            type="button"
+                            onClick={() => moveFeatureDown(index)}
+                            disabled={index === features.length - 1}
+                            title="Move down"
+                          >
+                            <FaArrowDown />
+                          </ReorderButton>
+                        </ReorderButtons>
+                      </FeatureHeader>
                       <FeatureItem>
-                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Audio URL</Label>
+                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Feature Title</Label>
+                        <FeatureInput
+                          type="text"
+                          value={feature.title}
+                          onChange={(e) => handleFeatureChange(index, 'title', e.target.value)}
+                          placeholder="Enter feature title"
+                        />
+                      </FeatureItem>
+                      <FeatureItem>
+                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Description</Label>
+                        <FeatureInput
+                          type="text"
+                          value={feature.description || ''}
+                          onChange={(e) => handleFeatureChange(index, 'description', e.target.value)}
+                          placeholder="Enter feature description"
+                        />
+                      </FeatureItem>
+                      <FeatureItem>
+                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Image/GIF URL</Label>
                         <StorageFilePicker
-                          value={audio.url}
-                          onChange={(url) => handleAudioSampleChange(index, 'url', url)}
-                          bucket="audio-samples"
-                          accept="audio/*"
+                          value={feature.image_url || feature.gif_url || ''}
+                          onChange={(url) => handleFeatureChange(index, 'image_url', url)}
+                          bucket="product-images"
+                          accept="image/*"
                           placeholder="Enter URL or browse files..."
                         />
                       </FeatureItem>
-                      <FeatureItem>
-                        <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Audio Name</Label>
-                        <FeatureInput
-                          type="text"
-                          value={audio.name}
-                          onChange={(e) => handleAudioSampleChange(index, 'name', e.target.value)}
-                          placeholder="Sample Name"
-                        />
+                      {feature.image_url && (
+                        <div style={{ marginTop: '0.5rem', maxWidth: '100%', display: 'flex', justifyContent: 'flex-start' }}>
+                          <Image
+                            src={feature.image_url}
+                            alt={feature.title}
+                            width={600}
+                            height={400}
+                            style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', objectFit: 'contain' }}
+                            unoptimized={feature.image_url.endsWith('.gif')}
+                          />
+                        </div>
+                      )}
+                      {features.length > 1 && (
                         <RemoveButton
                           type="button"
-                          onClick={() => removeAudioSample(index)}
+                          onClick={() => removeFeature(index)}
+                          style={{ marginTop: '0.5rem' }}
                         >
-                          <FaTrash />
+                          <FaTrash /> Remove Feature
                         </RemoveButton>
-                      </FeatureItem>
-                    </div>
+                      )}
+                    </FeatureCard>
                   ))}
                 </FeaturesList>
-              </ScrollableList>
             )}
             
-            <AddButton type="button" onClick={addAudioSample}>
-              <FaPlus /> Add Audio Sample
+            <AddButton type="button" onClick={addFeature}>
+              <FaPlus /> Add Feature
             </AddButton>
           </CollapsibleContent>
         </FormSection>
+        )}
 
+        {activeTab === 'downloads' && (
         <FormSection>
           <CollapsibleSectionTitle onClick={() => setDownloadsExpanded(!downloadsExpanded)}>
             <SectionTitle>Downloads</SectionTitle>
@@ -2342,7 +2438,9 @@ export default function EditProductPage() {
             </AddButton>
           </CollapsibleContent>
         </FormSection>
+        )}
 
+        {activeTab === 'seo' && (
         <FormSection>
           <SectionTitle>SEO</SectionTitle>
           
@@ -2378,6 +2476,7 @@ export default function EditProductPage() {
             />
           </FormGroup>
         </FormSection>
+        )}
 
         <SaveButton
           type="submit"

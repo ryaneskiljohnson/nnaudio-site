@@ -303,7 +303,7 @@ const PlanSelectionModal = ({
               <BillingToggle
                 billingPeriod={selectedBillingPeriod}
                 onBillingPeriodChange={handleBillingPeriodChange}
-                userSubscription={profile.subscription}
+                userSubscription={profile.subscription ?? undefined}
                 showSavingsInfo={true}
                 variant="change_plan"
               />

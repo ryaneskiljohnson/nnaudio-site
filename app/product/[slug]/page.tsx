@@ -6,7 +6,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -20,6 +20,8 @@ import { cleanHtmlText } from "@/utils/stringUtils";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import RelatedProductsSlider from "@/components/RelatedProductsSlider";
+import { MultiVideoPlayer } from "@/app/components/MultiVideoPlayer";
+import LoadingComponent from "@/components/common/LoadingComponent";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -1142,6 +1144,29 @@ const LoadingContainer = styled.div`
   font-size: 1.2rem;
 `;
 
+/* Skeleton loading for product hero - matches HeroSection layout */
+const shimmer = keyframes`
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+`;
+
+const SkeletonBox = styled.div<{ $width?: string; $height?: string; $rounded?: string }>`
+  width: ${(p) => p.$width ?? '100%'};
+  height: ${(p) => p.$height ?? '1rem'};
+  border-radius: ${(p) => p.$rounded ?? '8px'};
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: ${shimmer} 1.5s ease-in-out infinite;
+`;
+
+const ProductPageSkeletonHero = styled(HeroSection)`
+  /* re-use HeroSection padding and background */
+`;
 
 export default function ProductPage() {
   const params = useParams();
@@ -1162,6 +1187,8 @@ export default function ProductPage() {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [descriptionNeedsExpansion, setDescriptionNeedsExpansion] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  /** Store durations for all audio tracks by index */
+  const [trackDurations, setTrackDurations] = useState<{ [index: number]: number }>({});
   const descriptionRef = useRef<HTMLDivElement | null>(null);
   const mainAudioRef = useRef<HTMLAudioElement | null>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -1169,6 +1196,8 @@ export default function ProductPage() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const heroSectionRef = useRef<HTMLDivElement | null>(null);
+  /** When true, auto-play when the new track finishes loading (set by handleTrackSelect) */
+  const autoPlayOnTrackSelectRef = useRef(false);
 
   useEffect(() => {
     if (slug) {
@@ -1297,13 +1326,30 @@ export default function ProductPage() {
           }
         }
       };
-      
+
+      /** Auto-play when user selected this track (handleTrackSelect set the ref) */
+      const handleCanPlay = async () => {
+        if (!autoPlayOnTrackSelectRef.current) return;
+        autoPlayOnTrackSelectRef.current = false;
+        try {
+          if (audioContextRef.current?.state === 'suspended') {
+            await audioContextRef.current.resume();
+          }
+          await audio.play();
+          setIsPlaying(true);
+          /* Waveform animation starts via useEffect that watches isPlaying */
+        } catch (err) {
+          console.warn('Auto-play on track select failed:', err);
+        }
+      };
+
       // Also try to generate waveform if audio is already loaded
       if (audio.readyState >= 2) {
         handleLoadedData();
       }
-      
+
       audio.addEventListener('loadeddata', handleLoadedData);
+      audio.addEventListener('canplay', handleCanPlay, { once: true });
       
       // Handle errors
       const handleError = (e: any) => {
@@ -1344,6 +1390,7 @@ export default function ProductPage() {
 
       return () => {
         audio.removeEventListener('loadeddata', handleLoadedData);
+        audio.removeEventListener('canplay', handleCanPlay);
         audio.removeEventListener('error', handleError);
       };
     }
@@ -1359,6 +1406,57 @@ export default function ProductPage() {
       }
     }
   }, [isPlaying]);
+
+  // Load durations for all audio tracks when product loads
+  useEffect(() => {
+    if (!product?.audio_samples || product.audio_samples.length === 0) {
+      setTrackDurations({});
+      return;
+    }
+
+    const loadTrackDurations = async () => {
+      const durations: { [index: number]: number } = {};
+      
+      for (let i = 0; i < product.audio_samples.length; i++) {
+        const audioUrl = product.audio_samples[i]?.url;
+        if (!audioUrl) continue;
+
+        try {
+          // Create a temporary audio element to get duration
+          const tempAudio = new Audio();
+          tempAudio.preload = 'metadata';
+          
+          const duration = await new Promise<number>((resolve, reject) => {
+            const handleLoadedMetadata = () => {
+              tempAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+              tempAudio.removeEventListener('error', handleError);
+              resolve(tempAudio.duration || 0);
+            };
+            
+            const handleError = () => {
+              tempAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+              tempAudio.removeEventListener('error', handleError);
+              resolve(0); // Fallback to 0 if error
+            };
+            
+            tempAudio.addEventListener('loadedmetadata', handleLoadedMetadata);
+            tempAudio.addEventListener('error', handleError);
+            tempAudio.src = audioUrl;
+          });
+          
+          if (duration > 0) {
+            durations[i] = duration;
+          }
+        } catch (error) {
+          console.warn(`Error loading duration for track ${i}:`, error);
+        }
+      }
+      
+      setTrackDurations(durations);
+    };
+
+    loadTrackDurations();
+  }, [product?.audio_samples]);
 
   const generateWaveform = async (audio: HTMLAudioElement) => {
     try {
@@ -1649,23 +1747,23 @@ export default function ProductPage() {
   };
 
   const handleTrackSelect = async (index: number) => {
-    setCurrentTrackIndex(index);
-    // Wait for audio to load, then play if it was playing before
-    if (isPlaying && mainAudioRef.current) {
-      const audio = mainAudioRef.current;
-      // Wait for the audio to be ready
-      const playWhenReady = () => {
-        if (audio.readyState >= 2) { // HAVE_CURRENT_DATA
-          audio.play().catch((error) => {
-            console.error('Error auto-playing after track change:', error);
-            setIsPlaying(false);
-          });
-        } else {
-          audio.addEventListener('canplay', playWhenReady, { once: true });
+    const audio = mainAudioRef.current;
+    if (index === currentTrackIndex && audio) {
+      // Same track: play (or restart) immediately
+      try {
+        if (audioContextRef.current?.state === 'suspended') {
+          await audioContextRef.current.resume();
         }
-      };
-      playWhenReady();
+        await audio.play();
+        setIsPlaying(true);
+        startWaveformAnimation();
+      } catch (err) {
+        console.warn('Play on same-track select failed:', err);
+      }
+      return;
     }
+    autoPlayOnTrackSelectRef.current = true;
+    setCurrentTrackIndex(index);
   };
 
   const handleNextTrack = () => {
@@ -1726,7 +1824,31 @@ export default function ProductPage() {
 
 
   if (loading) {
-    return <LoadingContainer>Loading product...</LoadingContainer>;
+    return (
+      <Container>
+        <ProductPageSkeletonHero>
+          <HeroContent>
+            <BreadcrumbContainer>
+              <BreadcrumbList>
+                <SkeletonBox $height="0.9rem" $width="4rem" />
+                <SkeletonBox $height="0.9rem" $width="5rem" style={{ marginLeft: '0.5rem' }} />
+                <SkeletonBox $height="0.9rem" $width="6rem" style={{ marginLeft: '0.5rem' }} />
+              </BreadcrumbList>
+            </BreadcrumbContainer>
+            <ProductImageContainer style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <LoadingComponent text="Loading product..." size="80px" />
+            </ProductImageContainer>
+            <ProductDetails>
+              <SkeletonBox $height="3rem" $width="85%" style={{ marginBottom: '1rem' }} />
+              <SkeletonBox $height="1.25rem" $width="90%" style={{ marginBottom: '0.5rem' }} />
+              <SkeletonBox $height="1.25rem" $width="65%" style={{ marginBottom: '2rem' }} />
+              <SkeletonBox $height="2rem" $width="7rem" style={{ marginBottom: '2rem' }} />
+              <SkeletonBox $height="3.5rem" $width="12.5rem" $rounded="50px" />
+            </ProductDetails>
+          </HeroContent>
+        </ProductPageSkeletonHero>
+      </Container>
+    );
   }
 
   if (!product) {
@@ -1942,58 +2064,22 @@ export default function ProductPage() {
         </ContentSection>
       )}
 
-      {product.gallery_images && product.gallery_images.length > 1 && (
-        <ContentSection>
-          <SectionTitle>Gallery</SectionTitle>
-          <GalleryGrid>
-            {product.gallery_images.map((imageUrl: string, index: number) => (
-              <GalleryImage
-                key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                onClick={() => window.open(imageUrl, '_blank')}
-              >
-                <Image
-                  src={imageUrl}
-                  alt={`${product.name} - Image ${index + 1}`}
-                  fill
-                  style={{ objectFit: 'cover' }}
-                />
-              </GalleryImage>
-            ))}
-          </GalleryGrid>
-        </ContentSection>
-      )}
-
-
-      {product.demo_video_url && (
+      {/* Demo Videos Section - Support both new demo_videos array and legacy demo_video_url */}
+      {((product.demo_videos && product.demo_videos.length > 0) || product.demo_video_url) && (
         <ContentSection>
           <SectionTitle>
             <FaVideo style={{ marginRight: '10px', display: 'inline' }} />
-            Demo Video
+            Demo Video{product.demo_videos && product.demo_videos.length > 1 ? 's' : ''}
           </SectionTitle>
-          <VideoContainer>
-            {product.demo_video_url.includes('youtube') || product.demo_video_url.includes('youtu.be') ? (
-              <VideoIframe
-                src={product.demo_video_url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            ) : product.demo_video_url.includes('vimeo') ? (
-              <VideoIframe
-                src={product.demo_video_url.replace('vimeo.com/', 'player.vimeo.com/video/')}
-                allow="autoplay; fullscreen; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
-              <video controls style={{ width: '100%', height: '100%' }}>
-                <source src={product.demo_video_url} />
-                Your browser does not support the video tag.
-              </video>
-            )}
-          </VideoContainer>
+          <MultiVideoPlayer 
+            videos={
+              product.demo_videos && product.demo_videos.length > 0 
+                ? product.demo_videos.sort((a: { order: number }, b: { order: number }) => a.order - b.order)
+                : product.demo_video_url 
+                  ? [{ url: product.demo_video_url, order: 1 }]
+                  : []
+            }
+          />
         </ContentSection>
       )}
 
@@ -2100,7 +2186,7 @@ export default function ProductPage() {
                       {audio.name || `Sample ${index + 1}`}
                     </PlaylistItemName>
                     <PlaylistItemDuration>
-                      {duration > 0 && index === currentTrackIndex ? formatTime(duration) : '--:--'}
+                      {trackDurations[index] > 0 ? formatTime(trackDurations[index]) : '--:--'}
                     </PlaylistItemDuration>
                   </PlaylistItem>
                 ))}
@@ -2475,6 +2561,31 @@ export default function ProductPage() {
           <RelatedProductsSlider products={relatedProducts} />
         </ContentSection>
       </RelatedProducts>
+
+      {product.gallery_images && product.gallery_images.length > 1 && (
+        <ContentSection>
+          <SectionTitle>Gallery</SectionTitle>
+          <GalleryGrid>
+            {product.gallery_images.map((imageUrl: string, index: number) => (
+              <GalleryImage
+                key={index}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: index * 0.1 }}
+                onClick={() => window.open(imageUrl, '_blank')}
+              >
+                <Image
+                  src={imageUrl}
+                  alt={`${product.name} - Image ${index + 1}`}
+                  fill
+                  style={{ objectFit: 'cover' }}
+                />
+              </GalleryImage>
+            ))}
+          </GalleryGrid>
+        </ContentSection>
+      )}
 
       {showStickyButton && product && (
         <StickyAddToCartButton

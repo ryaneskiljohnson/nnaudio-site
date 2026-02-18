@@ -9,11 +9,13 @@ import ProductsSectionSkeleton from "@/components/sections/ProductsSectionSkelet
 import FeaturedProductsSectionSkeleton from "@/components/sections/FeaturedProductsSectionSkeleton";
 
 // Lazy load product sections for better initial page load
+// NOTE: loading fallbacks use skeleton components instead of null to prevent
+// blank gaps when data arrives before the JS chunks have downloaded (first visit).
 const ProductsSection = dynamic(
   () => import("@/components/sections/ProductsSection"),
   {
     ssr: true,
-    loading: () => null,
+    loading: () => <ProductsSectionSkeleton />,
   }
 );
 
@@ -21,7 +23,7 @@ const FeaturedProductsSection = dynamic(
   () => import("@/components/sections/FeaturedProductsSection"),
   {
     ssr: true,
-    loading: () => null,
+    loading: () => <FeaturedProductsSectionSkeleton />,
   }
 );
 
@@ -228,16 +230,17 @@ export default function Home() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        // Fetch ALL products in parallel for better performance
+        // Fetch ALL products in parallel for better performance.
+        // Bundles come from /api/bundles for correct pricing and subscription vs one-time.
         const [featuredResponse, bundlesResponse, fxResponse, instrumentResponse, packsResponse, freeResponse] = await Promise.all([
           fetch('/api/products?featured=true&status=active&limit=6'),
-          fetch('/api/products?category=bundle&status=active&limit=10000'),
+          fetch('/api/bundles?status=active'),
           fetch('/api/products?category=audio-fx-plugin&status=active&limit=10000'),
           fetch('/api/products?category=instrument-plugin&status=active&limit=10000'),
           fetch('/api/products?category=pack&status=active&limit=10000'),
           fetch('/api/products?free=true&status=active&limit=10000'),
         ]);
-        
+
         const [featuredData, bundlesData, fxData, instrumentData, packsData, freeData] = await Promise.all([
           featuredResponse.json(),
           bundlesResponse.json(),
@@ -272,23 +275,32 @@ export default function Home() {
           setFeaturedProducts([]);
         }
 
-        // Map bundles
-        if (bundlesData.success) {
-          const mappedBundles = bundlesData.products.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            slug: p.slug,
-            tagline: p.tagline || p.short_description || '',
-            short_description: p.short_description,
-            description: p.description,
-            category: p.category || 'bundle',
-            image: p.logo_url || p.featured_image_url || '',
-            featured_image_url: p.featured_image_url,
-            logo_url: p.logo_url,
-            backgroundImage: p.background_image_url || p.background_video_url || '',
-            price: typeof p.sale_price === 'number' ? p.sale_price : (typeof p.price === 'number' ? p.price : 0),
-            sale_price: p.sale_price,
-          }));
+        // Map bundles from /api/bundles: correct pricing, images (bundle or first product), totalValue for strikethrough
+        if (bundlesData.success && bundlesData.bundles) {
+          const mappedBundles = bundlesData.bundles.map((b: any) => {
+            const isSub = !!b.isSubscriptionBundle;
+            const lifetime = b.pricing?.lifetime;
+            const price = isSub ? 0 : (lifetime?.sale_price ?? lifetime?.price ?? 0);
+            const salePrice = isSub ? null : (lifetime?.sale_price ?? null);
+            const imageUrl = (b.featured_image_url || b.logo_url || '').trim() || undefined;
+            return {
+              id: b.id,
+              name: b.name,
+              slug: b.slug,
+              tagline: b.tagline || b.short_description || '',
+              short_description: b.short_description ?? b.description ?? '',
+              description: b.description ?? '',
+              category: 'bundle',
+              image: imageUrl ?? '',
+              featured_image_url: imageUrl,
+              logo_url: imageUrl,
+              backgroundImage: b.background_image_url || b.background_video_url || '',
+              price: typeof price === 'number' ? price : 0,
+              sale_price: salePrice,
+              hasMultiplePricing: isSub,
+              compareAtPrice: !isSub && typeof b.totalValue === 'number' && b.totalValue > 0 ? b.totalValue : undefined,
+            };
+          });
           setBundles(mappedBundles);
         }
 
@@ -424,7 +436,6 @@ export default function Home() {
             title="Elite Bundles"
             subtitle="Complete collections of premium plugins and samples at unbeatable value"
             products={bundles}
-            fetchAllUrl="/api/products?category=bundle&status=active&limit=10000"
             maxCardsPerView={3}
             cardSize="large"
           />

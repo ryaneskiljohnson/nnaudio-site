@@ -56,11 +56,22 @@ const SectionSubtitle = styled(motion.p)`
   }
 `;
 
+const MOBILE_PADDING_PX = 16;
+
 const SliderWrapper = styled.div`
   position: relative;
   margin-top: 2rem;
   overflow: hidden;
   padding: 0;
+
+  @media (max-width: 768px) {
+    margin-top: 1.5rem;
+    margin-left: -20px;
+    margin-right: -20px;
+    width: calc(100% + 40px);
+    padding: 0 ${MOBILE_PADDING_PX}px;
+    box-sizing: border-box;
+  }
 `;
 
 const ProductsSlider = styled.div<{ $translateX: number; $centered: boolean }>`
@@ -70,13 +81,13 @@ const ProductsSlider = styled.div<{ $translateX: number; $centered: boolean }>`
   transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
   ${props => props.$centered ? 'justify-content: center;' : ''}
-  
-  @media (max-width: 768px) {
-    gap: 1.5rem;
-  }
-  
+
   > * {
     flex-shrink: 0;
+  }
+
+  @media (max-width: 768px) {
+    gap: 12px;
   }
 `;
 
@@ -88,7 +99,7 @@ const ProductCardWrapper = styled.div<{ $width?: number }>`
 `;
 
 const NavigationButton = styled.button<{ $direction: 'left' | 'right' }>`
-    position: absolute;
+  position: absolute;
   top: 50%;
   ${props => props.$direction === 'left' ? 'left: 15px;' : 'right: 15px;'}
   transform: translateY(-50%);
@@ -106,27 +117,38 @@ const NavigationButton = styled.button<{ $direction: 'left' | 'right' }>`
   transition: all 0.3s ease;
   z-index: 10;
   backdrop-filter: blur(10px);
-  
+
+  svg {
+    font-size: 1.2rem;
+  }
+
   @media (max-width: 768px) {
-    width: 44px;
-    height: 44px;
-    
+    top: 50%;
+    ${props => props.$direction === 'left' ? 'left: 6px;' : 'right: 6px;'}
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    background: rgba(0, 0, 0, 0.85);
+    border-width: 1.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+
     svg {
-      font-size: 1rem;
+      font-size: 0.9rem;
+    }
   }
-  }
-  
+
   &:hover {
     background: rgba(138, 43, 226, 0.8);
     border-color: rgba(138, 43, 226, 1);
     transform: translateY(-50%) scale(1.1);
     box-shadow: 0 4px 12px rgba(138, 43, 226, 0.4);
   }
-  
+
   &:disabled {
     opacity: 0.3;
     cursor: not-allowed;
-    
+
     &:hover {
       transform: translateY(-50%) scale(1);
       background: rgba(0, 0, 0, 0.7);
@@ -134,9 +156,14 @@ const NavigationButton = styled.button<{ $direction: 'left' | 'right' }>`
       box-shadow: none;
     }
   }
-  
-  svg {
-    font-size: 1.2rem;
+
+  @media (max-width: 768px) {
+    &:hover:not(:disabled) {
+      transform: translateY(-50%) scale(1.05);
+    }
+    &:active:not(:disabled) {
+      transform: translateY(-50%) scale(0.98);
+    }
   }
 `;
 
@@ -145,6 +172,12 @@ const DotsContainer = styled.div`
   justify-content: center;
   gap: 12px;
   margin-top: 2rem;
+
+  @media (max-width: 768px) {
+    gap: 10px;
+    margin-top: 1.25rem;
+    padding: 0 8px;
+  }
 `;
 
 const Dot = styled.button<{ $active: boolean }>`
@@ -156,10 +189,24 @@ const Dot = styled.button<{ $active: boolean }>`
   cursor: pointer;
   transition: all 0.3s ease;
   padding: 0;
-  
+
   &:hover {
     background: ${props => props.$active ? '#8a2be2' : 'rgba(255, 255, 255, 0.5)'};
     transform: scale(1.2);
+  }
+
+  @media (max-width: 768px) {
+    width: 10px;
+    height: 10px;
+    min-width: 10px;
+    min-height: 10px;
+    padding: 4px;
+    margin: -4px;
+    border-radius: 50%;
+
+    &:hover {
+      transform: scale(1.15);
+    }
   }
 `;
 
@@ -218,6 +265,10 @@ interface Product {
   backgroundImage?: string;
   price: number | string;
   sale_price?: number | null;
+  /** When true (e.g. elite subscription bundles), ProductCard shows "See Pricing Options" instead of price and cart */
+  hasMultiplePricing?: boolean;
+  /** Sum of individual product prices (e.g. bundle total value); shown as strikethrough on card */
+  compareAtPrice?: number;
 }
 
 interface ProductsSectionProps {
@@ -266,25 +317,27 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
                              sliderRef.current.parentElement?.clientWidth || 
                              window.innerWidth;
       
-      const actualWidth = Math.min(containerWidth, 1600); // ContentContainer max-width
-      
-      const gap = window.innerWidth <= 768 ? 24 : 32;
-      const arrowSpace = 100; // Space for each arrow
-      
-      // Determine how many cards to show
-      let numCards = maxCardsPerView || 4;
+      const gap = window.innerWidth <= 768 ? 12 : 32;
+      const arrowSpace = 100; // Space for each arrow (desktop only)
+
+      // On mobile: single card, full viewport width minus padding; desktop uses section setting
+      let numCards = isMobile ? 1 : (maxCardsPerView || 4);
       if (isMobile && !showAll) {
-        numCards = mobileLimit;
+        numCards = 1;
       }
       numCards = Math.min(numCards, displayedProducts.length);
-      
-      // Calculate available width: container width minus arrow space on both sides
-      const availableWidth = actualWidth - (arrowSpace * 2);
-      
-      // Calculate card width: (available width - gaps) / number of cards
-      const totalGapWidth = gap * (numCards - 1);
-      const width = (availableWidth - totalGapWidth) / numCards;
-      
+
+      let width: number;
+      if (isMobile) {
+        const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : containerWidth;
+        width = viewportWidth - MOBILE_PADDING_PX * 2;
+      } else {
+        const actualWidth = Math.min(containerWidth, 1600);
+        const availableWidth = actualWidth - (arrowSpace * 2);
+        const totalGapWidth = gap * (numCards - 1);
+        width = (availableWidth - totalGapWidth) / numCards;
+      }
+
       setCardsPerView(numCards);
       setCardWidth(width);
     };
@@ -304,28 +357,27 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
 
   useEffect(() => {
     if (!sliderRef.current) return;
-    
-    // Get actual container width
-    const containerWidth = sliderRef.current.parentElement?.parentElement?.clientWidth || 
-                           sliderRef.current.parentElement?.clientWidth || 
+    const gap = window.innerWidth <= 768 ? 12 : 32;
+    const cardWithGap = cardWidth + gap;
+
+    if (isMobile) {
+      // Mobile: card is full-width with padding; first card at 0
+      const translateValue = -(currentIndex * cardWithGap);
+      setTranslateX(translateValue);
+      return;
+    }
+
+    const containerWidth = sliderRef.current.parentElement?.parentElement?.clientWidth ||
+                           sliderRef.current.parentElement?.clientWidth ||
                            window.innerWidth;
-    const actualWidth = Math.min(containerWidth, 1600); // ContentContainer max-width
-    
-    const gap = window.innerWidth <= 768 ? 24 : 32;
+    const actualWidth = Math.min(containerWidth, 1600);
     const arrowSpace = 100;
     const availableWidth = actualWidth - (arrowSpace * 2);
-    const cardWithGap = cardWidth + gap;
-    
-    // Calculate total width of visible cards
     const totalCardsWidth = (cardWidth * cardsPerView) + (gap * (cardsPerView - 1));
-    
-    // Center offset: start position to center the cards
     const centerOffset = arrowSpace + (availableWidth - totalCardsWidth) / 2;
-    
-    // Translate: start from center, then move left by currentIndex
     const translateValue = centerOffset - (currentIndex * cardWithGap);
     setTranslateX(translateValue);
-  }, [currentIndex, cardWidth, cardsPerView]);
+  }, [currentIndex, cardWidth, cardsPerView, isMobile]);
 
   const nextSlide = useCallback(() => {
     const calculatedMaxIndex = Math.max(0, displayedProducts.length - cardsPerView);
@@ -436,13 +488,15 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
                 short_description: (product as any).short_description,
                 description: product.description,
                 category: (product as any).category,
-                price: typeof product.price === 'string' 
-                  ? parseFloat(product.price.replace('$', '')) || 0 
+                price: typeof product.price === 'string'
+                  ? parseFloat(product.price.replace('$', '')) || 0
                   : product.price,
                 sale_price: product.sale_price,
                 featured_image_url: product.featured_image_url || undefined,
                 logo_url: product.logo_url || undefined,
                 image: product.image || product.featured_image_url || product.logo_url || '/images/nnaud-io/NNPurp1.webp',
+                hasMultiplePricing: product.hasMultiplePricing,
+                compareAtPrice: product.compareAtPrice,
               };
 
               return (
@@ -474,13 +528,15 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
                   short_description: (product as any).short_description,
                   description: product.description,
                   category: (product as any).category,
-                  price: typeof product.price === 'string' 
-                    ? parseFloat(product.price.replace('$', '')) || 0 
+                  price: typeof product.price === 'string'
+                    ? parseFloat(product.price.replace('$', '')) || 0
                     : product.price,
                   sale_price: product.sale_price,
                   featured_image_url: product.featured_image_url || undefined,
                   logo_url: product.logo_url || undefined,
                   image: product.image || product.featured_image_url || product.logo_url || '/images/nnaud-io/NNPurp1.webp',
+                  hasMultiplePricing: product.hasMultiplePricing,
+                  compareAtPrice: product.compareAtPrice,
                 };
 
                 return (

@@ -38,9 +38,8 @@ export async function refreshDurations(
     
     console.log(`Starting duration refresh job: maxAge=${maxAgeHours}h, limit=${limit}`);
     
-    // Get videos that need duration refresh
-    const { data: videosNeedingRefresh, error } = await supabase
-      .rpc('get_videos_needing_duration_cache', {
+    // Get videos that need duration refresh (RPC may not be in generated types)
+    const { data: rawVideos, error } = await (supabase as any).rpc('get_videos_needing_duration_cache', {
         max_age_hours: maxAgeHours,
         limit_count: limit
       });
@@ -50,7 +49,9 @@ export async function refreshDurations(
       throw new Error('Failed to fetch videos');
     }
 
-    if (!videosNeedingRefresh || videosNeedingRefresh.length === 0) {
+    const videosNeedingRefresh = Array.isArray(rawVideos) ? rawVideos : [];
+
+    if (videosNeedingRefresh.length === 0) {
       return { 
         message: 'No videos need duration refresh',
         processed: 0,
@@ -95,9 +96,8 @@ export async function refreshDurations(
           if (durationMatch) {
             const duration = parseInt(durationMatch[1], 10);
             
-            // Update cache in database
-            const { error: updateError } = await supabase
-              .rpc('update_youtube_duration_cache', {
+            // Update cache in database (RPC may not be in generated types)
+            const { error: updateError } = await (supabase as any).rpc('update_youtube_duration_cache', {
                 video_id: video.id,
                 duration_seconds: duration
               });
@@ -116,8 +116,7 @@ export async function refreshDurations(
               const durationMs = parseInt(altMatch[1], 10);
               const duration = Math.floor(durationMs / 1000);
               
-              const { error: updateError } = await supabase
-                .rpc('update_youtube_duration_cache', {
+              const { error: updateError } = await (supabase as any).rpc('update_youtube_duration_cache', {
                   video_id: video.id,
                   duration_seconds: duration
                 });

@@ -234,6 +234,7 @@ export async function PUT(
       legacy_product_id: body.legacy_product_id !== undefined ? (body.legacy_product_id == null || body.legacy_product_id === '' ? null : String(body.legacy_product_id).trim()) : undefined,
       features: Array.isArray(body.features) ? body.features : undefined,
       audio_samples: Array.isArray(body.audio_samples) ? body.audio_samples : undefined,
+      demo_videos: Array.isArray(body.demo_videos) ? body.demo_videos : undefined,
       downloads: downloadsPayload !== undefined ? downloadsPayload : undefined,
     };
     // Omit keys that were not sent (undefined) so we don't overwrite with undefined
@@ -255,6 +256,30 @@ export async function PUT(
         { success: false, error: error.message },
         { status: 500 }
       );
+    }
+
+    // When a bundle-category product's images change, mirror them to the bundles table.
+    // The bundles table has a product_id FK pointing to this product row, so we can
+    // update the bundle directly without any slug/name guessing.
+    if (product?.category === 'bundle') {
+      const imageChanged = cleanedPayload.featured_image_url !== undefined || cleanedPayload.logo_url !== undefined;
+      if (imageChanged) {
+        const bundleImageUpdate: Record<string, unknown> = {};
+        if (cleanedPayload.featured_image_url !== undefined) {
+          bundleImageUpdate.featured_image_url = cleanedPayload.featured_image_url || null;
+        }
+        if (cleanedPayload.logo_url !== undefined) {
+          bundleImageUpdate.logo_url = cleanedPayload.logo_url || null;
+        }
+        const { error: bundleSyncError } = await (adminSupabase as any)
+          .from('bundles')
+          .update(bundleImageUpdate)
+          .eq('product_id', id);
+        if (bundleSyncError) {
+          // Non-fatal: log but don't fail the product save
+          console.error('Failed to sync image to bundles table:', bundleSyncError);
+        }
+      }
     }
 
     // Sync to Stripe if name, price, or description changed

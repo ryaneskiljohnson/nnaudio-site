@@ -140,6 +140,26 @@ const CartButton = styled(motion.button)`
   }
 `;
 
+const PricingOptionsButton = styled.span`
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 50px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(138, 43, 226, 0.4);
+  transition: opacity 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+
+  ${ProductCardContainer}:hover & {
+    box-shadow: 0 6px 20px rgba(138, 43, 226, 0.5);
+  }
+`;
+
 interface ProductCardProps {
   product: {
     id: string | number;
@@ -153,6 +173,10 @@ interface ProductCardProps {
     sale_price?: number | null;
     featured_image_url?: string | null;
     logo_url?: string | null;
+    /** When true (e.g. elite subscription bundles), show "See Pricing Options" instead of price and cart */
+    hasMultiplePricing?: boolean;
+    /** Compare-at price (e.g. bundle total value); shown strikethrough when present */
+    compareAtPrice?: number;
     // For landing page compatibility
     image?: string;
   };
@@ -300,46 +324,65 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
             <PluginType>{formatProductType(product.category, product.name)}</PluginType>
           )}
           <PriceRow>
-            <ProductPrice>
-              {product.sale_price && product.sale_price > 0 ? (
-                <>
-                  <span style={{ 
-                    textDecoration: 'line-through', 
-                    fontSize: '1rem', 
-                    opacity: 0.6, 
-                    marginRight: '8px',
-                    color: 'rgba(255, 255, 255, 0.6)'
-                  }}>
-                    ${product.price}
-                  </span>
-                  ${product.sale_price}
-                </>
-              ) : (product.price === 0 || product.sale_price === 0 || (product.sale_price === null && product.price === 0)) ? (
-                <>
-                  {(product.sale_price === 0 && product.price > 0) && (
-                    <span style={{ 
-                      textDecoration: 'line-through', 
-                      fontSize: '1rem', 
-                      opacity: 0.6, 
-                      marginRight: '8px',
-                      color: 'rgba(255, 255, 255, 0.6)'
-                    }}>
-                      ${product.price}
-                    </span>
+            {product.hasMultiplePricing ? (
+              <PricingOptionsButton>See Pricing Options</PricingOptionsButton>
+            ) : (
+              <>
+                <ProductPrice>
+                  {product.compareAtPrice != null && product.compareAtPrice > 0 && product.compareAtPrice > (typeof product.price === 'number' ? product.price : 0) ? (
+                    <>
+                      <span style={{
+                        textDecoration: 'line-through',
+                        fontSize: '1rem',
+                        opacity: 0.6,
+                        marginRight: '8px',
+                        color: 'rgba(255, 255, 255, 0.6)',
+                      }}>
+                        ${product.compareAtPrice.toFixed(2)}
+                      </span>
+                      {product.sale_price != null && product.sale_price > 0 ? `$${product.sale_price}` : `$${product.price}`}
+                    </>
+                  ) : product.sale_price && product.sale_price > 0 ? (
+                    <>
+                      <span style={{
+                        textDecoration: 'line-through',
+                        fontSize: '1rem',
+                        opacity: 0.6,
+                        marginRight: '8px',
+                        color: 'rgba(255, 255, 255, 0.6)',
+                      }}>
+                        ${product.price}
+                      </span>
+                      ${product.sale_price}
+                    </>
+                  ) : (product.price === 0 || product.sale_price === 0 || (product.sale_price === null && product.price === 0)) ? (
+                    <>
+                      {(product.sale_price === 0 && product.price > 0) && (
+                        <span style={{
+                          textDecoration: 'line-through',
+                          fontSize: '1rem',
+                          opacity: 0.6,
+                          marginRight: '8px',
+                          color: 'rgba(255, 255, 255, 0.6)',
+                        }}>
+                          ${product.price}
+                        </span>
+                      )}
+                      FREE
+                    </>
+                  ) : (
+                    `$${product.price}`
                   )}
-                  FREE
-                </>
-              ) : (
-                `$${product.price}`
-              )}
-            </ProductPrice>
-            {showCartButton && (
-              <CartButton
-                onClick={handleAddToCart}
-                aria-label={`Add ${product.name} to cart`}
-              >
-                <FaShoppingCart />
-              </CartButton>
+                </ProductPrice>
+                {showCartButton && (
+                  <CartButton
+                    onClick={handleAddToCart}
+                    aria-label={`Add ${product.name} to cart`}
+                  >
+                    <FaShoppingCart />
+                  </CartButton>
+                )}
+              </>
             )}
           </PriceRow>
         </ProductInfo>

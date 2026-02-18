@@ -3,6 +3,17 @@ import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/service';
 import { getCanonicalImageKey } from '@/utils/canonicalImageKey';
 
+/**
+ * @fileoverview API route for listing and creating bundles.
+ * @module api/bundles
+ *
+ * @note The `bundles` table now has a `product_id` FK that points to the
+ *       corresponding `products` row (category='bundle') for this bundle.
+ *       `bundles.featured_image_url` and `bundles.logo_url` are kept in sync
+ *       with the product row via the admin UI, so all image reads come
+ *       directly from the `bundles` table — no cross-table slug/name lookup needed.
+ */
+
 // GET /api/bundles - List all bundles
 export async function GET(request: NextRequest) {
   try {
@@ -68,25 +79,23 @@ export async function GET(request: NextRequest) {
         lifetime: tiers.find(t => t.subscription_type === 'lifetime'),
       };
 
-      // Check if this is a subscription bundle (has monthly or annual tiers)
-      // Bundles with ONLY lifetime tiers are considered regular one-time purchase bundles
+      // Check if this is a subscription bundle (has monthly or annual tiers).
+      // Bundles with ONLY lifetime tiers are considered regular one-time purchase bundles.
       const isSubscriptionBundle = tiers.some(t => t.subscription_type === 'monthly' || t.subscription_type === 'annual');
 
-      // Extract all products for mosaic and counts (only active products)
-      // For elite subscription bundles (with monthly/annual), filter out bundle products (only include plugins, packs, etc.)
-      // For regular one-time purchase bundles (lifetime only), show all active products including bundle products
+      // Extract all products for mosaic and counts (only active products).
+      // For elite subscription bundles (monthly/annual), exclude bundle-category products.
       const allProducts = ((bundle.bundle_products || []) as any[])
         .map((bp: any) => bp.product)
         .filter((p: any) => {
           if (!p) return false;
           if (p.status !== 'active') return false;
-          // Only filter out bundle products for elite subscription bundles
           if (isSubscriptionBundle && p.category === 'bundle') return false;
           return true;
         });
       
       const withImages = allProducts.filter((p: any) => p && (p.featured_image_url || p.logo_url));
-      // Deduplicate by canonical image key so the same image is never shown twice (any URL variant → one cell)
+      // Deduplicate by canonical image key so the same image is never shown twice.
       const seenKey = new Set<string>();
       const productsWithImages = withImages.filter((p: any) => {
         const url = (p.featured_image_url || p.logo_url || '').trim();
@@ -97,24 +106,30 @@ export async function GET(request: NextRequest) {
         return true;
       });
       
-      // Get total count of all products in bundle
       const totalProductCount = allProducts.length;
 
-      // Compute total value (sum of product prices) for strikethrough on listing
+      // Total compare-at value: sum of full list price of each product (for strikethrough on cards).
       const totalValue = allProducts.reduce((sum: number, p: any) => {
-        const price = (p.sale_price != null && p.sale_price > 0) ? p.sale_price : (p.price ?? 0);
-        return sum + (typeof price === 'number' ? price : 0);
+        const listPrice = p.price ?? 0;
+        return sum + (typeof listPrice === 'number' ? listPrice : 0);
       }, 0);
+
+      // Images live directly on the bundles row — no cross-table lookup needed.
+      // The bundles.product_id FK and image sync are maintained by the admin UI.
+      const featured_image_url = (bundle.featured_image_url && String(bundle.featured_image_url).trim()) || undefined;
+      const logo_url = (bundle.logo_url && String(bundle.logo_url).trim()) || undefined;
 
       return {
         ...bundle,
+        featured_image_url,
+        logo_url,
         pricing,
-        products: productsWithImages, // All products with images for mosaic
-        totalProductCount, // Total count of all products
-        totalValue, // Sum of product prices for display (e.g. strikethrough on elite cards)
-        isSubscriptionBundle, // Flag to identify elite subscription bundles (bundles with monthly/annual tiers)
-        bundle_subscription_tiers: undefined, // Remove nested data
-        bundle_products: undefined, // Remove nested data
+        products: productsWithImages,
+        totalProductCount,
+        totalValue,
+        isSubscriptionBundle,
+        bundle_subscription_tiers: undefined,
+        bundle_products: undefined,
       };
     });
 

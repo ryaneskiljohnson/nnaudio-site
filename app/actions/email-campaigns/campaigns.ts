@@ -196,7 +196,7 @@ export async function getCampaign(
       senderEmail: campaign.sender_email,
       replyToEmail: campaign.reply_to_email,
       preheader: campaign.preheader,
-      description: campaign.description,
+      description: (campaign as { description?: string | null }).description ?? undefined,
       htmlContent: campaign.html_content,
       textContent: campaign.text_content,
       audienceIds,

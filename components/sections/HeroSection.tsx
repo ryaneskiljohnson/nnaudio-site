@@ -30,7 +30,8 @@ const HeroContainer = styled.section`
     left: 0;
     right: 0;
     bottom: 0;
-    background: radial-gradient(
+    background:
+      radial-gradient(
         circle at 30% 50%,
         rgba(108, 99, 255, 0.1),
         transparent 50%
@@ -42,8 +43,6 @@ const HeroContainer = styled.section`
       );
     z-index: 0;
   }
-
-
 `;
 
 const BackgroundVideo = styled.video<{ $loaded?: boolean }>`
@@ -52,7 +51,7 @@ const BackgroundVideo = styled.video<{ $loaded?: boolean }>`
   left: 0;
   width: 100%;
   height: calc(100% - 60px);
-  opacity: ${props => props.$loaded ? 0.15 : 0};
+  opacity: ${(props) => (props.$loaded ? 0.15 : 0)};
   z-index: 0;
   pointer-events: none;
   object-fit: contain;
@@ -108,7 +107,9 @@ const PrimaryButton = styled(motion.a)`
   border-radius: 50px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
   box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
 
   &:hover {
@@ -230,7 +231,7 @@ const HeroSection = () => {
       { name: "D Minor", notes: ["D", "F", "A"] },
       { name: "G Major", notes: ["G", "B", "D"] },
     ],
-    []
+    [],
   );
 
   // Words to cycle through in the hero title - WRAPPED IN USEMEMO TO PREVENT RECREATION
@@ -244,7 +245,7 @@ const HeroSection = () => {
       t("hero.titleWords.voicing", "Voicing"),
       t("hero.titleWords.harmony", "Harmony"),
     ],
-    [t]
+    [t],
   ); // Only recreate when translation function or language changes
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [centerWordWidth, setCenterWordWidth] = useState(120); // Default width
@@ -292,26 +293,28 @@ const HeroSection = () => {
         // Clean up
         document.body.removeChild(tempDiv);
         setWordWidths(widths);
-        
+
         // Also update the current center word width
         setCenterWordWidth(widths[currentWordIndex] || 120);
-        
+
         console.log("Measured widths:", widths);
       }
     }, 800); // Increased timeout to 800ms to ensure FCP is complete before measurement
-    
+
     return () => clearTimeout(timeoutId);
   }, [titleWords, isMobile]);
 
   // Update center word width whenever the currentWordIndex changes
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     // If we have measured widths, use them
     if (wordWidths && Object.keys(wordWidths).length > 0) {
       const newWidth = wordWidths[currentWordIndex] || 120;
       setCenterWordWidth(newWidth);
-      console.log(`Updated center word width for "${titleWords[currentWordIndex]}" to ${newWidth}px`);
+      console.log(
+        `Updated center word width for "${titleWords[currentWordIndex]}" to ${newWidth}px`,
+      );
     }
     // Also update from the DOM if possible (as a fallback)
     else if (centerWordRef.current) {
@@ -370,7 +373,7 @@ const HeroSection = () => {
       { top: "25%", right: "12%" },
       { bottom: "15%", left: "15%" },
     ],
-    []
+    [],
   );
 
   // Define the chord type for better type safety
@@ -452,88 +455,111 @@ const HeroSection = () => {
       console.log("Skipping chord change - transition already in progress");
       return;
     }
-    
+
     // Get the next chord from the progression
     const nextChordIndex = (currentChordIndex + 1) % chordProgression.length;
-    console.log(`Moving to next chord: ${nextChordIndex} (${chordProgression[nextChordIndex].name})`);
+    console.log(
+      `Moving to next chord: ${nextChordIndex} (${chordProgression[nextChordIndex].name})`,
+    );
 
     // Get current and next chord notes
     const currentNotes = chordProgression[currentChordIndex].notes;
     const nextNotes = chordProgression[nextChordIndex].notes;
-    
+
     // Create a new array for the next positions based on voice leading principles
     const newPositions = [...initialPositions];
-    
+
     // Map current displayed notes to their positions
     const currentNotePositions = displayedChord.notes.map((note, index) => ({
       note,
-      position: displayedChord.positions[index]
+      position: displayedChord.positions[index],
     }));
-    
+
     // Create a map to track which notes from the next chord have been assigned
     const assignedNextNotes = new Set<string>();
-    
+
     // Create the voice-led notes array, starting with the current note positions
     const voiceLeadingNotes: string[] = [];
-    
+
     // For each current note position, find the best voice leading note from the next chord
     currentNotePositions.forEach(({ note: currentNote }) => {
       // First, check if the same note exists in the next chord (common tone)
-      if (nextNotes.includes(currentNote) && !assignedNextNotes.has(currentNote)) {
+      if (
+        nextNotes.includes(currentNote) &&
+        !assignedNextNotes.has(currentNote)
+      ) {
         // Common tone voice leading - reuse the same note
         voiceLeadingNotes.push(currentNote);
         assignedNextNotes.add(currentNote);
       } else {
         // Find the closest note in the next chord
         // This is a simple implementation - for real voice leading we'd consider semitone distances
-        
+
         const noteIndex = {
-          'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 
-          'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 
-          'A#': 10, 'Bb': 10, 'B': 11
+          C: 0,
+          "C#": 1,
+          Db: 1,
+          D: 2,
+          "D#": 3,
+          Eb: 3,
+          E: 4,
+          F: 5,
+          "F#": 6,
+          Gb: 6,
+          G: 7,
+          "G#": 8,
+          Ab: 8,
+          A: 9,
+          "A#": 10,
+          Bb: 10,
+          B: 11,
         };
-        
+
         // Get the chromatic index of the current note
-        const currentNoteIndex = noteIndex[currentNote as keyof typeof noteIndex] || 0;
-        
+        const currentNoteIndex =
+          noteIndex[currentNote as keyof typeof noteIndex] || 0;
+
         // Find the unassigned note from the next chord with the closest distance
-        let closestNote = '';
+        let closestNote = "";
         let smallestDistance = 12; // Maximum semitone distance in an octave
-        
+
         for (const nextNote of nextNotes) {
           if (!assignedNextNotes.has(nextNote)) {
-            const nextNoteIndex = noteIndex[nextNote as keyof typeof noteIndex] || 0;
-            
+            const nextNoteIndex =
+              noteIndex[nextNote as keyof typeof noteIndex] || 0;
+
             // Calculate semitone distance (considering octave wrapping)
             let distance = Math.abs(nextNoteIndex - currentNoteIndex);
             if (distance > 6) distance = 12 - distance; // Consider the shorter path around the circle
-            
+
             if (distance < smallestDistance) {
               smallestDistance = distance;
               closestNote = nextNote;
             }
           }
         }
-        
+
         if (closestNote) {
           voiceLeadingNotes.push(closestNote);
           assignedNextNotes.add(closestNote);
         }
       }
     });
-    
+
     // If there are any unassigned notes from the next chord, add them
-    nextNotes.forEach(note => {
+    nextNotes.forEach((note) => {
       if (!assignedNextNotes.has(note)) {
         voiceLeadingNotes.push(note);
         assignedNextNotes.add(note);
       }
     });
-    
+
     // Ensure we have the same number of notes (should always be true for triads)
     while (voiceLeadingNotes.length < 3) {
       // Find any unused notes from the next chord
-      const unusedNote = nextNotes.find(note => !voiceLeadingNotes.includes(note));
+      const unusedNote = nextNotes.find(
+        (note) => !voiceLeadingNotes.includes(note),
+      );
       if (unusedNote) {
         voiceLeadingNotes.push(unusedNote);
       } else {
@@ -541,8 +567,10 @@ const HeroSection = () => {
         voiceLeadingNotes.push(nextNotes[0]);
       }
     }
-    
-    console.log(`Voice leading from ${currentNotes.join(',')} to ${voiceLeadingNotes.join(',')}`);
+
+    console.log(
+      `Voice leading from ${currentNotes.join(",")} to ${voiceLeadingNotes.join(",")}`,
+    );
 
     // Set up the transition
     setPreviousChord(displayedChord);
@@ -558,17 +586,12 @@ const HeroSection = () => {
       positions: newPositions,
       index: nextChordIndex,
     });
-  }, [
-    currentChordIndex,
-    chordProgression,
-    initialPositions,
-    displayedChord,
-  ]);
+  }, [currentChordIndex, chordProgression, initialPositions, displayedChord]);
 
   // Change chord every 4 seconds
   useEffect(() => {
     console.log("Setting up chord cycling interval");
-    
+
     const intervalId = setInterval(() => {
       console.log("Interval triggered - moving to next chord");
       moveToNextChord();
@@ -766,7 +789,10 @@ const HeroSection = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 1.2, delay: 0.2 }}
         >
-          {t("hero.subtitle", "Enter the next evolution of music creation, where theoretical foundations invisibly guide your workflow. Chords and melodies connect with purpose, empowering your unique musical vision.")}
+          {t(
+            "hero.subtitle",
+            "Enter the next evolution of music creation, where theoretical foundations invisibly guide your workflow. Chords and melodies connect with purpose, empowering your unique musical vision.",
+          )}
         </HeroSubtitle>
 
         <ButtonGroup
@@ -804,11 +830,11 @@ const HeroSection = () => {
     isMobile,
     getWordColor,
     displayedChord,
-    previousChord, 
+    previousChord,
     transitioning,
     positionAnimationOffsets,
     textContentLoaded,
-    setTextContentLoaded
+    setTextContentLoaded,
   ]);
 
   // Render the voice leading lines during transitions
@@ -819,14 +845,17 @@ const HeroSection = () => {
 
     // Create lines between notes that are moving
     const lines = [];
-    
+
     // Iterate through the notes in previous chord
     for (let i = 0; i < previousChord.notes.length; i++) {
       const prevNote = previousChord.notes[i];
       const prevPos = previousChord.positions[i] || { top: "15%", left: "10%" };
       const currNote = displayedChord.notes[i] || "";
-      const currPos = displayedChord.positions[i] || { top: "15%", left: "10%" };
-      
+      const currPos = displayedChord.positions[i] || {
+        top: "15%",
+        left: "10%",
+      };
+
       // Calculate start position
       const startX = prevPos.left
         ? (parseInt(prevPos.left.replace("%", "")) * windowWidth) / 100 + 30
@@ -834,14 +863,14 @@ const HeroSection = () => {
           (parseInt((prevPos.right || "0").replace("%", "")) * windowWidth) /
             100 -
           30;
-      
+
       const startY = prevPos.top
         ? (parseInt(prevPos.top.replace("%", "")) * windowHeight) / 100 + 30
         : windowHeight -
           (parseInt((prevPos.bottom || "0").replace("%", "")) * windowHeight) /
             100 -
           30;
-          
+
       // Calculate end position
       const endX = currPos.left
         ? (parseInt(currPos.left.replace("%", "")) * windowWidth) / 100 + 30
@@ -849,7 +878,7 @@ const HeroSection = () => {
           (parseInt((currPos.right || "0").replace("%", "")) * windowWidth) /
             100 -
           30;
-          
+
       const endY = currPos.top
         ? (parseInt(currPos.top.replace("%", "")) * windowHeight) / 100 + 30
         : windowHeight -
@@ -884,7 +913,7 @@ const HeroSection = () => {
           initial={{ opacity: 0, scaleX: 0 }}
           animate={{ opacity: [0, 0.7, 0], scaleX: [0, 1, 0] }}
           transition={{ duration: 1.5, ease: "easeInOut" as const }}
-        />
+        />,
       );
     }
 
@@ -961,28 +990,39 @@ const HeroSection = () => {
               right: shadowRight,
             }}
             initial={{ opacity: 0 }}
-            animate={textContentLoaded ? {
-              scale: [0.9, 1, 0.9],
-              opacity: [0.3, 0.4, 0.3],
-            } : { opacity: 0 }}
-            transition={textContentLoaded ? {
-              scale: {
-                repeatType: "mirror",
-                repeat: Infinity,
-                duration: 2.5,
-                ease: "easeInOut" as const,
-                delay: animationOffset.delay + 0.5, // Add extra delay after text loads
-              },
-              opacity: {
-                repeatType: "mirror",
-                repeat: Infinity,
-                duration: 2.5,
-                ease: "easeInOut" as const,
-                delay: animationOffset.delay + 0.5, // Add extra delay after text loads
-              },
-            } : {
-              opacity: { duration: 0.8, delay: 0.3 + animationOffset.delay }
-            }}
+            animate={
+              textContentLoaded
+                ? {
+                    scale: [0.9, 1, 0.9],
+                    opacity: [0.3, 0.4, 0.3],
+                  }
+                : { opacity: 0 }
+            }
+            transition={
+              textContentLoaded
+                ? {
+                    scale: {
+                      repeatType: "mirror",
+                      repeat: Infinity,
+                      duration: 2.5,
+                      ease: "easeInOut" as const,
+                      delay: animationOffset.delay + 0.5, // Add extra delay after text loads
+                    },
+                    opacity: {
+                      repeatType: "mirror",
+                      repeat: Infinity,
+                      duration: 2.5,
+                      ease: "easeInOut" as const,
+                      delay: animationOffset.delay + 0.5, // Add extra delay after text loads
+                    },
+                  }
+                : {
+                    opacity: {
+                      duration: 0.8,
+                      delay: 0.3 + animationOffset.delay,
+                    },
+                  }
+            }
           />
 
           {/* Note circle */}
@@ -1009,40 +1049,57 @@ const HeroSection = () => {
             }}
             // Keep backgroundColor as an animated property during transitions
             initial={{ opacity: 0, scale: 0.8 }}
-            animate={textContentLoaded ? {
-              opacity: 1,
-              backgroundColor: noteColor,
-              y: [0, -15, 0],
-              scale: [1, 1.05, 1],
-            } : { 
-              opacity: 1, 
-              scale: 1,
-              backgroundColor: noteColor 
-            }}
-            transition={textContentLoaded ? {
-              backgroundColor: {
-                duration: 1.5,
-                ease: "easeInOut" as const,
-              },
-              y: {
-                repeatType: "mirror",
-                repeat: Infinity,
-                duration: 2.5,
-                ease: "easeInOut" as const,
-                delay: animationOffset.delay + 0.5, // Add extra delay after text loads
-              },
-              scale: {
-                repeatType: "mirror",
-                repeat: Infinity,
-                duration: 2.5,
-                ease: "easeInOut" as const,
-                delay: animationOffset.delay + 0.5, // Add extra delay after text loads
-              },
-            } : {
-              opacity: { duration: 0.8, delay: 0.3 + animationOffset.delay },
-              scale: { duration: 0.6, delay: 0.3 + animationOffset.delay },
-              backgroundColor: { duration: 0.6, delay: 0.3 + animationOffset.delay }
-            }}
+            animate={
+              textContentLoaded
+                ? {
+                    opacity: 1,
+                    backgroundColor: noteColor,
+                    y: [0, -15, 0],
+                    scale: [1, 1.05, 1],
+                  }
+                : {
+                    opacity: 1,
+                    scale: 1,
+                    backgroundColor: noteColor,
+                  }
+            }
+            transition={
+              textContentLoaded
+                ? {
+                    backgroundColor: {
+                      duration: 1.5,
+                      ease: "easeInOut" as const,
+                    },
+                    y: {
+                      repeatType: "mirror",
+                      repeat: Infinity,
+                      duration: 2.5,
+                      ease: "easeInOut" as const,
+                      delay: animationOffset.delay + 0.5, // Add extra delay after text loads
+                    },
+                    scale: {
+                      repeatType: "mirror",
+                      repeat: Infinity,
+                      duration: 2.5,
+                      ease: "easeInOut" as const,
+                      delay: animationOffset.delay + 0.5, // Add extra delay after text loads
+                    },
+                  }
+                : {
+                    opacity: {
+                      duration: 0.8,
+                      delay: 0.3 + animationOffset.delay,
+                    },
+                    scale: {
+                      duration: 0.6,
+                      delay: 0.3 + animationOffset.delay,
+                    },
+                    backgroundColor: {
+                      duration: 0.6,
+                      delay: 0.3 + animationOffset.delay,
+                    },
+                  }
+            }
             whileHover={{
               scale: 1.1,
               transition: { duration: 0.2 },
@@ -1110,50 +1167,48 @@ const HeroSection = () => {
     positionAnimationOffsets,
     pitchColors,
     t,
-    textContentLoaded
+    textContentLoaded,
   ]);
 
   // Render the chord name display
-  const renderChordName = useCallback(() => (
-    <AnimatePresence mode="sync">
-      <motion.div
-        key={`chord-name-${currentChordIndex}`}
-        style={{
-          position: "absolute",
-          bottom: "5%",
-          left: "0",
-          right: "0",
-          textAlign: "center",
-          color: "var(--text-secondary)",
-          fontSize: "1.2rem",
-          background: "rgba(15, 14, 23, 0.7)",
-          padding: "10px",
-          borderRadius: "8px",
-          maxWidth: "200px",
-          margin: "0 auto",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
-        }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: textContentLoaded ? 1 : 0 }}
-        exit={{ opacity: 0 }}
-        transition={{
-          opacity: { duration: 0.7, delay: textContentLoaded ? 1.0 : 0 },
-        }}
-        whileHover={{
-          scale: 1.05,
-          boxShadow: "0 6px 16px rgba(0, 0, 0, 0.3)",
-        }}
-        whileTap={{ scale: 0.98 }}
-      >
-        {chordProgression[currentChordIndex].name}
-      </motion.div>
-    </AnimatePresence>
-  ), [
-    currentChordIndex,
-    chordProgression,
-    t,
-    textContentLoaded
-  ]);
+  const renderChordName = useCallback(
+    () => (
+      <AnimatePresence mode="sync">
+        <motion.div
+          key={`chord-name-${currentChordIndex}`}
+          style={{
+            position: "absolute",
+            bottom: "5%",
+            left: "0",
+            right: "0",
+            textAlign: "center",
+            color: "var(--text-secondary)",
+            fontSize: "1.2rem",
+            background: "rgba(15, 14, 23, 0.7)",
+            padding: "10px",
+            borderRadius: "8px",
+            maxWidth: "200px",
+            margin: "0 auto",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: textContentLoaded ? 1 : 0 }}
+          exit={{ opacity: 0 }}
+          transition={{
+            opacity: { duration: 0.7, delay: textContentLoaded ? 1.0 : 0 },
+          }}
+          whileHover={{
+            scale: 1.05,
+            boxShadow: "0 6px 16px rgba(0, 0, 0, 0.3)",
+          }}
+          whileTap={{ scale: 0.98 }}
+        >
+          {chordProgression[currentChordIndex].name}
+        </motion.div>
+      </AnimatePresence>
+    ),
+    [currentChordIndex, chordProgression, t, textContentLoaded],
+  );
 
   // Effect for transitioning between chords
   useEffect(() => {
@@ -1200,20 +1255,20 @@ const HeroSection = () => {
           disableRemotePlayback
           x-webkit-airplay="deny"
           onError={() => {
-            console.warn('Video failed to load, hiding video background');
+            console.warn("Video failed to load, hiding video background");
             setVideoError(true);
           }}
           onLoadStart={() => {
-            console.log('Video loading started');
+            console.log("Video loading started");
           }}
           onCanPlay={() => {
-            console.log('Video can play');
+            console.log("Video can play");
             setVideoLoaded(true);
           }}
-          style={{ 
-            willChange: 'auto',
-            backfaceVisibility: 'hidden',
-            perspective: '1000px'
+          style={{
+            willChange: "auto",
+            backfaceVisibility: "hidden",
+            perspective: "1000px",
           }}
         >
           <source src="/images/hero-background.webm" type="video/webm" />

@@ -80,7 +80,7 @@ const CheckoutContainer = styled.div`
   display: grid;
   grid-template-columns: 1fr 400px;
   gap: 2rem;
-  
+
   @media (max-width: 968px) {
     grid-template-columns: 1fr;
   }
@@ -91,6 +91,10 @@ const CheckoutForm = styled.div`
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
   padding: 2rem;
+
+  @media (max-width: 968px) {
+    order: 2;
+  }
 `;
 
 const SectionTitle = styled.h2`
@@ -178,6 +182,7 @@ const OrderSummary = styled.div`
   top: 140px;
 
   @media (max-width: 968px) {
+    order: 1;
     position: relative;
     top: 0;
     max-height: none;
