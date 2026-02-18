@@ -2,6 +2,19 @@
 
 import { createClient } from '@/utils/supabase/server';
 
+/** Shape of campaign row for analytics (DB columns may differ from generated types) */
+interface CampaignAnalyticsRow {
+  id: string;
+  name: string;
+  status: string | null;
+  emails_sent?: number;
+  emails_delivered?: number;
+  emails_opened?: number;
+  emails_clicked?: number;
+  emails_bounced?: number;
+  sent_at: string | null;
+}
+
 export interface GetAnalyticsParams {
   timeRange?: string;
   campaignType?: string;
@@ -96,17 +109,19 @@ export async function getAnalytics(
       throw new Error('Failed to fetch campaigns');
     }
 
+    const campaignsList = (campaigns ?? null) as unknown as CampaignAnalyticsRow[] | null;
+
     // Calculate overall metrics
     const totalSent =
-      campaigns?.reduce((sum, c) => sum + (c.emails_sent || 0), 0) || 0;
+      campaignsList?.reduce((sum, c) => sum + (c.emails_sent || 0), 0) || 0;
     const totalDelivered =
-      campaigns?.reduce((sum, c) => sum + (c.emails_delivered || 0), 0) || 0;
+      campaignsList?.reduce((sum, c) => sum + (c.emails_delivered || 0), 0) || 0;
     const totalOpened =
-      campaigns?.reduce((sum, c) => sum + (c.emails_opened || 0), 0) || 0;
+      campaignsList?.reduce((sum, c) => sum + (c.emails_opened || 0), 0) || 0;
     const totalClicked =
-      campaigns?.reduce((sum, c) => sum + (c.emails_clicked || 0), 0) || 0;
+      campaignsList?.reduce((sum, c) => sum + (c.emails_clicked || 0), 0) || 0;
     const totalBounced =
-      campaigns?.reduce((sum, c) => sum + (c.emails_bounced || 0), 0) || 0;
+      campaignsList?.reduce((sum, c) => sum + (c.emails_bounced || 0), 0) || 0;
 
     // Calculate rates
     const openRate = totalSent > 0 ? (totalOpened / totalSent) * 100 : 0;
@@ -121,7 +136,7 @@ export async function getAnalytics(
 
     // Format campaign data
     const formattedCampaigns =
-      campaigns?.map((campaign) => {
+      campaignsList?.map((campaign) => {
         const emailsSent = campaign.emails_sent || 0;
         return {
           id: campaign.id,

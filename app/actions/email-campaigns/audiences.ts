@@ -43,10 +43,10 @@ export async function getAudiences(
     const mode = params?.mode || 'full';
     const refreshCounts = params?.refreshCounts || false;
 
-    // Get audiences (light or full)
+    // Get audiences (light or full). Table has query_conditions, not filters.
     const { data: audiences, error } = await supabase
       .from('email_audiences')
-      .select(mode === 'light' ? 'id,name,description,subscriber_count,created_at,updated_at,filters' : '*')
+      .select(mode === 'light' ? 'id,name,description,created_at,updated_at,query_conditions' : '*')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -63,50 +63,51 @@ export async function getAudiences(
       );
     }
 
+    type AudienceRow = { id: string; name: string; description: string | null; created_at: string | null; updated_at: string | null; query_conditions?: unknown };
+    const toEmailAudience = (a: AudienceRow, subscriber_count: number): EmailAudience =>
+      ({ ...a, subscriber_count, filters: a.query_conditions ?? {} } as EmailAudience);
+
     // Calculate/refresh counts - matching API route logic exactly
     const audiencesWithCounts = mode === "light" ? await (async () => {
-      if (!refreshCounts || !audiences || audiences.length === 0) return audiences || [];
-      // Refresh counts for static audiences cheaply via junction table
+      const list = (audiences || []) as unknown as AudienceRow[];
+      if (!refreshCounts || list.length === 0) return list.map((a) => toEmailAudience(a, 0));
       try {
-        const staticIds = (audiences as any[])
-          .filter((a: any) => (a.filters && typeof a.filters === 'object' && (a.filters as any).audience_type === 'static'))
-          .map((a: any) => a.id);
-        if (staticIds.length === 0) return audiences || [];
+        const filtersList = list.map((a) => (a.query_conditions as Record<string, unknown>) || {});
+        const staticIds = list
+          .filter((_a, i) => filtersList[i] && typeof filtersList[i] === 'object' && (filtersList[i] as Record<string, unknown>).audience_type === 'static')
+          .map((a) => a.id);
+        if (staticIds.length === 0) return list.map((a) => toEmailAudience(a, 0));
         const { data: relations } = await supabase
           .from("email_audience_subscribers")
           .select("audience_id, subscriber_id")
           .in("audience_id", staticIds)
-          .limit(5000); // Prevent unbounded queries for large audiences
+          .limit(5000);
         const counts: Record<string, number> = {};
-        (relations || []).forEach((r: any) => {
-          if (!r.audience_id) return;
+        (relations || []).forEach((r: { audience_id: string | null; subscriber_id: string | null }) => {
+          if (r.audience_id == null) return;
           counts[r.audience_id] = (counts[r.audience_id] || 0) + 1;
         });
-        return (audiences as any[]).map((a: any) => ({
-          ...a,
-          subscriber_count: staticIds.includes(a.id) ? (counts[a.id] || 0) : a.subscriber_count
-        }));
+        return list.map((a) => toEmailAudience(a, staticIds.includes(a.id) ? (counts[a.id] || 0) : 0));
       } catch (e) {
         if (EMAIL_DEBUG) console.warn('Light mode refreshCounts failed:', e);
-        return audiences || [];
+        return list.map((a) => toEmailAudience(a, 0));
       }
     })() : await Promise.all(
-      ((audiences || []) as unknown as { id: string; name: string; subscriber_count: number | null; filters: any }[]).map(async (audience) => {
+      ((audiences || []) as unknown as AudienceRow[]).map(async (audience) => {
+        const filters = (audience.query_conditions ?? {}) as Record<string, unknown>;
         let actualCount = 0;
 
         if (EMAIL_DEBUG) {
           console.log(`\n--- Processing audience: "${audience.name}" ---`);
-          console.log(`Stored subscriber_count: ${audience.subscriber_count}`);
-          console.log(`Filters:`, JSON.stringify(audience.filters));
+          console.log(`Filters:`, JSON.stringify(filters));
         }
 
         // Check if this is a static audience
         if (
-          audience.filters &&
-          typeof audience.filters === "object" &&
-          audience.filters !== null
+          filters &&
+          typeof filters === "object" &&
+          Object.keys(filters).length > 0
         ) {
-          const filters = audience.filters as any;
           if (EMAIL_DEBUG) {
             console.log(
               `Audience type from filters: ${filters.audience_type || "not set"}`
@@ -174,7 +175,7 @@ export async function getAudiences(
             }
             actualCount = await calculateSubscriberCount(
               supabase,
-              audience.filters || {}
+              filters || {}
             );
             if (EMAIL_DEBUG) {
               console.log(
@@ -191,7 +192,7 @@ export async function getAudiences(
           }
           actualCount = await calculateSubscriberCount(
             supabase,
-            audience.filters || {}
+            filters || {}
           );
           if (EMAIL_DEBUG) {
             console.log(
@@ -200,17 +201,12 @@ export async function getAudiences(
           }
         }
 
-        const result = {
-          ...audience,
-          subscriber_count: actualCount,
-        };
-
         if (EMAIL_DEBUG) {
           console.log(
             `✅ Final result for "${audience.name}": subscriber_count=${actualCount}`
           );
         }
-        return { ...audience, subscriber_count: actualCount } as EmailAudience;
+        return toEmailAudience(audience, actualCount);
       })
     );
 
@@ -289,15 +285,14 @@ export async function createAudience(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Authentication required');
 
-    // Create new audience
+    // Create new audience (table uses query_conditions, not filters)
     const { data: audience, error } = await supabase
       .from('email_audiences')
       .insert({
         name,
         description: description || null,
-        filters: filters || {},
+        query_conditions: filters || {},
         created_by: user.id,
-        subscriber_count: initialCount,
       })
       .select('*')
       .single();
@@ -307,7 +302,8 @@ export async function createAudience(
       throw new Error('Failed to create audience');
     }
 
-    return { audience: { ...audience, subscriber_count: audience?.subscriber_count ?? 0 } as EmailAudience };
+    const row = audience as { id: string; name: string; description: string | null; query_conditions: unknown; created_at: string | null; updated_at: string | null };
+    return { audience: { ...row, subscriber_count: initialCount, filters: row.query_conditions } as EmailAudience };
   } catch (error) {
     console.error('Error in createAudience:', error);
     throw error;
@@ -343,7 +339,8 @@ export async function getAudience(
       throw new Error('Failed to fetch audience');
     }
 
-    return { audience: { ...audience, subscriber_count: audience?.subscriber_count ?? 0 } as EmailAudience };
+    const row = audience as { id: string; name: string; description: string | null; query_conditions: unknown; created_at: string | null; updated_at: string | null };
+    return { audience: { ...row, subscriber_count: 0, filters: row.query_conditions } as EmailAudience };
   } catch (error) {
     console.error('Error in getAudience:', error);
     throw error;
@@ -381,8 +378,7 @@ export async function updateAudience(
 
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
-    if (filters !== undefined) updateData.filters = filters;
-    if (subscriber_count !== undefined) updateData.subscriber_count = subscriber_count;
+    if (filters !== undefined) updateData.query_conditions = filters;
 
     const { data: audience, error } = await supabase
       .from('email_audiences')
@@ -399,7 +395,8 @@ export async function updateAudience(
       throw new Error('Failed to update audience');
     }
 
-    return { audience: { ...audience, subscriber_count: audience?.subscriber_count ?? 0 } as EmailAudience };
+    const row = audience as { id: string; name: string; description: string | null; query_conditions: unknown; created_at: string | null; updated_at: string | null };
+    return { audience: { ...row, subscriber_count: 0, filters: row.query_conditions } as EmailAudience };
   } catch (error) {
     console.error('Error in updateAudience:', error);
     throw error;

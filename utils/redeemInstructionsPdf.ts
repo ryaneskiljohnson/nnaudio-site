@@ -71,6 +71,8 @@ function fitInBox(
 }
 
 export interface RedeemInstructionsPdfOptions {
+  /** Serial code (optional, for filename or content) */
+  serial_code?: string;
   /** Product name (optional, for product-specific handouts) */
   product_name?: string;
 }

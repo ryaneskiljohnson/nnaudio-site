@@ -20,6 +20,7 @@ import { cleanHtmlText } from "@/utils/stringUtils";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import RelatedProductsSlider from "@/components/RelatedProductsSlider";
+import { MultiVideoPlayer } from "@/app/components/MultiVideoPlayer";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -2015,58 +2016,22 @@ export default function ProductPage() {
         </ContentSection>
       )}
 
-      {product.gallery_images && product.gallery_images.length > 1 && (
-        <ContentSection>
-          <SectionTitle>Gallery</SectionTitle>
-          <GalleryGrid>
-            {product.gallery_images.map((imageUrl: string, index: number) => (
-              <GalleryImage
-                key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                onClick={() => window.open(imageUrl, '_blank')}
-              >
-                <Image
-                  src={imageUrl}
-                  alt={`${product.name} - Image ${index + 1}`}
-                  fill
-                  style={{ objectFit: 'cover' }}
-                />
-              </GalleryImage>
-            ))}
-          </GalleryGrid>
-        </ContentSection>
-      )}
-
-
-      {product.demo_video_url && (
+      {/* Demo Videos Section - Support both new demo_videos array and legacy demo_video_url */}
+      {((product.demo_videos && product.demo_videos.length > 0) || product.demo_video_url) && (
         <ContentSection>
           <SectionTitle>
             <FaVideo style={{ marginRight: '10px', display: 'inline' }} />
-            Demo Video
+            Demo Video{product.demo_videos && product.demo_videos.length > 1 ? 's' : ''}
           </SectionTitle>
-          <VideoContainer>
-            {product.demo_video_url.includes('youtube') || product.demo_video_url.includes('youtu.be') ? (
-              <VideoIframe
-                src={product.demo_video_url.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            ) : product.demo_video_url.includes('vimeo') ? (
-              <VideoIframe
-                src={product.demo_video_url.replace('vimeo.com/', 'player.vimeo.com/video/')}
-                allow="autoplay; fullscreen; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
-              <video controls style={{ width: '100%', height: '100%' }}>
-                <source src={product.demo_video_url} />
-                Your browser does not support the video tag.
-              </video>
-            )}
-          </VideoContainer>
+          <MultiVideoPlayer 
+            videos={
+              product.demo_videos && product.demo_videos.length > 0 
+                ? product.demo_videos.sort((a: { order: number }, b: { order: number }) => a.order - b.order)
+                : product.demo_video_url 
+                  ? [{ url: product.demo_video_url, order: 1 }]
+                  : []
+            }
+          />
         </ContentSection>
       )}
 
@@ -2548,6 +2513,31 @@ export default function ProductPage() {
           <RelatedProductsSlider products={relatedProducts} />
         </ContentSection>
       </RelatedProducts>
+
+      {product.gallery_images && product.gallery_images.length > 1 && (
+        <ContentSection>
+          <SectionTitle>Gallery</SectionTitle>
+          <GalleryGrid>
+            {product.gallery_images.map((imageUrl: string, index: number) => (
+              <GalleryImage
+                key={index}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: index * 0.1 }}
+                onClick={() => window.open(imageUrl, '_blank')}
+              >
+                <Image
+                  src={imageUrl}
+                  alt={`${product.name} - Image ${index + 1}`}
+                  fill
+                  style={{ objectFit: 'cover' }}
+                />
+              </GalleryImage>
+            ))}
+          </GalleryGrid>
+        </ContentSection>
+      )}
 
       {showStickyButton && product && (
         <StickyAddToCartButton

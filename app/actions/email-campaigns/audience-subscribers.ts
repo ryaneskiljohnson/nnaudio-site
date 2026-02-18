@@ -49,7 +49,7 @@ export async function getAudienceSubscribers(
     // Get audience to check if it's static
     const { data: audience } = await supabase
       .from('email_audiences')
-      .select('id, name, filters')
+      .select('id, name, query_conditions')
       .eq('id', audienceId)
       .single();
 
@@ -57,7 +57,8 @@ export async function getAudienceSubscribers(
       throw new Error('Audience not found');
     }
 
-    const filters = (audience.filters as any) || {};
+    const audienceData = audience as typeof audience & { query_conditions?: unknown };
+    const filters = (audienceData.query_conditions as Record<string, unknown>) || {};
     
     // Ensure filters.rules is always an array
     if (!filters.rules || !Array.isArray(filters.rules) || filters.rules.length === 0) {
@@ -181,7 +182,7 @@ export async function addAudienceSubscriber(
     // Check if audience is static
     const { data: audience } = await supabase
       .from("email_audiences")
-      .select("id, filters")
+      .select("id, query_conditions")
       .eq("id", audienceId)
       .single();
 
@@ -189,7 +190,8 @@ export async function addAudienceSubscriber(
       throw new Error('Audience not found');
     }
 
-    const filters = (audience.filters as any) || {};
+    const audienceData = audience as typeof audience & { query_conditions?: unknown };
+    const filters = (audienceData.query_conditions as Record<string, unknown>) || {};
     if (filters.audience_type !== "static") {
       throw new Error('Can only add subscribers to static audiences');
     }
@@ -316,7 +318,7 @@ export async function getSubscriberAudienceMemberships(
     // Get all audiences
     const { data: audiences, error: audiencesError } = await supabase
       .from("email_audiences")
-      .select("id, name, filters")
+      .select("id, name, query_conditions")
       .order("name");
 
     if (audiencesError) {
@@ -349,8 +351,9 @@ export async function getSubscriberAudienceMemberships(
     // Check memberships for each audience
     const memberships: { [key: string]: boolean } = {};
 
-    for (const audience of audiences || []) {
-      const filters = (audience.filters || {}) as Record<string, unknown>;
+    type AudienceWithFilters = { id: string; query_conditions?: unknown };
+    for (const audience of (audiences || []) as unknown as AudienceWithFilters[]) {
+      const filters = (audience.query_conditions || {}) as Record<string, unknown>;
       const isStatic = filters.audience_type === "static";
 
       if (isStatic) {

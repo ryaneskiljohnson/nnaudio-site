@@ -226,6 +226,7 @@ export async function PUT(
       legacy_product_id: body.legacy_product_id !== undefined ? (body.legacy_product_id == null || body.legacy_product_id === '' ? null : String(body.legacy_product_id).trim()) : undefined,
       features: Array.isArray(body.features) ? body.features : undefined,
       audio_samples: Array.isArray(body.audio_samples) ? body.audio_samples : undefined,
+      demo_videos: Array.isArray(body.demo_videos) ? body.demo_videos : undefined,
       downloads: downloadsPayload !== undefined ? downloadsPayload : undefined,
     };
     // Omit keys that were not sent (undefined) so we don't overwrite with undefined

@@ -184,6 +184,7 @@ export async function POST(request: NextRequest) {
         specifications: body.specifications || {},
         requirements: body.requirements || {},
         demo_video_url: body.demo_video_url,
+        demo_videos: body.demo_videos || [],
         audio_samples: body.audio_samples || [],
         download_url: body.download_url,
         download_version: body.download_version,

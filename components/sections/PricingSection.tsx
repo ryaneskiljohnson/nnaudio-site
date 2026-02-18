@@ -208,15 +208,9 @@ const PricingSection = () => {
   const [billingPeriod, setBillingPeriod] = useState<PlanType>("monthly");
   // Set billing period to match user's current subscription when logged in
   useEffect(() => {
-    if (user?.profile?.subscription && user.profile.subscription !== "none") {
-      setBillingPeriod(user.profile.subscription);
-    }
-  }, [user?.profile?.subscription]);
-
-  // Set billing period to match user's current subscription when logged in
-  useEffect(() => {
-    if (user?.profile?.subscription && user.profile.subscription !== "none") {
-      setBillingPeriod(user.profile.subscription);
+    const sub = user?.profile?.subscription;
+    if (sub && sub !== "none" && (sub === "monthly" || sub === "annual" || sub === "lifetime")) {
+      setBillingPeriod(sub);
     }
   }, [user?.profile?.subscription]);
 

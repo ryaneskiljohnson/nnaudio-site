@@ -2,6 +2,23 @@
 
 import { createClient } from '@/utils/supabase/server';
 
+interface CampaignDeliverabilityRow {
+  id: string;
+  name: string;
+  emails_sent?: number;
+  emails_delivered?: number;
+  emails_bounced?: number;
+}
+
+interface EmailSendRow {
+  email?: string;
+  status?: string;
+  sent_at?: string | null;
+  bounce_reason?: string | null;
+  bounced_at?: string | null;
+  campaign_id?: string | null;
+}
+
 export interface DeliverabilityData {
   domains: Array<{
     domain: string;
@@ -59,6 +76,8 @@ export async function getDeliverability(): Promise<DeliverabilityData> {
       throw new Error('Failed to fetch campaigns');
     }
 
+    const campaignsList = (campaigns ?? null) as unknown as CampaignDeliverabilityRow[] | null;
+
     // Get subscriber data for domain analysis
     const { data: subscribers, error: subscribersError } = await supabase
       .from('subscribers')
@@ -85,11 +104,11 @@ export async function getDeliverability(): Promise<DeliverabilityData> {
 
     // Calculate overall metrics
     const totalSent =
-      campaigns?.reduce((sum, c) => sum + (c.emails_sent || 0), 0) || 0;
+      campaignsList?.reduce((sum, c) => sum + (c.emails_sent || 0), 0) || 0;
     const totalDelivered =
-      campaigns?.reduce((sum, c) => sum + (c.emails_delivered || 0), 0) || 0;
+      campaignsList?.reduce((sum, c) => sum + (c.emails_delivered || 0), 0) || 0;
     const totalBounced =
-      campaigns?.reduce((sum, c) => sum + (c.emails_bounced || 0), 0) || 0;
+      campaignsList?.reduce((sum, c) => sum + (c.emails_bounced || 0), 0) || 0;
 
     const deliveryRate = totalSent > 0 ? (totalDelivered / totalSent) * 100 : 0;
     const bounceRate = totalSent > 0 ? (totalBounced / totalSent) * 100 : 0;
@@ -110,8 +129,10 @@ export async function getDeliverability(): Promise<DeliverabilityData> {
       }
     });
 
+    const sendsList = (emailSends ?? null) as EmailSendRow[] | null;
+
     // Process email sends for more accurate domain stats
-    emailSends?.forEach((send) => {
+    sendsList?.forEach((send) => {
       if (send.email) {
         const domain = send.email.split('@')[1];
         if (domain) {
@@ -150,11 +171,11 @@ export async function getDeliverability(): Promise<DeliverabilityData> {
       campaignName: string | null;
     }> = [];
 
-    emailSends?.forEach((send) => {
+    sendsList?.forEach((send) => {
       if (send.status === 'bounced' && send.bounced_at) {
         const email = send.email || '';
         const domain = email.split('@')[1] || 'unknown';
-        const campaign = campaigns?.find((c) => c.id === send.campaign_id);
+        const campaign = campaignsList?.find((c) => c.id === send.campaign_id);
         bounces.push({
           email,
           domain,
