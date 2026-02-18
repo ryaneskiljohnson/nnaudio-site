@@ -94,12 +94,10 @@ export async function GET(
         display_order: bp.display_order,
       }));
 
-    // Calculate total value
+    // Total value = sum of each product's full list price (not sale price).
+    // This represents what you'd pay buying everything individually at retail.
     const totalValue = validProducts.reduce((sum: number, product: Record<string, unknown>) => {
-      const price = (product.sale_price as number) && (product.sale_price as number) > 0
-        ? (product.sale_price as number)
-        : (product.price as number);
-      return sum + (price || 0);
+      return sum + ((product.price as number) || 0);
     }, 0);
 
     // Organize pricing by subscription type
