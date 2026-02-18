@@ -318,6 +318,8 @@ const PremierButton = styled(motion.button)`
 `;
 
 // Slider Section (for remaining products)
+const MOBILE_SLIDER_PADDING_PX = 16;
+
 const SliderWrapper = styled.div`
   position: relative;
   margin-top: 2rem;
@@ -327,10 +329,11 @@ const SliderWrapper = styled.div`
 
   @media (max-width: 768px) {
     margin-top: 1.5rem;
-    padding: 0 4px;
-    margin-left: -4px;
-    margin-right: -4px;
-    width: calc(100% + 8px);
+    margin-left: -20px;
+    margin-right: -20px;
+    width: calc(100% + 40px);
+    padding: 0 ${MOBILE_SLIDER_PADDING_PX}px;
+    box-sizing: border-box;
   }
 `;
 
@@ -347,8 +350,7 @@ const ProductsSlider = styled.div<{ $translateX: number; $centered: boolean }>`
   }
 
   @media (max-width: 768px) {
-    gap: 1rem;
-    padding: 0 2px;
+    gap: 12px;
   }
 `;
 
@@ -473,9 +475,14 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    const gap = isMobile ? 16 : 32;
+    const gap = isMobile ? 12 : 32;
     const calculateDimensions = () => {
       if (!sliderRef.current) return;
+      if (isMobile) {
+        const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 400;
+        setCardWidth(viewportWidth - MOBILE_SLIDER_PADDING_PX * 2);
+        return;
+      }
       const containerWidth = sliderRef.current.parentElement?.parentElement?.clientWidth ||
                              sliderRef.current.parentElement?.clientWidth ||
                              window.innerWidth;
@@ -499,14 +506,21 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
 
   useEffect(() => {
     if (!sliderRef.current) return;
+    const gap = isMobile ? 12 : 32;
+    const cardWithGap = cardWidth + gap;
+
+    if (isMobile) {
+      const translateValue = -(currentIndex * cardWithGap);
+      setTranslateX(translateValue);
+      return;
+    }
+
     const containerWidth = sliderRef.current.parentElement?.parentElement?.clientWidth ||
                            sliderRef.current.parentElement?.clientWidth ||
                            window.innerWidth;
     const actualWidth = Math.min(containerWidth, 1400);
-    const gap = isMobile ? 16 : 32;
     const arrowSpace = 100;
     const availableWidth = actualWidth - (arrowSpace * 2);
-    const cardWithGap = cardWidth + gap;
     const totalCardsWidth = (cardWidth * cardsPerView) + (gap * (cardsPerView - 1));
     const centerOffset = arrowSpace + (availableWidth - totalCardsWidth) / 2;
     const translateValue = centerOffset - (currentIndex * cardWithGap);

@@ -56,6 +56,8 @@ const SectionSubtitle = styled(motion.p)`
   }
 `;
 
+const MOBILE_PADDING_PX = 16;
+
 const SliderWrapper = styled.div`
   position: relative;
   margin-top: 2rem;
@@ -64,9 +66,11 @@ const SliderWrapper = styled.div`
 
   @media (max-width: 768px) {
     margin-top: 1.5rem;
-    padding: 0 4px;
-    margin-left: -4px;
-    margin-right: -4px;
+    margin-left: -20px;
+    margin-right: -20px;
+    width: calc(100% + 40px);
+    padding: 0 ${MOBILE_PADDING_PX}px;
+    box-sizing: border-box;
   }
 `;
 
@@ -83,8 +87,7 @@ const ProductsSlider = styled.div<{ $translateX: number; $centered: boolean }>`
   }
 
   @media (max-width: 768px) {
-    gap: 1rem;
-    padding: 0 2px;
+    gap: 12px;
   }
 `;
 
@@ -262,6 +265,10 @@ interface Product {
   backgroundImage?: string;
   price: number | string;
   sale_price?: number | null;
+  /** When true (e.g. elite subscription bundles), ProductCard shows "See Pricing Options" instead of price and cart */
+  hasMultiplePricing?: boolean;
+  /** Sum of individual product prices (e.g. bundle total value); shown as strikethrough on card */
+  compareAtPrice?: number;
 }
 
 interface ProductsSectionProps {
@@ -310,25 +317,27 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
                              sliderRef.current.parentElement?.clientWidth || 
                              window.innerWidth;
       
-      const actualWidth = Math.min(containerWidth, 1600); // ContentContainer max-width
-      
-      const gap = window.innerWidth <= 768 ? 24 : 32;
-      const arrowSpace = 100; // Space for each arrow
+      const gap = window.innerWidth <= 768 ? 12 : 32;
+      const arrowSpace = 100; // Space for each arrow (desktop only)
 
-      // On mobile: always show a single card per view; desktop uses section setting
+      // On mobile: single card, full viewport width minus padding; desktop uses section setting
       let numCards = isMobile ? 1 : (maxCardsPerView || 4);
       if (isMobile && !showAll) {
-        numCards = 1; // keep 1 card per view; displayedProducts count is still limited by mobileLimit
+        numCards = 1;
       }
       numCards = Math.min(numCards, displayedProducts.length);
-      
-      // Calculate available width: container width minus arrow space on both sides
-      const availableWidth = actualWidth - (arrowSpace * 2);
-      
-      // Calculate card width: (available width - gaps) / number of cards
-      const totalGapWidth = gap * (numCards - 1);
-      const width = (availableWidth - totalGapWidth) / numCards;
-      
+
+      let width: number;
+      if (isMobile) {
+        const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : containerWidth;
+        width = viewportWidth - MOBILE_PADDING_PX * 2;
+      } else {
+        const actualWidth = Math.min(containerWidth, 1600);
+        const availableWidth = actualWidth - (arrowSpace * 2);
+        const totalGapWidth = gap * (numCards - 1);
+        width = (availableWidth - totalGapWidth) / numCards;
+      }
+
       setCardsPerView(numCards);
       setCardWidth(width);
     };
@@ -348,28 +357,27 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
 
   useEffect(() => {
     if (!sliderRef.current) return;
-    
-    // Get actual container width
-    const containerWidth = sliderRef.current.parentElement?.parentElement?.clientWidth || 
-                           sliderRef.current.parentElement?.clientWidth || 
+    const gap = window.innerWidth <= 768 ? 12 : 32;
+    const cardWithGap = cardWidth + gap;
+
+    if (isMobile) {
+      // Mobile: card is full-width with padding; first card at 0
+      const translateValue = -(currentIndex * cardWithGap);
+      setTranslateX(translateValue);
+      return;
+    }
+
+    const containerWidth = sliderRef.current.parentElement?.parentElement?.clientWidth ||
+                           sliderRef.current.parentElement?.clientWidth ||
                            window.innerWidth;
-    const actualWidth = Math.min(containerWidth, 1600); // ContentContainer max-width
-    
-    const gap = window.innerWidth <= 768 ? 24 : 32;
+    const actualWidth = Math.min(containerWidth, 1600);
     const arrowSpace = 100;
     const availableWidth = actualWidth - (arrowSpace * 2);
-    const cardWithGap = cardWidth + gap;
-    
-    // Calculate total width of visible cards
     const totalCardsWidth = (cardWidth * cardsPerView) + (gap * (cardsPerView - 1));
-    
-    // Center offset: start position to center the cards
     const centerOffset = arrowSpace + (availableWidth - totalCardsWidth) / 2;
-    
-    // Translate: start from center, then move left by currentIndex
     const translateValue = centerOffset - (currentIndex * cardWithGap);
     setTranslateX(translateValue);
-  }, [currentIndex, cardWidth, cardsPerView]);
+  }, [currentIndex, cardWidth, cardsPerView, isMobile]);
 
   const nextSlide = useCallback(() => {
     const calculatedMaxIndex = Math.max(0, displayedProducts.length - cardsPerView);
@@ -480,13 +488,15 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
                 short_description: (product as any).short_description,
                 description: product.description,
                 category: (product as any).category,
-                price: typeof product.price === 'string' 
-                  ? parseFloat(product.price.replace('$', '')) || 0 
+                price: typeof product.price === 'string'
+                  ? parseFloat(product.price.replace('$', '')) || 0
                   : product.price,
                 sale_price: product.sale_price,
                 featured_image_url: product.featured_image_url || undefined,
                 logo_url: product.logo_url || undefined,
                 image: product.image || product.featured_image_url || product.logo_url || '/images/nnaud-io/NNPurp1.webp',
+                hasMultiplePricing: product.hasMultiplePricing,
+                compareAtPrice: product.compareAtPrice,
               };
 
               return (
@@ -518,13 +528,15 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
                   short_description: (product as any).short_description,
                   description: product.description,
                   category: (product as any).category,
-                  price: typeof product.price === 'string' 
-                    ? parseFloat(product.price.replace('$', '')) || 0 
+                  price: typeof product.price === 'string'
+                    ? parseFloat(product.price.replace('$', '')) || 0
                     : product.price,
                   sale_price: product.sale_price,
                   featured_image_url: product.featured_image_url || undefined,
                   logo_url: product.logo_url || undefined,
                   image: product.image || product.featured_image_url || product.logo_url || '/images/nnaud-io/NNPurp1.webp',
+                  hasMultiplePricing: product.hasMultiplePricing,
+                  compareAtPrice: product.compareAtPrice,
                 };
 
                 return (

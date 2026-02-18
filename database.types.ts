@@ -663,6 +663,7 @@ export type Database = {
           meta_title: string | null
           mosaic_image_url: string | null
           name: string
+          product_id: string | null
           short_description: string | null
           slug: string
           status: string | null
@@ -684,6 +685,7 @@ export type Database = {
           meta_title?: string | null
           mosaic_image_url?: string | null
           name: string
+          product_id?: string | null
           short_description?: string | null
           slug: string
           status?: string | null
@@ -705,13 +707,22 @@ export type Database = {
           meta_title?: string | null
           mosaic_image_url?: string | null
           name?: string
+          product_id?: string | null
           short_description?: string | null
           slug?: string
           status?: string | null
           tagline?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bundles_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customers: {
         Row: {
