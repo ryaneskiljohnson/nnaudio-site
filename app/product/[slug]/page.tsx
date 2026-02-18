@@ -1162,6 +1162,8 @@ export default function ProductPage() {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [descriptionNeedsExpansion, setDescriptionNeedsExpansion] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  /** Store durations for all audio tracks by index */
+  const [trackDurations, setTrackDurations] = useState<{ [index: number]: number }>({});
   const descriptionRef = useRef<HTMLDivElement | null>(null);
   const mainAudioRef = useRef<HTMLAudioElement | null>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -1169,6 +1171,8 @@ export default function ProductPage() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const heroSectionRef = useRef<HTMLDivElement | null>(null);
+  /** When true, auto-play when the new track finishes loading (set by handleTrackSelect) */
+  const autoPlayOnTrackSelectRef = useRef(false);
 
   useEffect(() => {
     if (slug) {
@@ -1297,13 +1301,30 @@ export default function ProductPage() {
           }
         }
       };
-      
+
+      /** Auto-play when user selected this track (handleTrackSelect set the ref) */
+      const handleCanPlay = async () => {
+        if (!autoPlayOnTrackSelectRef.current) return;
+        autoPlayOnTrackSelectRef.current = false;
+        try {
+          if (audioContextRef.current?.state === 'suspended') {
+            await audioContextRef.current.resume();
+          }
+          await audio.play();
+          setIsPlaying(true);
+          /* Waveform animation starts via useEffect that watches isPlaying */
+        } catch (err) {
+          console.warn('Auto-play on track select failed:', err);
+        }
+      };
+
       // Also try to generate waveform if audio is already loaded
       if (audio.readyState >= 2) {
         handleLoadedData();
       }
-      
+
       audio.addEventListener('loadeddata', handleLoadedData);
+      audio.addEventListener('canplay', handleCanPlay, { once: true });
       
       // Handle errors
       const handleError = (e: any) => {
@@ -1344,6 +1365,7 @@ export default function ProductPage() {
 
       return () => {
         audio.removeEventListener('loadeddata', handleLoadedData);
+        audio.removeEventListener('canplay', handleCanPlay);
         audio.removeEventListener('error', handleError);
       };
     }
@@ -1359,6 +1381,57 @@ export default function ProductPage() {
       }
     }
   }, [isPlaying]);
+
+  // Load durations for all audio tracks when product loads
+  useEffect(() => {
+    if (!product?.audio_samples || product.audio_samples.length === 0) {
+      setTrackDurations({});
+      return;
+    }
+
+    const loadTrackDurations = async () => {
+      const durations: { [index: number]: number } = {};
+      
+      for (let i = 0; i < product.audio_samples.length; i++) {
+        const audioUrl = product.audio_samples[i]?.url;
+        if (!audioUrl) continue;
+
+        try {
+          // Create a temporary audio element to get duration
+          const tempAudio = new Audio();
+          tempAudio.preload = 'metadata';
+          
+          const duration = await new Promise<number>((resolve, reject) => {
+            const handleLoadedMetadata = () => {
+              tempAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+              tempAudio.removeEventListener('error', handleError);
+              resolve(tempAudio.duration || 0);
+            };
+            
+            const handleError = () => {
+              tempAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+              tempAudio.removeEventListener('error', handleError);
+              resolve(0); // Fallback to 0 if error
+            };
+            
+            tempAudio.addEventListener('loadedmetadata', handleLoadedMetadata);
+            tempAudio.addEventListener('error', handleError);
+            tempAudio.src = audioUrl;
+          });
+          
+          if (duration > 0) {
+            durations[i] = duration;
+          }
+        } catch (error) {
+          console.warn(`Error loading duration for track ${i}:`, error);
+        }
+      }
+      
+      setTrackDurations(durations);
+    };
+
+    loadTrackDurations();
+  }, [product?.audio_samples]);
 
   const generateWaveform = async (audio: HTMLAudioElement) => {
     try {
@@ -1649,23 +1722,23 @@ export default function ProductPage() {
   };
 
   const handleTrackSelect = async (index: number) => {
-    setCurrentTrackIndex(index);
-    // Wait for audio to load, then play if it was playing before
-    if (isPlaying && mainAudioRef.current) {
-      const audio = mainAudioRef.current;
-      // Wait for the audio to be ready
-      const playWhenReady = () => {
-        if (audio.readyState >= 2) { // HAVE_CURRENT_DATA
-          audio.play().catch((error) => {
-            console.error('Error auto-playing after track change:', error);
-            setIsPlaying(false);
-          });
-        } else {
-          audio.addEventListener('canplay', playWhenReady, { once: true });
+    const audio = mainAudioRef.current;
+    if (index === currentTrackIndex && audio) {
+      // Same track: play (or restart) immediately
+      try {
+        if (audioContextRef.current?.state === 'suspended') {
+          await audioContextRef.current.resume();
         }
-      };
-      playWhenReady();
+        await audio.play();
+        setIsPlaying(true);
+        startWaveformAnimation();
+      } catch (err) {
+        console.warn('Play on same-track select failed:', err);
+      }
+      return;
     }
+    autoPlayOnTrackSelectRef.current = true;
+    setCurrentTrackIndex(index);
   };
 
   const handleNextTrack = () => {
@@ -2100,7 +2173,7 @@ export default function ProductPage() {
                       {audio.name || `Sample ${index + 1}`}
                     </PlaylistItemName>
                     <PlaylistItemDuration>
-                      {duration > 0 && index === currentTrackIndex ? formatTime(duration) : '--:--'}
+                      {trackDurations[index] > 0 ? formatTime(trackDurations[index]) : '--:--'}
                     </PlaylistItemDuration>
                   </PlaylistItem>
                 ))}

@@ -9,11 +9,13 @@ import ProductsSectionSkeleton from "@/components/sections/ProductsSectionSkelet
 import FeaturedProductsSectionSkeleton from "@/components/sections/FeaturedProductsSectionSkeleton";
 
 // Lazy load product sections for better initial page load
+// NOTE: loading fallbacks use skeleton components instead of null to prevent
+// blank gaps when data arrives before the JS chunks have downloaded (first visit).
 const ProductsSection = dynamic(
   () => import("@/components/sections/ProductsSection"),
   {
     ssr: true,
-    loading: () => null,
+    loading: () => <ProductsSectionSkeleton />,
   }
 );
 
@@ -21,7 +23,7 @@ const FeaturedProductsSection = dynamic(
   () => import("@/components/sections/FeaturedProductsSection"),
   {
     ssr: true,
-    loading: () => null,
+    loading: () => <FeaturedProductsSectionSkeleton />,
   }
 );
 
