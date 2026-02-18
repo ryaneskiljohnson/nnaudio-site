@@ -1199,6 +1199,11 @@ export default function ProductPage() {
   /** When true, auto-play when the new track finishes loading (set by handleTrackSelect) */
   const autoPlayOnTrackSelectRef = useRef(false);
 
+  /** play() rejects with AbortError when pause() is called before play() resolves; ignore it. */
+  const isPlayAbortError = (err: unknown): boolean =>
+    (err as { name?: string })?.name === 'AbortError' ||
+    (err as { code?: number })?.code === 20; // MEDIA_ERR_ABORTED
+
   useEffect(() => {
     if (slug) {
       fetchProduct();
@@ -1339,6 +1344,7 @@ export default function ProductPage() {
           setIsPlaying(true);
           /* Waveform animation starts via useEffect that watches isPlaying */
         } catch (err) {
+          if (isPlayAbortError(err)) return; // pause() interrupted play(), expected
           console.warn('Auto-play on track select failed:', err);
         }
       };
@@ -1728,6 +1734,10 @@ export default function ProductPage() {
         await audio.play();
         setIsPlaying(true);
       } catch (error: any) {
+        if (isPlayAbortError(error)) {
+          setIsPlaying(false);
+          return;
+        }
         console.error('Error playing audio:', error);
         console.error('Audio src:', audio.src);
         console.error('Audio readyState:', audio.readyState);
@@ -1739,7 +1749,7 @@ export default function ProductPage() {
             await audio.play();
             setIsPlaying(true);
           } catch (retryError) {
-            console.error('Error retrying play:', retryError);
+            if (!isPlayAbortError(retryError)) console.error('Error retrying play:', retryError);
           }
         }
       }
@@ -1758,7 +1768,7 @@ export default function ProductPage() {
         setIsPlaying(true);
         startWaveformAnimation();
       } catch (err) {
-        console.warn('Play on same-track select failed:', err);
+        if (!isPlayAbortError(err)) console.warn('Play on same-track select failed:', err);
       }
       return;
     }
@@ -2320,7 +2330,7 @@ export default function ProductPage() {
                       setIsPlaying(true);
                       startWaveformAnimation();
                     } catch (error) {
-                      console.error('Error auto-playing next track:', error);
+                      if (!isPlayAbortError(error)) console.error('Error auto-playing next track:', error);
                     }
                   } else {
                     // Last track finished, reset to beginning
