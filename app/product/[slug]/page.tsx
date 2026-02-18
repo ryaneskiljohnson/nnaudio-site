@@ -6,7 +6,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,6 +21,7 @@ import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import RelatedProductsSlider from "@/components/RelatedProductsSlider";
 import { MultiVideoPlayer } from "@/app/components/MultiVideoPlayer";
+import LoadingComponent from "@/components/common/LoadingComponent";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -1143,6 +1144,29 @@ const LoadingContainer = styled.div`
   font-size: 1.2rem;
 `;
 
+/* Skeleton loading for product hero - matches HeroSection layout */
+const shimmer = keyframes`
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+`;
+
+const SkeletonBox = styled.div<{ $width?: string; $height?: string; $rounded?: string }>`
+  width: ${(p) => p.$width ?? '100%'};
+  height: ${(p) => p.$height ?? '1rem'};
+  border-radius: ${(p) => p.$rounded ?? '8px'};
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: ${shimmer} 1.5s ease-in-out infinite;
+`;
+
+const ProductPageSkeletonHero = styled(HeroSection)`
+  /* re-use HeroSection padding and background */
+`;
 
 export default function ProductPage() {
   const params = useParams();
@@ -1800,7 +1824,31 @@ export default function ProductPage() {
 
 
   if (loading) {
-    return <LoadingContainer>Loading product...</LoadingContainer>;
+    return (
+      <Container>
+        <ProductPageSkeletonHero>
+          <HeroContent>
+            <BreadcrumbContainer>
+              <BreadcrumbList>
+                <SkeletonBox $height="0.9rem" $width="4rem" />
+                <SkeletonBox $height="0.9rem" $width="5rem" style={{ marginLeft: '0.5rem' }} />
+                <SkeletonBox $height="0.9rem" $width="6rem" style={{ marginLeft: '0.5rem' }} />
+              </BreadcrumbList>
+            </BreadcrumbContainer>
+            <ProductImageContainer style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <LoadingComponent text="Loading product..." size="80px" />
+            </ProductImageContainer>
+            <ProductDetails>
+              <SkeletonBox $height="3rem" $width="85%" style={{ marginBottom: '1rem' }} />
+              <SkeletonBox $height="1.25rem" $width="90%" style={{ marginBottom: '0.5rem' }} />
+              <SkeletonBox $height="1.25rem" $width="65%" style={{ marginBottom: '2rem' }} />
+              <SkeletonBox $height="2rem" $width="7rem" style={{ marginBottom: '2rem' }} />
+              <SkeletonBox $height="3.5rem" $width="12.5rem" $rounded="50px" />
+            </ProductDetails>
+          </HeroContent>
+        </ProductPageSkeletonHero>
+      </Container>
+    );
   }
 
   if (!product) {
