@@ -452,102 +452,77 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
   const [translateX, setTranslateX] = useState(0);
   const sliderRef = useRef<HTMLDivElement>(null);
   const [cardWidth, setCardWidth] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const { addItem } = useCart();
   const { success } = useToast();
-  
+
   // Split products: first is premier, rest go in slider
   const premierProduct = products.length > 0 ? products[0] : null;
   const sliderProducts = products.slice(1);
-  
-  // HARDCODED: Always show exactly 2 cards in featured slider
-  const CARDS_PER_VIEW = 2;
-  const maxIndex = Math.max(0, sliderProducts.length - CARDS_PER_VIEW);
+
+  // Desktop: 2 cards; mobile: 1 card per view
+  const cardsPerView = isMobile ? 1 : 2;
+  const maxIndex = Math.max(0, sliderProducts.length - cardsPerView);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
+    const gap = isMobile ? 16 : 32;
     const calculateDimensions = () => {
       if (!sliderRef.current) return;
-      
-      // Get actual container width (ContentContainer, which has max-width: 1400px for featured)
-      const containerWidth = sliderRef.current.parentElement?.parentElement?.clientWidth || 
-                             sliderRef.current.parentElement?.clientWidth || 
+      const containerWidth = sliderRef.current.parentElement?.parentElement?.clientWidth ||
+                             sliderRef.current.parentElement?.clientWidth ||
                              window.innerWidth;
-      
-      // ContentContainer for FeaturedProductsSection has max-width: 1400px
       const actualWidth = Math.min(containerWidth, 1400);
-      
-      const gap = 32;
       const arrowSpace = 100;
-      
-      // Calculate available width: container width minus arrow space on both sides
       const availableWidth = actualWidth - (arrowSpace * 2);
-      
-      // Calculate card width: (available width - gap) / 2
-      const width = (availableWidth - gap) / CARDS_PER_VIEW;
-      
+      const width = (availableWidth - (gap * (cardsPerView - 1))) / cardsPerView;
       setCardWidth(width);
     };
-    
     const debouncedCalculate = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(calculateDimensions, 150);
     };
-    
     calculateDimensions();
     window.addEventListener('resize', debouncedCalculate);
     return () => {
       clearTimeout(timeoutId);
       window.removeEventListener('resize', debouncedCalculate);
     };
-  }, []);
+  }, [isMobile, cardsPerView]);
 
   useEffect(() => {
     if (!sliderRef.current) return;
-    
-    // Get actual container width
-    const containerWidth = sliderRef.current.parentElement?.parentElement?.clientWidth || 
-                           sliderRef.current.parentElement?.clientWidth || 
+    const containerWidth = sliderRef.current.parentElement?.parentElement?.clientWidth ||
+                           sliderRef.current.parentElement?.clientWidth ||
                            window.innerWidth;
-    const actualWidth = Math.min(containerWidth, 1400); // ContentContainer max-width for featured
-    
-    const gap = 32;
+    const actualWidth = Math.min(containerWidth, 1400);
+    const gap = isMobile ? 16 : 32;
     const arrowSpace = 100;
     const availableWidth = actualWidth - (arrowSpace * 2);
     const cardWithGap = cardWidth + gap;
-    
-    // Calculate total width of 2 visible cards
-    const totalCardsWidth = (cardWidth * CARDS_PER_VIEW) + gap;
-    
-    // Center offset: start position to center the cards
+    const totalCardsWidth = (cardWidth * cardsPerView) + (gap * (cardsPerView - 1));
     const centerOffset = arrowSpace + (availableWidth - totalCardsWidth) / 2;
-    
-    // Translate: start from center, then move left by currentIndex
     const translateValue = centerOffset - (currentIndex * cardWithGap);
     setTranslateX(translateValue);
-  }, [currentIndex, cardWidth]);
+  }, [currentIndex, cardWidth, cardsPerView, isMobile]);
 
   const nextSlide = useCallback(() => {
-    // Always advance by 2 cards (CARDS_PER_VIEW)
-    const calculatedMaxIndex = Math.max(0, sliderProducts.length - CARDS_PER_VIEW);
+    const calculatedMaxIndex = Math.max(0, sliderProducts.length - cardsPerView);
     if (calculatedMaxIndex > 0) {
-      setCurrentIndex((prev) => {
-        const next = Math.min(prev + CARDS_PER_VIEW, calculatedMaxIndex);
-        return next;
-      });
+      setCurrentIndex((prev) => Math.min(prev + cardsPerView, calculatedMaxIndex));
     }
-  }, [sliderProducts.length]);
+  }, [sliderProducts.length, cardsPerView]);
 
   const prevSlide = useCallback(() => {
-    // Always go back by 2 cards (CARDS_PER_VIEW)
-    setCurrentIndex((prev) => {
-      if (prev > 0) {
-        const next = Math.max(prev - CARDS_PER_VIEW, 0);
-        return next;
-      }
-      return 0;
-    });
-  }, []);
+    setCurrentIndex((prev) => (prev > 0 ? Math.max(prev - cardsPerView, 0) : 0));
+  }, [cardsPerView]);
 
   return (
     <SectionContainer id={id}>
@@ -652,7 +627,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
             <ProductsSlider
               ref={sliderRef}
               $translateX={translateX}
-              $centered={sliderProducts.length <= CARDS_PER_VIEW}
+              $centered={sliderProducts.length <= cardsPerView}
             >
               {sliderProducts.map((product) => {
                 const bundleSlugs = ['ultimate-bundle', 'producers-arsenal', 'beat-lab'];
@@ -687,7 +662,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
               })}
             </ProductsSlider>
 
-            {sliderProducts.length > CARDS_PER_VIEW && (
+            {sliderProducts.length > cardsPerView && (
               <>
                 <NavigationButton
                   $direction="left"
@@ -708,7 +683,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
                     e.stopPropagation();
                     nextSlide();
                   }}
-                  disabled={currentIndex >= maxIndex || sliderProducts.length <= 2}
+                  disabled={currentIndex >= maxIndex || sliderProducts.length <= cardsPerView}
                   aria-label="Next products"
                 >
                   <FaChevronRight />

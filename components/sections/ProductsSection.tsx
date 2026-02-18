@@ -314,11 +314,11 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
       
       const gap = window.innerWidth <= 768 ? 24 : 32;
       const arrowSpace = 100; // Space for each arrow
-      
-      // Determine how many cards to show
-      let numCards = maxCardsPerView || 4;
+
+      // On mobile: always show a single card per view; desktop uses section setting
+      let numCards = isMobile ? 1 : (maxCardsPerView || 4);
       if (isMobile && !showAll) {
-        numCards = mobileLimit;
+        numCards = 1; // keep 1 card per view; displayedProducts count is still limited by mobileLimit
       }
       numCards = Math.min(numCards, displayedProducts.length);
       
