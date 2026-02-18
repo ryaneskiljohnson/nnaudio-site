@@ -121,6 +121,28 @@ const nextConfig = {
     // Add error handling for undefined modules
     config.resolve.unsafeCache = false;
 
+    // Externalize AWS SDK packages to prevent bundling issues
+    if (isServer) {
+      if (!config.externals) {
+        config.externals = [];
+      }
+      // Add AWS SDK packages to externals
+      const awsSdkPackages = [
+        '@aws-sdk/client-ses',
+        '@aws-sdk/client-sesv2',
+        '@aws-sdk/client-s3',
+        '@aws-sdk/client-sns',
+        '@aws-sdk/client-sts',
+        '@aws-sdk/credential-providers',
+      ];
+      config.externals.push(({ request }, callback) => {
+        if (awsSdkPackages.some(pkg => request === pkg || request?.startsWith(`${pkg}/`))) {
+          return callback(null, `commonjs ${request}`);
+        }
+        callback();
+      });
+    }
+
     return config;
   },
 };

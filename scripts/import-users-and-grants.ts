@@ -21,6 +21,15 @@ config({ path: resolve(process.cwd(), ".env.local") });
 const BATCH_SIZE_GRANTS = 500;
 const BATCH_SIZE_USERS = 100;
 
+/**
+ * Generate a temporary password for bulk-imported users.
+ * They can use "Forgot password" to set their own.
+ */
+function generateTempPassword(): string {
+  const part = Math.random().toString(36).slice(2, 10);
+  return `TempPass${part}!`;
+}
+
 async function loadGrantsByEmail(
   grantsPath: string
 ): Promise<Map<string, string[]>> {
@@ -116,33 +125,50 @@ async function main() {
     console.log("\n--- Skipping Phase 1 (--users-only) ---");
   }
 
-  // Phase 2: Users (bulk_import_users RPC)
-  console.log("\n--- Phase 2: Users (auth.users + profiles) ---");
+  // Phase 2: Users via Auth Admin API with email_confirm: true (no verification email)
+  console.log("\n--- Phase 2: Users (auth.users + profiles, email auto-confirmed) ---");
   const toCreate = customersToImport;
   console.log(`  Users to import: ${toCreate.length}`);
 
   let totalInserted = 0;
   let totalSkipped = 0;
-  for (let i = 0; i < toCreate.length; i += BATCH_SIZE_USERS) {
-    const batch = toCreate.slice(i, i + BATCH_SIZE_USERS).map((c) => ({
+  for (let i = 0; i < toCreate.length; i++) {
+    const c = toCreate[i];
+    const first_name = c.first_name || "User";
+    const last_name = c.last_name || "";
+    const { data: user, error } = await supabase.auth.admin.createUser({
       email: c.email,
-      first_name: c.first_name || "User",
-      last_name: c.last_name || "",
-    }));
-    const { data, error } = await supabase.rpc("bulk_import_users", {
-      p_users: batch,
+      password: generateTempPassword(),
+      email_confirm: true,
+      user_metadata: { first_name, last_name },
     });
     if (error) {
-      console.error(`  Batch ${i / BATCH_SIZE_USERS + 1} error:`, error.message);
-    } else {
-      const row = Array.isArray(data) ? data[0] : data;
-      const inserted = Number((row as { inserted?: number })?.inserted ?? 0);
-      const skipped = Number((row as { skipped?: number })?.skipped ?? 0);
-      totalInserted += inserted;
-      totalSkipped += skipped;
-      process.stdout.write(
-        `\r  Users: ${totalInserted} created, ${totalSkipped} skipped (batch ${Math.floor(i / BATCH_SIZE_USERS) + 1})`
+      if (error.message?.toLowerCase().includes("already") || error.message?.toLowerCase().includes("registered")) {
+        totalSkipped += 1;
+      } else {
+        console.error(`  Error creating ${c.email}:`, error.message);
+      }
+    } else if (user?.user) {
+      const id = user.user.id;
+      const full_name = `${first_name} ${last_name}`.trim();
+      const { error: profileError } = await supabase.from("profiles").upsert(
+        {
+          id,
+          email: c.email,
+          first_name,
+          last_name,
+          full_name,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
       );
+      if (profileError) {
+        console.error(`  Profile upsert for ${c.email}:`, profileError.message);
+      }
+      totalInserted += 1;
+    }
+    if ((i + 1) % 10 === 0 || i === toCreate.length - 1) {
+      process.stdout.write(`\r  Users: ${totalInserted} created, ${totalSkipped} skipped (${i + 1}/${toCreate.length})`);
     }
   }
   console.log(`\n  Done. Created ${totalInserted} users, skipped ${totalSkipped} (already exist).`);

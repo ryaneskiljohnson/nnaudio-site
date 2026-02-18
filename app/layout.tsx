@@ -9,6 +9,10 @@ import Analytics from "@/components/analytics/Analytics";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
+// Force dynamic rendering for all routes to prevent React undefined errors during static generation
+// This is needed because client components with styled-components require React during module evaluation
+export const dynamic = 'force-dynamic';
+
 // Metadata configuration – favicon and icons use NNAud.io logo (dev and release)
 export const metadata: Metadata = {
   title: "NNAud.io – Resources for Modern Music Producers",

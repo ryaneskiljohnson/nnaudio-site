@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       ? `nnaudio-redeem-instructions-${serial_code.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12)}.pdf`
       : "nnaudio-redeem-instructions.pdf";
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(Buffer.from(pdfBytes), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
