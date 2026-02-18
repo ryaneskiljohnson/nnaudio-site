@@ -324,6 +324,14 @@ const SliderWrapper = styled.div`
   overflow: hidden;
   padding: 0;
   width: 100%;
+
+  @media (max-width: 768px) {
+    margin-top: 1.5rem;
+    padding: 0 4px;
+    margin-left: -4px;
+    margin-right: -4px;
+    width: calc(100% + 8px);
+  }
 `;
 
 const ProductsSlider = styled.div<{ $translateX: number; $centered: boolean }>`
@@ -333,13 +341,14 @@ const ProductsSlider = styled.div<{ $translateX: number; $centered: boolean }>`
   transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
   ${props => props.$centered ? 'justify-content: center;' : ''}
-  
-  @media (max-width: 768px) {
-    gap: 1.5rem;
-  }
-  
+
   > * {
     flex-shrink: 0;
+  }
+
+  @media (max-width: 768px) {
+    gap: 1rem;
+    padding: 0 2px;
   }
 `;
 
@@ -369,27 +378,38 @@ const NavigationButton = styled.button<{ $direction: 'left' | 'right' }>`
   transition: all 0.3s ease;
   z-index: 10;
   backdrop-filter: blur(10px);
-  
+
+  svg {
+    font-size: 1.2rem;
+  }
+
   @media (max-width: 768px) {
-    width: 44px;
-    height: 44px;
-    
+    top: 50%;
+    ${props => props.$direction === 'left' ? 'left: 6px;' : 'right: 6px;'}
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    background: rgba(0, 0, 0, 0.85);
+    border-width: 1.5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+
     svg {
-      font-size: 1rem;
+      font-size: 0.9rem;
     }
   }
-  
+
   &:hover {
     background: rgba(138, 43, 226, 0.8);
     border-color: rgba(138, 43, 226, 1);
     transform: translateY(-50%) scale(1.1);
     box-shadow: 0 4px 12px rgba(138, 43, 226, 0.4);
   }
-  
+
   &:disabled {
     opacity: 0.3;
     cursor: not-allowed;
-    
+
     &:hover {
       transform: translateY(-50%) scale(1);
       background: rgba(0, 0, 0, 0.7);
@@ -397,9 +417,14 @@ const NavigationButton = styled.button<{ $direction: 'left' | 'right' }>`
       box-shadow: none;
     }
   }
-  
-  svg {
-    font-size: 1.2rem;
+
+  @media (max-width: 768px) {
+    &:hover:not(:disabled) {
+      transform: translateY(-50%) scale(1.05);
+    }
+    &:active:not(:disabled) {
+      transform: translateY(-50%) scale(0.98);
+    }
   }
 `;
 
