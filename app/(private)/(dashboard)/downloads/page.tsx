@@ -328,42 +328,29 @@ function Downloads() {
   useEffect(() => {
     const fetchFileInfo = async () => {
       try {
-        // Fetch version info from manifest file
+        // NNAudio Access builds live in builds/nnaudio-access/ on this project's Supabase
         try {
           const { data: manifestData, error: manifestError } =
-            await supabase.storage.from("builds").download("manifest.json");
+            await supabase.storage.from("builds").download("nnaudio-access/manifest.json");
 
-          if (manifestError) {
-            // Try alternative manifest file names
-            const { data: altManifestData, error: altManifestError } =
-              await supabase.storage.from("builds").download("version.json");
-
-            if (altManifestError) {
-              setVersionInfo({ version: "1.2.3", loading: false });
-            } else if (altManifestData) {
-              const manifestText = await altManifestData.text();
-              const manifest = JSON.parse(manifestText);
-              setVersionInfo({
-                version: manifest.version || manifest.app_version || "1.2.3",
-                loading: false,
-              });
-            }
-          } else if (manifestData) {
+          if (manifestError || !manifestData) {
+            setVersionInfo({ version: "1.0.0", loading: false });
+          } else {
             const manifestText = await manifestData.text();
             const manifest = JSON.parse(manifestText);
             setVersionInfo({
-              version: manifest.version || manifest.app_version || "1.2.3",
+              version: manifest.app_version || manifest.version || "1.0.0",
               loading: false,
             });
           }
         } catch {
-          setVersionInfo({ version: "1.2.3", loading: false });
+          setVersionInfo({ version: "1.0.0", loading: false });
         }
 
-        // Fetch file information from the builds bucket
+        // List files in builds/nnaudio-access/
         const { data: files, error } = await supabase.storage
           .from("builds")
-          .list("", {
+          .list("nnaudio-access", {
             limit: 100,
             sortBy: { column: "name", order: "asc" },
           });
@@ -374,12 +361,10 @@ function Downloads() {
 
         if (files) {
           const windowsFile = files.find(
-            (file) =>
-              file.name.includes("NNAudio_Installer") &&
-              file.name.endsWith(".exe")
+            (file) => file.name === "NNAudioAccess_Installer.exe"
           );
           const macosFile = files.find(
-            (file) => file.name === "NNAudio_Installer.pkg"
+            (file) => file.name === "NNAudioAccess_Installer.pkg"
           );
 
           const formatFileSize = (bytes: number | null | undefined): string =>
@@ -496,7 +481,7 @@ function Downloads() {
                     href={
                       fileInfo.macos.size === "Loading..."
                         ? "#"
-                        : "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/builds//NNAudio_Installer.pkg"
+                        : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/builds/nnaudio-access/NNAudioAccess_Installer.pkg`
                     }
                     disabled={fileInfo.macos.size === "Loading..."}
                     onClick={(e) => {
@@ -556,7 +541,7 @@ function Downloads() {
                     href={
                       fileInfo.windows.size === "Loading..."
                         ? "#"
-                        : "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/builds//NNAudio_Installer.exe"
+                        : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/builds/nnaudio-access/NNAudioAccess_Installer.exe`
                     }
                     disabled={fileInfo.windows.size === "Loading..."}
                     onClick={(e) => {
