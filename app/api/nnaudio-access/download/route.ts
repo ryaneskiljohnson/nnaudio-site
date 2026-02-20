@@ -84,11 +84,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Generate signed URL valid for 1 hour
+    // Generate signed URL valid for 24 hours — reduces how often the desktop app
+    // needs to request a fresh URL for the same file
     const { data: signedUrlData, error: signedUrlError } =
       await adminSupabase.storage
         .from("product-downloads")
-        .createSignedUrl(downloadPath, 3600); // 1 hour expiry
+        .createSignedUrl(downloadPath, 86400); // 24-hour expiry
 
     if (signedUrlError || !signedUrlData) {
       console.error("Error generating signed URL:", signedUrlError);
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
       JSON.stringify({
         success: true,
         url: signedUrlData.signedUrl,
-        expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+        expires_at: new Date(Date.now() + 86400 * 1000).toISOString(),
       }),
       {
         status: 200,
