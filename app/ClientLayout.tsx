@@ -11,6 +11,7 @@ import Footer from "@/components/layout/Footer";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import PromotionBanner from "@/components/banners/PromotionBanner";
+import NNAudioAccessBanner from "@/components/banners/NNAudioAccessBanner";
 
 // Lazy load ChatWidget - not needed on first paint
 const ChatWidget = dynamic(() => import("@/components/chat/ChatWidget"), {
@@ -251,12 +252,15 @@ function LayoutContent({
   // Hide promotion banner for lifetime users
   const shouldShowPromotion =
     hasActivePromotion && user?.profile?.subscription !== "lifetime";
+  const showAccessBanner = !shouldShowPromotion;
+  const hasAnyBanner = shouldShowPromotion || showAccessBanner;
 
   return (
     <LayoutWrapper>
       {!shouldHideHeaderFooter && (
-        <NextHeader hasActiveBanner={hasActivePromotion} />
+        <NextHeader hasActiveBanner={hasAnyBanner} />
       )}
+      {!shouldHideHeaderFooter && showAccessBanner && <NNAudioAccessBanner />}
       {!shouldHideHeaderFooter && shouldShowPromotion && (
         <PromotionBanner showCountdown={true} />
       )}

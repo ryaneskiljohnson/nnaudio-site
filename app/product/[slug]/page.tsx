@@ -1882,8 +1882,8 @@ export default function ProductPage() {
 
   return (
     <Container>
-      <HeroSection 
-        ref={heroSectionRef as any} 
+      <HeroSection
+        ref={heroSectionRef as any}
         $bgImage={heroBgImage}
       >
         <HeroContent>

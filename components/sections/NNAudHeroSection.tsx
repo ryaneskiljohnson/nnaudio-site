@@ -151,7 +151,7 @@ const SecondaryButton = styled(motion.a)`
   transition: all 0.3s ease;
   text-decoration: none;
   display: inline-block;
-  
+
   &:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.5);
@@ -171,7 +171,6 @@ const NNAudHeroSection = () => {
   const buttonControls = useAnimation();
 
   // Trigger animations after mount to avoid SSR/hydration black screen
-  // (initial={{ opacity: 0 }} can cause content to stay invisible on first load)
   useEffect(() => {
     logoControls.start({ opacity: 1, y: 0, transition: { duration: 0.8 } });
     titleControls.start({ opacity: 1, y: 0, transition: { duration: 0.8, delay: 0.2 } });
