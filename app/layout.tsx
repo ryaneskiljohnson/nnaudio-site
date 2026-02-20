@@ -1,3 +1,9 @@
+/**
+ * Ensure React is on global before any styled-components import (see set-global-react.ts).
+ * Must be the first import so it runs before StyledComponentsRegistry and page trees.
+ */
+import "./set-global-react";
+
 import { Geist } from "next/font/google";
 import { Montserrat } from "next/font/google";
 import { Metadata } from "next";

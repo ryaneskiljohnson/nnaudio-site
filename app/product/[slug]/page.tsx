@@ -1189,6 +1189,8 @@ export default function ProductPage() {
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   /** Store durations for all audio tracks by index */
   const [trackDurations, setTrackDurations] = useState<{ [index: number]: number }>({});
+  /** User-visible message when current audio fails to load (e.g. format not supported) */
+  const [audioErrorMessage, setAudioErrorMessage] = useState<string | null>(null);
   const descriptionRef = useRef<HTMLDivElement | null>(null);
   const mainAudioRef = useRef<HTMLAudioElement | null>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -1772,6 +1774,7 @@ export default function ProductPage() {
       }
       return;
     }
+    setAudioErrorMessage(null);
     autoPlayOnTrackSelectRef.current = true;
     setCurrentTrackIndex(index);
   };
@@ -2118,6 +2121,11 @@ export default function ProductPage() {
                     <span>/</span>
                     <span>{formatTime(duration)}</span>
                   </AudioTime>
+                  {audioErrorMessage && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: 'rgba(255, 200, 100, 0.95)' }} role="alert">
+                      {audioErrorMessage}
+                    </div>
+                  )}
                 </CurrentTrackInfo>
                 <VolumeContainer>
                   <FaVolumeUp size={14} style={{ color: 'rgba(255, 255, 255, 0.6)' }} />
@@ -2213,26 +2221,44 @@ export default function ProductPage() {
                   const error = audioElement?.error;
                   if (error) {
                     let errorMessage = 'Unknown error';
+                    let userMessage: string | null = null;
+                    let isFormatNotSupported = false;
                     switch (error.code) {
                       case error.MEDIA_ERR_ABORTED:
                         errorMessage = 'Audio loading aborted';
                         break;
                       case error.MEDIA_ERR_NETWORK:
                         errorMessage = 'Network error loading audio (may be CORS issue)';
+                        userMessage = 'Could not load this sample. Try again or skip to the next track.';
                         break;
                       case error.MEDIA_ERR_DECODE:
                         errorMessage = 'Audio decode error';
+                        userMessage = 'This sample could not be decoded. Try the next track.';
                         break;
                       case error.MEDIA_ERR_SRC_NOT_SUPPORTED:
                         errorMessage = 'Audio format not supported';
+                        userMessage = 'This sample format is not supported in your browser. Skipping to next track.';
+                        isFormatNotSupported = true;
                         break;
                     }
-                    console.error('Audio error:', errorMessage, {
+                    setAudioErrorMessage(userMessage);
+                    // Format-not-supported is common (e.g. WAV/FLAC); log as warn to avoid noisy console
+                    const log = isFormatNotSupported ? console.warn : console.error;
+                    log('Audio error:', errorMessage, {
                       code: error.code,
                       message: error.message,
                       url: product.audio_samples[currentTrackIndex]?.url
                     });
+                    // Auto-advance to next track when format is not supported so user is not stuck
+                    if (isFormatNotSupported && product.audio_samples && currentTrackIndex < product.audio_samples.length - 1) {
+                      const nextIndex = currentTrackIndex + 1;
+                      setTimeout(() => {
+                        setAudioErrorMessage(null);
+                        handleTrackSelect(nextIndex);
+                      }, 1500);
+                    }
                   } else {
+                    setAudioErrorMessage('This sample could not be played.');
                     console.error('Audio error (no error details):', {
                       event: e,
                       url: product.audio_samples[currentTrackIndex]?.url,
@@ -2242,6 +2268,7 @@ export default function ProductPage() {
                 }}
                 onLoadedMetadata={(e) => {
                   try {
+                    setAudioErrorMessage(null);
                     const audioElement = e?.currentTarget;
                     if (audioElement && typeof audioElement.duration === 'number' && !isNaN(audioElement.duration) && isFinite(audioElement.duration)) {
                       setDuration(audioElement.duration);
