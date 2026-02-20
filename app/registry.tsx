@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Must run first: styled-components reads global React at module load.
+ * This module sets global React so styled-components does not throw "React is not defined".
+ */
+import './set-global-react';
+
 import React, { useState } from 'react';
 import { useServerInsertedHTML } from 'next/navigation';
 import { ServerStyleSheet, StyleSheetManager } from 'styled-components';
