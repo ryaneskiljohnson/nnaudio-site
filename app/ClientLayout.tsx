@@ -252,8 +252,9 @@ function LayoutContent({
   // Hide promotion banner for lifetime users
   const shouldShowPromotion =
     hasActivePromotion && user?.profile?.subscription !== "lifetime";
-  const showAccessBanner = !shouldShowPromotion;
-  const hasAnyBanner = shouldShowPromotion || showAccessBanner;
+  const isLandingPage = pathname === "/";
+  const showAccessBanner = isLandingPage && !shouldShowPromotion;
+  const hasAnyBanner = showAccessBanner || shouldShowPromotion;
 
   return (
     <LayoutWrapper>

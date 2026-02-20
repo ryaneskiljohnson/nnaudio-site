@@ -45,6 +45,11 @@ const PricingSection = dynamic(
   }
 );
 
+const NNAudioAccessHighlightSection = dynamic(
+  () => import("@/components/sections/NNAudioAccessHighlightSection"),
+  { ssr: true }
+);
+
 const FAQSection = dynamic(() => import("@/components/sections/FAQSection"), {
   ssr: true,
   loading: () => <div style={{ minHeight: "600px", background: "#0a0a0a" }} />,
@@ -538,6 +543,9 @@ export default function Home() {
         {!loading && <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#06070f" />}
       </div>
       
+      {/* NNAudio Access highlight - above pricing */}
+      <NNAudioAccessHighlightSection />
+
       {/* Pricing section - Always render */}
       <PricingSection />
       
