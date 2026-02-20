@@ -1438,7 +1438,7 @@ export default function AdminOrdersPage() {
                 </ModalInfoRow>
                 <ModalInfoRow>
                   <span>Joined</span>
-                  <span>{formatDate(customerProfile.createdAt)}</span>
+                  <span>{formatOrderDate(customerProfile.createdAt)}</span>
                 </ModalInfoRow>
                 <Link
                   href={`/admin/users?search=${encodeURIComponent(customerProfile.email)}`}

@@ -1,4 +1,10 @@
-import { SESClient, SendRawEmailCommand } from "@aws-sdk/client-ses";
+/**
+ * @fileoverview Email sending via AWS SES
+ * @module utils/email
+ *
+ * Uses dynamic import of @aws-sdk/client-ses to avoid Turbopack bundling issues
+ * (ERR_PACKAGE_PATH_NOT_EXPORTED for @smithy/core/schema) when loading the contact API route.
+ */
 
 interface SendBatchEmailParams {
   bcc: string[]; // BCC recipients (up to 50 total recipients per AWS SES limit)
@@ -44,13 +50,13 @@ export async function sendEmail({
   const region = process.env.AWS_REGION || "us-east-1";
   
   try {
-    // Create SES client using environment variables instead of AWS CLI
-    const sesClient = new SESClient({ 
+    const { SESClient, SendRawEmailCommand } = await import("@aws-sdk/client-ses");
+    const sesClient = new SESClient({
       region,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || ''
-      }
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+      },
     });
 
     // Format recipient email addresses
@@ -229,12 +235,13 @@ export async function sendBatchEmail({
   }
 
   try {
-    const sesClient = new SESClient({ 
+    const { SESClient, SendRawEmailCommand } = await import("@aws-sdk/client-ses");
+    const sesClient = new SESClient({
       region,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || ''
-      }
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+      },
     });
 
     // Format reply to addresses

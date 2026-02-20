@@ -311,7 +311,7 @@ async function fetchStripeOrdersUncached(limit: number): Promise<AdminOrder[]> {
         product_slug: null,
       }];
     }
-    items = items.map((item: { id?: string; product_image?: string | null; product_slug?: string | null; [k: string]: unknown }) => ({
+    items = items.map((item: AdminOrderItem) => ({
       ...item,
       product_image: productMap.get(item.id ?? "")?.featured_image_url ?? item.product_image ?? null,
       product_slug: productMap.get(item.id ?? "")?.slug ?? item.product_slug ?? null,
