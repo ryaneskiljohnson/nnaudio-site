@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useServerInsertedHTML } from 'next/navigation';
-import { ServerStyleSheet, StyleSheetManager } from 'styled-components';
+import React, { useState } from "react";
+import { useServerInsertedHTML } from "next/navigation";
+import { ServerStyleSheet, StyleSheetManager } from "styled-components";
 
 // This is necessary to ensure that styled-components works properly with SSR
 // See: https://styled-components.com/docs/advanced#nextjs
@@ -23,11 +23,14 @@ export default function StyledComponentsRegistry({
   });
 
   // Only use StyleSheetManager on the server
-  if (typeof window !== 'undefined') return <>{children}</>;
+  if (typeof window !== "undefined") return <>{children}</>;
 
   return (
-    <StyleSheetManager sheet={styledComponentsStyleSheet.instance} enableVendorPrefixes>
+    <StyleSheetManager
+      sheet={styledComponentsStyleSheet.instance}
+      enableVendorPrefixes
+    >
       {children}
     </StyleSheetManager>
   );
-} 
+}

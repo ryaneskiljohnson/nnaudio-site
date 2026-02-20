@@ -8,6 +8,7 @@
 
 "use server";
 
+import { unstable_cache } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { stripe, type Stripe } from "@/utils/stripe/client";
@@ -161,7 +162,220 @@ export async function getAdminGrantOrdersPaginated(
 }
 
 /**
- * @brief Fetch Stripe purchases only (for Purchases tab)
+ * @brief Uncached Stripe + Supabase fetch (used inside unstable_cache)
+ * @param limit Max payment intents to fetch
+ * @returns Orders array (no auth; caller must enforce admin)
+ * @note Used only by getAdminStripeOrders after auth check
+ */
+async function fetchStripeOrdersUncached(limit: number): Promise<AdminOrder[]> {
+  const effectiveLimit = Math.min(Math.max(limit, 1), 100);
+  const adminSupabase = await createSupabaseServiceRole();
+
+  const allPaymentIntents: Stripe.PaymentIntent[] = [];
+  let hasMore = true;
+  let startingAfter: string | undefined;
+  let useExpand = true;
+
+  while (hasMore) {
+    let response: Stripe.ApiList<Stripe.PaymentIntent>;
+    try {
+      response = await stripe.paymentIntents.list({
+        limit: 100,
+        ...(startingAfter && { starting_after: startingAfter }),
+        ...(useExpand && {
+          expand: ["data.customer", "data.latest_charge", "data.latest_charge.refunds"],
+        }),
+      });
+    } catch (err) {
+      if (useExpand) {
+        useExpand = false;
+        startingAfter = undefined;
+        hasMore = true;
+        allPaymentIntents.length = 0;
+        continue;
+      }
+      throw err;
+    }
+    const succeeded = response.data.filter((pi) => pi.status === "succeeded");
+    allPaymentIntents.push(...succeeded);
+    hasMore =
+      response.has_more && allPaymentIntents.length < effectiveLimit;
+    if (response.data.length > 0) {
+      startingAfter = response.data[response.data.length - 1].id;
+    } else {
+      hasMore = false;
+    }
+    if (allPaymentIntents.length >= effectiveLimit) break;
+  }
+
+  const paymentIntentsToProcess = allPaymentIntents.slice(0, effectiveLimit);
+
+  const allProductIds = new Set<string>();
+  for (const pi of paymentIntentsToProcess) {
+    try {
+      const cartItemsStr = pi.metadata?.cart_items;
+      if (cartItemsStr) {
+        const items = JSON.parse(cartItemsStr) as { id?: string }[];
+        items.forEach((item: { id?: string }) => {
+          if (item?.id) allProductIds.add(item.id);
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  const productMap = new Map<string, { featured_image_url?: string | null; slug?: string | null }>();
+  if (allProductIds.size > 0) {
+    const { data: products } = await (
+      adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>
+    )
+      .from("products")
+      .select("id, featured_image_url, slug")
+      .in("id", [...allProductIds]);
+    if (products) {
+      (products as { id: string; featured_image_url?: string | null; slug?: string | null }[]).forEach((p) => {
+        productMap.set(p.id, { featured_image_url: p.featured_image_url, slug: p.slug });
+      });
+    }
+  }
+
+  const promoIds = [
+    ...new Set(
+      paymentIntentsToProcess
+        .map((pi) => pi.metadata?.promotion_code)
+        .filter((id): id is string => !!id && id.startsWith("promo_"))
+    ),
+  ];
+  const promoCodeMap = new Map<string, string>();
+  await Promise.all(
+    promoIds.map(async (id) => {
+      try {
+        const promo = await stripe.promotionCodes.retrieve(id);
+        promoCodeMap.set(id, promo.code || id);
+      } catch {
+        promoCodeMap.set(id, id);
+      }
+    })
+  );
+
+  const userIds = [
+    ...new Set(
+      paymentIntentsToProcess
+        .map((pi) => pi.metadata?.user_id)
+        .filter((id): id is string => !!id && id !== "anonymous")
+    ),
+  ];
+  const userIdToEmailMap = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: profiles } = await (
+      adminSupabase as Awaited<ReturnType<typeof createSupabaseServiceRole>>
+    )
+      .from("profiles")
+      .select("id, email")
+      .in("id", userIds);
+    if (profiles) {
+      (profiles as { id: string; email?: string }[]).forEach((p) => {
+        if (p.email) userIdToEmailMap.set(p.id, p.email);
+      });
+    }
+  }
+
+  return paymentIntentsToProcess.map((pi) => {
+    const customer = pi.customer as Stripe.Customer | string | null;
+    const customerEmail =
+      (customer && typeof customer === "object" && !customer.deleted && "email" in customer && customer.email) ||
+      (pi.metadata?.user_id && userIdToEmailMap.get(pi.metadata.user_id)) ||
+      null;
+
+    let items: AdminOrderItem[] = [];
+    try {
+      const cartItemsStr = pi.metadata?.cart_items;
+      if (cartItemsStr) {
+        items = JSON.parse(cartItemsStr);
+      }
+    } catch {
+      /* ignore */
+    }
+    if (items.length === 0) {
+      const source =
+        pi.metadata?.Reseller ? `Reseller: ${pi.metadata.Reseller}` :
+        pi.metadata?.purchase_type === "lifetime" ? "Lifetime subscription" :
+        pi.metadata?.POnumber ? "Reseller order" :
+        "Stripe payment";
+      items = [{
+        id: pi.id,
+        name: source,
+        price: pi.amount / 100,
+        quantity: 1,
+        product_image: null,
+        product_slug: null,
+      }];
+    }
+    items = items.map((item: { id?: string; product_image?: string | null; product_slug?: string | null; [k: string]: unknown }) => ({
+      ...item,
+      product_image: productMap.get(item.id ?? "")?.featured_image_url ?? item.product_image ?? null,
+      product_slug: productMap.get(item.id ?? "")?.slug ?? item.product_slug ?? null,
+    }));
+
+    const promoId = pi.metadata?.promotion_code;
+    const promotionCodeName =
+      (promoId && promoCodeMap.get(promoId)) || promoId || null;
+
+    const charge = pi.latest_charge as Stripe.Charge | string | null;
+    let receiptUrl: string | null = null;
+    let refundedAmount = 0;
+    let isRefunded = false;
+    let isPartiallyRefunded = false;
+    let refunds: AdminOrder["refunds"] = [];
+    if (charge && typeof charge === "object") {
+      receiptUrl = charge.receipt_url ?? null;
+      if (charge.refunded) {
+        isRefunded = true;
+        refundedAmount = charge.amount_refunded / 100;
+      } else if (charge.amount_refunded > 0) {
+        isPartiallyRefunded = true;
+        refundedAmount = charge.amount_refunded / 100;
+      }
+      if (charge.refunds?.data) {
+        refunds = charge.refunds.data.map((r) => ({
+          id: r.id,
+          amount: r.amount / 100,
+          reason: r.reason,
+          status: r.status ?? "",
+          created: r.created,
+        }));
+      }
+    }
+
+    return {
+      id: pi.id,
+      orderNumber: pi.id.substring(3, 11).toUpperCase(),
+      date: new Date(pi.created * 1000).toISOString(),
+      status: pi.status,
+      amount: pi.amount / 100,
+      currency: (pi.currency || "usd").toUpperCase(),
+      items,
+      metadata: {
+        original_total: pi.metadata?.original_total,
+        discount_amount: pi.metadata?.discount_amount,
+        total_amount: pi.metadata?.total_amount,
+        promotion_code: promotionCodeName ?? pi.metadata?.promotion_code ?? undefined,
+        reseller_name: (pi.metadata?.Reseller as string) ?? undefined,
+      },
+      customerEmail,
+      receiptUrl,
+      invoiceId: null,
+      refundedAmount,
+      isRefunded,
+      isPartiallyRefunded,
+      refunds,
+      orderType: "purchase" as const,
+    };
+  });
+}
+
+/**
+ * @brief Fetch Stripe purchases only (for Purchases tab). Results cached 2 min.
  * @param limit Max payment intents to fetch (default 50 for performance)
  */
 export async function getAdminStripeOrders(limit = 50): Promise<{
@@ -190,214 +404,16 @@ export async function getAdminStripeOrders(limit = 50): Promise<{
     }
 
     const effectiveLimit = Math.min(Math.max(limit, 1), 100);
-    const adminSupabase = await createSupabaseServiceRole();
-
-    // Single Stripe call with expand - gets customer, charge, refunds in one request (no N+1)
-    const allPaymentIntents: Stripe.PaymentIntent[] = [];
-    let hasMore = true;
-    let startingAfter: string | undefined;
-    let useExpand = true;
-
-    while (hasMore) {
-      let response: Stripe.ApiList<Stripe.PaymentIntent>;
-      try {
-        response = await stripe.paymentIntents.list({
-          limit: 100,
-          ...(startingAfter && { starting_after: startingAfter }),
-          ...(useExpand && {
-            expand: ["data.customer", "data.latest_charge", "data.latest_charge.refunds"],
-          }),
-        });
-      } catch (err) {
-        if (useExpand) {
-          useExpand = false;
-          startingAfter = undefined;
-          hasMore = true;
-          allPaymentIntents.length = 0;
-          continue;
-        }
-        throw err;
-      }
-      const succeeded = response.data.filter((pi) => pi.status === "succeeded");
-      allPaymentIntents.push(...succeeded);
-      hasMore =
-        response.has_more && allPaymentIntents.length < effectiveLimit;
-      if (response.data.length > 0) {
-        startingAfter = response.data[response.data.length - 1].id;
-      } else {
-        hasMore = false;
-      }
-      if (allPaymentIntents.length >= effectiveLimit) break;
-    }
-
-    const paymentIntentsToProcess = allPaymentIntents.slice(0, effectiveLimit);
-
-    // Batch: all product IDs from all payment intents -> single Supabase query
-    const allProductIds = new Set<string>();
-    for (const pi of paymentIntentsToProcess) {
-      try {
-        const cartItemsStr = pi.metadata?.cart_items;
-        if (cartItemsStr) {
-          const items = JSON.parse(cartItemsStr) as { id?: string }[];
-          items.forEach((item: { id?: string }) => {
-            if (item?.id) allProductIds.add(item.id);
-          });
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-    const productMap = new Map<string, { featured_image_url?: string | null; slug?: string | null }>();
-    if (allProductIds.size > 0) {
-      const { data: products } = await (adminSupabase as any)
-        .from("products")
-        .select("id, featured_image_url, slug")
-        .in("id", [...allProductIds]);
-      if (products) {
-        (products as { id: string; featured_image_url?: string | null; slug?: string | null }[]).forEach((p) => {
-          productMap.set(p.id, { featured_image_url: p.featured_image_url, slug: p.slug });
-        });
-      }
-    }
-
-    // Batch: unique promo code IDs -> single parallel fetch
-    const promoIds = [
-      ...new Set(
-        paymentIntentsToProcess
-          .map((pi) => pi.metadata?.promotion_code)
-          .filter((id): id is string => !!id && id.startsWith("promo_"))
-      ),
-    ];
-    const promoCodeMap = new Map<string, string>();
-    await Promise.all(
-      promoIds.map(async (id) => {
-        try {
-          const promo = await stripe.promotionCodes.retrieve(id);
-          promoCodeMap.set(id, promo.code || id);
-        } catch {
-          promoCodeMap.set(id, id);
-        }
-      })
-    );
-
-    // Batch: user_id -> email from profiles (for metadata fallback)
-    const userIds = [
-      ...new Set(
-        paymentIntentsToProcess
-          .map((pi) => pi.metadata?.user_id)
-          .filter((id): id is string => !!id && id !== "anonymous")
-      ),
-    ];
-    const userIdToEmailMap = new Map<string, string>();
-    if (userIds.length > 0) {
-      const { data: profiles } = await (adminSupabase as any)
-        .from("profiles")
-        .select("id, email")
-        .in("id", userIds);
-      if (profiles) {
-        (profiles as { id: string; email?: string }[]).forEach((p) => {
-          if (p.email) userIdToEmailMap.set(p.id, p.email);
-        });
-      }
-    }
-
-    const stripeOrders = paymentIntentsToProcess.map((pi) => {
-      const customer = pi.customer as Stripe.Customer | string | null;
-      const customerEmail =
-        (customer && typeof customer === "object" && !customer.deleted && "email" in customer && customer.email) ||
-        (pi.metadata?.user_id && userIdToEmailMap.get(pi.metadata.user_id)) ||
-        null;
-
-      let items: AdminOrderItem[] = [];
-      try {
-        const cartItemsStr = pi.metadata?.cart_items;
-        if (cartItemsStr) {
-          items = JSON.parse(cartItemsStr);
-        }
-      } catch {
-        /* ignore */
-      }
-      if (items.length === 0) {
-        const source =
-          pi.metadata?.Reseller ? `Reseller: ${pi.metadata.Reseller}` :
-          pi.metadata?.purchase_type === "lifetime" ? "Lifetime subscription" :
-          pi.metadata?.POnumber ? "Reseller order" :
-          "Stripe payment";
-        items = [{
-          id: pi.id,
-          name: source,
-          price: pi.amount / 100,
-          quantity: 1,
-          product_image: null,
-          product_slug: null,
-        }];
-      }
-      items = items.map((item: any) => ({
-        ...item,
-        product_image: productMap.get(item.id)?.featured_image_url ?? item.product_image ?? null,
-        product_slug: productMap.get(item.id)?.slug ?? item.product_slug ?? null,
-      }));
-
-      const promoId = pi.metadata?.promotion_code;
-      const promotionCodeName =
-        (promoId && promoCodeMap.get(promoId)) || promoId || null;
-
-      const charge = pi.latest_charge as Stripe.Charge | string | null;
-      let receiptUrl: string | null = null;
-      let refundedAmount = 0;
-      let isRefunded = false;
-      let isPartiallyRefunded = false;
-      let refunds: AdminOrder["refunds"] = [];
-      if (charge && typeof charge === "object") {
-        receiptUrl = charge.receipt_url ?? null;
-        if (charge.refunded) {
-          isRefunded = true;
-          refundedAmount = charge.amount_refunded / 100;
-        } else if (charge.amount_refunded > 0) {
-          isPartiallyRefunded = true;
-          refundedAmount = charge.amount_refunded / 100;
-        }
-        if (charge.refunds?.data) {
-          refunds = charge.refunds.data.map((r) => ({
-            id: r.id,
-            amount: r.amount / 100,
-            reason: r.reason,
-            status: r.status ?? "",
-            created: r.created,
-          }));
-        }
-      }
-
-      return {
-        id: pi.id,
-        orderNumber: pi.id.substring(3, 11).toUpperCase(),
-        date: new Date(pi.created * 1000).toISOString(),
-        status: pi.status,
-        amount: pi.amount / 100,
-        currency: (pi.currency || "usd").toUpperCase(),
-        items,
-        metadata: {
-          original_total: pi.metadata?.original_total,
-          discount_amount: pi.metadata?.discount_amount,
-          total_amount: pi.metadata?.total_amount,
-          promotion_code: promotionCodeName ?? pi.metadata?.promotion_code ?? undefined,
-          reseller_name: (pi.metadata?.Reseller as string) ?? undefined,
-        },
-        customerEmail,
-        receiptUrl,
-        invoiceId: null,
-        refundedAmount,
-        isRefunded,
-        isPartiallyRefunded,
-        refunds,
-        orderType: "purchase" as const,
-      };
-    });
-
-    return { success: true, orders: stripeOrders };
-  } catch (error: any) {
+    const orders = await unstable_cache(
+      () => fetchStripeOrdersUncached(effectiveLimit),
+      ["stripe-admin-orders", String(effectiveLimit)],
+      { revalidate: 120, tags: ["stripe-orders"] }
+    )();
+    return { success: true, orders };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch orders";
     console.error("[Admin Stripe Orders] Error:", error);
-    return { success: false, orders: [], error: error.message || "Failed to fetch orders" };
+    return { success: false, orders: [], error: message };
   }
 }
 

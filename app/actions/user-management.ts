@@ -9,7 +9,8 @@ import {
 } from "@/utils/stripe/admin-analytics";
 import { stripe } from "@/utils/stripe/client";
 import { fetchProfile } from "@/utils/supabase/actions";
-import { sendEmail } from "@/utils/email";
+// Email is imported dynamically to avoid Turbopack resolving @aws-sdk/client-ses
+// (ERR_PACKAGE_PATH_NOT_EXPORTED for @smithy/core/schema in nested deps).
 
 export interface UserManagementRecord {
   user_email: string;
@@ -1980,7 +1981,8 @@ ${ticketUrl}
 This is an automated notification from NNAudio Support.
     `;
 
-    // Send email
+    // Send email (dynamic import avoids bundling @aws-sdk/client-ses at load time)
+    const { sendEmail } = await import("@/utils/email");
     const emailResult = await sendEmail({
       to: userEmail,
       subject: `New Response: ${ticket.ticket_number} - ${ticket.subject}`,
@@ -2332,7 +2334,8 @@ ${ticketUrl}
 This is an automated notification from NNAudio Support.
     `;
 
-    // Send email to admin
+    // Send email to admin (dynamic import avoids bundling @aws-sdk/client-ses at load time)
+    const { sendEmail } = await import("@/utils/email");
     const emailResult = await sendEmail({
       to: "support@nnaud.io",
       subject: `New User Response: ${ticket.ticket_number} - ${ticket.subject}`,

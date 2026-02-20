@@ -8,7 +8,7 @@
 
 "use client";
 
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import NextSEO from "@/components/NextSEO";
 import Link from "next/link";
 import {
@@ -112,12 +112,26 @@ const Tab = styled.button<{ $active: boolean }>`
   }
 `;
 
+const ToolbarRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
 const SearchBar = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 2rem;
   max-width: 400px;
+  min-width: 200px;
   background: var(--input-bg);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
@@ -129,6 +143,10 @@ const SearchBar = styled.div`
 
   svg {
     color: var(--text-secondary);
+  }
+
+  @media (max-width: 768px) {
+    max-width: none;
   }
 `;
 
@@ -514,13 +532,15 @@ const OrderTypeBadge = styled.span<{ $type: string }>`
   margin-left: 0.5rem;
 `;
 
-const PaginationBar = styled.div`
+const PaginationBar = styled.div<{ $inline?: boolean }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 1.5rem;
-  padding: 1rem 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 1rem;
+  margin-top: ${(p) => (p.$inline ? 0 : "1.5rem")};
+  padding: ${(p) => (p.$inline ? "0" : "1rem 0")};
+  border-top: ${(p) =>
+    p.$inline ? "none" : "1px solid rgba(255, 255, 255, 0.1)"};
 `;
 
 const PaginationInfo = styled.span`
@@ -563,6 +583,289 @@ type SortDirection = "asc" | "desc";
 
 const PAGE_SIZE = 50;
 
+/** Cache key for per-tab orders data (filter + page + search). */
+function getOrdersCacheKey(
+  filter: FilterTab,
+  page: number,
+  search: string
+): string {
+  if (filter === "purchase") return "purchase";
+  if (filter === "all") return `all:${search}`;
+  return `${filter}:${page}:${search}`;
+}
+
+/** Format order date for display */
+function formatOrderDate(dateString: string): string {
+  const d = new Date(dateString);
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const year = d.getFullYear().toString().slice(-2);
+  const hour = d.getHours() % 12 || 12;
+  const minute = d.getMinutes();
+  const ampm = d.getHours() < 12 ? "am" : "pm";
+  return `${month}/${day}/${year} at ${hour}:${minute.toString().padStart(2, "0")}${ampm}`;
+}
+
+function getStatusIcon(order: AdminOrder): React.ReactNode {
+  if (order.isRefunded || order.isPartiallyRefunded) return <FaUndo />;
+  switch (order.status) {
+    case "succeeded":
+      return <FaCheckCircle />;
+    case "processing":
+      return <FaClock />;
+    case "requires_payment_method":
+    case "canceled":
+      return <FaTimesCircle />;
+    default:
+      return <FaClock />;
+  }
+}
+
+function getStatusText(order: AdminOrder): string {
+  if (order.isRefunded) return "Refunded";
+  if (order.isPartiallyRefunded) return "Partially Refunded";
+  switch (order.status) {
+    case "succeeded":
+      return "Completed";
+    case "processing":
+      return "Processing";
+    case "requires_payment_method":
+      return "Payment Required";
+    case "canceled":
+      return "Canceled";
+    default:
+      return order.status;
+  }
+}
+
+function getOrderTypeLabel(order: AdminOrder): string {
+  if (order.orderType === "purchase") return "Purchase";
+  if (order.orderType === "redemption") return "Redemption";
+  return "Grant";
+}
+
+interface OrderRowProps {
+  order: AdminOrder;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+  onCustomerClick: (email: string) => void;
+}
+
+const OrderRow = React.memo(function OrderRow({
+  order,
+  isExpanded,
+  onToggle,
+  onCustomerClick,
+}: OrderRowProps) {
+  const subtotal = order.items.reduce(
+    (sum, item) =>
+      sum +
+      ((item.sale_price != null ? item.sale_price : item.price) * item.quantity),
+    0
+  );
+  const discount = order.metadata.discount_amount
+    ? parseFloat(order.metadata.discount_amount)
+    : 0;
+  const itemsSummary = order.items
+    .map((i) => `${i.name} (×${i.quantity})`)
+    .join(", ");
+
+  return (
+    <React.Fragment>
+      <TableRow $clickable onClick={() => onToggle(order.id)}>
+        <TableCell style={{ fontWeight: 600 }}>{order.orderNumber}</TableCell>
+        <TableCell>
+          <OrderTypeBadge $type={order.orderType || "grant"}>
+            {getOrderTypeLabel(order)}
+          </OrderTypeBadge>
+        </TableCell>
+        <TableCell
+          style={{
+            color: "var(--text-secondary)",
+            fontSize: "0.9rem",
+          }}
+        >
+          {formatOrderDate(order.date)}
+        </TableCell>
+        <TableCell style={{ fontSize: "0.9rem" }}>
+          {order.customerEmail ? (
+            <CustomerLink
+              onClick={(e) => {
+                e.stopPropagation();
+                onCustomerClick(order.customerEmail!);
+              }}
+            >
+              {order.customerEmail}
+            </CustomerLink>
+          ) : (
+            <span style={{ color: "var(--text-secondary)" }}>—</span>
+          )}
+        </TableCell>
+        <TableCell
+          style={{
+            color: "var(--text-secondary)",
+            fontSize: "0.9rem",
+            maxWidth: 200,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={itemsSummary}
+        >
+          {itemsSummary || "—"}
+        </TableCell>
+        <TableCell
+          style={{
+            fontWeight: 600,
+            color:
+              order.amount === 0 && order.metadata?.grant_type
+                ? "var(--text-secondary)"
+                : "#4ecdc4",
+          }}
+        >
+          {order.amount === 0 && order.metadata?.grant_type
+            ? "Free"
+            : `$${order.amount.toFixed(2)}`}
+        </TableCell>
+        <TableCell>
+          <OrderStatus
+            $status={
+              order.isRefunded
+                ? "refunded"
+                : order.isPartiallyRefunded
+                  ? "partially_refunded"
+                  : order.status
+            }
+          >
+            {getStatusIcon(order)} {getStatusText(order)}
+          </OrderStatus>
+        </TableCell>
+        <ExpandCell>
+          <ExpandButton
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle(order.id);
+            }}
+          >
+            {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+          </ExpandButton>
+        </ExpandCell>
+      </TableRow>
+      <AnimatePresence>
+        {isExpanded && (
+          <DetailRow>
+            <DetailCell colSpan={8}>
+              <DetailGrid>
+                <DetailSection>
+                  <DetailSectionTitle>Items</DetailSectionTitle>
+                  <ItemsList>
+                    {order.items.map((item, idx) => (
+                      <ItemLine key={idx}>
+                        <span>
+                          {item.name} × {item.quantity}
+                        </span>
+                        <span>
+                          $
+                          {(
+                            (item.sale_price != null
+                              ? item.sale_price
+                              : item.price) * item.quantity
+                          ).toFixed(2)}
+                        </span>
+                      </ItemLine>
+                    ))}
+                  </ItemsList>
+                </DetailSection>
+                <DetailSection>
+                  <DetailSectionTitle>Summary</DetailSectionTitle>
+                  <ItemsList>
+                    {order.metadata.original_total &&
+                      parseFloat(order.metadata.original_total) !== subtotal && (
+                        <DetailItem>
+                          <span>Subtotal</span>
+                          <span>${subtotal.toFixed(2)}</span>
+                        </DetailItem>
+                      )}
+                    {discount > 0 && (
+                      <DetailItem>
+                        <span>Discount</span>
+                        <span style={{ color: "var(--success)" }}>
+                          -${discount.toFixed(2)}
+                        </span>
+                      </DetailItem>
+                    )}
+                    {order.metadata.promotion_code && (
+                      <DetailItem>
+                        <span>Promo</span>
+                        <span>{order.metadata.promotion_code}</span>
+                      </DetailItem>
+                    )}
+                    {order.metadata?.redemption_code && (
+                      <DetailItem>
+                        <span>Code</span>
+                        <span>{order.metadata.redemption_code}</span>
+                      </DetailItem>
+                    )}
+                    {order.metadata?.reseller_name && (
+                      <DetailItem>
+                        <span>Reseller</span>
+                        <span>{order.metadata.reseller_name}</span>
+                      </DetailItem>
+                    )}
+                    <DetailItem
+                      style={{
+                        fontWeight: 600,
+                        color: "var(--text)",
+                        paddingTop: "0.5rem",
+                        marginTop: "0.5rem",
+                        borderTop: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                    >
+                      <span>Total</span>
+                      <span>
+                        {order.amount === 0 && order.metadata?.grant_type
+                          ? "Free"
+                          : `$${order.amount.toFixed(2)}`}
+                      </span>
+                    </DetailItem>
+                    {(order.isRefunded || order.isPartiallyRefunded) && (
+                      <>
+                        <DetailItem style={{ color: "#ff9800" }}>
+                          <span>Refunded</span>
+                          <span>-${order.refundedAmount.toFixed(2)}</span>
+                        </DetailItem>
+                        <DetailItem>
+                          <span>Final</span>
+                          <span>
+                            $
+                            {(
+                              order.amount - order.refundedAmount
+                            ).toFixed(2)}
+                          </span>
+                        </DetailItem>
+                      </>
+                    )}
+                  </ItemsList>
+                  {order.receiptUrl && (
+                    <ActionButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(order.receiptUrl!, "_blank");
+                      }}
+                    >
+                      <FaExternalLinkAlt /> View Receipt
+                    </ActionButton>
+                  )}
+                </DetailSection>
+              </DetailGrid>
+            </DetailCell>
+          </DetailRow>
+        )}
+      </AnimatePresence>
+    </React.Fragment>
+  );
+});
+
 export default function AdminOrdersPage() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -588,6 +891,9 @@ export default function AdminOrdersPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const ordersCacheRef = useRef<
+    Map<string, { orders: AdminOrder[]; totalCount: number }>
+  >(new Map());
 
   useEffect(() => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -600,100 +906,150 @@ export default function AdminOrdersPage() {
     };
   }, [searchTerm]);
 
-  useEffect(() => {
-    fetchOrders();
-  }, [filter, filter === "all" ? 1 : page, debouncedSearch]);
-
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      setFetchError(null);
-      if (filter === "purchase") {
-        const result = await getAdminStripeOrders(50);
-        if (result.success && result.orders) {
-          setOrders(result.orders);
-          setTotalCount(result.orders.length);
-        } else {
-          setOrders([]);
-          setTotalCount(0);
-          setFetchError(result.error ?? "Failed to load purchases");
-        }
-      } else if (filter === "all") {
-        const [stripeResult, grantResult] = await Promise.all([
-          getAdminStripeOrders(50),
-          getAdminGrantOrdersPaginated(1, 100, debouncedSearch, "all"),
-        ]);
-        const stripeOrders = stripeResult.success ? stripeResult.orders : [];
-        const grantOrders = grantResult.success ? grantResult.orders : [];
-        const merged = [...stripeOrders, ...grantOrders].sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        setOrders(merged);
-        setTotalCount(merged.length);
-        if (!stripeResult.success && stripeResult.error) {
-          setFetchError(stripeResult.error);
-        } else if (!grantResult.success && grantResult.error) {
-          setFetchError(grantResult.error);
-        }
-      } else {
-        const rpcFilter =
-          filter === "grant" ? "grant" : filter === "redemption" ? "redemption" : "all";
-        const result = await getAdminGrantOrdersPaginated(
-          page,
-          PAGE_SIZE,
-          debouncedSearch,
-          rpcFilter
-        );
-        if (result.success && result.orders) {
-          setOrders(result.orders);
-          setTotalCount(result.totalCount);
-        } else {
-          setOrders([]);
-          setTotalCount(0);
-          setFetchError(result.error ?? "Failed to load grants/redemptions");
-        }
+  const fetchOrders = useCallback(
+    async (
+      currentFilter: FilterTab,
+      currentPage: number,
+      currentSearch: string
+    ) => {
+      const cacheKey = getOrdersCacheKey(
+        currentFilter,
+        currentPage,
+        currentSearch
+      );
+      const cached = ordersCacheRef.current.get(cacheKey);
+      if (cached) {
+        setOrders(cached.orders);
+        setTotalCount(cached.totalCount);
+        setFetchError(null);
       }
-    } catch (err) {
-      console.error("Error fetching orders:", err);
-      setOrders([]);
-      setTotalCount(0);
-      setFetchError(err instanceof Error ? err.message : "Failed to fetch orders");
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (!cached) {
+        setLoading(true);
+        setFetchError(null);
+      }
+      try {
+        if (currentFilter === "purchase") {
+          const result = await getAdminStripeOrders(50);
+          if (result.success && result.orders) {
+            ordersCacheRef.current.set(cacheKey, {
+              orders: result.orders,
+              totalCount: result.orders.length,
+            });
+            setOrders(result.orders);
+            setTotalCount(result.orders.length);
+          } else {
+            setOrders([]);
+            setTotalCount(0);
+            setFetchError(result.error ?? "Failed to load purchases");
+          }
+        } else if (currentFilter === "all") {
+          const [stripeResult, grantResult] = await Promise.all([
+            getAdminStripeOrders(50),
+            getAdminGrantOrdersPaginated(
+              1,
+              100,
+              currentSearch,
+              "all"
+            ),
+          ]);
+          const stripeOrders = stripeResult.success ? stripeResult.orders : [];
+          const grantOrders = grantResult.success ? grantResult.orders : [];
+          const merged = [...stripeOrders, ...grantOrders].sort(
+            (a, b) =>
+              new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          ordersCacheRef.current.set(cacheKey, {
+            orders: merged,
+            totalCount: merged.length,
+          });
+          setOrders(merged);
+          setTotalCount(merged.length);
+          if (!stripeResult.success && stripeResult.error) {
+            setFetchError(stripeResult.error);
+          } else if (!grantResult.success && grantResult.error) {
+            setFetchError(grantResult.error);
+          }
+        } else {
+          const rpcFilter =
+            currentFilter === "grant"
+              ? "grant"
+              : currentFilter === "redemption"
+                ? "redemption"
+                : "all";
+          const result = await getAdminGrantOrdersPaginated(
+            currentPage,
+            PAGE_SIZE,
+            currentSearch,
+            rpcFilter
+          );
+          if (result.success && result.orders) {
+            ordersCacheRef.current.set(cacheKey, {
+              orders: result.orders,
+              totalCount: result.totalCount,
+            });
+            setOrders(result.orders);
+            setTotalCount(result.totalCount);
+          } else {
+            setOrders([]);
+            setTotalCount(0);
+            setFetchError(
+              result.error ?? "Failed to load grants/redemptions"
+            );
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching orders:", err);
+        setOrders([]);
+        setTotalCount(0);
+        setFetchError(
+          err instanceof Error ? err.message : "Failed to fetch orders"
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    fetchOrders(filter, filter === "all" ? 1 : page, debouncedSearch);
+  }, [fetchOrders, filter, page, debouncedSearch]);
 
   useEffect(() => {
     setPage(1);
   }, [filter, debouncedSearch]);
 
-  const filteredOrders = orders.filter((order) => {
-    if (filter === "purchase" && order.orderType !== "purchase") return false;
-    if (filter === "grant" && order.orderType !== "grant") return false;
-    if (filter === "redemption" && order.orderType !== "redemption") return false;
+  const filteredOrders = useMemo(
+    () =>
+      orders.filter((order) => {
+        if (filter === "purchase" && order.orderType !== "purchase") return false;
+        if (filter === "grant" && order.orderType !== "grant") return false;
+        if (filter === "redemption" && order.orderType !== "redemption") return false;
 
-    // Client-side search for Purchases and All tabs (Stripe has no server-side search).
-    // Grants/Redemptions-only are filtered server-side by debouncedSearch.
-    if ((filter === "purchase" || filter === "all") && searchTerm) {
-      const term = searchTerm.toLowerCase();
-      const matchesEmail =
-        order.customerEmail?.toLowerCase().includes(term) ?? false;
-      const matchesOrder = order.orderNumber.toLowerCase().includes(term);
-      const matchesItem = order.items.some((i) =>
-        i.name.toLowerCase().includes(term)
-      );
-      const matchesReseller =
-        order.metadata?.reseller_name?.toLowerCase().includes(term) ?? false;
-      if (
-        !matchesEmail &&
-        !matchesOrder &&
-        !matchesItem &&
-        !matchesReseller
-      )
-        return false;
-    }
-    return true;
-  });
+        // Client-side search for Purchases and All tabs (Stripe has no server-side search).
+        // Grants/Redemptions-only are filtered server-side by debouncedSearch.
+        if ((filter === "purchase" || filter === "all") && searchTerm) {
+          const term = searchTerm.toLowerCase();
+          const matchesEmail =
+            order.customerEmail?.toLowerCase().includes(term) ?? false;
+          const matchesOrder = order.orderNumber.toLowerCase().includes(term);
+          const matchesItem = order.items.some((i) =>
+            i.name.toLowerCase().includes(term)
+          );
+          const matchesReseller =
+            order.metadata?.reseller_name?.toLowerCase().includes(term) ?? false;
+          if (
+            !matchesEmail &&
+            !matchesOrder &&
+            !matchesItem &&
+            !matchesReseller
+          )
+            return false;
+        }
+        return true;
+      }),
+    [orders, filter, searchTerm]
+  );
 
   const sortedOrders = useMemo(() => {
     const arr = [...filteredOrders];
@@ -772,65 +1128,16 @@ export default function AdminOrdersPage() {
     return sortDirection === "asc" ? <FaSortUp /> : <FaSortDown />;
   };
 
-  const toggleOrder = (orderId: string) => {
+  const toggleOrder = useCallback((orderId: string) => {
     setExpandedOrders((prev) => {
       const next = new Set(prev);
       if (next.has(orderId)) next.delete(orderId);
       else next.add(orderId);
       return next;
     });
-  };
+  }, []);
 
-  const formatDate = (dateString: string) => {
-    const d = new Date(dateString);
-    const month = d.getMonth() + 1;
-    const day = d.getDate();
-    const year = d.getFullYear().toString().slice(-2);
-    const hour = d.getHours() % 12 || 12;
-    const minute = d.getMinutes();
-    const ampm = d.getHours() < 12 ? "am" : "pm";
-    return `${month}/${day}/${year} at ${hour}:${minute.toString().padStart(2, "0")}${ampm}`;
-  };
-
-  const getStatusIcon = (status: string, order: AdminOrder) => {
-    if (order.isRefunded || order.isPartiallyRefunded) return <FaUndo />;
-    switch (status) {
-      case "succeeded":
-        return <FaCheckCircle />;
-      case "processing":
-        return <FaClock />;
-      case "requires_payment_method":
-      case "canceled":
-        return <FaTimesCircle />;
-      default:
-        return <FaClock />;
-    }
-  };
-
-  const getStatusText = (status: string, order: AdminOrder) => {
-    if (order.isRefunded) return "Refunded";
-    if (order.isPartiallyRefunded) return "Partially Refunded";
-    switch (status) {
-      case "succeeded":
-        return "Completed";
-      case "processing":
-        return "Processing";
-      case "requires_payment_method":
-        return "Payment Required";
-      case "canceled":
-        return "Canceled";
-      default:
-        return status;
-    }
-  };
-
-  const getOrderTypeLabel = (order: AdminOrder) => {
-    if (order.orderType === "purchase") return "Purchase";
-    if (order.orderType === "redemption") return "Redemption";
-    return "Grant";
-  };
-
-  const handleCustomerClick = async (email: string) => {
+  const handleCustomerClick = useCallback(async (email: string) => {
     if (!email) return;
     setShowCustomerModal(true);
     setCustomerProfile(null);
@@ -855,7 +1162,7 @@ export default function AdminOrdersPage() {
     } finally {
       setLoadingCustomer(false);
     }
-  };
+  }, []);
 
   const closeCustomerModal = () => {
     setShowCustomerModal(false);
@@ -914,15 +1221,52 @@ export default function AdminOrdersPage() {
           </Tab>
         </TabRow>
 
-        <SearchBar>
-          <FaSearch />
-          <SearchInput
-            type="text"
-            placeholder="Search by email, order #, or product..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </SearchBar>
+        <ToolbarRow>
+          <SearchBar>
+            <FaSearch />
+            <SearchInput
+              type="text"
+              placeholder="Search by email, order #, or product..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </SearchBar>
+          {(filter === "all" ||
+            filter === "grant" ||
+            filter === "redemption") &&
+            effectiveTotalCount > 0 && (
+              <PaginationBar $inline>
+                <PaginationInfo>
+                  Showing {(page - 1) * PAGE_SIZE + 1}–
+                  {Math.min(page * PAGE_SIZE, effectiveTotalCount)} of{" "}
+                  {effectiveTotalCount.toLocaleString()}
+                </PaginationInfo>
+                <PaginationControls>
+                  <PaginationButton
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                  >
+                    Previous
+                  </PaginationButton>
+                  <PaginationButton
+                    onClick={() =>
+                      setPage((p) =>
+                        Math.min(
+                          Math.ceil(effectiveTotalCount / PAGE_SIZE),
+                          p + 1
+                        )
+                      )
+                    }
+                    disabled={
+                      page >= Math.ceil(effectiveTotalCount / PAGE_SIZE)
+                    }
+                  >
+                    Next
+                  </PaginationButton>
+                </PaginationControls>
+              </PaginationBar>
+            )}
+        </ToolbarRow>
 
         {fetchError && (
           <div
@@ -1000,284 +1344,15 @@ export default function AdminOrdersPage() {
                 </tr>
               </TableHead>
               <TableBody>
-                {displayedOrders.map((order) => {
-                  const isExpanded = expandedOrders.has(order.id);
-                  const subtotal = order.items.reduce(
-                    (sum, item) =>
-                      sum +
-                      ((item.sale_price != null
-                        ? item.sale_price
-                        : item.price) *
-                        item.quantity),
-                    0
-                  );
-                  const discount = order.metadata.discount_amount
-                    ? parseFloat(order.metadata.discount_amount)
-                    : 0;
-                  const itemsSummary = order.items
-                    .map((i) => `${i.name} (×${i.quantity})`)
-                    .join(", ");
-
-                  return (
-                    <React.Fragment key={order.id}>
-                      <TableRow
-                        $clickable
-                        onClick={() => toggleOrder(order.id)}
-                      >
-                        <TableCell style={{ fontWeight: 600 }}>
-                          {order.orderNumber}
-                        </TableCell>
-                        <TableCell>
-                          <OrderTypeBadge
-                            $type={order.orderType || "grant"}
-                          >
-                            {getOrderTypeLabel(order)}
-                          </OrderTypeBadge>
-                        </TableCell>
-                        <TableCell
-                          style={{
-                            color: "var(--text-secondary)",
-                            fontSize: "0.9rem",
-                          }}
-                        >
-                          {formatDate(order.date)}
-                        </TableCell>
-                        <TableCell
-                          style={{
-                            fontSize: "0.9rem",
-                          }}
-                        >
-                          {order.customerEmail ? (
-                            <CustomerLink
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCustomerClick(order.customerEmail!);
-                              }}
-                            >
-                              {order.customerEmail}
-                            </CustomerLink>
-                          ) : (
-                            <span
-                              style={{ color: "var(--text-secondary)" }}
-                            >
-                              —
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell
-                          style={{
-                            color: "var(--text-secondary)",
-                            fontSize: "0.9rem",
-                            maxWidth: 200,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                          title={itemsSummary}
-                        >
-                          {itemsSummary || "—"}
-                        </TableCell>
-                        <TableCell
-                          style={{
-                            fontWeight: 600,
-                            color:
-                              order.amount === 0 &&
-                              order.metadata?.grant_type
-                                ? "var(--text-secondary)"
-                                : "#4ecdc4",
-                          }}
-                        >
-                          {order.amount === 0 &&
-                          order.metadata?.grant_type
-                            ? "Free"
-                            : `$${order.amount.toFixed(2)}`}
-                        </TableCell>
-                        <TableCell>
-                          <OrderStatus
-                            $status={
-                              order.isRefunded
-                                ? "refunded"
-                                : order.isPartiallyRefunded
-                                  ? "partially_refunded"
-                                  : order.status
-                            }
-                          >
-                            {getStatusIcon(order.status, order)}{" "}
-                            {getStatusText(order.status, order)}
-                          </OrderStatus>
-                        </TableCell>
-                        <ExpandCell>
-                          <ExpandButton
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleOrder(order.id);
-                            }}
-                          >
-                            {isExpanded ? (
-                              <FaChevronUp />
-                            ) : (
-                              <FaChevronDown />
-                            )}
-                          </ExpandButton>
-                        </ExpandCell>
-                      </TableRow>
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <DetailRow>
-                            <DetailCell colSpan={8}>
-                              <DetailGrid>
-                                <DetailSection>
-                                  <DetailSectionTitle>Items</DetailSectionTitle>
-                                  <ItemsList>
-                                    {order.items.map((item, idx) => (
-                                      <ItemLine key={idx}>
-                                        <span>
-                                          {item.name} × {item.quantity}
-                                        </span>
-                                        <span>
-                                          $
-                                          {(
-                                            (item.sale_price != null
-                                              ? item.sale_price
-                                              : item.price) * item.quantity
-                                          ).toFixed(2)}
-                                        </span>
-                                      </ItemLine>
-                                    ))}
-                                  </ItemsList>
-                                </DetailSection>
-                                <DetailSection>
-                                  <DetailSectionTitle>
-                                    Summary
-                                  </DetailSectionTitle>
-                                  <ItemsList>
-                                    {order.metadata.original_total &&
-                                      parseFloat(
-                                        order.metadata.original_total
-                                      ) !== subtotal && (
-                                        <DetailItem>
-                                          <span>Subtotal</span>
-                                          <span>
-                                            $
-                                            {subtotal.toFixed(2)}
-                                          </span>
-                                        </DetailItem>
-                                      )}
-                                    {discount > 0 && (
-                                      <DetailItem>
-                                        <span>Discount</span>
-                                        <span
-                                          style={{
-                                            color: "var(--success)",
-                                          }}
-                                        >
-                                          -${discount.toFixed(2)}
-                                        </span>
-                                      </DetailItem>
-                                    )}
-                                    {order.metadata.promotion_code && (
-                                      <DetailItem>
-                                        <span>Promo</span>
-                                        <span>
-                                          {
-                                            order.metadata
-                                              .promotion_code
-                                          }
-                                        </span>
-                                      </DetailItem>
-                                    )}
-                                    {order.metadata?.redemption_code && (
-                                      <DetailItem>
-                                        <span>Code</span>
-                                        <span>
-                                          {
-                                            order.metadata
-                                              .redemption_code
-                                          }
-                                        </span>
-                                      </DetailItem>
-                                    )}
-                                    {order.metadata?.reseller_name && (
-                                      <DetailItem>
-                                        <span>Reseller</span>
-                                        <span>
-                                          {
-                                            order.metadata
-                                              .reseller_name
-                                          }
-                                        </span>
-                                      </DetailItem>
-                                    )}
-                                    <DetailItem
-                                      style={{
-                                        fontWeight: 600,
-                                        color: "var(--text)",
-                                        paddingTop: "0.5rem",
-                                        marginTop: "0.5rem",
-                                        borderTop:
-                                          "1px solid rgba(255,255,255,0.1)",
-                                      }}
-                                    >
-                                      <span>Total</span>
-                                      <span>
-                                        {order.amount === 0 &&
-                                        order.metadata?.grant_type
-                                          ? "Free"
-                                          : `$${order.amount.toFixed(2)}`}
-                                      </span>
-                                    </DetailItem>
-                                    {(order.isRefunded ||
-                                      order.isPartiallyRefunded) && (
-                                      <>
-                                        <DetailItem
-                                          style={{
-                                            color: "#ff9800",
-                                          }}
-                                        >
-                                          <span>Refunded</span>
-                                          <span>
-                                            -$
-                                            {order.refundedAmount.toFixed(
-                                              2
-                                            )}
-                                          </span>
-                                        </DetailItem>
-                                        <DetailItem>
-                                          <span>Final</span>
-                                          <span>
-                                            $
-                                            {(
-                                              order.amount -
-                                              order.refundedAmount
-                                            ).toFixed(2)}
-                                          </span>
-                                        </DetailItem>
-                                      </>
-                                    )}
-                                  </ItemsList>
-                                  {order.receiptUrl && (
-                                    <ActionButton
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        window.open(
-                                          order.receiptUrl!,
-                                          "_blank"
-                                        );
-                                      }}
-                                    >
-                                      <FaExternalLinkAlt />
-                                      View Receipt
-                                    </ActionButton>
-                                  )}
-                                </DetailSection>
-                              </DetailGrid>
-                            </DetailCell>
-                          </DetailRow>
-                        )}
-                      </AnimatePresence>
-                    </React.Fragment>
-                  );
-                })}
+                {displayedOrders.map((order) => (
+                  <OrderRow
+                    key={order.id}
+                    order={order}
+                    isExpanded={expandedOrders.has(order.id)}
+                    onToggle={toggleOrder}
+                    onCustomerClick={handleCustomerClick}
+                  />
+                ))}
               </TableBody>
             </Table>
           </TableWrapper>

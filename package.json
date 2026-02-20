@@ -17,7 +17,8 @@
   "packageManager": "bun@1.2.2",
   "overrides": {
     "react": "$react",
-    "react-dom": "$react-dom"
+    "react-dom": "$react-dom",
+    "@smithy/core": "^3.23.0"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.992.0",
