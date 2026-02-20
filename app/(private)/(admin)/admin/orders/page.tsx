@@ -425,7 +425,7 @@ const EmptyState = styled.div`
 const CustomerLink = styled.button`
   background: none;
   border: none;
-  color: var(--primary);
+  color: var(--text-secondary);
   font-size: inherit;
   cursor: pointer;
   padding: 0;
