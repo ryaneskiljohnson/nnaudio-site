@@ -513,27 +513,35 @@ const SectionTitle = styled.h2`
 `;
 
 const ProductsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 1.25rem;
   
   @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
     gap: 1.25rem;
   }
   
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
     gap: 1rem;
   }
 `;
 
 const ProductCard = styled(motion.div)`
+  width: calc((100% - 3 * 1.25rem) / 4);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   overflow: hidden;
   transition: all 0.3s ease;
+  
+  @media (max-width: 1024px) {
+    width: calc((100% - 1.25rem) / 2);
+  }
+  
+  @media (max-width: 768px) {
+    width: 100%;
+  }
   
   &:hover {
     transform: translateY(-4px);
