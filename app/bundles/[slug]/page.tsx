@@ -98,7 +98,7 @@ const BundleTagline = styled.p`
 const BundleDescription = styled.p`
   font-size: 1.1rem;
   color: rgba(255, 255, 255, 0.7);
-  line-height: 1.8;
+  line-height: 1.5;
   max-width: 800px;
   margin: 0 auto;
 `;
@@ -308,7 +308,7 @@ const ValueSection = styled.div`
   position: relative;
   z-index: 3;
   text-align: center;
-  padding: 3rem 2.5rem;
+  padding: 1.5rem 2rem 1rem;
   width: 100%;
   max-width: 700px;
   margin: 0 auto;
@@ -331,7 +331,7 @@ const ProductCountBadge = styled.div`
   border: 2px solid rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(10px);
   display: inline-block;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.25rem;
   
   @media (max-width: 768px) {
     font-size: 1rem;
@@ -342,7 +342,7 @@ const ProductCountBadge = styled.div`
 const ValueTitle = styled.h2`
   font-size: 1.3rem;
   color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 1rem;
+  margin: 0 0 0.15rem 0;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 2px;
@@ -359,7 +359,7 @@ const ValueAmount = styled.div<{ $isStrikethrough?: boolean }>`
   background-clip: ${props => props.$isStrikethrough ? 'unset' : 'text'};
   color: ${props => props.$isStrikethrough ? 'rgba(255, 255, 255, 0.4)' : 'transparent'};
   text-decoration: ${props => props.$isStrikethrough ? 'line-through' : 'none'};
-  margin-bottom: 0.75rem;
+  margin: 0 0 0.15rem 0;
   line-height: 1.2;
 `;
 
@@ -367,7 +367,7 @@ const SavingsText = styled.p`
   font-size: 0.9rem;
   color: rgba(108, 99, 255, 1);
   font-weight: 700;
-  margin-top: 0.75rem;
+  margin: 0.15rem 0 0 0;
   padding: 8px 16px;
   background: rgba(108, 99, 255, 0.2);
   border: 1px solid rgba(108, 99, 255, 0.4);
@@ -408,7 +408,7 @@ const PriceAndCartContainer = styled.div`
   align-items: center;
   justify-content: center;
   gap: 1.5rem;
-  margin-top: 1.5rem;
+  margin-top: 0.25rem;
   flex-wrap: wrap;
   
   @media (max-width: 768px) {
@@ -894,7 +894,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                 <BundleTagline style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>{bundle.tagline}</BundleTagline>
           )}
           {bundle.description && (
-                <BundleDescription style={{ marginBottom: '1.5rem', fontSize: '0.95rem', maxWidth: '100%' }}>
+                <BundleDescription style={{ marginBottom: '0.25rem', fontSize: '0.95rem', maxWidth: '100%' }}>
                   {bundle.description}
                 </BundleDescription>
           )}

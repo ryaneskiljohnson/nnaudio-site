@@ -115,7 +115,7 @@ const BundleImageFrame = styled.div`
   padding-bottom: 100%;
   flex-shrink: 0;
   align-self: flex-start;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   border-radius: 12px;
   overflow: hidden;
   position: relative;
@@ -130,7 +130,7 @@ const BundleImageFrame = styled.div`
 `;
 
 const BundleHeader = styled.div`
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 `;
 
 const BundleName = styled.h2`
@@ -149,7 +149,7 @@ const BundleCategory = styled.span`
   border-radius: 20px;
   font-size: 0.75rem;
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
@@ -157,7 +157,7 @@ const BundleCategory = styled.span`
 const BundleTagline = styled.p`
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   text-align: center;
   line-height: 1.5;
   white-space: nowrap;
@@ -171,7 +171,7 @@ const BundleDescription = styled.p`
   font-size: 0.95rem;
   color: rgba(255, 255, 255, 0.6);
   line-height: 1.6;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
   height: calc(1.6em * 3);
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -181,8 +181,8 @@ const BundleDescription = styled.p`
 `;
 
 const PricingSection = styled.div`
-  margin-bottom: 1.5rem;
-  padding: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
   background: rgba(78, 205, 196, 0.1);
   border-radius: 8px;
 `;
@@ -191,7 +191,7 @@ const ValueRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.6rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 `;
@@ -233,7 +233,7 @@ const PricingValue = styled.span`
 const ProductCount = styled.div`
   font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 `;
 
 
@@ -260,7 +260,7 @@ const ViewBundleButton = styled(Link)`
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   width: 100%;
-  margin-top: 1rem;
+  margin-top: 0.25rem;
   box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
   
   &:hover {
@@ -275,8 +275,8 @@ const SalePriceContainer = styled.div`
   align-items: center;
   justify-items: center;
   gap: 1rem;
-  margin-bottom: 1rem;
-  padding: 1rem;
+  margin-bottom: 0;
+  padding: 0.85rem 1rem;
   background: rgba(78, 205, 196, 0.1);
   border-radius: 8px;
 `;
