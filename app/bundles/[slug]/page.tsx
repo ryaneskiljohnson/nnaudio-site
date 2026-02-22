@@ -515,14 +515,16 @@ const SectionTitle = styled.h2`
 const ProductsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 2rem;
+  gap: 1.25rem;
   
   @media (max-width: 1024px) {
     grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
   }
   
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 `;
 
@@ -551,20 +553,20 @@ const ProductImage = styled.div`
 
 const ProductInfo = styled.div`
   padding: 1.5rem;
-`;
-
-const ProductNameRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
-  flex-wrap: wrap;
+  text-align: center;
 `;
 
 const ProductName = styled.h3`
   font-size: 1.2rem;
   color: white;
-  margin: 0;
+  margin: 0 0 0.5rem 0;
+  text-align: center;
+`;
+
+/** Wrapper so the PACK/plugin badge is on its own line and centered. */
+const ProductCategoryRow = styled.div`
+  text-align: center;
+  margin-bottom: 0.5rem;
 `;
 
 const ProductCategory = styled.span`
@@ -583,6 +585,7 @@ const ProductPrice = styled.div`
   font-weight: 600;
   color: #4ECDC4;
   margin-top: 0.5rem;
+  text-align: center;
 `;
 
 const StickyAddToCartButton = styled(motion.div)`
@@ -1075,15 +1078,16 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                     )}
                   </ProductImage>
                   <ProductInfo>
-                    <ProductNameRow>
                     <ProductName>{product.name}</ProductName>
+                    <ProductCategoryRow>
                       <ProductCategory>{formatCategory(product.category || '', product.name)}</ProductCategory>
-                    </ProductNameRow>
+                    </ProductCategoryRow>
                     {product.tagline && (
                       <p style={{ 
                         fontSize: '0.9rem', 
                         color: 'rgba(255, 255, 255, 0.6)',
-                        marginBottom: '0.5rem'
+                        marginBottom: '0.5rem',
+                        textAlign: 'center'
                       }}>
                         {cleanHtmlText(product.tagline)}
                       </p>
