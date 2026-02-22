@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
@@ -1456,8 +1456,13 @@ export default function EditProductPage() {
         <Title>Edit Product</Title>
         <HeaderActions>
           {formData.slug && (
-            <ViewProductButton href={`/product/${formData.slug}`} target="_blank" rel="noopener noreferrer">
-              <FaEye /> View Product <FaExternalLinkAlt style={{ fontSize: '0.75rem' }} />
+            <ViewProductButton
+              href={formData.category === 'bundle' ? `/bundles/${formData.slug}` : `/product/${formData.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <FaEye /> {formData.category === 'bundle' ? 'View Bundle' : 'View Product'}{' '}
+              <FaExternalLinkAlt style={{ fontSize: '0.75rem' }} />
             </ViewProductButton>
           )}
           <BackButton href="/admin/products">

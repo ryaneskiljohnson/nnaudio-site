@@ -514,8 +514,12 @@ const SectionTitle = styled.h2`
 
 const ProductsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 2rem;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
   
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
@@ -540,7 +544,9 @@ const ProductImage = styled.div`
   position: relative;
   width: 100%;
   aspect-ratio: 1;
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
 `;
 
 const ProductInfo = styled.div`

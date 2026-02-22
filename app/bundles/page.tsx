@@ -47,7 +47,7 @@ const BundlesGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
-  align-items: stretch;
+  align-items: start;
   
   @media (max-width: 968px) {
     grid-template-columns: 1fr;
@@ -57,7 +57,7 @@ const BundlesGrid = styled.div`
 const BundleCard = styled(motion.div)<{ $neonColor?: string }>`
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-width: 0;
   background: ${props => props.$neonColor 
     ? `rgba(${props.$neonColor}, 0.15)` 
     : 'rgba(255, 255, 255, 0.05)'};
@@ -107,6 +107,26 @@ const BundleCardBody = styled.div`
   min-height: 0;
   display: flex;
   flex-direction: column;
+`;
+
+/** Fixed-size frame so every bundle card image is the same dimensions (1:1 from width only). */
+const BundleImageFrame = styled.div`
+  width: 100%;
+  padding-bottom: 100%;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  background: rgba(0, 0, 0, 0.3);
+  & > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
 `;
 
 const BundleHeader = styled.div`
@@ -426,54 +446,50 @@ export default function BundlesPage() {
         transition={{ duration: 0.3 }}
       >
         <BundleCardBody>
-          {/* Bundle image: use live mosaic (deduped) when we have products; otherwise use featured_image_url if set */}
+          {/* Bundle image: fixed-size frame so all cards have the same image dimensions */}
           {bundle.products && bundle.products.length > 0 ? (
-            <BundleMosaic 
-              products={bundle.products} 
-              totalCount={bundle.totalProductCount || bundle.products.length}
-            />
-          ) : bundle.featured_image_url ? (
-            <div style={{
-              width: '100%',
-              aspectRatio: '1',
-              marginBottom: '1.5rem',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              position: 'relative',
-              background: 'rgba(0, 0, 0, 0.3)'
-            }}>
-              <Image
-                src={bundle.featured_image_url}
-                alt={bundle.name}
-                fill
-                style={{ objectFit: 'cover' }}
-                unoptimized
+            <BundleImageFrame>
+              <BundleMosaic
+                products={bundle.products}
+                totalCount={bundle.totalProductCount || bundle.products.length}
               />
-              <div style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                background: 'linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent)',
-                padding: '1rem',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'flex-end'
-              }}>
+            </BundleImageFrame>
+          ) : bundle.featured_image_url ? (
+            <BundleImageFrame>
+              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                <Image
+                  src={bundle.featured_image_url}
+                  alt={bundle.name}
+                  fill
+                  style={{ objectFit: 'cover' }}
+                  unoptimized
+                />
                 <div style={{
-                  background: 'linear-gradient(135deg, #FFD700, #FFA500)',
-                  color: '#000',
-                  padding: '0.6rem 1.2rem',
-                  borderRadius: '25px',
-                  fontSize: '0.95rem',
-                  fontWeight: 700,
-                  boxShadow: '0 4px 12px rgba(255, 215, 0, 0.4)',
-                  letterSpacing: '0.5px'
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  background: 'linear-gradient(to top, rgba(0, 0, 0, 0.6), transparent)',
+                  padding: '1rem',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'flex-end'
                 }}>
-                  {bundle.totalProductCount || 0} {bundle.totalProductCount === 1 ? 'Product' : 'Products'} Included
+                  <div style={{
+                    background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+                    color: '#000',
+                    padding: '0.6rem 1.2rem',
+                    borderRadius: '25px',
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    boxShadow: '0 4px 12px rgba(255, 215, 0, 0.4)',
+                    letterSpacing: '0.5px'
+                  }}>
+                    {bundle.totalProductCount || 0} {bundle.totalProductCount === 1 ? 'Product' : 'Products'} Included
+                  </div>
                 </div>
               </div>
-            </div>
+            </BundleImageFrame>
           ) : null}
 
           <BundleHeader>
