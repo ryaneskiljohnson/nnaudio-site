@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
     )
       .from("products")
       .select(
-        "id, name, slug, featured_image_url, featured_image_url_png, legacy_product_id, downloads, download_version, category, tagline, short_description"
+        "id, name, slug, featured_image_url, featured_image_url_png, legacy_product_id, downloads, download_version, category, tagline, short_description, plugin_bundle_name"
       )
       .in("id", productIdsArray)
       .eq("status", "active");
@@ -273,6 +273,7 @@ export async function POST(request: NextRequest) {
         image_url: imageUrl,
         version,
         bundle_name: bundleName,
+        plugin_bundle_name: (product as { plugin_bundle_name?: string | null }).plugin_bundle_name ?? null,
         product_type: productType,
         tagline: (product as { tagline?: string | null; short_description?: string | null }).tagline ?? (product as { short_description?: string | null }).short_description ?? null,
         downloads: downloadsWithUrls,

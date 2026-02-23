@@ -3220,6 +3220,7 @@ export type Database = {
           meta_keywords: string | null
           meta_title: string | null
           name: string
+          plugin_bundle_name: string | null
           price: number
           published_at: string | null
           purchase_count: number | null
@@ -3260,6 +3261,7 @@ export type Database = {
           meta_keywords?: string | null
           meta_title?: string | null
           name: string
+          plugin_bundle_name?: string | null
           price: number
           published_at?: string | null
           purchase_count?: number | null
@@ -3300,6 +3302,7 @@ export type Database = {
           meta_keywords?: string | null
           meta_title?: string | null
           name?: string
+          plugin_bundle_name?: string | null
           price?: number
           published_at?: string | null
           purchase_count?: number | null

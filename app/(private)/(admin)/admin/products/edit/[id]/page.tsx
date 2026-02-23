@@ -685,6 +685,7 @@ export default function EditProductPage() {
     meta_description: '',
     meta_keywords: '',
     legacy_product_id: '',
+    plugin_bundle_name: '',
   });
   
   const [features, setFeatures] = useState<Array<{ title: string; description?: string; image_url?: string; gif_url?: string }>>([{ title: '' }]);
@@ -784,6 +785,7 @@ export default function EditProductPage() {
           meta_description: product.meta_description || '',
           meta_keywords: product.meta_keywords || '',
           legacy_product_id: product.legacy_product_id || '',
+          plugin_bundle_name: product.plugin_bundle_name || '',
         });
         
         // Handle both old format (string[]) and new format (object[])
@@ -1590,6 +1592,20 @@ export default function EditProductPage() {
             />
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
               Numeric product ID from the old system. Used by plugins for authorization. Leave empty if not applicable.
+            </p>
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Plugin Bundle Name</Label>
+            <Input
+              type="text"
+              name="plugin_bundle_name"
+              value={formData.plugin_bundle_name}
+              onChange={handleChange}
+              placeholder="e.g., Cymasphere (filename of .component / .vst3 without extension)"
+            />
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+              Filesystem bundle name of the plugin (no extension). NNAudio Access uses this to create the correct Application Support / AppData folder for sample library linking, regardless of installation order.
             </p>
           </FormGroup>
 
