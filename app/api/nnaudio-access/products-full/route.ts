@@ -54,6 +54,17 @@ function elapsed(start: number): number {
 }
 
 /**
+ * @brief Normalize storage path for consistent map key lookup
+ * Supabase storage paths may or may not have a leading slash; normalize so
+ * pathToSignedUrl get/set always matches.
+ * @param path - Raw path from DB or from createSignedUrls result
+ * @returns Path without leading slashes, trimmed
+ */
+function normalizeStoragePath(path: string): string {
+  return path.replace(/^\/+/, "").trim();
+}
+
+/**
  * @brief Derives a stable ETag from a list of product IDs and their versions
  * @param productIds - Sorted product UUID array
  * @param products - Product rows with version info
@@ -200,8 +211,9 @@ export async function POST(request: NextRequest) {
             .map((d) => d.path)
             .filter(
               (path): path is string =>
-                !!path && !path.startsWith("http")
+                !!path && typeof path === "string" && !path.startsWith("http")
             )
+            .map(normalizeStoragePath)
         )
       )
     );
@@ -222,7 +234,7 @@ export async function POST(request: NextRequest) {
               result.signedUrl &&
               !result.error
             ) {
-              pathToSignedUrl.set(result.path, result.signedUrl);
+              pathToSignedUrl.set(normalizeStoragePath(result.path), result.signedUrl);
             }
           }
         }
@@ -242,9 +254,38 @@ export async function POST(request: NextRequest) {
 
       if (product.downloads && Array.isArray(product.downloads)) {
         for (const download of product.downloads) {
-          let fileUrl = download.path || download.url || "";
-          if (download.path && !download.path.startsWith("http")) {
-            fileUrl = pathToSignedUrl.get(download.path) || download.path;
+          let fileUrl = download.path || (download as { url?: string }).url || "";
+          if (download.path && typeof download.path === "string" && !download.path.startsWith("http")) {
+            const normPath = normalizeStoragePath(download.path);
+            fileUrl = pathToSignedUrl.get(normPath) ?? download.path;
+            // If batch didn't return a signed URL, try once per path (e.g. path format or missing file)
+            if (!fileUrl.startsWith("http")) {
+              try {
+                const { data: singleSigned } = await adminSupabase.storage
+                  .from("product-downloads")
+                  .createSignedUrl(normPath, 86400);
+                if (singleSigned?.signedUrl) {
+                  pathToSignedUrl.set(normPath, singleSigned.signedUrl);
+                  fileUrl = singleSigned.signedUrl;
+                } else if (process.env.NODE_ENV !== "production") {
+                  console.warn(
+                    "[products-full] No signed URL for path:",
+                    normPath,
+                    "product:",
+                    product.name
+                  );
+                }
+              } catch {
+                if (process.env.NODE_ENV !== "production") {
+                  console.warn(
+                    "[products-full] createSignedUrl failed for:",
+                    normPath,
+                    "product:",
+                    product.name
+                  );
+                }
+              }
+            }
           }
 
           downloadsWithUrls.push({

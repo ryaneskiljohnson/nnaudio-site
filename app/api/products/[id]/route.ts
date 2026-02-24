@@ -232,6 +232,7 @@ export async function PUT(
       meta_description: body.meta_description !== undefined ? (body.meta_description == null ? null : String(body.meta_description)) : undefined,
       meta_keywords: body.meta_keywords !== undefined ? (body.meta_keywords == null ? null : String(body.meta_keywords)) : undefined,
       legacy_product_id: body.legacy_product_id !== undefined ? (body.legacy_product_id == null || body.legacy_product_id === '' ? null : String(body.legacy_product_id).trim()) : undefined,
+      plugin_bundle_name: body.plugin_bundle_name !== undefined ? (body.plugin_bundle_name == null || body.plugin_bundle_name === '' ? null : String(body.plugin_bundle_name).trim()) : undefined,
       features: Array.isArray(body.features) ? body.features : undefined,
       audio_samples: Array.isArray(body.audio_samples) ? body.audio_samples : undefined,
       demo_videos: Array.isArray(body.demo_videos) ? body.demo_videos : undefined,
