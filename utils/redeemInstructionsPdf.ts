@@ -19,13 +19,9 @@ const BORDER = { r: 226, g: 232, b: 240 };
 const REDEEM_URL = "https://nnaud.io/redeem";
 const DOWNLOADS_URL = "https://nnaud.io/dashboard/downloads";
 
-/** Logo paths to try (first existing wins) */
-const LOGO_PATHS = [
-  "public/images/nnaud-io/NNAudio-logo-white.png",
-  "public/images/nnaud-io/NNAudio-logo-white.webp",
-  "public/images/nnaud-io/nnaudio-logo.png",
-  "public/images/nnaud-io/nnaudio-logo.webp",
-];
+/** Single logo path (explicit to avoid Turbopack broad-pattern warning). */
+const LOGO_DIR = "public/images/nnaud-io";
+const LOGO_FILENAME = "NNAudio-logo-white.png";
 
 function getPngDimensions(buf: Buffer): { width: number; height: number } | null {
   if (buf.length < 24) return null;
@@ -39,25 +35,18 @@ function getPngDimensions(buf: Buffer): { width: number; height: number } | null
 }
 
 function loadLogoBase64(): { dataUrl: string; width: number; height: number } | null {
-  const cwd = process.cwd();
-  for (const rel of LOGO_PATHS) {
-    const fullPath = path.join(cwd, rel);
-    if (!fs.existsSync(fullPath)) continue;
-    const ext = path.extname(fullPath).toLowerCase();
-    if (ext === ".webp") continue;
-    try {
-      const buf = fs.readFileSync(fullPath);
-      const dims = ext === ".png" ? getPngDimensions(buf) : null;
-      const b64 = buf.toString("base64");
-      const mime = ext === ".png" ? "PNG" : "JPEG";
-      const dataUrl = `data:image/${mime.toLowerCase()};base64,${b64}`;
-      if (dims) return { dataUrl, width: dims.width, height: dims.height };
-      return { dataUrl, width: 445, height: 283 };
-    } catch {
-      continue;
-    }
+  const fullPath = path.join(process.cwd(), LOGO_DIR, LOGO_FILENAME);
+  if (!fs.existsSync(fullPath)) return null;
+  try {
+    const buf = fs.readFileSync(fullPath);
+    const dims = getPngDimensions(buf);
+    const b64 = buf.toString("base64");
+    const dataUrl = `data:image/png;base64,${b64}`;
+    if (dims) return { dataUrl, width: dims.width, height: dims.height };
+    return { dataUrl, width: 445, height: 283 };
+  } catch {
+    return null;
   }
-  return null;
 }
 
 function fitInBox(
