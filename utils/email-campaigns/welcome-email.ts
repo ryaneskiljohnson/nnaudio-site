@@ -115,7 +115,7 @@ export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
               
               <!-- CTA Button -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${siteUrl}/getting-started" style="display: inline-block; padding: 14px 32px; background: linear-gradient(90deg, #6c63ff, #4ecdc4); color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 1rem;">
+                <a href="${siteUrl}/downloads" style="display: inline-block; padding: 14px 32px; background: linear-gradient(90deg, #6c63ff, #4ecdc4); color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 1rem;">
                   Get Started
                 </a>
               </div>
@@ -200,7 +200,7 @@ Your ${trialDays || 'free'} day trial gives you full access to all premium featu
 
 You now have full access to all premium features of Cymasphere. Whether you're composing, learning music theory, or exploring new harmonic possibilities, we're here to support your creative journey.
 
-Get started: ${siteUrl}/getting-started
+Get started: ${siteUrl}/downloads
 
 If you have any questions or need assistance, our support team is here to help. Simply reply to this email or visit our support center.
 

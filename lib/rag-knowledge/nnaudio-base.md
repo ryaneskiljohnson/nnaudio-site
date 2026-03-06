@@ -92,7 +92,7 @@ All of the following require logging in. From the header, **My Account** goes to
 
 ### Dashboard (`/dashboard`)
 
-- Dashboard home with links to: My Orders, My Products, Getting Started, Downloads, Billing, Support, Settings, Profile.
+- Dashboard home with links to: My Orders, My Products, Downloads, Billing, Support, Settings, Profile.
 
 ### My Products (`/my-products`)
 
@@ -100,11 +100,7 @@ All of the following require logging in. From the header, **My Account** goes to
 
 ### Downloads (`/downloads`)
 
-- **NNAudio Installers**: Download NNAudio Access for macOS (.pkg) or Windows (.exe). All NNAudio products are installed using NNAudio Access. Link to **Getting Started** for step-by-step setup.
-
-### Getting Started (`/getting-started`)
-
-- Interactive guide to set up NNAudio products for your OS and DAW: download and install NNAudio Access, choose installation type (plugin vs standalone), and see install paths.
+- **NNAudio Installers**: Download NNAudio Access for macOS (.pkg) or Windows (.exe). All NNAudio products are installed using NNAudio Access.
 
 ### Billing (`/billing`)
 
