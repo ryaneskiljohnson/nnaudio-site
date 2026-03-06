@@ -195,7 +195,6 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     pathname?.includes("/downloads") ||
     pathname?.includes("/settings") ||
     pathname?.includes("/support") ||
-    pathname?.includes("/getting-started") ||
     pathname?.includes("/my-orders") ||
     pathname?.includes("/my-products");
 
@@ -246,7 +245,6 @@ function LayoutContent({
 }) {
   const { user } = useAuth();
   const isPricingRoute = pathname?.includes("/pricing") || pathname === "/";
-  const isGettingStartedRoute = pathname?.includes("/getting-started");
   const shouldHideChatFinal = shouldHideChat;
 
   // Hide promotion banner for lifetime users

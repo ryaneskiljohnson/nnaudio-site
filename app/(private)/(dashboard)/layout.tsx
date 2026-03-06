@@ -14,7 +14,6 @@ import {
   FaHome,
   FaArrowLeft,
   FaShieldAlt,
-  FaRocket,
   FaTicketAlt,
   FaBox,
   FaShoppingBag,
@@ -624,14 +623,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <FaBox /> {t("dashboard.layout.myProducts", "My Products")}
             </NavItem>
           </Link>
-          <Link href="/getting-started">
-            <NavItem
-              $active={pathname === "/getting-started" ? "true" : "false"}
-              onClick={(e) => handleNavigation(e, "/getting-started")}
-            >
-              <FaRocket /> {t("dashboard.layout.gettingStarted", "Getting Started")}
-            </NavItem>
-          </Link>
           <Link href="/downloads">
             <NavItem
               $active={pathname === "/downloads" ? "true" : "false"}
@@ -790,19 +781,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               onClick={(e) => handleNavigation(e, "/my-products")}
             >
               <FaBox /> {t("dashboard.layout.myProducts", "My Products")}
-            </MobileNavItem>
-          </Link>
-
-          <Link href="/getting-started">
-            <MobileNavItem
-              $active={pathname === "/getting-started" ? "true" : "false"}
-              variants={menuItemVariants}
-              custom={4}
-              initial="hidden"
-              animate="visible"
-              onClick={(e) => handleNavigation(e, "/getting-started")}
-            >
-              <FaRocket /> {t("dashboard.layout.gettingStarted", "Getting Started")}
             </MobileNavItem>
           </Link>
 
