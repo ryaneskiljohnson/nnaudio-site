@@ -96,7 +96,7 @@ const HeaderContainer = styled.header<{
   top: 0;
   left: 0;
   right: 0;
-  z-index: 3000;
+  z-index: 3100;
   background: ${(props) =>
     props.$isScrolled || props.$menuOpen || props.$hasActiveBanner
       ? "rgba(15, 14, 23, 0.95)"
