@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { cymasphereRAG } from '@/lib/rag';
+import { nnaudioRAG } from '@/lib/rag';
 import { checkRateLimit, getClientIp } from '@/utils/rateLimit';
 import { chatSchema } from '@/utils/apiSchemas';
 
@@ -61,6 +61,18 @@ const FAQ_RESPONSES: Record<string, Record<string, { keywords: string[], respons
     technical: {
       keywords: ['system requirements', 'specs', 'compatible', 'browser', 'device', 'performance'],
       response: "Our plugins are AU and VST3 and work with major DAWs on Mac and Windows. NNAudio Access runs on macOS and Windows. Check each product page for specific requirements."
+    },
+    redeem: {
+      keywords: ['redeem', 'serial', 'code', 'license key', 'activation code'],
+      response: "Redeem your product code at nnaud.io/redeem (log in first). Enter the serial code and submit; the product will be added to your account. Then go to My Products or NNAudio Access to download and install."
+    },
+    nnaudio_access: {
+      keywords: ['nnaudio access', 'access app', 'download app', 'where do i download', 'installer'],
+      response: "NNAudio Access is our free desktop app for downloading and installing all your NNAudio products. Get it from the NNAudio Access product page (free) or from Dashboard → Downloads after logging in. Install for Mac or Windows, then log in with your nnaud.io account."
+    },
+    account_delete: {
+      keywords: ['delete account', 'remove account', 'close account', 'delete my account'],
+      response: "To delete your account, log in and go to Dashboard → Settings. In the Danger Zone, type DELETE to confirm, then confirm again. This is irreversible. For other account changes (name, password), use Settings or the password reset email."
     }
   },
   es: {
@@ -465,13 +477,13 @@ async function generateAIResponse(message: string, conversationHistory: ChatMess
 
   try {
     // Layer 1: RAG - Retrieve relevant context from knowledge base
-    const context = await cymasphereRAG.retrieveRelevantContext(message);
+    const context = await nnaudioRAG.retrieveRelevantContext(message);
     
     // Layer 2: Generate response with retrieved context
-    const response = await cymasphereRAG.generateResponse(message, conversationHistory);
+    const response = await nnaudioRAG.generateResponse(message, conversationHistory);
     
     // Layer 3: Verification - Fact-check the response against context
-    const isVerified = await cymasphereRAG.verifyResponse(response, context);
+    const isVerified = await nnaudioRAG.verifyResponse(response, context);
     
     if (!isVerified) {
       console.log('Response failed verification, using fallback');

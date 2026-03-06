@@ -460,7 +460,7 @@ export default function ChatWidget({ className }: ChatWidgetProps) {
   useEffect(() => {
     const initialGreeting: Message = {
       id: '1',
-      text: t('chat.greeting') || "Hi! I'm your NNAudio assistant. I can help you with questions about our music production tools, pricing, features, and more. What would you like to know?",
+      text: t('chat.greeting') || "Hi! I'm your NNAudio assistant. I can help with products, bundles, pricing, NNAudio Access, downloads, and your account. What type of products are you interested in—plugins, sample packs, MIDI, or bundles?",
       isUser: false,
       timestamp: new Date()
     };
@@ -723,13 +723,19 @@ export default function ChatWidget({ className }: ChatWidgetProps) {
         cta: null
       };
 
-      // If message mentions pricing/plans/trial, append CTA to view pricing section
+      // Append a relevant CTA when the response mentions specific topics (one CTA per message)
       const pricingRegex = /(price|pricing|plan|plans|monthly|yearly|lifetime|trial|subscribe|upgrade)/i;
+      const redeemRegex = /(redeem|serial|code|nnaud\.io\/redeem)/i;
+      const downloadsRegex = /(nnaudio access|downloads?|install|my products)/i;
+      const supportRegex = /(support|ticket|support@nnaud)/i;
       if (pricingRegex.test(botMessage.text)) {
-        botMessage.cta = {
-          label: t('chat.view_pricing') || 'View pricing',
-          href: '/#pricing',
-        };
+        botMessage.cta = { label: t('chat.view_pricing') || 'View pricing', href: '/#pricing' };
+      } else if (redeemRegex.test(botMessage.text)) {
+        botMessage.cta = { label: t('chat.redeem_cta') || 'Redeem code', href: '/redeem' };
+      } else if (downloadsRegex.test(botMessage.text)) {
+        botMessage.cta = { label: t('chat.downloads_cta') || 'Get NNAudio Access', href: '/downloads' };
+      } else if (supportRegex.test(botMessage.text)) {
+        botMessage.cta = { label: t('chat.support_cta') || 'Open Support', href: '/support' };
       }
 
       setMessages(prev => [...prev, botMessage]);

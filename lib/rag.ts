@@ -1,206 +1,54 @@
+/**
+ * @fileoverview RAG (retrieve-and-generate) for NNAudio site chat: knowledge base, NEPQ-driven responses, verification.
+ * @module lib/rag
+ *
+ * Loads static knowledge from lib/rag-knowledge (nnaudio-base.md, products-and-bundles.md), embeds and retrieves
+ * relevant chunks, then generates responses with an NNAudio-focused NEPQ system prompt.
+ */
+
 import { ChatOpenAI } from "@langchain/openai";
 import { Document } from "@langchain/core/documents";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { MemoryVectorStore } from "@langchain/classic/vectorstores/memory";
 import { OpenAIEmbeddings } from "@langchain/openai";
+import { readFileSync } from "fs";
+import { join } from "path";
 
-// Cymasphere website content (this would normally be scraped/updated dynamically)
-const CYMASPHERE_KNOWLEDGE_BASE = `
-# Cymasphere Platform Information
+const RAG_KNOWLEDGE_PATH = join(process.cwd(), "lib", "rag-knowledge");
 
-## What is Cymasphere?
-Cymasphere is a complete song creation suite available both as a standalone application and as a plugin (AU & VST3) for your DAW. It provides integrated tools for composing both harmony and melody, featuring intelligent chord voicing, melody pattern construction, and interactive visualization that makes music theory accessible and intuitive for all skill levels.
+/** Build full NNAudio knowledge base from static markdown files (base + products/bundles). */
+function loadNNAudioKnowledgeBase(): string {
+  let base = "";
+  let products = "";
+  try {
+    base = readFileSync(join(RAG_KNOWLEDGE_PATH, "nnaudio-base.md"), "utf8");
+  } catch {
+    base = "# NNAudio\n\nnnaud.io is the NNAudio website. Use /support for help, support@nnaud.io.";
+  }
+  try {
+    products = readFileSync(join(RAG_KNOWLEDGE_PATH, "products-and-bundles.md"), "utf8");
+  } catch {
+    products = "";
+  }
+  return products ? `${base}\n\n${products}` : base;
+}
 
-## Hero Section Marketing
-- Main Title: "Generate Music With AI" / "Intelligent Creation"
-- Subtitle: "Enter the next evolution of music creation, where theoretical foundations invisibly guide your workflow. Chords and melodies connect with purpose, empowering your unique musical vision."
-- Call-to-Action: "Try It Now" / "Learn More"
-- Dynamic Title Words: Music, Song, Chord, Pattern, Progression, Voicing, Harmony
+/**
+ * Load the category quick reference from products-and-bundles.md (intro + category list).
+ * Prepended to every retrieval so discovery queries ("options", "what do you have") always have product categories and names to recommend.
+ */
+function loadCategoryQuickReference(): string {
+  try {
+    const raw = readFileSync(join(RAG_KNOWLEDGE_PATH, "products-and-bundles.md"), "utf8");
+    const productBlockStart = raw.indexOf("\n## Product:");
+    if (productBlockStart === -1) return "";
+    return raw.slice(0, productBlockStart).trim();
+  } catch {
+    return "";
+  }
+}
 
-## Key Features
-- Song Builder with Multi-Track Management
-- Intelligent Pattern Editor & Chord Adaptation
-- Gestural Harmony Palette Interface
-- Advanced Voice Leading & Chord Voicings
-- Interactive Chord Progression Timeline
-- Complete Voice and Range Control
-- Standalone App & DAW Plugin Support
-- Real-Time Chord Reharmonization Tools
-- Comprehensive Arrangement View
-- Custom Voicing Generation Engine
-- Premium Support & All Future Updates
-
-## Detailed Feature Descriptions
-
-### Song Builder
-The Song Builder is your central creative hub where all musical elements come together. You can arrange chord progressions, create melody patterns, and build complete song structures with multiple tracks. The system features:
-- Professional Transport Controls with play, stop, record, loop functionality, BPM, meter, metronome and DAW sync
-- Interactive Timeline with grid snapping, zoom controls, and countoff capabilities
-- Multi-Track Management with per-track mute/solo, volume controls, and routing options
-- Comprehensive Arrangement View providing a holistic perspective of all voicings and patterns
-- Chord Progression Framework serving as the harmonic foundation for your compositions
-- Informative Keyboard Display showing chord voicings and voice leading
-
-### Harmony Palettes
-The Interactive Harmony Palette provides a visual, gestural interface for exploring chord relationships. Features include:
-- Customizable library organization with drag-and-drop chord collection management
-- Direct drag-and-drop voicings from palette to your progression timeline
-- Curated collection libraries with preselected scales and chord relationships
-- One-click key transposition to instantly change the key of entire compositions
-- Voicing parameter panel for quick chord characteristic adjustments
-- Custom library creation to build your personal harmonic vocabulary
-
-### Dynamic Pattern Editor
-The Dynamic Pattern Editor enables you to create complex musical motifs that respond intelligently to changes in your chord progressions. Features include:
-- Intelligent Adaptation to chord progression changes in real-time
-- Advanced Piano Roll Interface with powerful editing tools
-- Context-Aware Note Entry with scale, chord, and voicing intelligence to prevent harmonic clashes
-- Dual Mode Operation with relative and absolute patterns for both contextual and fixed melodic content
-- Melodic Essence Extraction that captures the intent of any melody for reuse in different harmonic contexts
-
-### Voicing Generator
-The Voicing Generator uses advanced algorithms to create rich, musically satisfying chord voicings that follow proper voice leading principles. It analyzes chord progressions to ensure smooth voice transitions between chords, with controls for voicing width, density, inversions, and harmonic extensions.
-
-## How It Works
-
-### CREATE Workflow
-1. **Start with Chord Progressions**: Begin with pre-crafted templates or effortlessly build your own chord progressions by dragging voicings from the Harmony palette. The app automatically analyzes scales and modes, ensuring your music follows proper theory principles.
-2. **Layer Multiple Tracks**: Create rich compositions with multiple tracks that intelligently work together. Add harmony, melodies, and rhythms—all synchronized and harmonically compatible with your chord progression.
-3. **Customize with Precision**: Fine-tune your sound with detailed customization. Adjust inversions, voicing density, tension notes, and harmonic extensions to craft everything from simple triads to complex jazz harmonies.
-4. **Intelligent Musicality**: Experience professional-level musicality with intelligent voice leading that ensures smooth chord transitions. Access composition tools previously available only to trained musicians, empowering you to create sophisticated harmonies with confidence.
-
-### LEARN Workflow
-1. **Ghost Track Learning**: Master chord progressions through interactive ghost tracks that guide your playing. Experiment with reharmonization in real-time, watching as the app adapts to your creative choices while maintaining musical coherence.
-2. **Interactive Harmonic Analysis**: Explore comprehensive harmonic displays that reveal the theory behind your music. Visualize voicings, patterns, scales, and chords in real-time, gaining deep insights into the musical structure of your creations.
-3. **Pattern-Based Learning**: Start with a simple pattern and watch it evolve as you explore different scales and chord qualities. The app's visual feedback helps you understand how each note contributes to the overall harmony.
-4. **Refine Your Skills**: Improve your musical ear by experimenting with different chord substitutions and modal interchange. Develop a deeper understanding of chord qualities and progressions.
-
-### INTEGRATE Workflow
-1. **DAW Compatibility**: Use Cymasphere as a standalone application or as a VST/AU plugin within your DAW. Whether you're sketching ideas independently or integrating directly into your production, the app adapts to your preferred workflow.
-2. **Multi-Track Control**: Manage multiple tracks simultaneously, each with its own independent voice settings and patterns. Create rich, layered arrangements by assigning different musical elements to separate tracks within your DAW.
-3. **Voice Channel Matrix**: Precisely control where each voice is sent using the channel matrix. Route individual voices to specific MIDI channels in your DAW, giving you complete control over instrument assignment and voice distribution.
-4. **Seamless Workflow**: Integrate Cymasphere into your production process as a powerful harmony and pattern generator. Use it to quickly sketch ideas, develop complex progressions, and create musical patterns that feed directly into your DAW's instruments.
-
-## Pricing Plans
-Cymasphere offers flexible pricing options:
-- **Monthly billing**: $6.00/month - Pay month-to-month, cancel anytime (most flexible)
-- **Yearly billing**: $59.00/year - Save 25% with yearly billing (best value)
-- **Lifetime**: $149.00 one-time payment - Lifetime access (best value)
-
-All plans include full access to all features. Pricing is simple and transparent.
-
-## Free Trial Options
-Cymasphere offers two free trial options:
-- **7-day free trial** without requiring a credit card
-- **14-day free trial** with a card on file (won't be charged until trial ends)
-Both options give you full access to all premium features.
-
-## Technical Requirements
-- Available as standalone application
-- Available as AU plugin (macOS)
-- Available as VST3 plugin
-- Compatible with major DAWs
-- Works on desktop platforms (Windows and macOS)
-
-## Installation
-- **Windows**: Standalone in C:\\Program Files\\Cymasphere\\, Plugins in C:\\Program Files\\Common Files\\VST3\\
-- **macOS**: Standalone in /Applications/, Plugins in /Library/Audio/Plug-Ins/
-- Login with Cymasphere account credentials on first launch
-
-## Support and Documentation
-- Built-in help manager provides complete documentation (no separate PDF manual)
-- All help is directly built into the in-app help manager
-- Discord community: https://discord.gg/gXGqqYR47B
-- Email support: support@cymasphere.com
-- Premium support available
-- 24/7 support availability
-
-## Updates
-- All customers have access to the most recent version at no additional cost
-- Lifetime license holders receive all future updates as part of their one-time purchase
-- Continuous improvements and new features for all users
-
-## Music Theory Learning
-- No music theory knowledge required to use Cymasphere
-- Visual interfaces help understand musical relationships as you compose
-- Makes complex theory concepts intuitive even for beginners
-- Both a powerful creation tool and excellent learning resource
-- Grows with you as you develop your skills
-
-## Customer Testimonials
-- **Sarah Chen (Composer)**: "Cymasphere revolutionized my composition process. The intelligent voice leading allows me to create complex harmonies I never could have achieved manually."
-- **Dr. Michael Rodriguez (Music Teacher)**: "As a music teacher, I use Cymasphere to demonstrate complex theoretical concepts. My students finally understand how chord progressions work!"
-- **Alex Thompson (Music Producer)**: "The gestural interface for harmony palettes is brilliant. I can explore chord relationships in a completely new and intuitive way."
-
-## Company Mission
-Cymasphere's mission is to make music theory accessible without requiring years of study or technical application to an instrument. We believe deep musical understanding should be within reach of all creators, not just classically trained musicians. Our tools are designed to remove traditional barriers to music creation while still offering creative freedom.
-
-## Company Story
-Founded in 2022 by a team of dedicated musicians, software engineers, and music theorists, Cymasphere began as an ambitious project to reimagine how musicians interact with harmony and composition. After years of frustration with existing music software that either lacked theoretical sophistication or were too complex for intuitive use, our founders set out to create a tool that would make music theory practical, visual, and genuinely useful in the creative process.
-
-## Company Values
-- **Musical Integrity**: We respect the principles of music theory while embracing innovation
-- **Intuitive Design**: Our interfaces are visually clear and immediately understandable
-- **Creative Freedom**: We provide guidance without limiting expression
-- **Continuous Learning**: Our tools help users develop their musical understanding
-
-## Target Users
-- Music producers at any skill level
-- Songwriters looking for composition tools
-- Musicians wanting to understand music theory better
-- Producers needing help with chord progressions and melodies
-- Anyone wanting to bridge music theory knowledge with practical application
-- Beginners who want to learn music theory through practice
-- Advanced users who want sophisticated composition tools
-- Music teachers and educators
-- Composers and arrangers
-- Anyone interested in intelligent music creation
-
-## Musical Support and Encouragement
-Cymasphere understands that music creation can be challenging and frustrating at times. Many musicians struggle with:
-- Feeling like their music isn't good enough
-- Getting stuck in creative ruts
-- Not knowing where to start with composition
-- Struggling with music theory concepts
-- Comparing themselves to other musicians
-- Feeling overwhelmed by technical aspects
-
-Cymasphere is designed to help overcome these challenges by:
-- Making music theory accessible and visual
-- Providing intelligent guidance without judgment
-- Offering tools that grow with your skill level
-- Removing technical barriers to creativity
-- Helping you understand why certain musical choices work
-- Building confidence through understanding
-
-## Common Musical Struggles and Solutions
-**"My music sucks" / "I'm not good at music"**
-- Every musician has felt this way - it's part of the creative process
-- Cymasphere helps by making music theory visual and accessible
-- Start with simple chord progressions and build from there
-- The app guides you toward musically satisfying choices
-- Focus on progress, not perfection
-
-**"I don't know music theory"**
-- Cymasphere requires no prior music theory knowledge
-- Learn theory through practice, not memorization
-- Visual interfaces help you understand relationships intuitively
-- The app handles the complex theory behind the scenes
-
-**"I'm stuck in a creative rut"**
-- Try exploring different chord progressions with the Harmony Palette
-- Use the Voicing Generator to discover new harmonic possibilities
-- Experiment with different scales and modes
-- Let the app suggest musically coherent alternatives
-
-**"I can't finish songs"**
-- Start with chord progressions as your foundation
-- Use the Song Builder to organize your ideas
-- Break composition into smaller, manageable steps
-- Focus on one element at a time (harmony, then melody, then arrangement)
-`;
-
-class CymasphereRAG {
+class NNAudioRAG {
   private vectorStore: MemoryVectorStore | null = null;
   private llm: ChatOpenAI;
   private embeddings: OpenAIEmbeddings;
@@ -208,7 +56,7 @@ class CymasphereRAG {
   constructor() {
     this.llm = new ChatOpenAI({
       modelName: "gpt-4o-mini",
-      temperature: 0.1,
+      temperature: 0, // Deterministic; reduces fabrication
       openAIApiKey: process.env.OPENAI_API_KEY,
     });
 
@@ -218,15 +66,13 @@ class CymasphereRAG {
   }
 
   async initialize() {
-    // Split the knowledge base into chunks
+    const knowledgeBase = loadNNAudioKnowledgeBase();
     const textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000,
+      chunkSize: 1200,
       chunkOverlap: 200,
     });
 
-    const docs = await textSplitter.createDocuments([CYMASPHERE_KNOWLEDGE_BASE]);
-
-    // Create vector store
+    const docs = await textSplitter.createDocuments([knowledgeBase]);
     this.vectorStore = await MemoryVectorStore.fromDocuments(docs, this.embeddings);
   }
 
@@ -235,8 +81,13 @@ class CymasphereRAG {
       await this.initialize();
     }
 
-    const results = await this.vectorStore!.similaritySearch(query, 3);
-    return results.map((doc: Document) => doc.pageContent).join('\n\n');
+    const results = await this.vectorStore!.similaritySearch(query, 5);
+    const retrieved = results.map((doc: Document) => doc.pageContent).join("\n\n");
+    const categoryBlock = loadCategoryQuickReference();
+    if (categoryBlock) {
+      return `${categoryBlock}\n\n---\n\n${retrieved}`;
+    }
+    return retrieved;
   }
 
   /** Extract NEPQ state from conversation (implementation on prototype). */
@@ -246,114 +97,172 @@ class CymasphereRAG {
   ) => { needs: string[]; pains: string[]; currentTools: string[]; experienceLevel: string; budget: string; decisionContext: string };
 
   async generateResponse(query: string, conversationHistory: any[] = []): Promise<string> {
-    // Layer 1: Retrieve relevant information
     const context = await this.retrieveRelevantContext(query);
-
-    // Extract NEPQ state from conversation
     const nepqState = this.extractNEPQState(conversationHistory, query);
 
-    // Layer 2: Generate response with retrieved context
-    const systemPrompt = `You are a sales assistant for Cymasphere who strictly follows NEPQ. You are also empathetic and supportive of musicians' creative struggles.
+    const systemPrompt = `You are a helpful support and sales assistant for NNAudio (nnaud.io). You help with products, NNAudio Access, downloads, redemption, purchases, subscriptions, and account management. You strictly follow NEPQ.
 
-NEPQ SALES STRATEGY (optimize for a single next step):
-- Need: Identify the user's specific creative goals and desired outcomes.
-- Economic Buyer: Understand purchasing authority only if relevant later.
-- Pain: Uncover the most pressing challenge blocking progress.
-- Question: Ask ONE precise, high-impact question at a time to advance discovery.
+ANTI-HALLUCINATION (MANDATORY):
+- Use ONLY information that appears in the CONTEXT block below. Do not infer, extrapolate, guess, or make up any facts.
+- If the user asks for something not in the context (e.g. a specific price, product feature, or step), say "I don't have that information" or "That isn't in my knowledge base" and point them to the relevant page (e.g. /support, /#pricing, /product/[slug], /redeem).
+- Do not state prices, product names, or procedures unless they appear in the context. When in doubt, say you don't know and direct to the site or support.
+- You may paraphrase or summarize only what is explicitly in the context. Do not add details that are not there.
+
+NEPQ STRATEGY (one step at a time):
+- Need: Identify the user's goal (e.g. buy a plugin, redeem a code, get downloads, browse products).
+- Economic Buyer: Only if relevant (e.g. team purchase).
+- Pain: Uncover what's blocking them (e.g. can't find product, redeem not working, install issues).
+- Question: Ask ONE precise question per turn to move forward.
+
+RECOMMENDATIONS AND PRODUCT INTEREST:
+- The CONTEXT always includes a "Category quick reference" section listing product names by type (Instrument plugins, Audio FX plugins, Packs, Bundles, etc.). Use it to answer "what options do you have?", "recommend something", "what do you sell?", etc.
+- When the user asks for options or recommendations, name the categories and/or specific products from the context (e.g. "We have instrument plugins like Albanju, Apache Flute, Tetrad Guitars; audio FX like Crystal Ball, Freeverb; MIDI packs, and bundles…") and ask what type they're interested in (plugins, packs, bundles) or suggest 1–3 items from the context with links.
+- You MAY recommend specific products or bundles that appear in the CONTEXT. Use the exact product/bundle name and link: /product/{slug} or /bundles/{slug} as shown in the context.
+- When the user is exploring or asking what NNAudio offers, either (1) list categories and product names from the Category quick reference and ask what type they want, or (2) suggest 1–3 products/bundles from the context with name, short tagline, and link.
+- Once they mention a type or style, suggest 1–3 products or bundles from the context that match (name + short tagline/summary from context + link). Only recommend items that appear in the context.
+- Do not invent products. If the context has no good match, say so and point them to /plugins, /packs, /bundles, or /products to browse.
 
 CRITICAL RULES:
-1) For questions about Cymasphere features/pricing/technical details: Use ONLY information from the context below. If the context doesn't have it, say "I don't know" and guide to site.
-2) For emotional/musical struggles (like "my music sucks", "I'm stuck", "I don't know theory"): Be empathetic and encouraging. Use the musical support context to provide helpful, understanding responses.
-3) Never invent technical details about Cymasphere features. Stay grounded in Cymasphere context for product information.
-4) Prefer short, skimmable answers tied to the user's stated pains/needs.
-5) Ask exactly ONE next question, tailored by what you already know.
-6) Always connect the user's concern, challenge, or aspiration to how Cymasphere helps (producers, composers, songwriters, educators, students, performing musicians, beatmakers, theory learners). Never suggest Cymasphere can't help their musical vision—guide them to the right feature or workflow.
-7) Never claim features that don't exist in the context.
+1) Every factual claim (product name, price, URL, step, feature) MUST come from the context. If it's not in context, do not say it.
+2) For emotional or "stuck" messages, be empathetic and direct them to Support (/support) or Getting Started (/getting-started).
+3) Never invent product names, prices, or features. Never describe admin-only areas; direct those to support.
+4) Prefer short, clear answers. When relevant, include concrete links only if they appear in context: /downloads, /my-products, /redeem, /support, /billing, /settings, /#pricing, /product/{slug}, /bundles/{slug}.
+5) Ask exactly ONE follow-up question when appropriate (e.g. "What type of products are you interested in—plugins, packs, or bundles?").
 
 KNOWN NEPQ STATE (from chat so far):
-- Needs: ${nepqState.needs.join(', ') || 'unknown'}
-- Pains: ${nepqState.pains.join(', ') || 'unknown'}
-- Current tools: ${nepqState.currentTools.join(', ') || 'unknown'}
-- Experience level: ${nepqState.experienceLevel || 'unknown'}
-- Budget: ${nepqState.budget || 'unknown'}
-- Decision context: ${nepqState.decisionContext || 'unknown'}
+- Needs: ${nepqState.needs.join(", ") || "unknown"}
+- Pains: ${nepqState.pains.join(", ") || "unknown"}
+- Current tools: ${nepqState.currentTools.join(", ") || "unknown"}
+- Experience level: ${nepqState.experienceLevel || "unknown"}
+- Budget: ${nepqState.budget || "unknown"}
+- Decision context: ${nepqState.decisionContext || "unknown"}
 
 CONTEXT:
 ${context}
 
 Instructions for this turn:
-- Provide a concise, context-grounded answer if possible (no fluff).
-- Then ask ONE tailored NEPQ question that best progresses the conversation, avoiding repeats.
-- If the answer is not in context, say "I don't know" and point them to the site politely.`;
+- Answer ONLY from the context above. If the answer is not there, say so and point to the site or /support.
+- Then ask ONE tailored question if it helps (or end with a clear next step).`;
 
     const messages = [
-      { role: 'system', content: systemPrompt },
+      { role: "system", content: systemPrompt },
       ...conversationHistory.slice(-8).map((msg: any) => ({
-        role: msg.isUser ? 'user' : 'assistant',
-        content: msg.text
+        role: msg.isUser ? "user" : "assistant",
+        content: msg.text,
       })),
-      { role: 'user', content: query }
+      { role: "user", content: query },
     ];
 
     const response = await this.llm.invoke(messages);
     return response.content as string;
   }
 
-  async verifyResponse(response: string, context: string): Promise<boolean> {
-    // Accept if response is clearly grounded OR is a valid NEPQ discovery step OR is empathetic
-    const keyTerms = ['cymasphere', 'song creation', 'standalone', 'plugin', 'daw', 'chord', 'melody', 'harmony', 'pricing', 'trial', 'monthly', 'yearly', 'lifetime'];
-    const lower = response.toLowerCase();
-    const grounded = keyTerms.some(term => lower.includes(term));
-
-    // Consider NEPQ discovery questions valid to avoid fallback loops
-    const looksLikeDiscovery = response.trim().endsWith('?') || /what|which|how|when|who|why/i.test(response.split('\n')[0] || '');
-
-    // Allow explicit honesty
-    const honestUnknown = lower.includes("i don't know");
-
-    // Allow empathetic responses for musical struggles
-    const isEmpathetic = (
-      lower.includes('totally get') ||
-      lower.includes('every musician') ||
-      lower.includes('so common') ||
-      lower.includes('creative blocks') ||
-      lower.includes('feeling stuck') ||
-      lower.includes('don\'t need to know') ||
-      lower.includes('behind the scenes') ||
-      lower.includes('intuitively')
+  /**
+   * Extract price-like numbers ($X, $X.XX, X dollars) from text for grounding check.
+   * @returns Set of normalized number strings (e.g. "99", "6.00") that appear in a price context
+   */
+  private static extractPriceNumbers(text: string): Set<string> {
+    const numbers = new Set<string>();
+    const re = new RegExp(
+      "\\$?\\s*(\\d+(?:\\.\\d{1,2})?)\\s*(?:dollars?|USD|/month|/year|monthly|yearly)?",
+      "gi"
     );
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) {
+      numbers.add(m[1]!);
+    }
+    const simpleDollar = new RegExp("\\$(\\d+(?:\\.\\d{1,2})?)", "g");
+    while ((m = simpleDollar.exec(text)) !== null) {
+      numbers.add(m[1]!);
+    }
+    return numbers;
+  }
 
-    // Denylist: block phrases that imply unsupported claims or external product features
-    const denylist = [
-      'web-based platform',
-      'browser-based daw',
-      'mobile app only',
-      'ios only',
-      'android only',
-      'ai generates full songs automatically without input',
-      'no daw support',
+  /**
+   * Reject response if it states a specific price that does not appear in context (likely fabrication).
+   */
+  private static hasUnsupportedPrices(response: string, context: string): boolean {
+    const contextPrices = NNAudioRAG.extractPriceNumbers(context);
+    const responsePrices = NNAudioRAG.extractPriceNumbers(response);
+    if (responsePrices.size === 0) return false;
+    for (const p of responsePrices) {
+      if (!contextPrices.has(p)) return true;
+    }
+    return false;
+  }
+
+  async verifyResponse(response: string, context: string): Promise<boolean> {
+    const lower = response.toLowerCase();
+
+    if (NNAudioRAG.hasUnsupportedPrices(response, context)) {
+      return false;
+    }
+
+    const keyTerms = [
+      "nnaud.io",
+      "nnaudio",
+      "NNAudio Access",
+      "my products",
+      "plugins",
+      "vst3",
+      "au",
+      "redeem",
+      "dashboard",
+      "support",
+      "billing",
+      "subscription",
+      "download",
+      "install",
+      "product",
+      "bundle",
     ];
-    const hitsDenylist = denylist.some(term => lower.includes(term));
+    const grounded = keyTerms.some((term) => lower.includes(term.toLowerCase()));
 
-    // Also ensure it isn't trivially generic
+    const looksLikeDiscovery =
+      response.trim().endsWith("?") ||
+      /what|which|how|when|who|why|where/i.test(response.split("\n")[0] || "");
+
+    const honestUnknown =
+      lower.includes("i don't know") ||
+      lower.includes("i don't have that") ||
+      lower.includes("isn't in my knowledge") ||
+      lower.includes("that information");
+
+    const isEmpathetic =
+      lower.includes("totally get") ||
+      lower.includes("understand") ||
+      lower.includes("sorry") ||
+      lower.includes("help you") ||
+      lower.includes("support");
+
+    const denylist = [
+      "redemption inside NNAudio Access app",
+      "redeem in the app",
+      "cymasphere-only",
+      "web-based platform",
+      "browser-based daw",
+      "mobile app only",
+      "ios only",
+      "android only",
+    ];
+    const hitsDenylist = denylist.some((term) => lower.includes(term));
+
     const tooShort = response.trim().length < 20;
 
     return (grounded || looksLikeDiscovery || honestUnknown || isEmpathetic) && !tooShort && !hitsDenylist;
   }
 }
 
-export const cymasphereRAG = new CymasphereRAG();
+export const nnaudioRAG = new NNAudioRAG();
 
-// --- Helpers ---
-// Lightweight NEPQ state extractor
-// This intentionally uses simple heuristics to avoid heavy parsing and keeps privacy intact.
-// It scans recent conversation messages for common signals.
-// Returned values are used to tailor the next single question.
-// Types kept as any to avoid introducing build-time type friction.
-(CymasphereRAG as any).prototype.extractNEPQState = function extractNEPQState(conversationHistory: any[] = [], latestUserMessage: string = '') {
+// --- NEPQ state extractor (NNAudio-focused) ---
+(NNAudioRAG as any).prototype.extractNEPQState = function extractNEPQState(
+  conversationHistory: any[] = [],
+  latestUserMessage: string = ""
+) {
   const recent = [...(conversationHistory || [])].slice(-10);
-  const texts = recent.map(m => (m?.text || '')).concat(latestUserMessage || '');
-  const joined = texts.join('\n').toLowerCase();
+  const texts = recent.map((m) => m?.text || "").concat(latestUserMessage || "");
+  const joined = texts.join("\n").toLowerCase();
 
   const needs: string[] = [];
   const pains: string[] = [];
@@ -362,29 +271,36 @@ export const cymasphereRAG = new CymasphereRAG();
   let budget: string | null = null;
   let decisionContext: string | null = null;
 
-  // Heuristic extraction
-  if (/melod(y|ies)|lead|topline/.test(joined)) needs.push('melody creation');
-  if (/chord|progression|voicing|harmony/.test(joined)) needs.push('chords & harmony');
-  if (/arrang(e|ement)|structure/.test(joined)) needs.push('song structure');
+  if (/plugin|vst|au|instrument|effect/.test(joined)) needs.push("plugins");
+  if (/pack|midi|sample|loop|preset/.test(joined)) needs.push("packs or bundles");
+  if (/download|install|nnaudio access|access app/.test(joined)) needs.push("downloads / installation");
+  if (/redeem|serial|code|license/.test(joined)) needs.push("redemption");
+  if (/subscription|monthly|annual|lifetime|purchase|buy/.test(joined)) needs.push("purchase or subscription");
+  if (/account|profile|settings|billing|payment/.test(joined)) needs.push("account or billing");
+  if (/support|ticket|help|problem/.test(joined)) needs.push("support");
 
-  if (/struggl|hard|confus|stuck|block|problem|issue/.test(joined)) pains.push('creative friction');
-  if (/theory|scale|mode|voic(e|ing)s? hard|don'?t know theory/.test(joined)) pains.push('music theory complexity');
+  if (/can't find|don't see|missing|not showing/.test(joined)) pains.push("product or order not visible");
+  if (/redeem|serial|code not working|invalid/.test(joined)) pains.push("redemption issue");
+  if (/download|install|won't install|error/.test(joined)) pains.push("download or install issue");
+  if (/billing|subscription|cancel|payment/.test(joined)) pains.push("billing or subscription");
+  if (/delete account|remove account/.test(joined)) pains.push("account deletion");
 
-  if (/ableton|fl studio|logic|reaper|bitwig|pro tools|studio one|cubase/.test(joined)) currentTools.push('DAW mentioned');
+  if (/ableton|fl studio|logic|reaper|bitwig|pro tools|studio one|cubase|daw/.test(joined)) currentTools.push("DAW mentioned");
+  if (/nnaudio access|access app/.test(joined)) currentTools.push("NNAudio Access");
 
-  if (/beginner|new to|just starting/.test(joined)) experienceLevel = 'beginner';
-  else if (/intermediate|some experience/.test(joined)) experienceLevel = 'intermediate';
-  else if (/advanced|expert|pro/.test(joined)) experienceLevel = 'advanced';
+  if (/beginner|new to|just starting|first (plugin|product)/.test(joined)) experienceLevel = "beginner";
+  else if (/intermediate|some experience/.test(joined)) experienceLevel = "intermediate";
+  else if (/advanced|expert|pro/.test(joined)) experienceLevel = "advanced";
 
-  if (/(budget|price range|too expensive|afford|cost)/.test(joined)) budget = 'budget sensitive';
-  if (/(manager|boss|team|client|approval|procurement)/.test(joined)) decisionContext = 'multiple stakeholders';
+  if (/(budget|price range|too expensive|afford|cost)/.test(joined)) budget = "budget sensitive";
+  if (/(manager|boss|team|client|approval)/.test(joined)) decisionContext = "multiple stakeholders";
 
   return {
     needs: Array.from(new Set(needs)),
     pains: Array.from(new Set(pains)),
     currentTools: Array.from(new Set(currentTools)),
-    experienceLevel: experienceLevel || '',
-    budget: budget || '',
-    decisionContext: decisionContext || ''
+    experienceLevel: experienceLevel || "",
+    budget: budget || "",
+    decisionContext: decisionContext || "",
   };
 };
