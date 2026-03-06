@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Dashboard downloads page: NNAudio Access installers (macOS/Windows) and resources.
+ * @module dashboard/downloads
+ */
 "use client";
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
@@ -6,13 +10,20 @@ import {
   FaWindows,
   FaApple,
   FaFilePdf,
-  FaInfoCircle,
-  FaRocket,
 } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { formatProductDownloadFileSize } from "@/utils/product-downloads";
+import {
+  formatProductDownloadFileSize,
+  getFileMetadataFromUrl,
+} from "@/utils/product-downloads";
+
+/** API that returns installer metadata using service-role (reliable size/date). */
+const INSTALLER_INFO_API = "/api/nnaudio-access/installer-info";
+/** Public URLs for HEAD fallback when API is unavailable. */
+const NNAUDIO_ACCESS_MACOS_INSTALLER_URL =
+  "https://znecvzfogwkzinkduyuq.supabase.co/storage/v1/object/public/builds/nnaudio-access/NNAudioAccess_Installer.pkg";
 
 const DownloadsContainer = styled.div`
   width: 100%;
@@ -59,7 +70,7 @@ const CardContent = styled.div`
 
 const DownloadsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: 1.5rem;
   overflow: visible;
 `;
@@ -191,79 +202,6 @@ const DownloadButton = styled.a<{ disabled?: boolean }>`
   }
 `;
 
-const ResourcesSection = styled.div`
-  margin-top: 2rem;
-`;
-
-const ResourcesList = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-const ResourceItem = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 1rem;
-  border-radius: 8px;
-  background-color: rgba(30, 30, 46, 0.5);
-  margin-bottom: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: transform 0.2s ease;
-
-  &:hover {
-    transform: translateX(5px);
-  }
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-`;
-
-const ResourceIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  background: rgba(108, 99, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 1rem;
-
-  svg {
-    color: var(--primary);
-    font-size: 1.5rem;
-  }
-
-  @media (max-width: 768px) {
-    margin-right: 0;
-    margin-bottom: 1rem;
-    align-self: center;
-  }
-`;
-
-const ResourceInfo = styled.div`
-  flex: 1;
-
-  @media (max-width: 768px) {
-    text-align: center;
-    margin-bottom: 1rem;
-  }
-`;
-
-const ResourceTitle = styled.div`
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 0.25rem;
-`;
-
-const ResourceDescription = styled.div`
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-`;
-
 const InfoBox = styled.div`
   background: linear-gradient(135deg, rgba(108, 99, 255, 0.1), rgba(78, 205, 196, 0.1));
   border-left: 4px solid var(--primary);
@@ -281,28 +219,6 @@ const InfoBox = styled.div`
   strong {
     color: white;
     font-weight: 600;
-  }
-`;
-
-const ResourceLink = styled.a`
-  color: var(--primary);
-  display: flex;
-  align-items: center;
-  font-size: 0.9rem;
-  font-weight: 500;
-  text-decoration: none;
-
-  svg {
-    margin-left: 0.5rem;
-  }
-
-  &:hover {
-    text-decoration: underline;
-  }
-
-  @media (max-width: 768px) {
-    justify-content: center;
-    align-self: center;
   }
 `;
 
@@ -326,28 +242,67 @@ function Downloads() {
   });
 
   useEffect(() => {
+    const formatFileSize = (bytes: number | null | undefined): string =>
+      formatProductDownloadFileSize(bytes) || "—";
+
+    const formatDate = (dateString: string | null | undefined): string => {
+      if (!dateString) return "—";
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    };
+
     const fetchFileInfo = async () => {
       try {
-        // NNAudio Access builds live in builds/nnaudio-access/ on this project's Supabase
-        try {
-          const { data: manifestData, error: manifestError } =
-            await supabase.storage.from("builds").download("nnaudio-access/manifest.json");
+        // Prefer server API (service-role list returns size/updated_at reliably; client list often does not)
+        const res = await fetch(INSTALLER_INFO_API);
+        if (res.ok) {
+          const data = (await res.json()) as {
+            version: string;
+            windows: { size: number | null; updatedAt: string | null };
+            macos: { size: number | null; updatedAt: string | null };
+          };
+          setVersionInfo({ version: data.version, loading: false });
+          setFileInfo({
+            windows: {
+              size: formatFileSize(data.windows.size),
+              lastModified: formatDate(data.windows.updatedAt),
+            },
+            macos: {
+              size: formatFileSize(data.macos.size),
+              lastModified: formatDate(data.macos.updatedAt),
+            },
+          });
+          return;
+        }
 
-          if (manifestError || !manifestData) {
-            setVersionInfo({ version: "1.0.0", loading: false });
-          } else {
-            const manifestText = await manifestData.text();
-            const manifest = JSON.parse(manifestText);
+        // Fallback: client list + HEAD (same as before; HEAD may not return size/date on public URLs)
+        setVersionInfo({ version: "1.0.0", loading: false });
+        const baseUrl =
+          process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") || "";
+        const windowsUrl = `${baseUrl}/storage/v1/object/public/builds/nnaudio-access/NNAudioAccess_Installer.exe`;
+
+        try {
+          const { data: manifestData } = await supabase.storage
+            .from("builds")
+            .download("nnaudio-access/manifest.json");
+          if (manifestData) {
+            const manifest = JSON.parse(await manifestData.text()) as {
+              app_version?: string;
+              version?: string;
+            };
             setVersionInfo({
-              version: manifest.app_version || manifest.version || "1.0.0",
+              version: manifest.app_version ?? manifest.version ?? "1.0.0",
               loading: false,
             });
           }
         } catch {
-          setVersionInfo({ version: "1.0.0", loading: false });
+          // keep 1.0.0
         }
 
-        // List files in builds/nnaudio-access/
         const { data: files, error } = await supabase.storage
           .from("builds")
           .list("nnaudio-access", {
@@ -355,64 +310,70 @@ function Downloads() {
             sortBy: { column: "name", order: "asc" },
           });
 
-        if (error) {
+        const setFromHead = async () => {
+          const [winMeta, macMeta] = await Promise.all([
+            getFileMetadataFromUrl(windowsUrl),
+            getFileMetadataFromUrl(NNAUDIO_ACCESS_MACOS_INSTALLER_URL),
+          ]);
+          setFileInfo({
+            windows: {
+              size: formatFileSize(winMeta.size),
+              lastModified: formatDate(winMeta.lastModified),
+            },
+            macos: {
+              size: formatFileSize(macMeta.size),
+              lastModified: formatDate(macMeta.lastModified),
+            },
+          });
+        };
+
+        if (error || !files?.length) {
+          await setFromHead();
           return;
         }
 
-        if (files) {
-          const windowsFile = files.find(
-            (file) => file.name === "NNAudioAccess_Installer.exe"
-          );
-          const macosFile = files.find(
-            (file) => file.name === "NNAudioAccess_Installer.pkg"
-          );
+        const windowsFile = files.find((f) => f.name === "NNAudioAccess_Installer.exe");
+        const macosFile = files.find((f) => f.name === "NNAudioAccess_Installer.pkg");
+        const winSize =
+          (windowsFile as { size?: number; metadata?: { size?: number } })?.metadata?.size ??
+          (windowsFile as { size?: number })?.size;
+        const macSize =
+          (macosFile as { size?: number; metadata?: { size?: number } })?.metadata?.size ??
+          (macosFile as { size?: number })?.size;
+        const winUpdated = (windowsFile as { updated_at?: string })?.updated_at;
+        const macUpdated = (macosFile as { updated_at?: string })?.updated_at;
 
-          const formatFileSize = (bytes: number | null | undefined): string =>
-            formatProductDownloadFileSize(bytes) || "Unknown";
+        let winSizeStr = formatFileSize(winSize);
+        let winDateStr = formatDate(winUpdated);
+        let macSizeStr = formatFileSize(macSize);
+        let macDateStr = formatDate(macUpdated);
 
-          const formatDate = (
-            dateString: string | null | undefined
-          ): string => {
-            if (!dateString) return "Unknown";
-            const date = new Date(dateString);
-            return date.toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            });
-          };
-
-          setFileInfo({
-            windows: {
-              size: windowsFile?.metadata?.size
-                ? formatFileSize(windowsFile.metadata.size)
-                : "Loading...",
-              lastModified: windowsFile?.updated_at
-                ? formatDate(windowsFile.updated_at)
-                : "Loading...",
-            },
-            macos: {
-              size: macosFile?.metadata?.size
-                ? formatFileSize(macosFile.metadata.size)
-                : "Loading...",
-              lastModified: macosFile?.updated_at
-                ? formatDate(macosFile.updated_at)
-                : "Loading...",
-            },
-          });
+        if (winSizeStr === "—" || winDateStr === "—") {
+          const meta = await getFileMetadataFromUrl(windowsUrl);
+          if (meta.size != null) winSizeStr = formatFileSize(meta.size);
+          if (meta.lastModified) winDateStr = formatDate(meta.lastModified);
         }
-      } catch {
-        // Keep fallback values if fetch fails
+        if (macSizeStr === "—" || macDateStr === "—") {
+          const meta = await getFileMetadataFromUrl(NNAUDIO_ACCESS_MACOS_INSTALLER_URL);
+          if (meta.size != null) macSizeStr = formatFileSize(meta.size);
+          if (meta.lastModified) macDateStr = formatDate(meta.lastModified);
+        }
+
         setFileInfo({
-          windows: { size: "Loading...", lastModified: "Loading..." },
-          macos: { size: "Loading...", lastModified: "Loading..." },
+          windows: { size: winSizeStr, lastModified: winDateStr },
+          macos: { size: macSizeStr, lastModified: macDateStr },
         });
-        setVersionInfo({ version: "1.2.3", loading: false });
+      } catch {
+        setFileInfo({
+          windows: { size: "—", lastModified: "—" },
+          macos: { size: "—", lastModified: "—" },
+        });
+        setVersionInfo({ version: "1.0.0", loading: false });
       }
     };
 
     fetchFileInfo();
-  }, []);
+  }, [supabase]);
 
   return (
     <DownloadsContainer>
@@ -465,7 +426,7 @@ function Downloads() {
                   <DownloadDescription>
                     {t(
                       "dashboard.downloads.macosDesc",
-                      "Universal installer for macOS with standalone app and plugins (AU, VST3) for both Apple Silicon and Intel processors."
+                      "Desktop application for macOS (Apple Silicon and Intel)."
                     )}
                   </DownloadDescription>
                   <DownloadMeta>
@@ -481,7 +442,7 @@ function Downloads() {
                     href={
                       fileInfo.macos.size === "Loading..."
                         ? "#"
-                        : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/builds/nnaudio-access/NNAudioAccess_Installer.pkg`
+                        : NNAUDIO_ACCESS_MACOS_INSTALLER_URL
                     }
                     disabled={fileInfo.macos.size === "Loading..."}
                     onClick={(e) => {
@@ -525,7 +486,7 @@ function Downloads() {
                   <DownloadDescription>
                     {t(
                       "dashboard.downloads.windowsDesc",
-                      "Complete installer for Windows 10/11 including standalone app and plugin formats (VST3)."
+                      "Desktop application for Windows 10/11."
                     )}
                   </DownloadDescription>
                   <DownloadMeta>
@@ -565,46 +526,6 @@ function Downloads() {
         </CardContent>
       </DownloadCard>
 
-      <DownloadCard>
-        <CardTitle>
-          <FaInfoCircle /> {t("dashboard.downloads.resources", "Resources")}
-        </CardTitle>
-        <CardContent>
-          <ResourcesSection>
-            <ResourcesList>
-              <ResourceItem>
-                <ResourceIcon>
-                  <FaRocket />
-                </ResourceIcon>
-                <ResourceInfo>
-                  <ResourceTitle>
-                    {t(
-                      "dashboard.downloads.gettingStarted",
-                      "Getting Started Wizard"
-                    )}
-                  </ResourceTitle>
-                  <ResourceDescription>
-                    {t(
-                      "dashboard.downloads.gettingStartedDesc",
-                      "Interactive guide to set up NNAudio Products for your OS and DAW"
-                    )}
-                  </ResourceDescription>
-                </ResourceInfo>
-                <ResourceLink
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    router.push("/getting-started");
-                  }}
-                >
-                  {t("dashboard.downloads.startWizard", "Start Wizard")}{" "}
-                  <FaRocket />
-                </ResourceLink>
-              </ResourceItem>
-            </ResourcesList>
-          </ResourcesSection>
-        </CardContent>
-      </DownloadCard>
     </DownloadsContainer>
   );
 }
