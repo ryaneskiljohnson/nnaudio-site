@@ -50,9 +50,11 @@ export async function getFileSizeFromStorage(
     if (error || !data) return null;
 
     const fileInfo = data.find((f) => f.name === fileName);
-    if (!fileInfo?.metadata?.size) return null;
-
-    return fileInfo.metadata.size as number;
+    if (!fileInfo) return null;
+    const size =
+      (fileInfo as { metadata?: { size?: number } }).metadata?.size ??
+      (fileInfo as { size?: number }).size;
+    return size ?? null;
   } catch {
     return null;
   }
@@ -73,6 +75,33 @@ export async function getFileSizeFromUrl(url: string): Promise<number | null> {
     return Number.isNaN(size) ? null : size;
   } catch {
     return null;
+  }
+}
+
+/**
+ * @brief Get file size and last-modified from a URL via HEAD request.
+ * @param url Full public URL (e.g. Supabase object public URL)
+ * @returns { size: number | null, lastModified: string | null } (lastModified as ISO string)
+ */
+export async function getFileMetadataFromUrl(url: string): Promise<{
+  size: number | null;
+  lastModified: string | null;
+}> {
+  try {
+    const res = await fetch(url, { method: "HEAD" });
+    if (!res.ok) return { size: null, lastModified: null };
+    const contentLength = res.headers.get("content-length");
+    const lastModified = res.headers.get("last-modified");
+    const size =
+      contentLength != null
+        ? parseInt(contentLength, 10)
+        : null;
+    return {
+      size: size != null && !Number.isNaN(size) ? size : null,
+      lastModified: lastModified || null,
+    };
+  } catch {
+    return { size: null, lastModified: null };
   }
 }
 
