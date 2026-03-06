@@ -918,10 +918,12 @@ export default function BillingPage() {
       return;
     }
     fetch("/api/payment-methods")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && Array.isArray(data.paymentMethods)) {
+      .then((res) => res.json().then((data) => ({ ok: res.ok, status: res.status, data })))
+      .then(({ ok, status, data }) => {
+        if (ok && data.success && Array.isArray(data.paymentMethods)) {
           setPaymentMethods(data.paymentMethods);
+        } else if (!ok && data?.error) {
+          console.warn("[Billing] Payment methods error:", data.error);
         }
       })
       .catch(() => setPaymentMethods([]))

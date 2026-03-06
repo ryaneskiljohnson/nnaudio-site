@@ -15,8 +15,17 @@ import { stripe } from "@/utils/stripe/client";
  * @note Queries both PaymentMethods API (new) and Sources API (legacy) to support all saved cards
  * @example Response: { success: true, paymentMethods: [...], defaultPaymentMethodId: "pm_123" }
  */
+const STRIPE_UNAVAILABLE_MSG =
+  'Payment service is temporarily unavailable. Please try again later.';
+
 export async function GET(request: NextRequest) {
   try {
+    if (!process.env.STRIPE_SECRET_KEY?.trim()) {
+      return NextResponse.json(
+        { success: false, error: STRIPE_UNAVAILABLE_MSG },
+        { status: 503 }
+      );
+    }
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -63,10 +72,19 @@ export async function GET(request: NextRequest) {
       });
     } catch (stripeError: any) {
       console.error('[Payment Methods] Stripe customer retrieve error:', stripeError.message);
-      return NextResponse.json({
-        error: 'Failed to retrieve customer from Stripe',
-        details: stripeError.message
-      }, { status: 500 });
+      const isConfigError =
+        !stripeError.message ||
+        stripeError.message.includes('apiKey') ||
+        stripeError.message.includes('STRIPE_SECRET_KEY') ||
+        stripeError.message.includes('connection to Stripe') ||
+        stripeError.message.includes('retried');
+      return NextResponse.json(
+        {
+          success: false,
+          error: isConfigError ? STRIPE_UNAVAILABLE_MSG : 'Failed to retrieve customer from Stripe',
+        },
+        { status: isConfigError ? 503 : 500 }
+      );
     }
 
     if (rawCustomer.deleted) {
@@ -182,9 +200,15 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error fetching payment methods:', error);
+    const msg = error?.message ?? '';
+    const isConfigError =
+      msg.includes('apiKey') ||
+      msg.includes('STRIPE_SECRET_KEY') ||
+      msg.includes('connection to Stripe') ||
+      msg.includes('retried');
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch payment methods' },
-      { status: 500 }
+      { success: false, error: isConfigError ? STRIPE_UNAVAILABLE_MSG : (error?.message || 'Failed to fetch payment methods') },
+      { status: isConfigError ? 503 : 500 }
     );
   }
 }
@@ -198,6 +222,12 @@ export async function GET(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    if (!process.env.STRIPE_SECRET_KEY?.trim()) {
+      return NextResponse.json(
+        { error: STRIPE_UNAVAILABLE_MSG },
+        { status: 503 }
+      );
+    }
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -256,9 +286,15 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error deleting payment method:', error);
+    const msg = error?.message ?? '';
+    const isConfigError =
+      msg.includes('apiKey') ||
+      msg.includes('STRIPE_SECRET_KEY') ||
+      msg.includes('connection to Stripe') ||
+      msg.includes('retried');
     return NextResponse.json(
-      { error: error.message || 'Failed to delete payment method' },
-      { status: 500 }
+      { error: isConfigError ? STRIPE_UNAVAILABLE_MSG : (error?.message || 'Failed to delete payment method') },
+      { status: isConfigError ? 503 : 500 }
     );
   }
 }

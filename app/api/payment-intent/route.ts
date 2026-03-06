@@ -12,8 +12,17 @@ interface CartItem {
   stripe_price_id?: string | null;
 }
 
+const STRIPE_UNAVAILABLE_MSG =
+  'Payment service is temporarily unavailable. Please try again later.';
+
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.STRIPE_SECRET_KEY?.trim()) {
+      return NextResponse.json(
+        { success: false, error: STRIPE_UNAVAILABLE_MSG },
+        { status: 503 }
+      );
+    }
     const body = await request.json();
     const { items, promotionCodeId, savePaymentMethod, paymentMethodId } = body;
 
@@ -224,9 +233,18 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error creating payment intent:', error);
+    const msg = error?.message ?? '';
+    const isConfigError =
+      msg.includes('apiKey') ||
+      msg.includes('STRIPE_SECRET_KEY') ||
+      msg.includes('connection to Stripe') ||
+      msg.includes('retried');
     return NextResponse.json(
-      { error: error.message || 'Failed to create payment intent' },
-      { status: 500 }
+      {
+        success: false,
+        error: isConfigError ? STRIPE_UNAVAILABLE_MSG : (error?.message || 'Failed to create payment intent'),
+      },
+      { status: isConfigError ? 503 : 500 }
     );
   }
 }
