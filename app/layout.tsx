@@ -25,27 +25,12 @@ export const metadata: Metadata = {
   description: "Discover premium plugins, sample packs, and tools designed to elevate your music production workflow",
   icons: {
     icon: [
-      {
-        url: "/images/nnaud-io/logo-icon.webp",
-        sizes: "any",
-      },
-      {
-        url: "/images/nnaud-io/logo-icon-32x32.webp",
-        type: "image/png",
-        sizes: "32x32",
-      },
-      {
-        url: "/images/nnaud-io/logo-icon-16x16.webp",
-        type: "image/png",
-        sizes: "16x16",
-      },
+      { url: "/images/nnaud-io/logo-icon.webp", sizes: "any" },
+      { url: "/images/nnaud-io/logo-icon-32x32.webp", type: "image/webp", sizes: "32x32" },
+      { url: "/images/nnaud-io/logo-icon-16x16.webp", type: "image/webp", sizes: "16x16" },
     ],
     apple: [
-      {
-        url: "/images/nnaud-io/logo-icon.webp",
-        sizes: "180x180",
-        type: "image/png",
-      },
+      { url: "/images/nnaud-io/logo-icon.webp", sizes: "180x180", type: "image/webp" },
     ],
     shortcut: "/images/nnaud-io/logo-icon.webp",
   },
