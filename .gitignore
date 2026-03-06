@@ -54,3 +54,6 @@ db/universe.users.trimmed.modified.csv
 cymasphere/.git
 public/images/orbitals/
 
+.cursor/skills/fix-errors/SKILL.md
+.cursor/skills/commit-changes/SKILL.md
+.cursor/commands/fixerrors.md
