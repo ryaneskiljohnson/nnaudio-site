@@ -4,8 +4,8 @@
       "main": true
     }
   },
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
+  "buildCommand": "bun run build",
+  "installCommand": "bun install --frozen-lockfile",
   "framework": "nextjs"
 }
 
