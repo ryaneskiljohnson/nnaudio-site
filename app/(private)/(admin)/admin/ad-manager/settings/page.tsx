@@ -171,11 +171,16 @@ const PasswordInput = styled.div`
 const PasswordToggle = styled.button`
   position: absolute;
   right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: color 0.3s ease;
 
   &:hover {

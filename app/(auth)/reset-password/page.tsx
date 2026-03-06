@@ -147,6 +147,10 @@ const Label = styled.label`
   display: block;
 `;
 
+const InputWrapper = styled.div`
+  position: relative;
+`;
+
 const Input = styled.input`
   width: 100%;
   padding: 0.75rem;
@@ -167,11 +171,15 @@ const Input = styled.input`
 const PasswordToggle = styled.button`
   position: absolute;
   right: 12px;
-  top: 38px;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &:hover {
     color: var(--text);
@@ -526,46 +534,50 @@ function ResetPasswordClient() {
               <Form onSubmit={handlePasswordUpdate}>
                 <FormGroup>
                   <Label htmlFor="password">New Password</Label>
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    placeholder="Enter your new password"
-                  />
-                  <PasswordToggle
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
-                  </PasswordToggle>
+                  <InputWrapper>
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      id="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      placeholder="Enter your new password"
+                    />
+                    <PasswordToggle
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </PasswordToggle>
+                  </InputWrapper>
                 </FormGroup>
 
                 <FormGroup>
                   <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    type={showConfirmPassword ? "text" : "password"}
-                    id="confirmPassword"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    placeholder="Confirm your new password"
-                  />
-                  <PasswordToggle
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    aria-label={
-                      showConfirmPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-                  </PasswordToggle>
+                  <InputWrapper>
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      id="confirmPassword"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      placeholder="Confirm your new password"
+                    />
+                    <PasswordToggle
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={
+                        showConfirmPassword ? "Hide password" : "Show password"
+                      }
+                    >
+                      {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                    </PasswordToggle>
+                  </InputWrapper>
                 </FormGroup>
 
                 <PrimaryButton
