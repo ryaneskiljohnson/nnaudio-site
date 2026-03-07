@@ -91,6 +91,7 @@ export default function RootLayout({
       <head>
         {/* DNS prefetch for external services */}
         <link rel="dns-prefetch" href="//www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="//connect.facebook.net" />
         <link rel="dns-prefetch" href="//www.youtube.com" />
       </head>
       <body>

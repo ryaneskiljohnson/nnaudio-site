@@ -281,6 +281,42 @@ export function trackSearch(searchTerm: string): void {
 }
 
 /**
+ * Track "Initiate Checkout" (user started checkout flow).
+ * Fire when user clicks "Proceed to checkout" or when checkout page loads.
+ *
+ * @param params - value, currency, optional content_ids and num_items
+ */
+export function trackInitiateCheckout(params: {
+  value: number;
+  currency?: string;
+  content_ids?: string[];
+  num_items?: number;
+}): void {
+  if (typeof window === 'undefined') return;
+
+  const { value, currency = 'USD', content_ids, num_items } = params;
+
+  if (window.dataLayer) {
+    window.dataLayer.push({
+      event: 'begin_checkout',
+      value,
+      currency,
+      content_ids,
+      num_items,
+    });
+  }
+
+  if (window.fbq) {
+    window.fbq('track', 'InitiateCheckout', {
+      value,
+      currency,
+      content_ids,
+      num_items,
+    });
+  }
+}
+
+/**
  * Track custom Meta Pixel events
  */
 export function trackMetaEvent(eventName: string, params?: Record<string, any>): void {
