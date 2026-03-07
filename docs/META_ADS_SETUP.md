@@ -4,6 +4,17 @@ This site is already wired for Meta (Facebook/Instagram) ads: **Meta Pixel** (br
 
 ---
 
+## Summary – what's done and what you may need to do
+
+| What | Status |
+|------|--------|
+| **Pixel on nnaud.io** | Done. Env vars set on Vercel, production redeployed. Browser on https://nnaud.io loads `fbevents.js` and fires PageView (ID `1072073301239581`). |
+| **All standard events in code** | Done. PageView (layout), ViewContent (product/bundle), AddToCart (CartContext), InitiateCheckout (cart + checkout pages), Purchase (checkout-success, pixel + CAPI), CompleteRegistration (signup-success, pixel + CAPI). |
+| **CAPI endpoint** | Route works. Production returns "Malformed access token" if the token in Vercel is wrong/expired. Regenerate token in Meta, set `META_CONVERSIONS_API_TOKEN` in Vercel (no spaces/newlines), redeploy. See "Production CAPI: Malformed access token" below. |
+| **Optional** | Meta Brand Safety → Domains: add/verify `nnaud.io`. Events Manager Test events: use URL `https://nnaud.io` to confirm events. |
+
+---
+
 ## NNAudio pixel – configuration status
 
 | Item | Status |
@@ -11,7 +22,7 @@ This site is already wired for Meta (Facebook/Instagram) ads: **Meta Pixel** (br
 | **Pixel ID** | Configured: `1072073301239581` (in `.env.local`) |
 | **Pixel on site** | Loads on every page; fires PageView; ViewContent, AddToCart, InitiateCheckout, Purchase, CompleteRegistration wired |
 | **CAPI token** | Configured in `.env.local` (generated from Events Manager → Conversions API → Generate access token). Server-side events enabled. |
-| **Production** | Add `NEXT_PUBLIC_META_PIXEL_ID=1072073301239581` and `META_CONVERSIONS_API_TOKEN` in Vercel (or host) env. |
+| **Production** | Pixel: live on https://nnaud.io (env vars + redeploy done). CAPI: if you see "Malformed access token", regenerate token in Meta and update `META_CONVERSIONS_API_TOKEN` in Vercel (see troubleshooting below). |
 
 ---
 
@@ -34,6 +45,41 @@ This site is already wired for Meta (Facebook/Instagram) ads: **Meta Pixel** (br
 3. **Events Manager** – In [NNAudio pixel → Test events](https://eventsmanager.facebook.com/events_manager2/list/dataset/1072073301239581/test_events?business_id=1210690866895415), get a test event code, send the request above with that code, then confirm the event appears in Test events.
 
 4. **Build** – Run `npm run build` to ensure the app compiles with the current analytics and CAPI code.
+
+### Non-purchase flows (browser-tested)
+
+| Flow | Where | Verified |
+|------|--------|----------|
+| **PageView** | Every page (pixel in layout) | Homepage: `facebook.com/tr/?id=1072073301239581&ev=PageView` in network. |
+| **ViewContent** | Product page, Bundle page | Bundle page: `ev=ViewContent` with content_name, value, currency. |
+| **AddToCart** | CartContext.addItem (product/bundle/card) | Product page Add to Cart: `ev=AddToCart` with value, content_ids, contents. |
+| **InitiateCheckout** | Cart “Proceed to checkout”, Checkout page load | Wired in code (cart `handleCheckout`, checkout `useEffect` when cart has items). |
+| **CompleteRegistration** | Signup success page | Manual: complete signup and confirm in Events Manager Test events. |
+
+### Events Manager and nnaud.io production
+
+- **Pixel on nnaud.io:** Verified live. Production has `NEXT_PUBLIC_META_PIXEL_ID` and `META_CONVERSIONS_API_TOKEN` set; a production redeploy was run so the build includes the pixel. In a browser on https://nnaud.io, Network shows `fbevents.js`, `facebook.com/tr?id=1072073301239581&ev=PageView`, and the pixel config for domain `nnaud.io`.
+- **Events Manager (NNAudio pixel 1072073301239581):** Use **Test Events**: enter URL `https://nnaud.io` and click "Test Events" to open the site; events from that session can appear under Test events. Overview may take a while to show activity.
+- **If the pixel ever disappears:** Ensure the Vercel project that has nnaud.io has both env vars for **Production**, then trigger a **production redeploy** (NEXT_PUBLIC_* is baked at build time). Verify in a browser (DevTools → Network: `fbevents`, `facebook.com/tr`). Note: `curl https://nnaud.io` often hits Vercel’s Security Checkpoint, so use a real browser to verify.
+
+### Production CAPI: "Malformed access token" (Meta 190)
+
+If `POST https://nnaud.io/api/meta/events` returns `{"error":"Malformed access token"}` or Meta returns OAuthException code 190:
+
+**Cause:** The token is expired, revoked, or stored with a trailing newline (Vercel env from CLI used to add a newline; that’s fixed if you use the script below).
+
+**Fix (recommended – one flow):**
+
+1. **Regenerate token** in [NNAudio pixel → Settings → Conversions API](https://eventsmanager.facebook.com/events_manager2/list/dataset/1072073301239581/settings?business_id=1210690866895415) → **Generate access token**. Copy the token once (no extra spaces/newlines).
+2. **Set locally and push to Vercel (no newline):**
+   ```bash
+   ./scripts/set-meta-token.sh 'YOUR_NEW_TOKEN'
+   ./scripts/push-meta-token-to-vercel.sh
+   ```
+3. **Redeploy:** `vercel --prod`
+4. **Test:** `curl -s -X POST https://nnaud.io/api/meta/events -H "Content-Type: application/json" -d '{"eventName":"PageView","userData":{"clientUserAgent":"test"},"testEventCode":"YOUR_TEST_CODE"}'` — expect `{"success":true,...}`.
+
+**Optional:** Use a **System User** token (Business Manager → System Users → Generate token with `ads_management` and Pixel access) for a non-expiring token.
 
 ---
 

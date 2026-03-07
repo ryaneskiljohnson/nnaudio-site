@@ -8,6 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV="$ROOT/.env.local"
 TOKEN="${1:?Usage: $0 YOUR_META_CAPI_TOKEN}"
+# Trim trailing newline/whitespace so token is never stored with trailing newline
+TOKEN=$(printf '%s' "$TOKEN" | tr -d '\r\n' | sed 's/[[:space:]]*$//')
 
 if [[ ! -f "$ENV" ]]; then
   echo "META_CONVERSIONS_API_TOKEN=$TOKEN" >> "$ENV"
