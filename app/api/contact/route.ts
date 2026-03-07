@@ -301,7 +301,7 @@ ${message}
 
     // Send email using AWS SES
     const result = await sendEmail({
-      to: "support@nnaud.io",
+      to: "support@newnationllc.com",
       subject: emailSubject,
       text: textContent,
       html: htmlContent,

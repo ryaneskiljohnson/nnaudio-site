@@ -605,8 +605,8 @@ async function sendAutomationEmail(subscriber: any, content: any, automationId: 
       subject: emailSubject,
       html: emailHtml,
       text: personalizedContent.text_content,
-      from: 'NNAudio Support <support@nnaud.io>',
-      replyTo: 'support@nnaud.io'
+      from: 'NNAudio Support <support@newnationllc.com>',
+      replyTo: 'support@newnationllc.com'
     });
 
     if (emailResult.success) {

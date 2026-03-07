@@ -52,7 +52,7 @@ const FAQ_RESPONSES: Record<string, Record<string, { keywords: string[], respons
     },
     support: {
       keywords: ['help', 'support', 'problem', 'issue', 'bug', 'contact', 'customer service'],
-      response: "Log in to your account and go to Support to create a ticket, or email support@nnaud.io. Describe your issue (e.g. missing product, download problem, NNAudio Access) and we'll help."
+      response: "Log in to your account and go to Support to create a ticket, or email support@newnationllc.com. Describe your issue (e.g. missing product, download problem, NNAudio Access) and we'll help."
     },
     comparison: {
       keywords: ['vs', 'compare', 'better than', 'alternative', 'competitor', 'fl studio', 'ableton', 'logic'],
@@ -94,7 +94,7 @@ const FAQ_RESPONSES: Record<string, Record<string, { keywords: string[], respons
     },
     support: {
       keywords: ['ayuda', 'soporte', 'problema', 'problema', 'bug', 'contacto', 'servicio al cliente'],
-      response: "Inicia sesión y ve a Soporte para crear un ticket, o escribe a support@nnaud.io. Describe tu problema (producto faltante, descarga, NNAudio Access) y te ayudaremos."
+      response: "Inicia sesión y ve a Soporte para crear un ticket, o escribe a support@newnationllc.com. Describe tu problema (producto faltante, descarga, NNAudio Access) y te ayudaremos."
     },
     comparison: {
       keywords: ['vs', 'comparar', 'mejor que', 'alternativa', 'competidor', 'fl studio', 'ableton', 'logic'],
@@ -124,7 +124,7 @@ const FAQ_RESPONSES: Record<string, Record<string, { keywords: string[], respons
     },
     support: {
       keywords: ['aide', 'support', 'problème', 'problème', 'bug', 'contact', 'service client'],
-      response: "Connectez-vous et allez dans Support pour créer un ticket, ou écrivez à support@nnaud.io. Décrivez votre problème (produit manquant, téléchargement, NNAudio Access) et nous vous aiderons."
+      response: "Connectez-vous et allez dans Support pour créer un ticket, ou écrivez à support@newnationllc.com. Décrivez votre problème (produit manquant, téléchargement, NNAudio Access) et nous vous aiderons."
     },
     comparison: {
       keywords: ['vs', 'comparer', 'meilleur que', 'alternative', 'concurrent', 'fl studio', 'ableton', 'logic'],
@@ -154,7 +154,7 @@ const FAQ_RESPONSES: Record<string, Record<string, { keywords: string[], respons
     },
     support: {
       keywords: ['hilfe', 'unterstützung', 'problem', 'problem', 'bug', 'kontakt', 'kundendienst'],
-      response: "Melde dich an und gehe zu Support, um ein Ticket zu erstellen, oder schreibe an support@nnaud.io. Beschreibe dein Problem (fehlendes Produkt, Download, NNAudio Access), dann helfen wir dir."
+      response: "Melde dich an und gehe zu Support, um ein Ticket zu erstellen, oder schreibe an support@newnationllc.com. Beschreibe dein Problem (fehlendes Produkt, Download, NNAudio Access), dann helfen wir dir."
     },
     comparison: {
       keywords: ['vs', 'vergleichen', 'besser als', 'alternative', 'konkurrenz', 'fl studio', 'ableton', 'logic'],
@@ -184,7 +184,7 @@ const FAQ_RESPONSES: Record<string, Record<string, { keywords: string[], respons
     },
     support: {
       keywords: ['ajuda', 'suporte', 'problema', 'problema', 'bug', 'contato', 'atendimento ao cliente'],
-      response: "Faça login e vá em Suporte para criar um ticket, ou envie e-mail para support@nnaud.io. Descreva o problema (produto faltando, download, NNAudio Access) e ajudaremos."
+      response: "Faça login e vá em Suporte para criar um ticket, ou envie e-mail para support@newnationllc.com. Descreva o problema (produto faltando, download, NNAudio Access) e ajudaremos."
     },
     comparison: {
       keywords: ['vs', 'comparar', 'melhor que', 'alternativa', 'concorrente', 'fl studio', 'ableton', 'logic'],
@@ -214,7 +214,7 @@ const FAQ_RESPONSES: Record<string, Record<string, { keywords: string[], respons
     },
     support: {
       keywords: ['助け', 'サポート', '問題', '問題', 'バグ', 'お問い合わせ', 'カスタマーサービス'],
-      response: "ログインしてサポートでチケットを作成するか、support@nnaud.io にメールしてください。問題（製品がない、ダウンロード、NNAudio Accessなど）を説明していただければ対応します。"
+      response: "ログインしてサポートでチケットを作成するか、support@newnationllc.com にメールしてください。問題（製品がない、ダウンロード、NNAudio Accessなど）を説明していただければ対応します。"
     },
     comparison: {
       keywords: ['vs', '比較', 'より優れている', '代替案', '競合他社', 'fl studio', 'ableton', 'logic'],
@@ -244,7 +244,7 @@ const FAQ_RESPONSES: Record<string, Record<string, { keywords: string[], respons
     },
     support: {
       keywords: ['aiuto', 'supporto', 'problema', 'problema', 'bug', 'contatto', 'servizio clienti'],
-      response: "Accedi e vai in Supporto per creare un ticket, oppure scrivi a support@nnaud.io. Descrivi il problema (prodotto mancante, download, NNAudio Access) e ti aiuteremo."
+      response: "Accedi e vai in Supporto per creare un ticket, oppure scrivi a support@newnationllc.com. Descrivi il problema (prodotto mancante, download, NNAudio Access) e ti aiuteremo."
     },
     comparison: {
       keywords: ['vs', 'confrontare', 'migliore di', 'alternativa', 'concorrente', 'fl studio', 'ableton', 'logic'],
@@ -274,7 +274,7 @@ const FAQ_RESPONSES: Record<string, Record<string, { keywords: string[], respons
     },
     support: {
       keywords: ['yardım', 'destek', 'sorun', 'sorun', 'hata', 'iletişim', 'müşteri hizmeti'],
-      response: "Giriş yapıp Destek'te bilet oluşturun veya support@nnaud.io'ya yazın. Sorununuzu (eksik ürün, indirme, NNAudio Access) açıklayın, yardımcı olalım."
+      response: "Giriş yapıp Destek'te bilet oluşturun veya support@newnationllc.com'ya yazın. Sorununuzu (eksik ürün, indirme, NNAudio Access) açıklayın, yardımcı olalım."
     },
     comparison: {
       keywords: ['vs', 'karşılaştır', 'daha iyi', 'alternatif', 'rakip', 'fl studio', 'ableton', 'logic'],
@@ -304,7 +304,7 @@ const FAQ_RESPONSES: Record<string, Record<string, { keywords: string[], respons
     },
     support: {
       keywords: ['帮助', '支持', '问题', '问题', '错误', '联系', '客户服务'],
-      response: "请登录并在「支持」中创建工单，或发送邮件至 support@nnaud.io。描述您的问题（如缺少产品、下载、NNAudio Access），我们会协助您。"
+      response: "请登录并在「支持」中创建工单，或发送邮件至 support@newnationllc.com。描述您的问题（如缺少产品、下载、NNAudio Access），我们会协助您。"
     },
     comparison: {
       keywords: ['vs', '比较', '比...更好', '替代方案', '竞争对手', 'fl studio', 'ableton', 'logic'],
@@ -518,8 +518,8 @@ function generateFallbackResponse(message: string, language: string = 'en'): str
       what: "I'm here to help with NNAudio—plugins, packs, bundles, downloads, and NNAudio Access. What are you looking for?",
       thanks: "You're welcome! Is there anything else I can help you with today?",
       bye: "Thanks for chatting! Feel free to come back anytime if you have more questions.",
-      struggles: "I'm sorry you're running into issues. Log in and create a support ticket with the details, or email support@nnaud.io. We can help with missing products, NNAudio Access, or installation problems.",
-      stuck: "If you're stuck with downloads or installation, use NNAudio Access (download from the product page) and log in with your nnaud.io account—your products will appear there. For other issues, create a support ticket or email support@nnaud.io.",
+      struggles: "I'm sorry you're running into issues. Log in and create a support ticket with the details, or email support@newnationllc.com. We can help with missing products, NNAudio Access, or installation problems.",
+      stuck: "If you're stuck with downloads or installation, use NNAudio Access (download from the product page) and log in with your nnaud.io account—your products will appear there. For other issues, create a support ticket or email support@newnationllc.com.",
       theory: "NNAudio sells plugins, sample packs, and MIDI. Use NNAudio Access to download and install everything. Need help finding a product or logging in?",
       general: "I'm here to help with NNAudio products, bundles, NNAudio Access, and your account. Check the FAQ on the site or create a support ticket for specific questions. What do you need?"
     },
@@ -528,8 +528,8 @@ function generateFallbackResponse(message: string, language: string = 'en'): str
       what: "Estoy aquí para ayudar con NNAudio: plugins, packs, bundles, descargas y NNAudio Access. ¿Qué buscas?",
       thanks: "¡De nada! ¿Hay algo más en lo que pueda ayudarte hoy?",
       bye: "¡Gracias por chatear! Siéntete libre de volver cuando quieras si tienes más preguntas.",
-      struggles: "Lamentamos que tengas problemas. Inicia sesión y crea un ticket de soporte con los detalles, o escribe a support@nnaud.io. Podemos ayudarte con productos faltantes, NNAudio Access o instalación.",
-      stuck: "Si tienes problemas con descargas o instalación, usa NNAudio Access (descárgalo desde la página del producto) e inicia sesión con tu cuenta nnaud.io; tus productos aparecerán ahí. Para otros temas, crea un ticket de soporte o escribe a support@nnaud.io.",
+      struggles: "Lamentamos que tengas problemas. Inicia sesión y crea un ticket de soporte con los detalles, o escribe a support@newnationllc.com. Podemos ayudarte con productos faltantes, NNAudio Access o instalación.",
+      stuck: "Si tienes problemas con descargas o instalación, usa NNAudio Access (descárgalo desde la página del producto) e inicia sesión con tu cuenta nnaud.io; tus productos aparecerán ahí. Para otros temas, crea un ticket de soporte o escribe a support@newnationllc.com.",
       theory: "NNAudio vende plugins, packs de samples y MIDI. Usa NNAudio Access para descargar e instalar todo. ¿Necesitas ayuda para encontrar un producto o iniciar sesión?",
       general: "Estoy aquí para ayudar con productos NNAudio, bundles, NNAudio Access y tu cuenta. Revisa la FAQ en el sitio o crea un ticket de soporte para preguntas concretas. ¿Qué necesitas?"
     },

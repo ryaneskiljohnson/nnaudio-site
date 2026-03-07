@@ -42,7 +42,7 @@ export async function sendEmail({
   html,
   from = process.env.SENDER_EMAIL
     ? `${process.env.SENDER_NAME || "NNAudio Support"} <${process.env.SENDER_EMAIL}>`
-    : "NNAudio Support <support@nnaud.io>", // Default sender
+    : "NNAudio Support <support@newnationllc.com>", // Default sender
   replyTo,
   listUnsubscribe,
 }: SendEmailParams) {
@@ -213,7 +213,7 @@ export async function sendBatchEmail({
   html,
   from = process.env.SENDER_EMAIL
     ? `${process.env.SENDER_NAME || "NNAudio Support"} <${process.env.SENDER_EMAIL}>`
-    : "NNAudio Support <support@nnaud.io>",
+    : "NNAudio Support <support@newnationllc.com>",
   replyTo,
   listUnsubscribe,
 }: SendBatchEmailParams) {

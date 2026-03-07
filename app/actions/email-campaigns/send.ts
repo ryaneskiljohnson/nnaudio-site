@@ -600,7 +600,7 @@ export async function sendCampaign(
               name: name || "Test Campaign",
               subject: subjectWithTest,
               sender_name: "Cymasphere",
-              sender_email: "support@nnaud.io",
+              sender_email: "support@newnationllc.com",
               status: "draft"
             })
             .select("id")
@@ -635,7 +635,7 @@ export async function sendCampaign(
         subject: subjectWithTest,
         html: baseHtmlContentForTest,
         text: textContentForTest,
-        from: "NNAudio Support <support@nnaud.io>",
+        from: "NNAudio Support <support@newnationllc.com>",
       });
 
       console.log(`📧 Test email send result:`, JSON.stringify(result, null, 2));
@@ -895,7 +895,7 @@ export async function sendCampaign(
           name,
           subject,
           sender_name: "Cymasphere",
-          sender_email: "support@nnaud.io",
+          sender_email: "support@newnationllc.com",
           html_content: generateHtmlFromElements(
             emailElements,
             subject,
@@ -1064,7 +1064,7 @@ export async function sendCampaign(
           subject: personalizedSubject,
           html: personalizedHtml,
           text: personalizedText,
-          from: "NNAudio Support <support@nnaud.io>",
+          from: "NNAudio Support <support@newnationllc.com>",
         });
 
         console.log(`📬 sendEmail result:`, JSON.stringify(result, null, 2));

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect } from "react";
 import NextSEO from "@/components/NextSEO";
 import { useTranslation } from "react-i18next";
@@ -812,7 +812,7 @@ function EditTemplatePage() {
     name: isNewTemplate ? "" : "Welcome Email Template",
     subject: isNewTemplate ? "" : "Welcome to Cymasphere! ≡ƒÄ╡",
     senderName: "Cymasphere Team",
-    senderEmail: "support@nnaud.io",
+    senderEmail: "support@newnationllc.com",
     replyToEmail: "",
     preheader: isNewTemplate ? "" : "We're excited to have you join our community",
     description: isNewTemplate ? "" : "A warm welcome message for new subscribers",
@@ -914,7 +914,7 @@ function EditTemplatePage() {
             name: template.name || '',
             subject: template.subject || '',
             senderName: t.sender_name ?? (template as { senderName?: string }).senderName ?? 'Cymasphere Team',
-            senderEmail: t.sender_email ?? (template as { senderEmail?: string }).senderEmail ?? 'support@nnaud.io',
+            senderEmail: t.sender_email ?? (template as { senderEmail?: string }).senderEmail ?? 'support@newnationllc.com',
             replyToEmail: t.reply_to_email ?? (template as { replyToEmail?: string }).replyToEmail ?? '',
             preheader: t.preheader ?? (template as { preheader?: string }).preheader ?? '',
             description: template.description || '',
@@ -1412,7 +1412,7 @@ function EditTemplatePage() {
                     type="email"
                     value={templateData.senderEmail}
                     onChange={(e) => setTemplateData({...templateData, senderEmail: e.target.value})}
-                    placeholder="e.g. support@nnaud.io"
+                    placeholder="e.g. support@newnationllc.com"
                   />
                 </FormGroup>
               </FormGrid>

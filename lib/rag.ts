@@ -23,7 +23,7 @@ function loadNNAudioKnowledgeBase(): string {
   try {
     base = readFileSync(join(RAG_KNOWLEDGE_PATH, "nnaudio-base.md"), "utf8");
   } catch {
-    base = "# NNAudio\n\nnnaud.io is the NNAudio website. Use /support for help, support@nnaud.io.";
+    base = "# NNAudio\n\nnnaud.io is the NNAudio website. Use /support for help, support@newnationllc.com.";
   }
   try {
     products = readFileSync(join(RAG_KNOWLEDGE_PATH, "products-and-bundles.md"), "utf8");
