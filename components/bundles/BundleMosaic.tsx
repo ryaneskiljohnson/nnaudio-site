@@ -207,15 +207,9 @@ export default function BundleMosaic({ products, totalCount }: BundleMosaicProps
           left: 0,
           right: 0,
           bottom: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
           background: 'rgba(0, 0, 0, 0.5)',
-          color: 'rgba(255, 255, 255, 0.7)',
           zIndex: 1
-        }}>
-          Loading mosaic...
-        </div>
+        }} aria-busy="true" />
       )}
       <MosaicCanvas ref={canvasRef} />
       <MosaicOverlay>
