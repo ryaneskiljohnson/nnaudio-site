@@ -935,7 +935,7 @@ function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      {waitingForPaymentMethods && (
+      {!isFreeOrder && waitingForPaymentMethods && (
         <FormGroup>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 0', color: 'rgba(255,255,255,0.8)' }}>
             <LoadingSpinner />
@@ -944,7 +944,7 @@ function PaymentForm({
         </FormGroup>
       )}
 
-      {!waitingForPaymentMethods && hasSavedMethods && (
+      {!isFreeOrder && !waitingForPaymentMethods && hasSavedMethods && (
         <FormGroup>
           <Label>Payment method</Label>
           {savedPaymentMethods.map((pm) => (
@@ -979,7 +979,7 @@ function PaymentForm({
         </FormGroup>
       )}
 
-      {!waitingForPaymentMethods && payingWithSavedCard && (() => {
+      {!isFreeOrder && !waitingForPaymentMethods && payingWithSavedCard && (() => {
         const selectedPm = savedPaymentMethods.find((pm) => pm.id === selectedSavedPmId);
         const bd = selectedPm?.billing_details;
         const addr = bd?.address;
@@ -1136,7 +1136,7 @@ function PaymentForm({
       {success && (
         <SuccessMessage>
           <FaCheckCircle />
-          Payment successful! Redirecting...
+          {isFreeOrder ? 'Order successful! Redirecting...' : 'Payment successful! Redirecting...'}
         </SuccessMessage>
       )}
 
@@ -1164,26 +1164,28 @@ function PaymentForm({
         )}
       </PayButton>
 
-      <SecurityNotice>
-        <SecurityText>
-          <FaShieldAlt />
-          <span>Your payment information is encrypted and secure. We never store your card details.</span>
-        </SecurityText>
-        <StripeBadge>
-          <StripeLogoContainer>
-            <StripeLogoImage 
-              src="/stripe.webp" 
-              alt="Stripe" 
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-            <StripeLogoText>
-              Powered by <span className="stripe-name">Stripe</span> • Secure checkout
-            </StripeLogoText>
-          </StripeLogoContainer>
-        </StripeBadge>
-      </SecurityNotice>
+      {!isFreeOrder && (
+        <SecurityNotice>
+          <SecurityText>
+            <FaShieldAlt />
+            <span>Your payment information is encrypted and secure. We never store your card details.</span>
+          </SecurityText>
+          <StripeBadge>
+            <StripeLogoContainer>
+              <StripeLogoImage 
+                src="/stripe.webp" 
+                alt="Stripe" 
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <StripeLogoText>
+                Powered by <span className="stripe-name">Stripe</span> • Secure checkout
+              </StripeLogoText>
+            </StripeLogoContainer>
+          </StripeBadge>
+        </SecurityNotice>
+      )}
     </form>
   );
 }
@@ -1435,7 +1437,7 @@ export default function CheckoutPage() {
             />
             
             {items.map((item) => {
-              const displayPrice = item.sale_price && item.sale_price > 0 ? item.sale_price : item.price;
+              const displayPrice = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
               const itemTotal = displayPrice * item.quantity;
               
               return (

@@ -73,7 +73,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (options?.openCart === false) {
       setSuppressCartOpen(true);
     }
-    const price = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
+    // Use sale_price when set (including 0 for free); coerce to number for robustness
+    const price = (item.sale_price !== null && item.sale_price !== undefined) ? Number(item.sale_price) : Number(item.price);
     const quantity = 1;
     trackAddToCart({
       value: price * quantity,
@@ -119,8 +120,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const getTotal = useCallback(() => {
     return items.reduce((total, item) => {
-      // Use sale_price if it exists (including 0), otherwise use regular price
-      const price = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
+      // Use sale_price if it exists (including 0 for free); coerce to number
+      const price = (item.sale_price !== null && item.sale_price !== undefined) ? Number(item.sale_price) : Number(item.price);
       return total + price * item.quantity;
     }, 0);
   }, [items]);

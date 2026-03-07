@@ -439,6 +439,7 @@ interface FeaturedProduct {
   thumbnail?: string;
   backgroundImage?: string;
   price: string;
+  sale_price?: number | null;
   slug?: string;
   hasMultiplePricing?: boolean;
 }
@@ -588,11 +589,13 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
                         e.preventDefault();
                         e.stopPropagation();
                         const priceNum = parseFloat(String(premierProduct.price).replace(/[^0-9.]/g, '')) || 0;
+                        const salePrice = premierProduct.sale_price !== null && premierProduct.sale_price !== undefined ? Number(premierProduct.sale_price) : undefined;
                         addItem({
                           id: String(premierProduct.id),
                           name: premierProduct.name,
                           slug: premierProduct.slug || '',
                           price: priceNum,
+                          sale_price: salePrice,
                           featured_image_url: premierProduct.thumbnail || premierProduct.logo || undefined,
                           logo_url: premierProduct.logo || undefined,
                         });

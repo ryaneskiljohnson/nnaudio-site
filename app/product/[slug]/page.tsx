@@ -2023,7 +2023,7 @@ export default function ProductPage() {
                       name: product.name,
                       slug: product.slug,
                       price: product.price,
-                      sale_price: product.sale_price,
+                      sale_price: product.sale_price !== null && product.sale_price !== undefined ? product.sale_price : undefined,
                       featured_image_url: product.featured_image_url,
                       logo_url: product.logo_url,
                     });
@@ -2701,7 +2701,7 @@ export default function ProductPage() {
                       name: product.name,
                       slug: product.slug,
                       price: product.price,
-                      sale_price: product.sale_price,
+                      sale_price: product.sale_price !== null && product.sale_price !== undefined ? product.sale_price : undefined,
                       featured_image_url: product.featured_image_url,
                       logo_url: product.logo_url,
                     });

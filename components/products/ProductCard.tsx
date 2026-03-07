@@ -234,7 +234,7 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
   const imageImg = product.image?.trim() || null;
   const primaryImageUrl = featuredImg || logoImg || imageImg;
   const shouldUseLogo = imageError || !primaryImageUrl;
-  const displayPrice = product.sale_price && product.sale_price > 0 ? product.sale_price : product.price;
+  const displayPrice = (product.sale_price !== null && product.sale_price !== undefined) ? product.sale_price : product.price;
   // Card views should ONLY use tagline or short_description, never the full description
   // Clean HTML entities and truncate to 100 characters max for card display
   const rawTagline = product.tagline || product.short_description || '';
@@ -269,7 +269,7 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
       name: product.name,
       slug: product.slug || '',
       price: product.price,
-      sale_price: product.sale_price || undefined,
+      sale_price: product.sale_price !== null && product.sale_price !== undefined ? product.sale_price : undefined,
       featured_image_url: product.featured_image_url || undefined,
       logo_url: product.logo_url || undefined,
     });
@@ -340,9 +340,9 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
                       }}>
                         ${product.compareAtPrice.toFixed(2)}
                       </span>
-                      {product.sale_price != null && product.sale_price > 0 ? `$${product.sale_price}` : `$${product.price}`}
+                      {product.sale_price === 0 ? 'FREE' : (product.sale_price != null && product.sale_price > 0 ? `$${product.sale_price}` : `$${product.price}`)}
                     </>
-                  ) : product.sale_price && product.sale_price > 0 ? (
+                  ) : (product.sale_price !== null && product.sale_price !== undefined && product.sale_price > 0) ? (
                     <>
                       <span style={{
                         textDecoration: 'line-through',
