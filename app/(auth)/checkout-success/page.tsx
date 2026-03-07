@@ -12,6 +12,7 @@ import {
   hashEmail,
   trackEventOnce,
   shouldFireEvent,
+  trackMetaConversion,
 } from "@/utils/analytics";
 import { refreshSubscriptionByCustomerId } from "@/app/actions/checkout";
 
@@ -341,6 +342,16 @@ function CheckoutSuccessContent() {
           }
         );
       }
+      // Send Purchase to Conversions API (server-side) for better attribution
+      const userEmail = user?.email || user?.profile?.email;
+      trackMetaConversion("Purchase", {
+        email: userEmail ?? undefined,
+        value: subscriptionValue,
+        currency: subscriptionCurrency || "USD",
+        contentIds: purchaseItems.map((item) => item.item_id),
+        numItems: 1,
+        transactionId: sessionId || undefined,
+      });
     } else if (subscriptionValue !== null) {
       // Track paid subscription with value and currency
       trackEventWithUserData("subscription_success", {
@@ -400,6 +411,16 @@ function CheckoutSuccessContent() {
                   }
                 );
               }
+              // Send Purchase to Conversions API (server-side)
+              const userEmail = user?.email || user?.profile?.email;
+              trackMetaConversion("Purchase", {
+                email: userEmail ?? undefined,
+                value: data.value,
+                currency: data.currency || "USD",
+                contentIds: purchaseItems.map((item) => item.item_id),
+                numItems: 1,
+                transactionId: sessionId || undefined,
+              });
             } else {
               // Track as subscription_success for recurring
               trackEventWithUserData("subscription_success", {

@@ -22,6 +22,7 @@ import rehypeSanitize from "rehype-sanitize";
 import RelatedProductsSlider from "@/components/RelatedProductsSlider";
 import { MultiVideoPlayer } from "@/app/components/MultiVideoPlayer";
 import LoadingComponent from "@/components/common/LoadingComponent";
+import { trackViewContent } from "@/utils/analytics";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -1218,6 +1219,19 @@ export default function ProductPage() {
       fetchRelatedProducts();
     }
   }, [product?.id, product?.category, product?.meta_keywords]);
+
+  // Track ViewContent for Meta/GA when product is viewed
+  useEffect(() => {
+    if (!product?.id) return;
+    const value = (product.sale_price !== null && product.sale_price !== undefined) ? product.sale_price : product.price;
+    trackViewContent({
+      content_type: 'product',
+      content_ids: [product.id],
+      content_name: product.name,
+      value: typeof value === 'number' ? value : 0,
+      currency: 'USD',
+    });
+  }, [product?.id, product?.name, product?.price, product?.sale_price]);
 
   /** Check if the current user has purchased this product (or has a grant) to show Download button */
   useEffect(() => {

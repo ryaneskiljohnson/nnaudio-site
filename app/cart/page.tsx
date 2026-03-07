@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/contexts/CartContext";
+import { trackInitiateCheckout } from "@/utils/analytics";
 import { FaShoppingCart, FaTrash, FaPlus, FaMinus, FaChevronRight, FaHome } from "react-icons/fa";
 
 const Container = styled.div`
@@ -319,6 +320,12 @@ export default function CartPage() {
   const itemCount = getItemCount();
 
   const handleCheckout = () => {
+    trackInitiateCheckout({
+      value: total,
+      currency: "USD",
+      content_ids: items.map((i) => i.id),
+      num_items: itemCount,
+    });
     router.push('/checkout');
   };
 

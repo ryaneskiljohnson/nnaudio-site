@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { trackAddToCart } from '@/utils/analytics';
 
 export interface CartItem {
   id: string;
@@ -72,6 +73,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (options?.openCart === false) {
       setSuppressCartOpen(true);
     }
+    const price = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
+    const quantity = 1;
+    trackAddToCart({
+      value: price * quantity,
+      currency: 'USD',
+      items: [{
+        item_id: item.id,
+        item_name: item.name,
+        quantity,
+        price,
+      }],
+    });
     setItems((prevItems) => {
       const existingItem = prevItems.find((i) => i.id === item.id);
       if (existingItem) {

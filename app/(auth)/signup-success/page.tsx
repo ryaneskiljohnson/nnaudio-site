@@ -6,7 +6,7 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import { FaCheckCircle } from "react-icons/fa";
 import NNAudioLogo from "@/components/common/NNAudioLogo";
-import { trackUserData, hashEmail, trackEventOnce } from "@/utils/analytics";
+import { trackUserData, hashEmail, trackEventOnce, trackSignUp, trackMetaConversion } from "@/utils/analytics";
 import { useAuth } from "@/contexts/AuthContext";
 
 const PageContainer = styled.div`
@@ -148,32 +148,39 @@ function SignupSuccessContent() {
     if (!trackEventOnce('registration_success', {}, eventId)) {
       return; // Event already fired, skip
     }
-      
-      // Push user data if we have user_id and email
-      const userId = user?.id || user?.profile?.id;
-      if (userId && email && email !== "your email") {
-        // Push user data first, then registration event
-        trackUserData({
-          user_id: userId,
-          email: email,
-        }).then(async () => {
-          // Get email hash for the event
-          const emailHash = await hashEmail(email);
-          
-        // Push registration event with user data and event ID
+
+    // Meta Pixel: CompleteRegistration (browser)
+    trackSignUp('email');
+
+    // Meta Conversions API: CompleteRegistration (server-side)
+    const userId = user?.id || user?.profile?.id;
+    if (email && email !== "your email") {
+      trackMetaConversion('CompleteRegistration', {
+        email,
+        userId: userId ?? undefined,
+      }).catch(() => { /* ignore */ });
+    }
+
+    // Push user data if we have user_id and email
+    if (userId && email && email !== "your email") {
+      trackUserData({
+        user_id: userId,
+        email: email,
+      }).then(async () => {
+        const emailHash = await hashEmail(email);
         window.dataLayer = window.dataLayer || [];
-          window.dataLayer.push({
-            event: 'registration_success',
+        window.dataLayer.push({
+          event: 'registration_success',
           event_id: eventId,
-            user: {
-              user_id: userId,
-              email_sha256: emailHash,
-            },
-          });
+          user: {
+            user_id: userId,
+            email_sha256: emailHash,
+          },
         });
-      } else {
-        // Fallback: push registration event without user data
-      trackEventOnce('registration_success', {}, eventId);
+      });
+    } else {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ event: 'registration_success', event_id: eventId });
     }
   }, [user, email]);
 

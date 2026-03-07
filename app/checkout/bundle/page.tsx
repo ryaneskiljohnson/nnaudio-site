@@ -35,6 +35,7 @@ import {
 } from "react-icons/fa";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import CheckoutPageSkeleton from "@/components/skeletons/CheckoutPageSkeleton";
+import { trackInitiateCheckout } from "@/utils/analytics";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -1273,6 +1274,21 @@ function BundleCheckoutPageInner() {
       router.replace("/bundles");
     }
   }, [loading, bundleSlug, tier, bundle, router]);
+
+  // Fire InitiateCheckout once when bundle checkout (monthly/annual) is viewed
+  const initiateCheckoutFired = React.useRef(false);
+  useEffect(() => {
+    if (loading || !bundle || !tier || tier === "lifetime" || initiateCheckoutFired.current) return;
+    initiateCheckoutFired.current = true;
+    const tierPricing = bundle.pricing[tier];
+    const value = tierPricing?.sale_price ?? tierPricing?.price ?? 0;
+    trackInitiateCheckout({
+      value,
+      currency: "USD",
+      content_ids: [bundle.id],
+      num_items: 1,
+    });
+  }, [loading, bundle, tier]);
 
   // Lifetime uses the regular cart checkout flow: add to cart and go to /checkout
   const lifetimeRedirectDone = React.useRef(false);

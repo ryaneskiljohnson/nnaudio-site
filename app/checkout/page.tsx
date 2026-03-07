@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import { motion } from "framer-motion";
@@ -14,6 +14,7 @@ import { FaHome, FaChevronRight, FaLock, FaCheckCircle, FaExclamationCircle, FaS
 import { SearchableSelect } from "@/components/common/SearchableSelect";
 import { COUNTRIES, getStateOptions } from "@/lib/countries-states";
 import CheckoutPageSkeleton from "@/components/skeletons/CheckoutPageSkeleton";
+import { trackInitiateCheckout } from "@/utils/analytics";
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -1350,6 +1351,20 @@ export default function CheckoutPage() {
       router.push('/cart');
     }
   }, [cartLoaded, items, router, orderComplete]);
+
+  // Fire InitiateCheckout once per checkout page visit (for users who land here via bundle redirect or direct link)
+  const initiateCheckoutFired = useRef(false);
+  useEffect(() => {
+    if (!cartLoaded || items.length === 0 || initiateCheckoutFired.current) return;
+    initiateCheckoutFired.current = true;
+    const cartTotal = getTotal();
+    trackInitiateCheckout({
+      value: cartTotal,
+      currency: "USD",
+      content_ids: items.map((i) => i.id),
+      num_items: items.reduce((n, i) => n + i.quantity, 0),
+    });
+  }, [cartLoaded, items, getTotal]);
 
   // Skeleton until cart loaded, auth loaded, and we have items. (Subscription waits for bundle fetch; we wait for cart + auth so we know if user has customer_id before rendering form.)
   if (!cartLoaded || authLoading || (cartLoaded && items.length === 0 && !orderComplete)) {

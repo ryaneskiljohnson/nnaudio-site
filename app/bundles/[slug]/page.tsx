@@ -12,6 +12,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { BundleWithProducts } from "@/types/bundles";
 import { cleanHtmlText } from "@/utils/stringUtils";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
+import { trackViewContent } from "@/utils/analytics";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -770,6 +771,24 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
 
     return () => window.removeEventListener('scroll', handleScroll);
   }, [bundle]);
+
+  // Track ViewContent for Meta/GA when bundle is viewed
+  useEffect(() => {
+    if (!bundle?.id) return;
+    const p = bundle.pricing;
+    const value =
+      (p?.lifetime?.sale_price !== null && p?.lifetime?.sale_price !== undefined)
+        ? p.lifetime.sale_price
+        : (p?.lifetime?.price ?? p?.annual?.price ?? p?.monthly?.price ?? 0);
+    const numValue = typeof value === 'number' ? value : parseFloat(String(value)) || 0;
+    trackViewContent({
+      content_type: 'product',
+      content_ids: [bundle.id],
+      content_name: bundle.name,
+      value: numValue,
+      currency: 'USD',
+    });
+  }, [bundle?.id, bundle?.name, bundle?.pricing]);
 
   const fetchBundle = async (slug: string) => {
     try {
