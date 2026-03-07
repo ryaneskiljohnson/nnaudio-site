@@ -494,6 +494,16 @@ function CheckoutSuccessContent() {
                 : "Your free trial is live. Create your account to start using NNAudio."}
             </Message>
           </>
+        ) : sessionId === "free-order" ? (
+          <>
+            <Title>Order Successful!</Title>
+            <Subtitle>Thank you for choosing NNAudio</Subtitle>
+            <Message>
+              {isSignedUp
+                ? "Your order is complete. You can now access your NNAudio products and downloads."
+                : "Your order is complete. Create your account to access your NNAudio products and downloads."}
+            </Message>
+          </>
         ) : (
           <>
             <Title>Payment Successful!</Title>
