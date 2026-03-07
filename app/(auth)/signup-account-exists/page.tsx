@@ -204,15 +204,15 @@ function AccountExistsContent() {
 
         <ButtonContainer>
           <Link href="/login">
-            <PrimaryButton as="a">Sign In</PrimaryButton>
+            <PrimaryButton as="span">Sign In</PrimaryButton>
           </Link>
           
           <Link href="/reset-password">
-            <SecondaryButton as="a">Reset Password</SecondaryButton>
+            <SecondaryButton as="span">Reset Password</SecondaryButton>
           </Link>
           
           <Link href="/signup">
-            <SecondaryButton as="a">Try Another Email</SecondaryButton>
+            <SecondaryButton as="span">Try Another Email</SecondaryButton>
           </Link>
         </ButtonContainer>
       </ContentContainer>
