@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME } from '@/utils/facebook/api';
+import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const mockAdAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID || '123456789';
+    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(mockAdAccountId, getToken);
+    const facebookAPI = createFacebookAPI(adAccountId, getToken);
     
     if (!facebookAPI) {
       return NextResponse.json({

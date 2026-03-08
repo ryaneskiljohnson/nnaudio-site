@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME } from '@/utils/facebook/api';
+import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,9 +24,9 @@ export async function GET(request: NextRequest) {
     // For now, we'll check if a token exists in a mock way
     // In production, this would check the database for stored tokens
     
-    const mockAdAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID || '123456789';
+    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(mockAdAccountId, getToken);
+    const facebookAPI = createFacebookAPI(adAccountId, getToken);
     
     if (!facebookAPI) {
       return NextResponse.json({
@@ -42,7 +42,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         connected: true,
         user: connectionTest.user,
-        message: 'Connected to Facebook Ads'
+        message: 'Connected to Facebook Ads',
+        adAccountId: adAccountId ? (String(adAccountId).startsWith('act_') ? adAccountId : `act_${adAccountId}`) : undefined
       });
     } else {
       return NextResponse.json({

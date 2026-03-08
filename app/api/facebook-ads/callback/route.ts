@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
 
-const COOKIE_NAME = 'facebook_access_token';
+const COOKIE_NAME = FACEBOOK_TOKEN_COOKIE_NAME;
 const COOKIE_MAX_AGE_DAYS = 60;
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 const REDIRECT_URL = `${BASE_URL}/admin/ad-manager`;
@@ -45,6 +46,21 @@ export async function GET(request: NextRequest) {
       path: '/',
       maxAge: 60 * 60 * 24 * COOKIE_MAX_AGE_DAYS,
     });
+
+    // If no FACEBOOK_AD_ACCOUNT_ID in env, fetch ad accounts and store first one so API routes can work without env
+    const adAccountIdFromEnv = process.env.FACEBOOK_AD_ACCOUNT_ID;
+    if (!adAccountIdFromEnv) {
+      const firstAdAccountId = await fetchFirstAdAccountId(accessToken);
+      if (firstAdAccountId) {
+        response.cookies.set(FACEBOOK_AD_ACCOUNT_COOKIE_NAME, firstAdAccountId, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 60 * 60 * 24 * COOKIE_MAX_AGE_DAYS,
+        });
+      }
+    }
 
     return response;
   } catch (error) {
@@ -124,6 +140,26 @@ async function exchangeForLongLivedToken(shortLivedToken: string): Promise<strin
     return tokenData.access_token || null;
   } catch (error) {
     console.warn('Error exchanging for long-lived token:', error);
+    return null;
+  }
+}
+
+/** Fetch first ad account ID for the authenticated user (numeric ID without "act_" prefix). */
+async function fetchFirstAdAccountId(accessToken: string): Promise<string | null> {
+  try {
+    const url = new URL('https://graph.facebook.com/v20.0/me/adaccounts');
+    url.searchParams.set('fields', 'id,name');
+    url.searchParams.set('access_token', accessToken);
+    const res = await fetch(url.toString());
+    if (!res.ok) return null;
+    const data = await res.json();
+    const first = (data.data && data.data[0]) as { id?: string } | undefined;
+    if (!first?.id) return null;
+    // Store numeric part only; API uses act_${id}
+    const id = String(first.id).replace(/^act_/, '');
+    return id || null;
+  } catch (error) {
+    console.warn('Failed to fetch ad accounts for cookie:', error);
     return null;
   }
 } 

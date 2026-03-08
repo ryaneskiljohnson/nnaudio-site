@@ -22,14 +22,12 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Required permissions for Facebook Marketing API
+    // Required permissions for Facebook Marketing API (omit invalid scopes: pages_manage_ads, email)
     const scopes = [
       'ads_management',
       'ads_read',
       'business_management',
-      'pages_read_engagement',
-      'pages_manage_ads',
-      'email'
+      'pages_read_engagement'
     ].join(',');
 
     // Build Facebook OAuth URL

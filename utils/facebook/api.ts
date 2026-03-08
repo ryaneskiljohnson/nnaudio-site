@@ -84,6 +84,8 @@ export interface CreateCampaignParams {
   name: string;
   objective: string;
   status: string;
+  /** Required by Meta; use [] for non–housing/employment/credit/social_issues ads */
+  special_ad_categories?: string[];
   daily_budget?: number;
   lifetime_budget?: number;
   start_time?: string;
@@ -111,13 +113,18 @@ export interface CreateAdParams {
 }
 
 // Facebook API client class
+/** Normalize ad account ID to numeric form (strip act_ prefix) for consistent URL building. */
+function normalizeAdAccountId(adAccountId: string): string {
+  return String(adAccountId).replace(/^act_/, '').trim();
+}
+
 export class FacebookAdsAPI {
   private accessToken: string;
   private adAccountId: string;
 
   constructor(accessToken: string, adAccountId: string) {
     this.accessToken = accessToken;
-    this.adAccountId = adAccountId;
+    this.adAccountId = normalizeAdAccountId(adAccountId);
   }
 
   // Generic API request method
@@ -155,8 +162,14 @@ export class FacebookAdsAPI {
       options.body = JSON.stringify(data);
     }
 
+    const timeoutMs = 20000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    options.signal = controller.signal;
+
     try {
       const response = await fetch(url, options);
+      clearTimeout(timeoutId);
       const result = await response.json();
 
       if (!response.ok) {
@@ -165,7 +178,14 @@ export class FacebookAdsAPI {
 
       return result;
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('Facebook API request failed:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request to Meta timed out. Please try again.');
+      }
+      if (error instanceof Error && error.message === 'fetch failed') {
+        throw new Error('Network error contacting Meta. Check your connection and try again.');
+      }
       throw error;
     }
   }
@@ -222,24 +242,53 @@ export class FacebookAdsAPI {
     }
   }
 
-  // Create campaign
+  /**
+   * Create campaign. Uses form-encoded body because Meta Marketing API expects
+   * application/x-www-form-urlencoded for POST, not JSON.
+   */
   async createCampaign(params: CreateCampaignParams): Promise<FacebookCampaign> {
-    const campaignData = {
+    const specialCategories = params.special_ad_categories ?? [];
+    const formBody: Record<string, string> = {
+      access_token: this.accessToken,
       name: params.name,
       objective: params.objective,
       status: params.status,
-      ...(params.daily_budget && { daily_budget: params.daily_budget * 100 }), // Convert to cents
-      ...(params.lifetime_budget && { lifetime_budget: params.lifetime_budget * 100 }),
-      ...(params.start_time && { start_time: params.start_time }),
-      ...(params.end_time && { end_time: params.end_time }),
+      special_ad_categories: JSON.stringify(specialCategories),
+      is_adset_budget_sharing_enabled: '0',
     };
+    if (params.daily_budget != null) formBody.daily_budget = String(params.daily_budget * 100);
+    if (params.lifetime_budget != null) formBody.lifetime_budget = String(params.lifetime_budget * 100);
+    if (params.start_time) formBody.start_time = params.start_time;
+    if (params.end_time) formBody.end_time = params.end_time;
 
-    return await this.makeRequest<FacebookCampaign>(
-      `act_${this.adAccountId}/campaigns`,
-      'POST',
-      { access_token: this.accessToken },
-      campaignData
-    );
+    const url = `${FACEBOOK_BASE_URL}/act_${this.adAccountId}/campaigns`;
+    const body = new URLSearchParams(formBody).toString();
+
+    const timeoutMs = 20000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const result = await response.json();
+
+      if (!response.ok) {
+        const msg = (result as any).error?.message ?? `HTTP ${response.status}`;
+        throw new Error(msg);
+      }
+      return result as FacebookCampaign;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request to Meta timed out. Please try again.');
+      }
+      throw error;
+    }
   }
 
   // Update campaign
@@ -422,6 +471,9 @@ export class FacebookAdsAPI {
 /** Cookie name for Facebook access token (httpOnly on server). Do not store token in localStorage. */
 export const FACEBOOK_TOKEN_COOKIE_NAME = 'facebook_access_token';
 
+/** Cookie name for selected ad account ID (set after OAuth if FACEBOOK_AD_ACCOUNT_ID not in env). */
+export const FACEBOOK_AD_ACCOUNT_COOKIE_NAME = 'facebook_ad_account_id';
+
 /**
  * Returns the Facebook token from client localStorage. Prefer passing a server-side getter to createFacebookAPI instead.
  * @deprecated Use httpOnly cookie and pass getToken from API route (request.cookies) for security.
@@ -464,22 +516,20 @@ export function createFacebookAPI(
   if (!token) {
     return null;
   }
-  return new FacebookAdsAPI(token, adAccountId);
+  return new FacebookAdsAPI(token, normalizeAdAccountId(adAccountId));
 }
 
-// Campaign objectives mapping
+/**
+ * Campaign objectives allowed by Meta Marketing API for campaign creation.
+ * Only OUTCOME_* objectives are currently accepted; legacy (e.g. LINK_CLICKS) are invalid.
+ */
 export const CAMPAIGN_OBJECTIVES = {
-  BRAND_AWARENESS: 'Brand Awareness',
-  REACH: 'Reach',
-  TRAFFIC: 'Traffic',
-  ENGAGEMENT: 'Engagement',
-  APP_INSTALLS: 'App Installs',
-  VIDEO_VIEWS: 'Video Views',
-  LEAD_GENERATION: 'Lead Generation',
-  MESSAGES: 'Messages',
-  CONVERSIONS: 'Conversions',
-  CATALOG_SALES: 'Catalog Sales',
-  STORE_VISITS: 'Store Visits',
+  OUTCOME_TRAFFIC: 'Traffic',
+  OUTCOME_LEADS: 'Leads',
+  OUTCOME_SALES: 'Sales',
+  OUTCOME_ENGAGEMENT: 'Engagement',
+  OUTCOME_AWARENESS: 'Awareness',
+  OUTCOME_APP_PROMOTION: 'App promotion',
 } as const;
 
 // Campaign status mapping
