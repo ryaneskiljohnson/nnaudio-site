@@ -354,14 +354,35 @@ interface Audience {
   status: 'active' | 'inactive' | 'processing';
   size: number;
   reach: number;
-  demographics: {
+  demographics?: {
     ageRange: string;
     gender: string;
     locations: string[];
   };
-  interests: string[];
+  interests?: string[];
   createdAt: string;
   lastUpdated: string;
+}
+
+/** Map API audience (id, name, description?, approximate_count?) to edit form shape. */
+function mapApiAudienceToForm(a: { id: string; name?: string; description?: string; approximate_count?: number }): Audience {
+  return {
+    id: a.id,
+    name: a.name ?? '',
+    description: a.description ?? '',
+    type: 'custom',
+    status: 'active',
+    size: a.approximate_count ?? 0,
+    reach: 0,
+    demographics: {
+      ageRange: '18-65',
+      gender: 'All',
+      locations: []
+    },
+    interests: [],
+    createdAt: '',
+    lastUpdated: ''
+  };
 }
 
 export default function EditAudiencePage() {
@@ -384,27 +405,22 @@ export default function EditAudiencePage() {
 
   const fetchAudience = async () => {
     try {
-      // Mock data - in real implementation, fetch from API
-      const mockAudience: Audience = {
-        id: audienceId,
-        name: "Music Producers 25-35",
-        description: "Professional music producers aged 25-35 interested in electronic music production tools",
-        type: "custom",
-        status: "active",
-        size: 45000,
-        reach: 32000,
-        demographics: {
-          ageRange: "25-35",
-          gender: "All",
-          locations: ["United States", "Canada", "United Kingdom"]
-        },
-        interests: ["Music Production", "Electronic Music", "Audio Software", "DJ Equipment"],
-        createdAt: "2024-01-15",
-        lastUpdated: "2024-01-20"
-      };
-      
-      setAudience(mockAudience);
-    } catch (error) {
+      setError("");
+      const res = await fetch("/api/facebook-ads/audiences");
+      const data = await res.json();
+      if (!data.success || !Array.isArray(data.audiences)) {
+        setError("Failed to load audiences");
+        setLoading(false);
+        return;
+      }
+      const found = data.audiences.find((a: { id: string }) => a.id === audienceId);
+      if (!found) {
+        setError("Audience not found");
+        setLoading(false);
+        return;
+      }
+      setAudience(mapApiAudienceToForm(found));
+    } catch (err) {
       setError("Failed to load audience data");
     } finally {
       setLoading(false);
@@ -440,7 +456,7 @@ export default function EditAudiencePage() {
   const addInterest = () => {
     if (newInterest.trim() && audience) {
       updateAudience({
-        interests: [...audience.interests, newInterest.trim()]
+        interests: [...(audience.interests ?? []), newInterest.trim()]
       });
       setNewInterest("");
     }
@@ -449,17 +465,18 @@ export default function EditAudiencePage() {
   const removeInterest = (index: number) => {
     if (audience) {
       updateAudience({
-        interests: audience.interests.filter((_, i) => i !== index)
+        interests: (audience.interests ?? []).filter((_, i) => i !== index)
       });
     }
   };
 
   const addLocation = () => {
     if (newLocation.trim() && audience) {
+      const demos = audience.demographics ?? { ageRange: '18-65', gender: 'All', locations: [] };
       updateAudience({
         demographics: {
-          ...audience.demographics,
-          locations: [...audience.demographics.locations, newLocation.trim()]
+          ...demos,
+          locations: [...(demos.locations ?? []), newLocation.trim()]
         }
       });
       setNewLocation("");
@@ -468,10 +485,11 @@ export default function EditAudiencePage() {
 
   const removeLocation = (index: number) => {
     if (audience) {
+      const demos = audience.demographics ?? { ageRange: '18-65', gender: 'All', locations: [] };
       updateAudience({
         demographics: {
-          ...audience.demographics,
-          locations: audience.demographics.locations.filter((_, i) => i !== index)
+          ...demos,
+          locations: (demos.locations ?? []).filter((_, i) => i !== index)
         }
       });
     }
@@ -544,7 +562,7 @@ export default function EditAudiencePage() {
             <Label>Audience Name</Label>
             <Input
               type="text"
-              value={audience.name}
+              value={audience.name ?? ''}
               onChange={(e) => updateAudience({ name: e.target.value })}
               placeholder="Enter audience name"
             />
@@ -553,7 +571,7 @@ export default function EditAudiencePage() {
           <FormGroup>
             <Label>Description</Label>
             <TextArea
-              value={audience.description}
+              value={audience.description ?? ''}
               onChange={(e) => updateAudience({ description: e.target.value })}
               placeholder="Describe your audience..."
             />
@@ -563,8 +581,8 @@ export default function EditAudiencePage() {
             <FormGroup>
               <Label>Audience Type</Label>
               <Select
-                value={audience.type}
-                onChange={(e) => updateAudience({ type: e.target.value as any })}
+                value={audience.type ?? 'custom'}
+                onChange={(e) => updateAudience({ type: e.target.value as Audience['type'] })}
               >
                 <option value="custom">Custom Audience</option>
                 <option value="lookalike">Lookalike Audience</option>
@@ -574,9 +592,9 @@ export default function EditAudiencePage() {
 
             <FormGroup>
               <Label>Status</Label>
-              <StatusBadge $status={audience.status}>
-                {audience.status === 'processing' && <FaSync />}
-                {audience.status.charAt(0).toUpperCase() + audience.status.slice(1)}
+              <StatusBadge $status={audience.status ?? 'active'}>
+                {(audience.status ?? 'active') === 'processing' && <FaSync />}
+                {(audience.status ?? 'active').charAt(0).toUpperCase() + (audience.status ?? 'active').slice(1)}
               </StatusBadge>
             </FormGroup>
           </Grid>
@@ -592,9 +610,9 @@ export default function EditAudiencePage() {
             <FormGroup>
               <Label>Age Range</Label>
               <Select
-                value={audience.demographics.ageRange}
+                value={audience.demographics?.ageRange ?? '18-65'}
                 onChange={(e) => updateAudience({
-                  demographics: { ...audience.demographics, ageRange: e.target.value }
+                  demographics: { ...(audience.demographics ?? { ageRange: '18-65', gender: 'All', locations: [] }), ageRange: e.target.value }
                 })}
               >
                 <option value="18-24">18-24</option>
@@ -610,9 +628,9 @@ export default function EditAudiencePage() {
             <FormGroup>
               <Label>Gender</Label>
               <Select
-                value={audience.demographics.gender}
+                value={audience.demographics?.gender ?? 'All'}
                 onChange={(e) => updateAudience({
-                  demographics: { ...audience.demographics, gender: e.target.value }
+                  demographics: { ...(audience.demographics ?? { ageRange: '18-65', gender: 'All', locations: [] }), gender: e.target.value }
                 })}
               >
                 <option value="All">All</option>
@@ -625,7 +643,7 @@ export default function EditAudiencePage() {
           <FormGroup>
             <Label>Locations</Label>
             <TagContainer>
-              {audience.demographics.locations.map((location, index) => (
+              {(audience.demographics?.locations ?? []).map((location, index) => (
                 <Tag key={index}>
                   {location}
                   <TagRemove onClick={() => removeLocation(index)}>
@@ -658,7 +676,7 @@ export default function EditAudiencePage() {
           <FormGroup>
             <Label>Interests</Label>
             <TagContainer>
-              {audience.interests.map((interest, index) => (
+              {(audience.interests ?? []).map((interest, index) => (
                 <Tag key={index}>
                   {interest}
                   <TagRemove onClick={() => removeInterest(index)}>

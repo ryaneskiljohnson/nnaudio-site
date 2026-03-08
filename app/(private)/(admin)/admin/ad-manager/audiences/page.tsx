@@ -952,17 +952,6 @@ export default function AudiencesPage() {
                   : "Create your first custom audience to start targeting specific groups of users."
                 }
               </p>
-              {!searchTerm && (
-                <Button
-                  style={{ marginTop: '1rem' }}
-                  onClick={() => router.push('/admin/ad-manager/audiences/create')}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <FaPlus />
-                  Create First Audience
-                </Button>
-              )}
             </EmptyState>
           )}
         </AudienceGrid>
