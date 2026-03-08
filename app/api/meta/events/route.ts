@@ -72,9 +72,9 @@ interface MetaEventRequest {
   url?: string;
 }
 
-// Environment variables
+// Environment variables (trim token to avoid "Malformed access token" from trailing newlines)
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
-const ACCESS_TOKEN = process.env.META_CONVERSIONS_API_TOKEN;
+const ACCESS_TOKEN = (process.env.META_CONVERSIONS_API_TOKEN ?? '').trim().replace(/\r?\n/g, '');
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TEST_MODE = process.env.NODE_ENV === 'development';
@@ -142,15 +142,15 @@ async function sendToMetaAPI(
   }
 
   try {
-    const payload: Record<string, any> = {
-      data: events,
-      access_token: ACCESS_TOKEN,
-    };
-
+    const payload: Record<string, any> = { data: events };
     // Add test event code for debugging in Meta Events Manager
     if (testEventCode) {
       payload.test_event_code = testEventCode;
     }
+
+    // Meta requires access_token as query parameter (not in body)
+    const url = new URL(META_API_ENDPOINT);
+    url.searchParams.set('access_token', ACCESS_TOKEN);
 
     console.log(`📤 Sending ${events.length} event(s) to Meta API...`);
 
@@ -159,7 +159,7 @@ async function sendToMetaAPI(
     const timeout = setTimeout(() => controller.abort(), 10000);
 
     try {
-      const response = await fetch(META_API_ENDPOINT, {
+      const response = await fetch(url.toString(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

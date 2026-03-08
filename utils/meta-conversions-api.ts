@@ -42,6 +42,7 @@ export interface MetaEvent {
   event_time: number; // Unix timestamp
   event_id?: string; // Deduplication ID
   event_source_url?: string;
+  action_source?: 'website' | 'app' | 'phone_call' | 'chat' | 'physical_store' | 'system_generated' | 'other';
   user_data: MetaUserData;
   custom_data?: MetaCustomData;
   opt_out?: boolean;
@@ -138,6 +139,7 @@ export function buildMetaEvent(
     event_time: options?.timestamp || Math.floor(Date.now() / 1000),
     event_id: options?.eventId,
     event_source_url: options?.eventSourceUrl,
+    action_source: 'website',
     user_data: userData,
     custom_data: customData,
     opt_out: options?.optOut,
