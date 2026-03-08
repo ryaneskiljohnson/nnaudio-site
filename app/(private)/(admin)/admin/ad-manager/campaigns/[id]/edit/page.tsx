@@ -303,15 +303,15 @@ interface Campaign {
   description?: string;
   objective: string;
   status: 'active' | 'paused' | 'ended';
-  platforms: {
+  platforms?: {
     facebook: boolean;
     instagram: boolean;
   };
-  budget: {
+  budget?: {
     type: 'daily' | 'lifetime';
     amount: number;
   };
-  schedule: {
+  schedule?: {
     startDate?: string;
     endDate?: string;
   };
@@ -364,7 +364,7 @@ export default function EditCampaignPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(campaign),
+        body: JSON.stringify({ ...campaign, special_ad_categories: [] }),
       });
 
       const data = await response.json();
@@ -422,7 +422,7 @@ export default function EditCampaignPage() {
           Edit Campaign
         </Title>
         <Subtitle>
-          Modify your {campaign.platforms.facebook ? 'Facebook' : 'Instagram'} advertising campaign
+          Modify your {campaign.platforms?.facebook ? 'Facebook' : campaign.platforms?.instagram ? 'Instagram' : 'Facebook'} advertising campaign
         </Subtitle>
       </Header>
 
@@ -455,7 +455,7 @@ export default function EditCampaignPage() {
             <Label>Campaign Name</Label>
             <Input
               type="text"
-              value={campaign.name}
+              value={campaign.name ?? ''}
               onChange={(e) => updateCampaign({ name: e.target.value })}
               placeholder="Enter campaign name"
             />
@@ -473,7 +473,7 @@ export default function EditCampaignPage() {
           <FormGroup>
             <Label>Campaign Objective</Label>
             <Select
-              value={campaign.objective}
+              value={campaign.objective ?? ''}
               onChange={(e) => updateCampaign({ objective: e.target.value })}
             >
               {Object.entries(CAMPAIGN_OBJECTIVES).map(([key, label]) => (
@@ -486,16 +486,16 @@ export default function EditCampaignPage() {
 
           <FormGroup>
             <Label>Current Status</Label>
-            <StatusBadge $status={campaign.status}>
-              {campaign.status === 'active' ? <FaPlay /> : <FaPause />}
-              {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+            <StatusBadge $status={(campaign.status ?? 'paused') as 'active' | 'paused' | 'ended'}>
+              {(campaign.status ?? 'paused') === 'active' ? <FaPlay /> : <FaPause />}
+              {(campaign.status ?? 'paused').charAt(0).toUpperCase() + (campaign.status ?? 'paused').slice(1)}
             </StatusBadge>
           </FormGroup>
 
           <FormGroup>
             <Label>Campaign Status</Label>
             <Select
-              value={campaign.status}
+              value={campaign.status ?? 'paused'}
               onChange={(e) => updateCampaign({ status: e.target.value as 'active' | 'paused' | 'ended' })}
             >
               <option value="active">Active</option>
@@ -515,9 +515,9 @@ export default function EditCampaignPage() {
             <CheckboxLabel>
               <Checkbox
                 type="checkbox"
-                checked={campaign.platforms.facebook}
+                checked={campaign.platforms?.facebook ?? true}
                 onChange={(e) => updateCampaign({
-                  platforms: { ...campaign.platforms, facebook: e.target.checked }
+                  platforms: { ...(campaign.platforms ?? { facebook: true, instagram: true }), facebook: e.target.checked }
                 })}
               />
               <FaFacebook /> Facebook
@@ -525,9 +525,9 @@ export default function EditCampaignPage() {
             <CheckboxLabel>
               <Checkbox
                 type="checkbox"
-                checked={campaign.platforms.instagram}
+                checked={campaign.platforms?.instagram ?? true}
                 onChange={(e) => updateCampaign({
-                  platforms: { ...campaign.platforms, instagram: e.target.checked }
+                  platforms: { ...(campaign.platforms ?? { facebook: true, instagram: true }), instagram: e.target.checked }
                 })}
               />
               <FaInstagram /> Instagram
@@ -544,9 +544,9 @@ export default function EditCampaignPage() {
           <FormGroup>
             <Label>Budget Type</Label>
             <Select
-              value={campaign.budget.type}
+              value={campaign.budget?.type ?? 'daily'}
               onChange={(e) => updateCampaign({
-                budget: { ...campaign.budget, type: e.target.value as 'daily' | 'lifetime' }
+                budget: { ...(campaign.budget ?? { type: 'daily', amount: 0 }), type: e.target.value as 'daily' | 'lifetime' }
               })}
             >
               <option value="daily">Daily Budget</option>
@@ -555,12 +555,12 @@ export default function EditCampaignPage() {
           </FormGroup>
 
           <FormGroup>
-            <Label>{campaign.budget.type === 'daily' ? 'Daily' : 'Lifetime'} Budget ($)</Label>
+            <Label>{(campaign.budget?.type ?? 'daily') === 'daily' ? 'Daily' : 'Lifetime'} Budget ($)</Label>
             <Input
               type="number"
-              value={campaign.budget.amount}
+              value={campaign.budget?.amount ?? 0}
               onChange={(e) => updateCampaign({
-                budget: { ...campaign.budget, amount: parseFloat(e.target.value) || 0 }
+                budget: { ...(campaign.budget ?? { type: 'daily', amount: 0 }), amount: parseFloat(e.target.value) || 0 }
               })}
               placeholder="Enter budget amount"
               min="1"
@@ -579,9 +579,9 @@ export default function EditCampaignPage() {
             <Label>Start Date (Optional)</Label>
             <Input
               type="datetime-local"
-              value={campaign.schedule.startDate || ''}
+              value={campaign.schedule?.startDate || ''}
               onChange={(e) => updateCampaign({
-                schedule: { ...campaign.schedule, startDate: e.target.value }
+                schedule: { ...(campaign.schedule ?? { startDate: '', endDate: '' }), startDate: e.target.value }
               })}
             />
           </FormGroup>
@@ -590,9 +590,9 @@ export default function EditCampaignPage() {
             <Label>End Date (Optional)</Label>
             <Input
               type="datetime-local"
-              value={campaign.schedule.endDate || ''}
+              value={campaign.schedule?.endDate || ''}
               onChange={(e) => updateCampaign({
-                schedule: { ...campaign.schedule, endDate: e.target.value }
+                schedule: { ...(campaign.schedule ?? { startDate: '', endDate: '' }), endDate: e.target.value }
               })}
             />
           </FormGroup>

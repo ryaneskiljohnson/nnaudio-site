@@ -385,6 +385,8 @@ export default function CreateCampaignPage() {
           name: campaignData.name,
           objective: campaignData.objective,
           status: action === 'launch' ? 'ACTIVE' : 'PAUSED',
+          description: campaignData.description || undefined,
+          platforms: campaignData.platforms,
           dailyBudget: campaignData.budgetType === 'daily' && campaignData.dailyBudget 
             ? parseFloat(campaignData.dailyBudget) 
             : undefined,
@@ -393,6 +395,7 @@ export default function CreateCampaignPage() {
             : undefined,
           startTime: campaignData.startDate || undefined,
           endTime: campaignData.endDate || undefined,
+          special_ad_categories: [],
         }),
       });
 

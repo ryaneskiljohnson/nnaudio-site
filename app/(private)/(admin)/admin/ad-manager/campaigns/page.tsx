@@ -1066,16 +1066,6 @@ export default function CampaignsPage() {
           </EmptyStateIcon>
           <h3>No campaigns yet</h3>
           <p>Create your first advertising campaign to get started</p>
-          <Link href="/admin/ad-manager/campaigns/create">
-            <ActionButton
-              style={{ marginTop: '1rem' }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <FaPlus />
-              Create First Campaign
-            </ActionButton>
-          </Link>
         </EmptyState>
       )}
     </Container>
