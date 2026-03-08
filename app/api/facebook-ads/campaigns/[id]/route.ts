@@ -1,5 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, CAMPAIGN_OBJECTIVES, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import type { FacebookCampaign } from '@/utils/facebook/api';
+
+/**
+ * Format Meta/API date for datetime-local input (YYYY-MM-DDTHH:mm).
+ * Handles ISO 8601, date-only, and Unix timestamp (seconds or ms).
+ */
+function toDateTimeLocal(value: string | number | undefined): string {
+  if (value === undefined || value === null) return '';
+  const s = String(value).trim();
+  if (!s) return '';
+  // Already datetime-local style
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return s.slice(0, 16);
+  // Date only YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s + 'T00:00';
+  // Full ISO with Z or offset (e.g. 2024-01-20T08:00:00+0000 or 2024-01-20T08:00:00Z)
+  const isoMatch = s.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+  if (isoMatch) return isoMatch[1] + 'T' + isoMatch[2];
+  // Unix timestamp (seconds or milliseconds)
+  const num = parseInt(s, 10);
+  if (!Number.isNaN(num)) {
+    const ms = num < 1e12 ? num * 1000 : num;
+    const d = new Date(ms);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day}T${h}:${min}`;
+  }
+  return s.slice(0, 16);
+}
+
+/**
+ * Normalize Facebook API campaign to the shape expected by the edit page
+ * (platforms, budget, schedule, special_ad_categories). Platforms default to both true; override with metadata in GET.
+ */
+function normalizeCampaignForEdit(c: FacebookCampaign) {
+  const dailyCents = c.daily_budget ? parseInt(c.daily_budget, 10) : 0;
+  const lifetimeCents = c.lifetime_budget ? parseInt(c.lifetime_budget, 10) : 0;
+  const hasDaily = dailyCents > 0;
+  const raw = c.special_ad_categories;
+  const specialAdCategories: string[] = Array.isArray(raw)
+    ? raw
+    : typeof raw === 'string'
+      ? (raw ? [raw] : [])
+      : [];
+  return {
+    id: c.id,
+    name: c.name,
+    objective: c.objective,
+    status: (c.status ?? '').toString().toLowerCase() as 'active' | 'paused' | 'ended',
+    createdAt: c.created_time,
+    platforms: {
+      facebook: true,
+      instagram: true,
+    },
+    budget: {
+      type: (hasDaily ? 'daily' : 'lifetime') as 'daily' | 'lifetime',
+      amount: hasDaily ? dailyCents / 100 : lifetimeCents / 100,
+    },
+    schedule: {
+      startDate: toDateTimeLocal(c.start_time),
+      endDate: toDateTimeLocal(c.stop_time),
+    },
+    special_ad_categories: specialAdCategories,
+    description: undefined as string | undefined,
+  };
+}
 
 export async function GET(
   request: NextRequest,
@@ -32,6 +100,7 @@ export async function GET(
             startDate: "2024-01-20T09:00",
             endDate: "2024-02-20T23:59"
           },
+          special_ad_categories: [],
           createdAt: "2024-01-20T10:00:00Z"
         },
         "2": {
@@ -52,6 +121,7 @@ export async function GET(
             startDate: "2024-01-18T12:00",
             endDate: ""
           },
+          special_ad_categories: [],
           createdAt: "2024-01-18T12:00:00Z"
         },
         "3": {
@@ -72,6 +142,7 @@ export async function GET(
             startDate: "2024-01-15T08:00",
             endDate: "2024-03-15T20:00"
           },
+          special_ad_categories: [],
           createdAt: "2024-01-15T08:00:00Z"
         }
       };
@@ -103,15 +174,34 @@ export async function GET(
       }, { status: 401 });
     }
 
-    const campaign = await facebookAPI.getCampaign(campaignId);
+    const raw = await facebookAPI.getCampaign(campaignId);
     
-    if (!campaign) {
+    if (!raw) {
       return NextResponse.json({
         success: false,
         error: 'Campaign not found'
       }, { status: 404 });
     }
 
+    let campaign = normalizeCampaignForEdit(raw);
+    try {
+      const { createSupabaseServiceRole } = await import('@/utils/supabase/service');
+      const supabase = await createSupabaseServiceRole();
+      const { data: meta } = await (supabase as any).from('facebook_campaign_metadata').select('description, platforms, start_date, end_date').eq('campaign_id', campaignId).maybeSingle();
+      if (meta) {
+        campaign = {
+          ...campaign,
+          description: meta.description ?? undefined,
+          platforms: meta.platforms ?? { facebook: true, instagram: true },
+          schedule: {
+            startDate: meta.start_date ? toDateTimeLocal(meta.start_date) : campaign.schedule.startDate,
+            endDate: meta.end_date ? toDateTimeLocal(meta.end_date) : campaign.schedule.endDate,
+          },
+        };
+      }
+    } catch (_) {
+      // Table may not exist or RLS; continue without metadata
+    }
     return NextResponse.json({
       success: true,
       campaign
@@ -174,7 +264,7 @@ export async function PUT(
       }, { status: 401 });
     }
 
-    const { name, objective, status, description, platforms, budget, schedule } = body;
+    const { name, objective, status, description, platforms, budget, schedule, special_ad_categories } = body;
 
     // Validate required fields
     if (!name || !objective || !status) {
@@ -192,20 +282,48 @@ export async function PUT(
       }, { status: 400 });
     }
 
-    // Update campaign
-    const updatedCampaign = await facebookAPI.updateCampaign(campaignId, {
+    // Update campaign (Meta: only name, status, objective, daily_budget, lifetime_budget, special_ad_categories are writable; start/end are read-only at campaign level)
+    await facebookAPI.updateCampaign(campaignId, {
       name,
       objective,
       status: status.toUpperCase(),
       daily_budget: budget?.type === 'daily' ? budget.amount : undefined,
       lifetime_budget: budget?.type === 'lifetime' ? budget.amount : undefined,
-      start_time: schedule?.startDate,
-      end_time: schedule?.endDate
+      special_ad_categories: Array.isArray(special_ad_categories) ? special_ad_categories : [],
     });
+
+    try {
+      const { createSupabaseServiceRole } = await import('@/utils/supabase/service');
+      const supabase = await createSupabaseServiceRole();
+      await (supabase as any).from('facebook_campaign_metadata').upsert({
+        campaign_id: campaignId,
+        description: description ?? null,
+        platforms: platforms ?? { facebook: true, instagram: true },
+        start_date: schedule?.startDate || null,
+        end_date: schedule?.endDate || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'campaign_id' });
+    } catch (_) {
+      // Table may not exist
+    }
+
+    const raw = await facebookAPI.getCampaign(campaignId);
+    let campaign = raw ? normalizeCampaignForEdit(raw) : undefined;
+    if (campaign) {
+      campaign = {
+        ...campaign,
+        description,
+        platforms: platforms ?? campaign.platforms,
+        schedule: {
+          startDate: schedule?.startDate ?? campaign.schedule?.startDate ?? '',
+          endDate: schedule?.endDate ?? campaign.schedule?.endDate ?? '',
+        },
+      };
+    }
 
     return NextResponse.json({
       success: true,
-      campaign: updatedCampaign
+      campaign,
     });
   } catch (error) {
     console.error('Error updating campaign:', error);

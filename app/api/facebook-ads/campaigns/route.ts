@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, objective, status, dailyBudget, lifetimeBudget, startTime, endTime } = body;
+    const { name, objective, status, dailyBudget, lifetimeBudget, startTime, endTime, description, platforms, special_ad_categories } = body;
 
     // Validate required fields
     if (!name || !objective || !status) {
@@ -187,16 +187,35 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Create campaign
+    const specialCategories = Array.isArray(special_ad_categories)
+      ? special_ad_categories.filter((s: string) => s && s !== 'NONE')
+      : [];
+
     const campaign = await facebookAPI.createCampaign({
       name,
       objective,
       status: status.toUpperCase(),
+      special_ad_categories: specialCategories,
       daily_budget: dailyBudget,
       lifetime_budget: lifetimeBudget,
-      start_time: startTime,
-      end_time: endTime
+      start_time: startTime || undefined,
+      end_time: endTime || undefined,
     });
+
+    try {
+      const { createSupabaseServiceRole } = await import('@/utils/supabase/service');
+      const supabase = await createSupabaseServiceRole();
+      await (supabase as any).from('facebook_campaign_metadata').upsert({
+        campaign_id: campaign.id,
+        description: description ?? null,
+        platforms: platforms ?? { facebook: true, instagram: true },
+        start_date: startTime || null,
+        end_date: endTime || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'campaign_id' });
+    } catch (_) {
+      // Table may not exist yet (run migration 20260308000000_facebook_campaign_metadata)
+    }
 
     return NextResponse.json({
       success: true,

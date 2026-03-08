@@ -37,6 +37,8 @@ export interface FacebookCampaign {
   lifetime_budget?: string;
   budget_remaining?: string;
   account_id: string;
+  /** Required by Meta; array e.g. [] or ['HOUSING'] */
+  special_ad_categories?: string[] | string;
 }
 
 export interface FacebookAdSet {
@@ -51,6 +53,8 @@ export interface FacebookAdSet {
   start_time?: string;
   end_time?: string;
   targeting?: any;
+  optimization_goal?: string;
+  billing_event?: string;
 }
 
 export interface FacebookAd {
@@ -218,8 +222,8 @@ export class FacebookAdsAPI {
     const response = await this.makeRequest<{ data: FacebookCampaign[] }>(
       `act_${this.adAccountId}/campaigns`,
       'GET',
-      { 
-        fields: 'id,name,status,objective,created_time,updated_time,start_time,stop_time,daily_budget,lifetime_budget,budget_remaining'
+      {
+        fields: 'id,name,status,objective,created_time,updated_time,start_time,stop_time,daily_budget,lifetime_budget,budget_remaining,special_ad_categories'
       }
     );
     return response.data;
@@ -231,8 +235,8 @@ export class FacebookAdsAPI {
       const response = await this.makeRequest<FacebookCampaign>(
         campaignId,
         'GET',
-        { 
-          fields: 'id,name,status,objective,created_time,updated_time,start_time,stop_time,daily_budget,lifetime_budget,budget_remaining'
+        {
+          fields: 'id,name,status,objective,created_time,updated_time,start_time,stop_time,daily_budget,lifetime_budget,budget_remaining,special_ad_categories'
         }
       );
       return response;
@@ -256,8 +260,8 @@ export class FacebookAdsAPI {
       special_ad_categories: JSON.stringify(specialCategories),
       is_adset_budget_sharing_enabled: '0',
     };
-    if (params.daily_budget != null) formBody.daily_budget = String(params.daily_budget * 100);
-    if (params.lifetime_budget != null) formBody.lifetime_budget = String(params.lifetime_budget * 100);
+    if (params.daily_budget != null) formBody.daily_budget = String(Math.round(params.daily_budget * 100));
+    if (params.lifetime_budget != null) formBody.lifetime_budget = String(Math.round(params.lifetime_budget * 100));
     if (params.start_time) formBody.start_time = params.start_time;
     if (params.end_time) formBody.end_time = params.end_time;
 
@@ -291,24 +295,33 @@ export class FacebookAdsAPI {
     }
   }
 
-  // Update campaign
-  async updateCampaign(campaignId: string, updates: Partial<CreateCampaignParams>): Promise<{ success: boolean }> {
-    const updateData = {
-      ...(updates.name && { name: updates.name }),
-      ...(updates.status && { status: updates.status }),
-      ...(updates.daily_budget && { daily_budget: updates.daily_budget * 100 }),
-      ...(updates.lifetime_budget && { lifetime_budget: updates.lifetime_budget * 100 }),
-      ...(updates.start_time && { start_time: updates.start_time }),
-      ...(updates.end_time && { end_time: updates.end_time }),
+  /**
+   * Update campaign. Uses form-encoded POST to match Meta Marketing API.
+   * Only writable fields: name, status, objective, daily_budget, lifetime_budget, special_ad_categories.
+   * start_time/stop_time are read-only at campaign level in Meta.
+   */
+  async updateCampaign(campaignId: string, updates: Partial<CreateCampaignParams> & { special_ad_categories?: string[] }): Promise<{ success: boolean }> {
+    const formBody: Record<string, string> = {
+      access_token: this.accessToken,
     };
+    if (updates.name != null) formBody.name = updates.name;
+    if (updates.status != null) formBody.status = updates.status;
+    if (updates.objective != null) formBody.objective = updates.objective;
+    if (updates.daily_budget != null) formBody.daily_budget = String(Math.round(updates.daily_budget * 100));
+    if (updates.lifetime_budget != null) formBody.lifetime_budget = String(Math.round(updates.lifetime_budget * 100));
+    if (updates.special_ad_categories != null) formBody.special_ad_categories = JSON.stringify(updates.special_ad_categories);
 
-    await this.makeRequest<{ success: boolean }>(
-      campaignId,
-      'POST',
-      { access_token: this.accessToken },
-      updateData
-    );
-
+    const body = new URLSearchParams(formBody).toString();
+    const url = `${FACEBOOK_BASE_URL}/${campaignId}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error((result as any).error?.message ?? `Update campaign failed: ${response.status}`);
+    }
     return { success: true };
   }
 
@@ -330,8 +343,8 @@ export class FacebookAdsAPI {
     const response = await this.makeRequest<{ data: FacebookAdSet[] }>(
       endpoint,
       'GET',
-      { 
-        fields: 'id,name,campaign_id,status,created_time,updated_time,daily_budget,lifetime_budget,start_time,end_time,targeting'
+      {
+        fields: 'id,name,campaign_id,status,created_time,updated_time,daily_budget,lifetime_budget,start_time,end_time,targeting,optimization_goal,billing_event'
       }
     );
     return response.data;
@@ -515,12 +528,12 @@ export class FacebookAdsAPI {
     );
   }
 
-  // Get custom audiences
+  // Get custom audiences (Meta fields: id, name, description, subtype, approximate_count, data_source, time_created)
   async getCustomAudiences(): Promise<any[]> {
     const response = await this.makeRequest<{ data: any[] }>(
       `act_${this.adAccountId}/customaudiences`,
       'GET',
-      { fields: 'id,name,description,approximate_count,data_source' }
+      { fields: 'id,name,description,subtype,approximate_count,data_source,time_created' }
     );
     return response.data;
   }
@@ -602,6 +615,15 @@ export const CAMPAIGN_STATUS = {
   PAUSED: 'Paused',
   DELETED: 'Deleted',
   ARCHIVED: 'Archived',
+} as const;
+
+/** Meta special ad categories (required on create; use [] for none). */
+export const SPECIAL_AD_CATEGORIES = {
+  NONE: 'None',
+  HOUSING: 'Housing',
+  EMPLOYMENT: 'Employment',
+  FINANCIAL_PRODUCTS_SERVICES: 'Financial products & services',
+  ISSUES_ELECTIONS_POLITICS: 'Issues, elections or politics',
 } as const;
 
 // Optimization goals for ad sets
