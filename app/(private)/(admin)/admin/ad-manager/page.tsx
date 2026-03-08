@@ -145,6 +145,31 @@ const ConnectButton = styled(motion.button)`
   }
 `;
 
+const DisconnectButton = styled(motion.button)`
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #ef4444;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
 const StatsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -495,6 +520,8 @@ export default function AdManagerPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [isConnected, setIsConnected] = useState(false);
+  const [connectedAdAccountId, setConnectedAdAccountId] = useState<string | null>(null);
+  const [adAccounts, setAdAccounts] = useState<Array<{ id: string; account_id: string; name: string }>>([]);
   const [isDevelopmentMode, setIsDevelopmentMode] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -509,15 +536,32 @@ export default function AdManagerPage() {
     }
   }, [isConnected]);
 
+  useEffect(() => {
+    if (isConnected && !isDevelopmentMode) {
+      fetch('/api/facebook-ads/ad-accounts')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.adAccounts)) {
+            setAdAccounts(data.adAccounts);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setAdAccounts([]);
+    }
+  }, [isConnected, isDevelopmentMode]);
+
   const checkFacebookConnection = async () => {
     try {
       const response = await fetch('/api/facebook-ads/connection-status');
       const data = await response.json();
       setIsConnected(data.connected);
+      setConnectedAdAccountId(data.adAccountId || null);
       setIsDevelopmentMode(data.isDevelopmentMode || false);
     } catch (error) {
       console.error('Error checking Facebook connection:', error);
       setIsConnected(false);
+      setConnectedAdAccountId(null);
       setIsDevelopmentMode(false);
     }
   };
@@ -525,12 +569,40 @@ export default function AdManagerPage() {
   const connectToFacebook = async () => {
     setIsConnecting(true);
     try {
-      // Redirect to Facebook OAuth
       window.location.href = '/api/facebook-ads/connect';
     } catch (error) {
       console.error('Error connecting to Facebook:', error);
     } finally {
       setIsConnecting(false);
+    }
+  };
+
+  const disconnectFromFacebook = async () => {
+    try {
+      await fetch('/api/facebook-ads/disconnect', { method: 'POST' });
+      await checkFacebookConnection();
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+    }
+  };
+
+  const setAdAccount = async (accountId: string) => {
+    const numericId = accountId.replace(/^act_/, '');
+    try {
+      const res = await fetch('/api/facebook-ads/ad-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adAccountId: numericId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setConnectedAdAccountId(data.adAccountId || accountId);
+        await checkFacebookConnection();
+        await fetchStats();
+        await fetchCampaigns();
+      }
+    } catch (error) {
+      console.error('Error setting ad account:', error);
     }
   };
 
@@ -630,15 +702,52 @@ export default function AdManagerPage() {
         {isConnected ? (
           <>
             <FaCheckCircle />
-            <div>
+            <div style={{ flex: 1 }}>
               <strong>Connected to Facebook Ads {isDevelopmentMode && '(Development Mode)'}</strong>
               <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.8 }}>
                 {isDevelopmentMode 
                   ? 'Using mock data for development - configure Facebook App for production'
                   : 'Your account is connected and ready to manage ads'
                 }
+                {connectedAdAccountId && !isDevelopmentMode && (
+                  <span style={{ display: 'block', marginTop: '0.25rem' }}>
+                    Ad account:{' '}
+                    {adAccounts.length > 0 ? (
+                      <select
+                        value={connectedAdAccountId}
+                        onChange={(e) => setAdAccount(e.target.value)}
+                        style={{
+                          fontSize: '0.85rem',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: 4,
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          background: 'rgba(0,0,0,0.2)',
+                          color: 'inherit',
+                          minWidth: 180,
+                        }}
+                      >
+                        {adAccounts.map((acc) => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.name} ({acc.id})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <code style={{ fontSize: '0.85rem' }}>{connectedAdAccountId}</code>
+                    )}
+                  </span>
+                )}
               </p>
             </div>
+            <DisconnectButton
+              type="button"
+              onClick={disconnectFromFacebook}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <FaTrash />
+              Disconnect
+            </DisconnectButton>
           </>
         ) : (
           <>

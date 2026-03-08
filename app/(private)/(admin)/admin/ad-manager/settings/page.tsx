@@ -458,7 +458,7 @@ export default function AdManagerSettingsPage() {
 
   const disconnectFacebook = async () => {
     try {
-      // Clear stored tokens and reset connection
+      await fetch('/api/facebook-ads/disconnect', { method: 'POST' });
       setConnectionStatus('disconnected');
       setSettings(prev => ({
         ...prev,

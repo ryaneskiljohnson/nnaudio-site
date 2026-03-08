@@ -284,6 +284,17 @@ const ButtonGroup = styled.div`
   }
 `;
 
+const ErrorBox = styled.div`
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.4);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  color: var(--text);
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+`;
+
 const Button = styled(motion.button)<{ $variant?: 'primary' | 'secondary' }>`
   padding: 1rem 2rem;
   border: none;
@@ -342,9 +353,10 @@ export default function CreateCampaignPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [campaignData, setCampaignData] = useState<CampaignData>({
     name: '',
-    objective: 'TRAFFIC',
+    objective: 'OUTCOME_TRAFFIC',
     description: '',
     platforms: {
       facebook: true,
@@ -360,6 +372,7 @@ export default function CreateCampaignPage() {
 
   const handleSubmit = async (e: React.FormEvent, action: 'save' | 'launch') => {
     e.preventDefault();
+    setSubmitError(null);
     setIsSubmitting(true);
 
     try {
@@ -388,12 +401,19 @@ export default function CreateCampaignPage() {
       if (result.success) {
         router.push('/admin/ad-manager?campaign_created=true');
       } else {
-        console.error('Failed to create campaign:', result.error);
-        // Handle error (show toast, etc.)
+        const errMsg = result.error || 'Failed to create campaign';
+        console.error('Failed to create campaign:', errMsg);
+        const isAdAccountError = /does not exist|cannot be loaded due to missing permissions|does not support this operation/i.test(errMsg);
+        const permissionsHint =
+          'Your Facebook user may need Advertiser or Admin role on this ad account. In Meta Business Manager: Business Settings → Accounts → Ad Accounts → [your account] → People — ensure your user has Advertiser or Admin. You can also try Disconnect then Connect again in Ad Manager settings.';
+        setSubmitError(
+          isAdAccountError ? `${errMsg} ${permissionsHint}` : errMsg
+        );
       }
     } catch (error) {
+      const errMsg = error instanceof Error ? error.message : 'Failed to create campaign';
       console.error('Error creating campaign:', error);
-      // Handle error
+      setSubmitError(errMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -417,6 +437,12 @@ export default function CreateCampaignPage() {
           Create a new advertising campaign to reach your target audience on Facebook and Instagram
         </Subtitle>
       </Header>
+
+      {submitError && (
+        <ErrorBox role="alert">
+          {submitError}
+        </ErrorBox>
+      )}
 
       <Form onSubmit={(e) => handleSubmit(e, 'save')}>
         <Section

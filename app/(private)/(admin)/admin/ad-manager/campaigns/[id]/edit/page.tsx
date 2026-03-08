@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
+import { CAMPAIGN_OBJECTIVES } from "@/utils/facebook/api";
 
 const Container = styled.div`
   width: 100%;
@@ -475,15 +476,11 @@ export default function EditCampaignPage() {
               value={campaign.objective}
               onChange={(e) => updateCampaign({ objective: e.target.value })}
             >
-              <option value="TRAFFIC">Traffic</option>
-              <option value="CONVERSIONS">Conversions</option>
-              <option value="BRAND_AWARENESS">Brand Awareness</option>
-              <option value="REACH">Reach</option>
-              <option value="ENGAGEMENT">Engagement</option>
-              <option value="APP_INSTALLS">App Installs</option>
-              <option value="VIDEO_VIEWS">Video Views</option>
-              <option value="LEAD_GENERATION">Lead Generation</option>
-              <option value="MESSAGES">Messages</option>
+              {Object.entries(CAMPAIGN_OBJECTIVES).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
             </Select>
           </FormGroup>
 
