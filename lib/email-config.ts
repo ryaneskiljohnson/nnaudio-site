@@ -1,11 +1,11 @@
 /**
- * @fileoverview Centralized email configuration for NNAudio (send from support@newnationllc.com)
+ * @fileoverview Centralized email configuration for NNAudio / nnaud.io
  * @module lib/email-config
  */
 
 /** Default support email address (verified in Amazon SES) */
 export const SUPPORT_EMAIL =
-  process.env.SENDER_EMAIL || "support@newnationllc.com";
+  process.env.SENDER_EMAIL || "support@nnaud.io";
 
 /** Default sender display name */
 export const SENDER_NAME =

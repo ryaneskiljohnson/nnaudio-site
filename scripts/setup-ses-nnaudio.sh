@@ -1,11 +1,11 @@
 #!/bin/bash
-# @fileoverview SES setup script (support@newnationllc.com primary; nnaud.io optional)
+# @fileoverview SES setup script for support@nnaud.io
 # @module scripts/setup-ses-nnaudio
 # Run: source .env.local && ./scripts/setup-ses-nnaudio.sh
 
 set -e
 
-echo "=== SES Setup (support@newnationllc.com) ==="
+echo "=== SES Setup for support@nnaud.io ==="
 echo ""
 
 # Load env if .env.local exists
@@ -16,8 +16,8 @@ if [ -f .env.local ]; then
 fi
 
 # 1. Verify email identity (idempotent)
-echo "1. Verifying support@newnationllc.com..."
-aws ses verify-email-identity --email-address support@newnationllc.com 2>/dev/null || true
+echo "1. Verifying support@nnaud.io..."
+aws ses verify-email-identity --email-address support@nnaud.io 2>/dev/null || true
 echo "   Done."
 echo ""
 
@@ -35,8 +35,8 @@ echo ""
 
 # 3. Check verification status
 echo "3. Checking verification status..."
-aws ses get-identity-verification-attributes --identities support@newnationllc.com newnationllc.com --output table 2>/dev/null || \
-  aws ses get-identity-verification-attributes --identities support@newnationllc.com newnationllc.com
+aws ses get-identity-verification-attributes --identities support@nnaud.io nnaud.io --output table 2>/dev/null || \
+  aws ses get-identity-verification-attributes --identities support@nnaud.io nnaud.io
 echo ""
 
 # 4. Create configuration set (idempotent - may fail if exists)

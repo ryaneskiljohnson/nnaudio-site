@@ -108,7 +108,7 @@ All of the following require logging in. From the header, **My Account** goes to
 
 ### Support (`/support`)
 
-- Create and manage **support tickets**; reply to tickets; attach files. For help or to report a problem, create a ticket here or email **support@newnationllc.com**.
+- Create and manage **support tickets**; reply to tickets; attach files. For help or to report a problem, create a ticket here or email **support@nnaud.io**.
 
 ### Settings (`/settings`)
 
@@ -140,7 +140,7 @@ All of the following require logging in. From the header, **My Account** goes to
 - **Privacy Policy** – `/privacy-policy`
 - **Terms of Service** – `/terms-of-service`
 - **Refund Policy** – `/refund-policy`
-- **Contact** – Contact form; you can also email **support@newnationllc.com** for help.
+- **Contact** – Contact form; you can also email **support@nnaud.io** for help.
 
 ---
 
@@ -162,7 +162,7 @@ One-time purchases (including lifetime): Pay once, keep the product forever with
 Plugins are typically AU and VST3 for major DAWs (Logic, Ableton, FL Studio, Cubase, Studio One, Reaper, Bitwig, etc.). Sample packs and MIDI are downloadable content. NNAudio Access runs on macOS and Windows. Check each product page for details.
 
 **How do I get help or report a problem?**  
-Log in, go to Support (`/support`), and create a ticket with your issue. You can also email support@newnationllc.com.
+Log in, go to Support (`/support`), and create a ticket with your issue. You can also email support@nnaud.io.
 
 ---
 

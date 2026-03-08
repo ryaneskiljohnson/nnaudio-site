@@ -1988,8 +1988,8 @@ This is an automated notification from NNAudio Support.
       subject: `New Response: ${ticket.ticket_number} - ${ticket.subject}`,
       html: emailHtml,
       text: emailText,
-      from: "NNAudio Support <support@newnationllc.com>",
-      replyTo: "support@newnationllc.com",
+      from: "NNAudio Support <support@nnaud.io>",
+      replyTo: "support@nnaud.io",
     });
 
     if (emailResult.success) {
@@ -2337,11 +2337,11 @@ This is an automated notification from NNAudio Support.
     // Send email to admin (dynamic import avoids bundling @aws-sdk/client-ses at load time)
     const { sendEmail } = await import("@/utils/email");
     const emailResult = await sendEmail({
-      to: "support@newnationllc.com",
+      to: "support@nnaud.io",
       subject: `New User Response: ${ticket.ticket_number} - ${ticket.subject}`,
       html: emailHtml,
       text: emailText,
-      from: "NNAudio Support <support@newnationllc.com>",
+      from: "NNAudio Support <support@nnaud.io>",
       replyTo: userEmail,
     });
 

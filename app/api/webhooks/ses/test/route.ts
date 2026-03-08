@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
           mail: {
             messageId: messageId,
             timestamp: new Date().toISOString(),
-            source: 'support@newnationllc.com',
+            source: 'support@nnaud.io',
             destination: ['test@example.com']
           },
           delivery: {
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
           mail: {
             messageId: messageId,
             timestamp: new Date().toISOString(),
-            source: 'support@newnationllc.com',
+            source: 'support@nnaud.io',
             destination: ['test@example.com']
           },
           bounce: {
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
           mail: {
             messageId: messageId,
             timestamp: new Date().toISOString(),
-            source: 'support@newnationllc.com',
+            source: 'support@nnaud.io',
             destination: ['test@example.com']
           },
           complaint: {

@@ -2365,7 +2365,7 @@ function CreateCampaignPage() {
     name: "",
     subject: "",
       senderName: "Cymasphere",
-      senderEmail: "support@newnationllc.com",
+      senderEmail: "support@nnaud.io",
       replyToEmail: "",
     preheader: "",
     description: "",
@@ -2613,7 +2613,7 @@ function CreateCampaignPage() {
               name: campaign.name || '',
               subject: campaign.subject || '',
               senderName: campaign.senderName || 'Cymasphere',
-              senderEmail: campaign.senderEmail || 'support@newnationllc.com',
+              senderEmail: campaign.senderEmail || 'support@nnaud.io',
               replyToEmail: campaign.replyToEmail || '',
               preheader: campaign.preheader || '',
               description: campaign.description || '',
@@ -4212,7 +4212,7 @@ function CreateCampaignPage() {
                   type="email"
                   value={campaignData.senderEmail}
                   onChange={(e) => setCampaignData({...campaignData, senderEmail: e.target.value})}
-                  placeholder="e.g. support@newnationllc.com"
+                  placeholder="e.g. support@nnaud.io"
                 />
               </FormGroup>
             </FormGrid>
