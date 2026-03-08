@@ -364,6 +364,7 @@ export default function AdManagerSettingsPage() {
   const [testing, setTesting] = useState(false);
   const [showSecrets, setShowSecrets] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'error'>('disconnected');
+  const [currentAdAccountId, setCurrentAdAccountId] = useState<string | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -393,8 +394,9 @@ export default function AdManagerSettingsPage() {
     try {
       const response = await fetch('/api/facebook-ads/connection-status');
       const data = await response.json();
-      
+
       setConnectionStatus(data.connected ? 'connected' : 'disconnected');
+      setCurrentAdAccountId(data.adAccountId || null);
       setSettings(prev => ({
         ...prev,
         facebook: {
@@ -620,6 +622,11 @@ export default function AdManagerSettingsPage() {
 
           {connectionStatus === 'connected' && (
             <>
+              {currentAdAccountId && (
+                <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                  Using ad account: <code style={{ fontSize: '0.85rem' }}>{currentAdAccountId}</code>
+                </p>
+              )}
               <CardTitle style={{ marginTop: '2rem', marginBottom: '1rem' }}>
                 <FaChartLine />
                 Connection Statistics

@@ -29,7 +29,6 @@ import LoadingComponent from "@/components/common/LoadingComponent";
 import StatLoadingSpinner from "@/components/common/StatLoadingSpinner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getAudiences, deleteAudience, type EmailAudience } from "@/app/actions/email-campaigns";
 
 const Container = styled.div`
   width: 100%;
@@ -532,15 +531,17 @@ const CloseButton = styled.button`
   }
 `;
 
+/** Facebook custom audience from GET /api/facebook-ads/audiences */
 interface Audience {
   id: string;
   name: string;
   description: string | null;
-  filters: any;
-  subscriber_count: number | null;
-  created_by: string | null;
-  created_at: string | null;
-  updated_at: string | null;
+  approximate_count?: number;
+  subscriber_count?: number | null;
+  filters?: Record<string, unknown>;
+  created_by?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 interface DeleteModalProps {
@@ -600,9 +601,8 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
                              <AudienceInfoCard>
                  <AudienceInfoTitle>{audience.name}</AudienceInfoTitle>
                  <AudienceInfoDetails>
-                  <span>Subscribers: {formatNumber(audience.subscriber_count || 0)}</span>
-                  <span>Created: {audience.created_at ? new Date(audience.created_at).toLocaleDateString() : 'Unknown'}</span>
-                  <span>Filters: {Object.keys(audience.filters || {}).length}</span>
+                  <span>Size: {formatNumber(audience.approximate_count ?? audience.subscriber_count ?? 0)}</span>
+                  <span>Created: {audience.created_at ? new Date(audience.created_at).toLocaleDateString() : '—'}</span>
                  </AudienceInfoDetails>
                </AudienceInfoCard>
 
@@ -639,6 +639,8 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
   );
 };
 
+export { DeleteConfirmationModal };
+export type { Audience };
 
 export default function AudiencesPage() {
   const { user } = useAuth();
@@ -665,13 +667,22 @@ export default function AudiencesPage() {
     }
 
     const loadAudiences = async () => {
-      console.log('Loading audiences... User:', user.email);
       setLoading(true);
       try {
-        const data = await getAudiences({ mode: 'light', refreshCounts: true });
-        const fetchedAudiences = data.audiences || [];
-        console.log('Fetched audiences count:', fetchedAudiences.length);
-        setAudiences(fetchedAudiences as Audience[]);
+        const res = await fetch('/api/facebook-ads/audiences');
+        const data = await res.json();
+        const list = data.success && Array.isArray(data.audiences) ? data.audiences : [];
+        setAudiences(list.map((a: { id: string; name: string; description?: string; approximate_count?: number }) => ({
+          id: a.id,
+          name: a.name,
+          description: a.description ?? null,
+          approximate_count: a.approximate_count,
+          subscriber_count: a.approximate_count ?? null,
+          filters: {},
+          created_at: null,
+          updated_at: null,
+          created_by: null
+        })));
       } catch (error) {
         console.error('Error loading audiences:', error);
         setAudiences([]);
@@ -709,15 +720,11 @@ export default function AudiencesPage() {
     setDeleteModal(prev => ({ ...prev, isDeleting: true }));
 
     try {
-      await deleteAudience(deleteModal.audience.id);
-      
+      const res = await fetch(`/api/facebook-ads/audiences/${deleteModal.audience.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Delete failed');
       setAudiences(prev => prev.filter(audience => audience.id !== deleteModal.audience?.id));
-      
-      setDeleteModal({
-        isOpen: false,
-        audience: null,
-        isDeleting: false
-      });
+      setDeleteModal({ isOpen: false, audience: null, isDeleting: false });
     } catch (error) {
       console.error('Error deleting audience:', error);
       setDeleteModal(prev => ({ ...prev, isDeleting: false }));
@@ -749,9 +756,9 @@ export default function AudiencesPage() {
 
   const totalAudiences = audiences.length;
   const activeAudiences = audiences.length; // All audiences are considered active in this context
-  const totalSubscribers = audiences.reduce((sum, a) => sum + (a.subscriber_count || 0), 0);
+  const totalSubscribers = audiences.reduce((sum, a) => sum + (a.approximate_count ?? a.subscriber_count ?? 0), 0);
   const avgAudienceSize = audiences.length > 0 
-    ? audiences.reduce((sum, a) => sum + (a.subscriber_count || 0), 0) / audiences.length 
+    ? audiences.reduce((sum, a) => sum + (a.approximate_count ?? a.subscriber_count ?? 0), 0) / audiences.length 
     : 0;
 
   if (!user) {
@@ -866,7 +873,7 @@ export default function AudiencesPage() {
                       <AudienceMeta>
                         <MetaItem>
                           <FaUsers />
-                          {audience.subscriber_count || 0} subscribers
+                          {(audience.approximate_count ?? audience.subscriber_count ?? 0).toLocaleString()} people
                         </MetaItem>
                         <MetaItem>
                           <FaGlobe />
@@ -890,7 +897,7 @@ export default function AudiencesPage() {
                       <SmallButton
                         onClick={() => {
                           // In real implementation, this would open a detailed view modal or page
-                          alert(`View details for audience: ${audience.name}\nSubscribers: ${formatNumber(audience.subscriber_count || 0)}\nCreated: ${audience.created_at ? new Date(audience.created_at).toLocaleDateString() : 'Unknown'}`);
+                          alert(`View details for audience: ${audience.name}\nSize: ${formatNumber(audience.approximate_count ?? audience.subscriber_count ?? 0)}\nCreated: ${audience.created_at ? new Date(audience.created_at).toLocaleDateString() : '—'}`);
                         }}
                         title="View Audience Details"
                         whileHover={{ scale: 1.1 }}
@@ -919,20 +926,16 @@ export default function AudiencesPage() {
 
                 <AudienceStats>
                   <AudienceStatItem>
-                    <AudienceStatValue>{formatNumber(audience.subscriber_count || 0)}</AudienceStatValue>
-                    <AudienceStatLabel>Subscribers</AudienceStatLabel>
+                    <AudienceStatValue>{formatNumber(audience.approximate_count ?? audience.subscriber_count ?? 0)}</AudienceStatValue>
+                    <AudienceStatLabel>Approx. size</AudienceStatLabel>
                   </AudienceStatItem>
                   <AudienceStatItem>
-                    <AudienceStatValue>{audience.created_at ? new Date(audience.created_at).toLocaleDateString() : 'Unknown'}</AudienceStatValue>
+                    <AudienceStatValue>{audience.created_at ? new Date(audience.created_at).toLocaleDateString() : '—'}</AudienceStatValue>
                     <AudienceStatLabel>Created</AudienceStatLabel>
                   </AudienceStatItem>
                   <AudienceStatItem>
-                    <AudienceStatValue>{audience.updated_at ? new Date(audience.updated_at).toLocaleDateString() : 'Unknown'}</AudienceStatValue>
+                    <AudienceStatValue>{audience.updated_at ? new Date(audience.updated_at).toLocaleDateString() : '—'}</AudienceStatValue>
                     <AudienceStatLabel>Last Updated</AudienceStatLabel>
-                  </AudienceStatItem>
-                  <AudienceStatItem>
-                    <AudienceStatValue>{Object.keys(audience.filters || {}).length}</AudienceStatValue>
-                    <AudienceStatLabel>Filters</AudienceStatLabel>
                   </AudienceStatItem>
                 </AudienceStats>
               </AudienceCard>

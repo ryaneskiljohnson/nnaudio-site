@@ -645,6 +645,9 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
   );
 };
 
+export { DeleteConfirmationModal };
+export type { Campaign };
+
 export default function CampaignsPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -953,6 +956,12 @@ export default function CampaignsPage() {
 
                   <TabContent>
                     {activeTabs[campaign.id] === 'adsets' && (
+                      <>
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <Link href={`/admin/ad-manager/campaigns/${campaign.id}/adsets/create`} style={{ color: 'var(--primary)', fontSize: '0.9rem' }}>
+                          + Create ad set
+                        </Link>
+                      </div>
                       <AdSetGrid>
                         {adSets[campaign.id]?.length > 0 ? (
                           adSets[campaign.id].map((adSet) => (
@@ -991,9 +1000,13 @@ export default function CampaignsPage() {
                             <EmptyStateIcon><FaUsers /></EmptyStateIcon>
                             <h3>No ad sets yet</h3>
                             <p>Create your first ad set to start targeting audiences</p>
+                            <Link href={`/admin/ad-manager/campaigns/${campaign.id}/adsets/create`} style={{ marginTop: '1rem', display: 'inline-block', color: 'var(--primary)' }}>
+                              Create ad set
+                            </Link>
                           </EmptyState>
                         )}
                       </AdSetGrid>
+                      </>
                     )}
 
                     {activeTabs[campaign.id] === 'ads' && (

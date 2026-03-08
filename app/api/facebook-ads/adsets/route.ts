@@ -180,13 +180,14 @@ export async function POST(request: NextRequest) {
       end_time: endTime
     });
 
+    const statusStr = (adSet as { status?: string }).status ?? status ?? 'PAUSED';
     return NextResponse.json({
       success: true,
       adSet: {
         id: adSet.id,
         name: adSet.name,
         campaignId: adSet.campaign_id,
-        status: adSet.status.toLowerCase(),
+        status: String(statusStr).toLowerCase(),
         createdAt: adSet.created_time
       }
     });

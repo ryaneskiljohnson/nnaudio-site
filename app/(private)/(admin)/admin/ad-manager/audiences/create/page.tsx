@@ -448,25 +448,26 @@ export default function CreateAudiencePage() {
     setSuccess('');
 
     try {
-      // In real implementation, make API call to create audience
+      const subtype = audienceData.type === 'lookalike' ? 'LOOKALIKE' : 'CUSTOM';
       const response = await fetch('/api/facebook-ads/audiences', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(audienceData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: audienceData.name.trim(),
+          description: audienceData.description?.trim() || '',
+          subtype
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to create audience');
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create audience');
       }
 
       setSuccess('Audience created successfully!');
-      setTimeout(() => {
-        router.push('/admin/ad-manager/audiences');
-      }, 1500);
-    } catch (error) {
-      setError('Failed to create audience. Please try again.');
+      setTimeout(() => router.push('/admin/ad-manager/audiences'), 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create audience. Please try again.');
     } finally {
       setSaving(false);
     }

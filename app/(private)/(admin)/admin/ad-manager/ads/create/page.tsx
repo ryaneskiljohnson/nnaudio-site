@@ -574,7 +574,9 @@ export default function CreateAdPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [adSets, setAdSets] = useState<any[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  
+  const [imageHash, setImageHash] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const [adData, setAdData] = useState<AdData>({
     campaignId: searchParams.get('campaignId') || '',
     adSetId: searchParams.get('adSetId') || '',
@@ -635,61 +637,82 @@ export default function CreateAdPage() {
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      // Validate file size
-      const maxSize = adData.creative.type === 'image' ? 10 * 1024 * 1024 : 100 * 1024 * 1024; // 10MB for images, 100MB for videos
-      if (file.size > maxSize) {
-        alert(`File too large. Maximum size is ${adData.creative.type === 'image' ? '10MB' : '100MB'}`);
-        return;
-      }
-
-      setUploadedFile(file);
-      // In a real implementation, you would upload to a cloud storage service
-      // For now, we'll just use a placeholder URL
-      const placeholderUrl = `/images/uploaded-${file.name}`;
-      
-      if (adData.creative.type === 'image') {
-        setAdData({
-          ...adData,
-          creative: { ...adData.creative, imageUrl: placeholderUrl }
-        });
-      } else {
-        setAdData({
-          ...adData,
-          creative: { ...adData.creative, videoUrl: placeholderUrl }
-        });
+    if (!file) return;
+    const maxSize = adData.creative.type === 'image' ? 10 * 1024 * 1024 : 100 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert(`File too large. Maximum size is ${adData.creative.type === 'image' ? '10MB' : '100MB'}`);
+      return;
+    }
+    setUploadError(null);
+    setUploadedFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    if (adData.creative.type === 'image') {
+      setAdData(prev => ({ ...prev, creative: { ...prev.creative, imageUrl: previewUrl } }));
+    } else {
+      setAdData(prev => ({ ...prev, creative: { ...prev.creative, videoUrl: previewUrl } }));
+    }
+    if (adData.creative.type === 'image') {
+      try {
+        const formData = new FormData();
+        formData.append('file', file, file.name);
+        const res = await fetch('/api/facebook-ads/ad-images', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success && data.hash) {
+          setImageHash(data.hash);
+        } else {
+          setUploadError(data.error || 'Upload failed');
+          setImageHash(null);
+        }
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : 'Upload failed');
+        setImageHash(null);
       }
     }
   };
 
   const handleCreateAd = async (isDraft: boolean = false) => {
     setIsSubmitting(true);
-    
     try {
-      const finalAdData = {
-        ...adData,
-        status: isDraft ? 'paused' : 'active'
+      const status = isDraft ? 'paused' : 'active';
+      const link = adData.creative.linkUrl?.trim() || '';
+      const message = adData.creative.body?.trim() || '';
+      const headline = adData.creative.title?.trim() || '';
+
+      let body: Record<string, unknown> = {
+        name: adData.name,
+        adSetId: adData.adSetId,
+        status,
+        creative: adData.creative
       };
+
+      if (imageHash && link && message) {
+        body = {
+          name: adData.name,
+          adSetId: adData.adSetId,
+          status,
+          image_hash: imageHash,
+          link,
+          message,
+          headline: headline || undefined
+        };
+      }
 
       const response = await fetch('/api/facebook-ads/ads', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(finalAdData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
       });
 
       const data = await response.json();
-      
       if (data.success) {
         router.push('/admin/ad-manager/campaigns');
       } else {
-        console.error('Failed to create ad:', data.error);
+        setUploadError(data.error || 'Failed to create ad');
       }
     } catch (error) {
-      console.error('Error creating ad:', error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to create ad');
     } finally {
       setIsSubmitting(false);
     }
@@ -697,9 +720,10 @@ export default function CreateAdPage() {
 
   const isStepValid = (step: number) => {
     switch (step) {
-      case 0: return adData.campaignId && adData.adSetId;
-      case 1: return adData.name && adData.creative.title && adData.creative.body && 
-                     (adData.creative.imageUrl || adData.creative.videoUrl || uploadedFile);
+      case 0: return !!adData.campaignId && !!adData.adSetId;
+      case 1: return !!adData.name && !!adData.creative.body && !!adData.creative.linkUrl &&
+                     (adData.creative.imageUrl || adData.creative.videoUrl || uploadedFile) &&
+                     (adData.creative.type !== 'image' || imageHash);
       case 2: return true;
       default: return false;
     }
@@ -723,6 +747,12 @@ export default function CreateAdPage() {
           Design and launch your advertising creative across Facebook and Instagram
         </Subtitle>
       </Header>
+
+      {uploadError && (
+        <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#ef4444' }}>
+          {uploadError}
+        </div>
+      )}
 
       <StepIndicator>
         {steps.map((step, index) => (

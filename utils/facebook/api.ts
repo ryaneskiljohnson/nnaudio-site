@@ -139,8 +139,8 @@ export class FacebookAdsAPI {
     // Add access token to params
     params.access_token = this.accessToken;
     
-    // Build query string for GET requests or if params are needed
-    if (method === 'GET' || Object.keys(params).length > 1) {
+    // Build query string for GET/DELETE or when params exist (e.g. access_token)
+    if (method === 'GET' || method === 'DELETE' || Object.keys(params).length > 0) {
       const queryParams = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -337,27 +337,34 @@ export class FacebookAdsAPI {
     return response.data;
   }
 
-  // Create ad set
+  /** Create ad set. Uses form-encoded body for Meta Marketing API. */
   async createAdSet(params: CreateAdSetParams): Promise<FacebookAdSet> {
-    const adSetData = {
+    const formBody: Record<string, string> = {
+      access_token: this.accessToken,
       name: params.name,
       campaign_id: params.campaign_id,
       status: params.status,
-      targeting: params.targeting,
-      optimization_goal: params.optimization_goal,
-      billing_event: params.billing_event,
-      ...(params.daily_budget && { daily_budget: params.daily_budget * 100 }),
-      ...(params.lifetime_budget && { lifetime_budget: params.lifetime_budget * 100 }),
-      ...(params.start_time && { start_time: params.start_time }),
-      ...(params.end_time && { end_time: params.end_time }),
+      targeting: JSON.stringify(params.targeting || { geo_locations: { countries: ['US'] } }),
+      optimization_goal: params.optimization_goal || 'LINK_CLICKS',
+      billing_event: params.billing_event || 'IMPRESSIONS'
     };
+    if (params.daily_budget != null) formBody.daily_budget = String(params.daily_budget * 100);
+    if (params.lifetime_budget != null) formBody.lifetime_budget = String(params.lifetime_budget * 100);
+    if (params.start_time) formBody.start_time = params.start_time;
+    if (params.end_time) formBody.end_time = params.end_time;
 
-    return await this.makeRequest<FacebookAdSet>(
-      `act_${this.adAccountId}/adsets`,
-      'POST',
-      { access_token: this.accessToken },
-      adSetData
-    );
+    const url = `${FACEBOOK_BASE_URL}/act_${this.adAccountId}/adsets`;
+    const body = new URLSearchParams(formBody).toString();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error((result as any).error?.message || `Create ad set failed: ${response.status}`);
+    }
+    return result as FacebookAdSet;
   }
 
   // Get ads
@@ -376,15 +383,66 @@ export class FacebookAdsAPI {
     return response.data;
   }
 
-  // Create ad
+  /**
+   * Upload image to ad account; returns hash for use in ad creative.
+   * @param imageBuffer - Raw image bytes
+   * @param filename - Must include extension (e.g. image.jpg)
+   */
+  async uploadAdImage(imageBuffer: Buffer, filename: string): Promise<{ hash: string }> {
+    const form = new FormData();
+    form.append('access_token', this.accessToken);
+    form.append(filename, new Blob([new Uint8Array(imageBuffer)]), filename);
+    const url = `${FACEBOOK_BASE_URL}/act_${this.adAccountId}/adimages`;
+    const response = await fetch(url, { method: 'POST', body: form });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error((result as any).error?.message || `Upload failed: ${response.status}`);
+    }
+    const images = (result as any).images;
+    const entry = images?.[filename] || Object.values(images || {})[0];
+    const hash = entry?.hash;
+    if (!hash) throw new Error('No image hash in response');
+    return { hash };
+  }
+
+  /**
+   * Create ad creative (e.g. link ad with image). Requires page_id in object_story_spec.
+   */
+  async createAdCreative(params: { name?: string; object_story_spec: Record<string, unknown> }): Promise<{ id: string }> {
+    const body: Record<string, unknown> = {
+      name: params.name || 'Creative',
+      object_story_spec: params.object_story_spec
+    };
+    const formBody = new URLSearchParams();
+    formBody.set('access_token', this.accessToken);
+    formBody.set('name', String(body.name));
+    formBody.set('object_story_spec', JSON.stringify(body.object_story_spec));
+    const url = `${FACEBOOK_BASE_URL}/act_${this.adAccountId}/adcreatives`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formBody.toString()
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      throw new Error((result as any).error?.message || `Create creative failed: ${response.status}`);
+    }
+    const id = (result as any).id;
+    if (!id) throw new Error('No creative id in response');
+    return { id };
+  }
+
+  /** Create ad. creative may be { creative_id: string } or legacy creative object. */
   async createAd(params: CreateAdParams): Promise<FacebookAd> {
+    const creative = params.creative?.creative_id != null
+      ? { creative_id: params.creative.creative_id }
+      : params.creative;
     const adData = {
       name: params.name,
       adset_id: params.adset_id,
       status: params.status,
-      creative: params.creative,
+      creative
     };
-
     return await this.makeRequest<FacebookAd>(
       `act_${this.adAccountId}/ads`,
       'POST',
@@ -465,6 +523,12 @@ export class FacebookAdsAPI {
       { fields: 'id,name,description,approximate_count,data_source' }
     );
     return response.data;
+  }
+
+  /** Delete a custom audience by ID. */
+  async deleteCustomAudience(audienceId: string): Promise<{ success: boolean }> {
+    await this.makeRequest<{ success: boolean }>(audienceId, 'DELETE');
+    return { success: true };
   }
 }
 

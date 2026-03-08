@@ -167,29 +167,54 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { 
-      name, 
-      adSetId, 
-      status, 
-      creative
+    const {
+      name,
+      adSetId,
+      status,
+      creative,
+      creative_id,
+      image_hash,
+      link,
+      message,
+      page_id
     } = body;
 
-    // Validate required fields
-    if (!name || !adSetId || !status || !creative) {
+    if (!name || !adSetId || !status) {
       return NextResponse.json({
         success: false,
-        error: 'Missing required fields: name, adSetId, status, creative'
+        error: 'Missing required fields: name, adSetId, status'
       }, { status: 400 });
     }
 
-    // Create ad
+    let creativePayload: { creative_id?: string; [k: string]: unknown } = creative || {};
+
+    if (creative_id) {
+      creativePayload = { creative_id };
+    } else if (image_hash && link && (message != null) && (page_id || process.env.META_PAGE_ID)) {
+      const pageId = page_id || process.env.META_PAGE_ID;
+      const { id: createdCreativeId } = await facebookAPI.createAdCreative({
+        name: name + ' Creative',
+        object_story_spec: {
+          page_id: pageId,
+          link_data: {
+            image_hash,
+            link,
+            message: String(message),
+            ...(body.headline && { name: body.headline })
+          }
+        }
+      });
+      creativePayload = { creative_id: createdCreativeId };
+    }
+
     const ad = await facebookAPI.createAd({
       name,
       adset_id: adSetId,
-      status: status.toUpperCase(),
-      creative
+      status: String(status).toUpperCase(),
+      creative: creativePayload
     });
 
+    const adStatus = (ad as { status?: string }).status;
     return NextResponse.json({
       success: true,
       ad: {
@@ -197,7 +222,7 @@ export async function POST(request: NextRequest) {
         name: ad.name,
         adSetId: ad.adset_id,
         campaignId: ad.campaign_id,
-        status: ad.status.toLowerCase(),
+        status: adStatus ? String(adStatus).toLowerCase() : (status || 'paused').toLowerCase(),
         createdAt: ad.created_time
       }
     });

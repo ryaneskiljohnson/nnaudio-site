@@ -521,12 +521,43 @@ const mockAnalytics: AnalyticsData = {
   ]
 };
 
+const emptyAnalytics: AnalyticsData = {
+  overview: { totalSpent: 0, totalImpressions: 0, totalClicks: 0, totalConversions: 0, averageCTR: 0, averageCPC: 0, averageCPM: 0, roas: 0 },
+  trends: { spentTrend: 'neutral', impressionsTrend: 'neutral', clicksTrend: 'neutral', conversionsTrend: 'neutral' },
+  platformBreakdown: { facebook: { spent: 0, impressions: 0, clicks: 0, conversions: 0 }, instagram: { spent: 0, impressions: 0, clicks: 0, conversions: 0 } },
+  campaigns: []
+};
+
 export default function AnalyticsPage() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState("last_30_days");
   const [platform, setPlatform] = useState("all");
-  const [data, setData] = useState<AnalyticsData>(mockAnalytics);
+  const [data, setData] = useState<AnalyticsData>(emptyAnalytics);
+
+  const fetchInsights = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/facebook-ads/insights?datePreset=${encodeURIComponent(dateRange)}`);
+      const json = await res.json();
+      if (json.success && json.overview) {
+        setData({
+          overview: json.overview,
+          trends: json.trends || emptyAnalytics.trends,
+          platformBreakdown: json.platformBreakdown || emptyAnalytics.platformBreakdown,
+          campaigns: Array.isArray(json.campaigns) ? json.campaigns : emptyAnalytics.campaigns
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch insights', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [dateRange]);
+
+  useEffect(() => {
+    if (user) fetchInsights();
+  }, [user, fetchInsights]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -599,7 +630,7 @@ export default function AnalyticsPage() {
             Export
           </Button>
           <Button
-            onClick={() => setLoading(true)}
+            onClick={() => fetchInsights()}
             disabled={loading}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
