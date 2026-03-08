@@ -8,16 +8,16 @@ import { NextRequest } from 'next/server';
 import { POST } from '../campaigns/route';
 
 describe('POST /api/facebook-ads/campaigns', () => {
-  const originalEnv = process.env;
+  const originalEnv = { ...process.env };
 
   beforeEach(() => {
-    process.env = { ...originalEnv };
-    process.env.NODE_ENV = 'development';
-    process.env.FACEBOOK_MOCK_CONNECTION = 'true';
+    const env = process.env as NodeJS.ProcessEnv & { NODE_ENV?: string; FACEBOOK_MOCK_CONNECTION?: string };
+    env.NODE_ENV = 'development';
+    env.FACEBOOK_MOCK_CONNECTION = 'true';
   });
 
   afterEach(() => {
-    process.env = originalEnv;
+    Object.assign(process.env, originalEnv);
   });
 
   it('returns 200 and campaign when mock is enabled with valid body', async () => {

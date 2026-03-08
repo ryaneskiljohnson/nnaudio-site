@@ -78,6 +78,7 @@ describe('Audience delete confirmation modal', () => {
   const mockAudience: Audience = {
     id: 'a1',
     name: 'Test Audience',
+    description: null,
     approximate_count: 1000,
     subscriber_count: null,
     created_at: '2024-01-01T00:00:00Z',
