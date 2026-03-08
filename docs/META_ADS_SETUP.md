@@ -15,6 +15,41 @@ This site is already wired for Meta (Facebook/Instagram) ads: **Meta Pixel** (br
 
 ---
 
+## Continue setup for nnaud.io (next steps)
+
+Do these in order so tracking and ads are ready:
+
+1. **Confirm CAPI is working (if you haven’t)**  
+   If production CAPI ever returned "Malformed access token", regenerate the token and push it:
+   ```bash
+   ./scripts/set-meta-token.sh 'YOUR_NEW_TOKEN'
+   ./scripts/push-meta-token-to-vercel.sh
+   vercel --prod
+   ```
+   Then test: [NNAudio pixel → Test events](https://eventsmanager.facebook.com/events_manager2/list/dataset/1072073301239581/test_events?business_id=1210690866895415), get a test code, and send a test event (see "Production CAPI" section below). You should see `{"success":true}` and the event in Test events.
+
+2. **Verify the domain in Meta**  
+   [Meta Business Suite → Brand Safety → Domains](https://business.facebook.com/settings/owned-domains) → **Add** → **Create a domain** → enter **nnaud.io** → choose **DNS verification**. Meta will show a unique verification code. Add the TXT record below to your DNS; verification can take a few minutes.
+
+   **DNS records to add for nnaud.io (Meta domain verification):**
+   - **Type:** `TXT`
+   - **Host / Name:**  
+     - For root domain: use `@` or `nnaud.io` (depending on your DNS provider; e.g. Cloudflare: `@`, some hosts: leave blank or `nnaud.io`).  
+     - If Meta instructs a specific host (e.g. `_facebook-domain-verification` or a subdomain), use that exactly.
+   - **Value / Content:** The verification code Meta shows in the Domains flow (e.g. a long alphanumeric string). Copy it exactly; no extra spaces or newlines.
+   - **TTL:** Default (e.g. 3600) is fine.
+   - After saving the record, in Meta click **Verify**. If verification fails, wait a few minutes for DNS propagation and try again.
+
+3. **Confirm events in Events Manager**  
+   In [Events Manager](https://business.facebook.com/events_manager2) select the NNAudio dataset (pixel `1072073301239581`). Use **Test events** with URL `https://nnaud.io` and click "Test Events" to open the site; browse and trigger PageView, ViewContent, AddToCart, etc., and confirm they appear. Once you see live traffic, the **Overview** tab will start showing activity (may take a few hours).
+
+4. **Create your first ad**  
+   Go to [Meta Ads Manager](https://adsmanager.facebook.com) (same Business account that owns the pixel). Create a campaign → choose an objective (e.g. **Sales** or **Traffic**). In the ad set, under **Conversions**, select the pixel and a conversion event (e.g. **Purchase**, **AddToCart**, or **ViewContent**). Set audience, budget, and placements, then create the ad. The pixel and CAPI will send events so Meta can optimize and report.
+
+For in-app campaign management (create/pause campaigns from the NNAudio admin), see [AD_MANAGER_README.md](./AD_MANAGER_README.md) (Facebook app + OAuth setup).
+
+---
+
 ## NNAudio pixel – configuration status
 
 | Item | Status |
