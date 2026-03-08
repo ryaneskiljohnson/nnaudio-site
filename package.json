@@ -16,7 +16,9 @@
     "icons:favicon": "bun run scripts/generate-favicon.ts",
     "ios:app-icon": "node scripts/generate-ios-app-icon.mjs",
     "build:rag": "npx tsx scripts/build-rag-knowledge.ts",
-    "verify:rag": "npx tsx scripts/verify-rag.ts"
+    "verify:rag": "npx tsx scripts/verify-rag.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "packageManager": "bun@1.2.2",
   "overrides": {
@@ -80,6 +82,10 @@
     "whatwg-url": "^16.0.1"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vitest": "^3.2.4",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/jest-dom": "^6.6.3",
     "@eslint/eslintrc": "^3.3.3",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/jsonwebtoken": "^9.0.10",
