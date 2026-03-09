@@ -56,7 +56,7 @@ Use this with the browser MCP or manually to test every feature and subfeature.
 ## 4. Create Campaign (`/admin/ad-manager/campaigns/create`)
 
 - [x] Navigate to `/admin/ad-manager/campaigns/create`
-- [x] Form: Name, Objective, Description, **Special Ad Category (Meta)** (None / Housing / Employment / Financial products & services / Issues, elections or politics), Budget type/amount, Schedule (start/end)
+- [x] Form: Name, Objective, Description, **Buying type** (Auction / Reservation), **Special Ad Category (Meta)** (None / Housing / Employment / Credit / Social issues, elections or politics), **Budget level** (Set budget at ad set level vs campaign level); when campaign level: Budget & Schedule section visible
 - [x] **Save as Draft** / **Create & Launch** submits; success redirects or shows message (or 401 if Facebook not connected)
 - [x] **Back** → `/admin/ad-manager` (Back to Ad Manager)
 
@@ -67,8 +67,8 @@ Use this with the browser MCP or manually to test every feature and subfeature.
 ## 5. Edit Campaign (`/admin/ad-manager/campaigns/[id]/edit`)
 
 - [x] From campaigns list, open a campaign edit page
-- [x] Form shows campaign name, objective, status, **Special Ad Category (Meta)** dropdown, platforms (Facebook/Instagram), budget, schedule
-- [x] Change name or special ad category and **Save** → success message or redirect
+- [x] Form shows campaign name, objective, status, **Buying type** (Auction / Reservation), **Special Ad Category (Meta)** dropdown, platforms (Facebook/Instagram), budget, schedule
+- [x] Change name, buying type, or special ad category and **Save** → success message or redirect
 - [x] **Back to Campaigns** → `/admin/ad-manager/campaigns`
 - [x] No runtime error when `campaign.platforms`, budget, schedule, or `special_ad_categories` are missing (API returns normalized shape)
 
@@ -79,11 +79,28 @@ Use this with the browser MCP or manually to test every feature and subfeature.
 ## 6. Create Ad Set (`/admin/ad-manager/campaigns/[id]/adsets/create`)
 
 - [x] From campaign detail or campaigns list, open **Create ad set** for a campaign
-- [x] Form: Name, Status, Daily budget, Optimization goal, Billing event
+- [x] Form: Name, Status, **Budget type** (Daily / Lifetime), Daily or Lifetime budget, **Countries** (comma-separated, e.g. US, CA, GB), Optimization goal, Billing event (default Link clicks), **No end date** checkbox, Start/End time when applicable
 - [x] Submit creates ad set and redirects or shows success
 - [x] **Back** returns to campaign context
 
-**Browser tested:** Navigated to `/admin/ad-manager/campaigns/1/adsets/create`. Form has name, Status (Paused/Active), daily budget spinbutton, Optimization goal (Link clicks, Impressions, Reach), Billing event (Impressions, Link clicks), **Create ad set** button, **Back to campaign** link.
+**Browser tested:** Navigated to `/admin/ad-manager/campaigns/1/adsets/create`. Form has name, Status (Paused/Active), budget type, daily/lifetime budget, countries, Optimization goal, Billing event, **Create ad set** button, **Back to campaign** link.
+
+## 6b. Ad Sets list (`/admin/ad-manager/campaigns/adsets`)
+
+- [ ] Navigate to `/admin/ad-manager/campaigns/adsets`
+- [ ] **Campaign** filter: "All campaigns" or select a campaign; when selected, **Create ad set** links to `campaigns/[id]/adsets/create` ("Create ad set in this campaign")
+- [ ] Each ad set card shows: name, campaign name, budget, **optimization goal** (e.g. Link clicks), **countries** (e.g. US, CA) when returned by API
+- [ ] Edit → ad set edit; campaign icon → campaign edit; plus → create ad set in that campaign
+
+---
+
+## 6c. Edit Ad Set (`/admin/ad-manager/campaigns/adsets/[id]/edit`)
+
+- [ ] From ad sets list, open **Edit** on an ad set
+- [ ] Form: Name, Status, **Budget type** (Daily / Lifetime), Daily or Lifetime budget, **Countries** (comma-separated), Optimization goal, Billing event, Start time, **No end date** checkbox, End time when unchecked
+- [ ] **Save changes** sends PUT with targeting, budget, noEndDate/endTime; success redirects to ad sets list
+- [ ] **Back** → campaign edit (when opened from campaign context) or Ad Sets list
+- [ ] **Delete ad set** opens confirmation modal; confirm removes ad set
 
 ---
 

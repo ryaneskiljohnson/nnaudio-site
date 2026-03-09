@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Ad Manager — Settings: Facebook connection, ad account, app credentials. Connect to use Campaigns, Ad Sets, and Ads (Meta hierarchy).
+ * @module ad-manager/settings
+ */
 "use client";
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
@@ -523,7 +527,7 @@ export default function AdManagerSettingsPage() {
           Ad Manager Settings
         </Title>
         <Subtitle>
-          Configure your Facebook Ads integration and campaign preferences
+          Connect Facebook to manage campaigns, ad sets, and ads. Configure app credentials and ad account.
         </Subtitle>
       </Header>
 

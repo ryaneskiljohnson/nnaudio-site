@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Ad Manager — Campaigns list. Expandable cards show ad sets and ads; Create campaign, Edit, Pause/Play, Delete. Meta: Campaign → Ad Set → Ad.
+ * @module ad-manager/campaigns/page
+ */
 "use client";
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
@@ -29,6 +33,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CAMPAIGN_OBJECTIVES } from "@/utils/facebook/api";
 
 const Container = styled.div`
   width: 100%;
@@ -337,6 +342,26 @@ const EmptyStateIcon = styled.div`
   opacity: 0.5;
 `;
 
+/** Prominent button-style link for "Create ad set" so the action is easy to find. */
+const CreateAdSetButton = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+
+  &:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+`;
+
 const LoadingState = styled.div`
   display: flex;
   align-items: center;
@@ -490,6 +515,8 @@ interface Campaign {
   name: string;
   status: 'active' | 'paused' | 'ended';
   objective: string;
+  buying_type?: string;
+  special_ad_categories?: string[];
   platform: 'facebook' | 'instagram';
   budget: number;
   spent: number;
@@ -606,7 +633,7 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({
                   <span>Status: {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}</span>
                   <span>Budget: {formatCurrency(campaign.budget)}</span>
                   <span>Spent: {formatCurrency(campaign.spent)}</span>
-                  <span>Objective: {campaign.objective}</span>
+                  <span>Objective: {CAMPAIGN_OBJECTIVES[campaign.objective as keyof typeof CAMPAIGN_OBJECTIVES] ?? campaign.objective}</span>
                   <span>Ad Sets: {campaign.adSets}</span>
                   <span>Ads: {campaign.ads}</span>
                 </CampaignInfoDetails>
@@ -687,7 +714,7 @@ export default function CampaignsPage() {
 
   const fetchAdSets = async (campaignId: string) => {
     try {
-      const response = await fetch(`/api/facebook-ads/adsets?campaignId=${campaignId}`);
+      const response = await fetch(`/api/facebook-ads/adsets?campaignId=${campaignId}`, { credentials: "include" });
       const data = await response.json();
       if (data.success) {
         setAdSets(prev => ({ ...prev, [campaignId]: data.adSets }));
@@ -879,7 +906,10 @@ export default function CampaignsPage() {
                 <CampaignDetails>
                   <CampaignName>{campaign.name}</CampaignName>
                   <CampaignMeta>
-                    {campaign.objective} • Budget: {formatCurrency(campaign.budget)} • Spent: {formatCurrency(campaign.spent)}
+                    {CAMPAIGN_OBJECTIVES[campaign.objective as keyof typeof CAMPAIGN_OBJECTIVES] ?? campaign.objective}
+                    {campaign.buying_type && campaign.buying_type !== 'AUCTION' ? ` • ${campaign.buying_type}` : ''}
+                    {campaign.special_ad_categories?.length ? ` • ${campaign.special_ad_categories.join(', ')}` : ''}
+                    {' • Budget: '}{formatCurrency(campaign.budget)}{' • Spent: '}{formatCurrency(campaign.spent)}
                   </CampaignMeta>
                 </CampaignDetails>
               </CampaignInfo>
@@ -957,9 +987,15 @@ export default function CampaignsPage() {
                   <TabContent>
                     {activeTabs[campaign.id] === 'adsets' && (
                       <>
-                      <div style={{ marginBottom: '0.75rem' }}>
-                        <Link href={`/admin/ad-manager/campaigns/${campaign.id}/adsets/create`} style={{ color: 'var(--primary)', fontSize: '0.9rem' }}>
-                          + Create ad set
+                      <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        <CreateAdSetButton href={`/admin/ad-manager/campaigns/${campaign.id}/adsets/create`}>
+                          <FaPlus /> Create ad set
+                        </CreateAdSetButton>
+                        <Link
+                          href={`/admin/ad-manager/campaigns/adsets?campaignId=${campaign.id}`}
+                          style={{ color: 'var(--primary)', fontSize: '0.9rem', textDecoration: 'none' }}
+                        >
+                          View all ad sets
                         </Link>
                       </div>
                       <AdSetGrid>
@@ -980,7 +1016,7 @@ export default function CampaignsPage() {
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                   <SmallActionButton
-                                    onClick={() => console.log('Edit ad set:', adSet.id)}
+                                    onClick={() => router.push(`/admin/ad-manager/campaigns/adsets/${adSet.id}/edit`)}
                                     title="Edit Ad Set"
                                   >
                                     <FaCog />
@@ -1000,9 +1036,9 @@ export default function CampaignsPage() {
                             <EmptyStateIcon><FaUsers /></EmptyStateIcon>
                             <h3>No ad sets yet</h3>
                             <p>Create your first ad set to start targeting audiences</p>
-                            <Link href={`/admin/ad-manager/campaigns/${campaign.id}/adsets/create`} style={{ marginTop: '1rem', display: 'inline-block', color: 'var(--primary)' }}>
-                              Create ad set
-                            </Link>
+                            <CreateAdSetButton href={`/admin/ad-manager/campaigns/${campaign.id}/adsets/create`} style={{ marginTop: '1rem' }}>
+                              <FaPlus /> Create ad set
+                            </CreateAdSetButton>
                           </EmptyState>
                         )}
                       </AdSetGrid>
@@ -1010,6 +1046,12 @@ export default function CampaignsPage() {
                     )}
 
                     {activeTabs[campaign.id] === 'ads' && (
+                      <>
+                      <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        <CreateAdSetButton href={`/admin/ad-manager/ads/create?campaignId=${campaign.id}`} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                          <FaPlus /> Create ad
+                        </CreateAdSetButton>
+                      </div>
                       <AdSetGrid>
                         {ads[campaign.id]?.length > 0 ? (
                           ads[campaign.id].map((ad) => (
@@ -1052,6 +1094,7 @@ export default function CampaignsPage() {
                           </EmptyState>
                         )}
                       </AdSetGrid>
+                      </>
                     )}
                   </TabContent>
                 </CampaignContent>
@@ -1065,7 +1108,10 @@ export default function CampaignsPage() {
             <FaChartLine />
           </EmptyStateIcon>
           <h3>No campaigns yet</h3>
-          <p>Create your first advertising campaign to get started</p>
+          <p>Create a campaign first, then add ad sets (budget and targeting) and ads. Campaign → Ad Set → Ad.</p>
+          <Link href="/admin/ad-manager/campaigns/create" style={{ marginTop: "1rem", display: "inline-block", color: "var(--primary)", fontWeight: 600 }}>
+            Create campaign
+          </Link>
         </EmptyState>
       )}
     </Container>

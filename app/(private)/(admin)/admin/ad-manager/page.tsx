@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Ad Manager dashboard. Navigation and cards follow Meta hierarchy: Campaign → Ad Set → Ad.
+ * @module ad-manager/page
+ */
 "use client";
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
@@ -22,6 +26,7 @@ import {
   FaCheckCircle,
   FaInfoCircle,
   FaImage,
+  FaBullseye,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import LoadingComponent from "@/components/common/LoadingComponent";
@@ -869,9 +874,60 @@ export default function AdManagerPage() {
                 <ActionIcon>
                   <FaPlus />
                 </ActionIcon>
-                <ActionTitle>Create New Campaign</ActionTitle>
+                <ActionTitle>Create Campaign</ActionTitle>
                 <ActionDescription>
-                  Launch a new advertising campaign across Facebook and Instagram
+                  Set objective, buying type, and budget level (Meta: campaign level)
+                </ActionDescription>
+              </ActionCard>
+            </Link>
+
+            <Link href="/admin/ad-manager/campaigns/adsets/create">
+              <ActionCard
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.15 }}
+                whileHover={{ y: -4 }}
+              >
+                <ActionIcon>
+                  <FaBullseye />
+                </ActionIcon>
+                <ActionTitle>Create Ad Set</ActionTitle>
+                <ActionDescription>
+                  Choose a campaign, then set budget, targeting, and optimization
+                </ActionDescription>
+              </ActionCard>
+            </Link>
+
+            <Link href="/admin/ad-manager/campaigns/adsets">
+              <ActionCard
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                whileHover={{ y: -4 }}
+              >
+                <ActionIcon>
+                  <FaBullseye />
+                </ActionIcon>
+                <ActionTitle>View Ad Sets</ActionTitle>
+                <ActionDescription>
+                  List all ad sets; filter by campaign. Edit budget and targeting
+                </ActionDescription>
+              </ActionCard>
+            </Link>
+
+            <Link href="/admin/ad-manager/ads/create">
+              <ActionCard
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                whileHover={{ y: -4 }}
+              >
+                <ActionIcon>
+                  <FaImage />
+                </ActionIcon>
+                <ActionTitle>Create Ad</ActionTitle>
+                <ActionDescription>
+                  Create an ad within a campaign and ad set — creative builder
                 </ActionDescription>
               </ActionCard>
             </Link>
@@ -880,7 +936,7 @@ export default function AdManagerPage() {
               <ActionCard
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
                 whileHover={{ y: -4 }}
               >
                 <ActionIcon>
@@ -897,7 +953,7 @@ export default function AdManagerPage() {
               <ActionCard
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
+                transition={{ duration: 0.6, delay: 0.45 }}
                 whileHover={{ y: -4 }}
               >
                 <ActionIcon>
@@ -906,23 +962,6 @@ export default function AdManagerPage() {
                 <ActionTitle>View Analytics</ActionTitle>
                 <ActionDescription>
                   Analyze campaign performance and optimize your ad spend
-                </ActionDescription>
-              </ActionCard>
-            </Link>
-
-            <Link href="/admin/ad-manager/ads/create">
-              <ActionCard
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                whileHover={{ y: -4 }}
-              >
-                <ActionIcon>
-                  <FaImage />
-                </ActionIcon>
-                <ActionTitle>Create Ad</ActionTitle>
-                <ActionDescription>
-                  Design and launch individual ads with creative builder
                 </ActionDescription>
               </ActionCard>
             </Link>

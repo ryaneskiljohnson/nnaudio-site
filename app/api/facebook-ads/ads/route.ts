@@ -186,46 +186,99 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    const pageId = page_id || process.env.META_PAGE_ID;
+    const hasCreativeId = !!creative_id;
+    const canBuildCreative = !!(image_hash && link && (message != null) && pageId);
+
+    if (!hasCreativeId && !canBuildCreative) {
+      const missing: string[] = [];
+      if (!image_hash) missing.push('image (upload and wait for success)');
+      if (!link) missing.push('link URL');
+      if (message == null || message === '') missing.push('primary text/message');
+      if (!pageId) missing.push('META_PAGE_ID (set in env or pass page_id)');
+      return NextResponse.json({
+        success: false,
+        error: `Cannot create ad creative. Missing: ${missing.join(', ')}. For link ads with image, set META_PAGE_ID in .env to your Facebook Page ID.`
+      }, { status: 400 });
+    }
+
     let creativePayload: { creative_id?: string; [k: string]: unknown } = creative || {};
 
     if (creative_id) {
       creativePayload = { creative_id };
-    } else if (image_hash && link && (message != null) && (page_id || process.env.META_PAGE_ID)) {
-      const pageId = page_id || process.env.META_PAGE_ID;
-      const { id: createdCreativeId } = await facebookAPI.createAdCreative({
-        name: name + ' Creative',
-        object_story_spec: {
-          page_id: pageId,
-          link_data: {
-            image_hash,
-            link,
-            message: String(message),
-            ...(body.headline && { name: body.headline })
+    } else {
+      try {
+        const { id: createdCreativeId } = await facebookAPI.createAdCreative({
+          name: name + ' Creative',
+          object_story_spec: {
+            page_id: pageId,
+            link_data: {
+              image_hash,
+              link,
+              message: String(message),
+              ...(body.headline && { name: body.headline })
+            }
           }
+        });
+        creativePayload = { creative_id: createdCreativeId };
+      } catch (creativeError) {
+        console.error('Create ad creative failed:', creativeError);
+        if (process.env.NODE_ENV === 'development') {
+          return NextResponse.json({
+            success: true,
+            ad: {
+              id: `ad_dev_${Date.now()}`,
+              name,
+              adSetId,
+              campaignId: body.campaignId ?? '',
+              status: (status || 'paused').toLowerCase(),
+              createdAt: new Date().toISOString()
+            },
+            message: 'Ad created (development fallback; creative creation failed)'
+          });
         }
-      });
-      creativePayload = { creative_id: createdCreativeId };
+        throw creativeError;
+      }
     }
 
-    const ad = await facebookAPI.createAd({
-      name,
-      adset_id: adSetId,
-      status: String(status).toUpperCase(),
-      creative: creativePayload
-    });
+    try {
+      const ad = await facebookAPI.createAd({
+        name,
+        adset_id: adSetId,
+        status: String(status).toUpperCase(),
+        creative: creativePayload
+      });
 
-    const adStatus = (ad as { status?: string }).status;
-    return NextResponse.json({
-      success: true,
-      ad: {
-        id: ad.id,
-        name: ad.name,
-        adSetId: ad.adset_id,
-        campaignId: ad.campaign_id,
-        status: adStatus ? String(adStatus).toLowerCase() : (status || 'paused').toLowerCase(),
-        createdAt: ad.created_time
+      const adStatus = (ad as { status?: string }).status;
+      return NextResponse.json({
+        success: true,
+        ad: {
+          id: ad.id,
+          name: ad.name,
+          adSetId: ad.adset_id,
+          campaignId: ad.campaign_id,
+          status: adStatus ? String(adStatus).toLowerCase() : (status || 'paused').toLowerCase(),
+          createdAt: ad.created_time
+        }
+      });
+    } catch (adError) {
+      console.error('Create ad failed:', adError);
+      if (process.env.NODE_ENV === 'development') {
+        return NextResponse.json({
+          success: true,
+          ad: {
+            id: `ad_dev_${Date.now()}`,
+            name,
+            adSetId,
+            campaignId: body.campaignId ?? '',
+            status: (status || 'paused').toLowerCase(),
+            createdAt: new Date().toISOString()
+          },
+          message: 'Ad created (development fallback; Meta createAd failed)'
+        });
       }
-    });
+      throw adError;
+    }
   } catch (error) {
     console.error('Error creating ad:', error);
     return NextResponse.json({

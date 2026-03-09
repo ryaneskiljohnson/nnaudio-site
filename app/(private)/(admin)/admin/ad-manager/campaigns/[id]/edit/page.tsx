@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Ad Manager — Edit campaign: name, objective, status, buying type, special ad category, platforms, budget, schedule. PUT to campaigns/[id].
+ * @module ad-manager/campaigns/[id]/edit
+ */
 "use client";
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
@@ -10,8 +14,6 @@ import {
   FaArrowLeft,
   FaDollarSign,
   FaCalendarAlt,
-  FaPlay,
-  FaPause,
   FaBullseye,
   FaCheckCircle,
   FaExclamationTriangle,
@@ -181,53 +183,70 @@ const Select = styled.select`
   }
 `;
 
-const CheckboxGroup = styled.div`
-  display: flex;
+/** Same card-style platform selection as Create page. */
+const PlatformGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
   margin-top: 0.5rem;
-
   @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 0.5rem;
+    grid-template-columns: 1fr;
   }
 `;
 
-const CheckboxLabel = styled.label`
+const PlatformOption = styled.label<{ $selected: boolean }>`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  color: var(--text);
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 2px solid ${props => props.$selected ? 'var(--primary)' : 'rgba(255, 255, 255, 0.1)'};
+  background-color: ${props => props.$selected ? 'rgba(108, 99, 255, 0.1)' : 'rgba(255, 255, 255, 0.02)'};
   cursor: pointer;
+  transition: all 0.3s ease;
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  input[type="checkbox"] {
+    display: none;
+  }
+  svg {
+    font-size: 2rem;
+  }
 `;
 
-const Checkbox = styled.input`
-  margin: 0;
+const PlatformInfo = styled.div`
+  flex: 1;
 `;
 
-const StatusBadge = styled.div<{ $status: string }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
+const PlatformName = styled.div`
   font-weight: 600;
-  background: ${props => {
-    switch (props.$status) {
-      case 'active': return 'rgba(34, 197, 94, 0.2)';
-      case 'paused': return 'rgba(245, 158, 11, 0.2)';
-      case 'ended': return 'rgba(239, 68, 68, 0.2)';
-      default: return 'rgba(107, 114, 128, 0.2)';
-    }
-  }};
-  color: ${props => {
-    switch (props.$status) {
-      case 'active': return '#22c55e';
-      case 'paused': return '#f59e0b';
-      case 'ended': return '#ef4444';
-      default: return '#6b7280';
-    }
-  }};
+  font-size: 1.1rem;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+`;
+
+const PlatformDescription = styled.div`
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+`;
+
+const BudgetGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+/** Read-only field display (e.g. objective, budget level). */
+const ReadOnlyValue = styled.div`
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  font-size: 1rem;
 `;
 
 const ActionButtons = styled.div`
@@ -297,16 +316,30 @@ const SuccessMessage = styled.div`
   gap: 0.5rem;
 `;
 
+const SPECIAL_AD_CATEGORY_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'None' },
+  { value: 'HOUSING', label: 'Housing' },
+  { value: 'EMPLOYMENT', label: 'Employment' },
+  { value: 'CREDIT', label: 'Credit' },
+  { value: 'SOCIAL_ISSUES_ELECTIONS_POLITICS', label: 'Social issues, elections or politics' },
+];
+
 interface Campaign {
   id: string;
   name: string;
   description?: string;
   objective: string;
   status: 'active' | 'paused' | 'ended';
+  /** Meta: AUCTION (default) or RESERVATION */
+  buying_type?: string;
+  /** Meta: special ad categories; empty for standard ads */
+  special_ad_categories?: string[];
   platforms?: {
     facebook: boolean;
     instagram: boolean;
   };
+  /** From API: campaign = CBO; ad_set = budget per ad set. */
+  budgetLevel?: 'campaign' | 'ad_set';
   budget?: {
     type: 'daily' | 'lifetime';
     amount: number;
@@ -364,7 +397,11 @@ export default function EditCampaignPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...campaign, special_ad_categories: [] }),
+        body: JSON.stringify({
+          ...campaign,
+          special_ad_categories: campaign.special_ad_categories ?? [],
+          buying_type: campaign.buying_type ?? 'AUCTION',
+        }),
       });
 
       const data = await response.json();
@@ -445,55 +482,45 @@ export default function EditCampaignPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
+        {/* 1. Campaign basics — same order as Create */}
         <Section>
           <SectionTitle>
             <FaBullseye />
-            Campaign Details
+            Campaign details
           </SectionTitle>
-          
           <FormGroup>
-            <Label>Campaign Name</Label>
+            <Label>Campaign name</Label>
             <Input
               type="text"
               value={campaign.name ?? ''}
               onChange={(e) => updateCampaign({ name: e.target.value })}
-              placeholder="Enter campaign name"
+              placeholder="Enter a descriptive name for your campaign"
             />
           </FormGroup>
-
           <FormGroup>
-            <Label>Description (Optional)</Label>
+            <Label>Campaign objective</Label>
+            <ReadOnlyValue>
+              {CAMPAIGN_OBJECTIVES[campaign.objective as keyof typeof CAMPAIGN_OBJECTIVES] ?? campaign.objective}
+            </ReadOnlyValue>
+            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Objective cannot be changed after creation.
+            </p>
+          </FormGroup>
+          <FormGroup>
+            <Label>Description (optional)</Label>
             <TextArea
               value={campaign.description || ''}
               onChange={(e) => updateCampaign({ description: e.target.value })}
-              placeholder="Describe your campaign objectives..."
+              placeholder="Describe your campaign goals and target audience"
             />
           </FormGroup>
+        </Section>
 
+        {/* 2. Status — same concept as Create (Save as draft / Create & launch) */}
+        <Section>
+          <SectionTitle>Campaign status</SectionTitle>
           <FormGroup>
-            <Label>Campaign Objective</Label>
-            <Select
-              value={campaign.objective ?? ''}
-              onChange={(e) => updateCampaign({ objective: e.target.value })}
-            >
-              {Object.entries(CAMPAIGN_OBJECTIVES).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </FormGroup>
-
-          <FormGroup>
-            <Label>Current Status</Label>
-            <StatusBadge $status={(campaign.status ?? 'paused') as 'active' | 'paused' | 'ended'}>
-              {(campaign.status ?? 'paused') === 'active' ? <FaPlay /> : <FaPause />}
-              {(campaign.status ?? 'paused').charAt(0).toUpperCase() + (campaign.status ?? 'paused').slice(1)}
-            </StatusBadge>
-          </FormGroup>
-
-          <FormGroup>
-            <Label>Campaign Status</Label>
+            <Label>Status</Label>
             <Select
               value={campaign.status ?? 'paused'}
               onChange={(e) => updateCampaign({ status: e.target.value as 'active' | 'paused' | 'ended' })}
@@ -505,98 +532,170 @@ export default function EditCampaignPage() {
           </FormGroup>
         </Section>
 
+        {/* 3. Settings — buying type, special ad category */}
+        <Section>
+          <SectionTitle>Settings</SectionTitle>
+          <FormGroup>
+            <Label>Buying type</Label>
+            <Select
+              value={campaign.buying_type ?? 'AUCTION'}
+              onChange={(e) => updateCampaign({ buying_type: e.target.value })}
+            >
+              <option value="AUCTION">Auction (recommended)</option>
+              <option value="RESERVATION">Reservation (reach & frequency)</option>
+            </Select>
+          </FormGroup>
+          <FormGroup>
+            <Label>Special ad category</Label>
+            <Select
+              value={(campaign.special_ad_categories ?? [])[0] ?? ''}
+              onChange={(e) => updateCampaign({
+                special_ad_categories: e.target.value ? [e.target.value] : [],
+              })}
+            >
+              {SPECIAL_AD_CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value || 'none'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </FormGroup>
+        </Section>
+
+        {/* 4. Budget level — read-only (matches Create "Where to set budget") */}
+        <Section>
+          <SectionTitle>Budget level</SectionTitle>
+          <FormGroup>
+            <ReadOnlyValue>
+              {(campaign.budgetLevel ?? 'ad_set') === 'campaign'
+                ? 'Campaign level — one budget for the whole campaign'
+                : 'Ad set level — budget set when you create each ad set'}
+            </ReadOnlyValue>
+          </FormGroup>
+        </Section>
+
+        {/* 5. Platforms — same card UI as Create */}
         <Section>
           <SectionTitle>
             <FaFacebook />
             Platforms
           </SectionTitle>
-          
-          <CheckboxGroup>
-            <CheckboxLabel>
-              <Checkbox
+          <PlatformGrid>
+            <PlatformOption $selected={campaign.platforms?.facebook ?? true}>
+              <input
                 type="checkbox"
                 checked={campaign.platforms?.facebook ?? true}
                 onChange={(e) => updateCampaign({
                   platforms: { ...(campaign.platforms ?? { facebook: true, instagram: true }), facebook: e.target.checked }
                 })}
               />
-              <FaFacebook /> Facebook
-            </CheckboxLabel>
-            <CheckboxLabel>
-              <Checkbox
+              <FaFacebook style={{ color: '#1877f2' }} />
+              <PlatformInfo>
+                <PlatformName>Facebook</PlatformName>
+                <PlatformDescription>Reach users on Facebook News Feed, Stories, and more</PlatformDescription>
+              </PlatformInfo>
+            </PlatformOption>
+            <PlatformOption $selected={campaign.platforms?.instagram ?? true}>
+              <input
                 type="checkbox"
                 checked={campaign.platforms?.instagram ?? true}
                 onChange={(e) => updateCampaign({
                   platforms: { ...(campaign.platforms ?? { facebook: true, instagram: true }), instagram: e.target.checked }
                 })}
               />
-              <FaInstagram /> Instagram
-            </CheckboxLabel>
-          </CheckboxGroup>
+              <FaInstagram style={{ color: '#e4405f' }} />
+              <PlatformInfo>
+                <PlatformName>Instagram</PlatformName>
+                <PlatformDescription>Reach users on Instagram Feed, Stories, and Reels</PlatformDescription>
+              </PlatformInfo>
+            </PlatformOption>
+          </PlatformGrid>
         </Section>
 
-        <Section>
-          <SectionTitle>
-            <FaDollarSign />
-            Budget
-          </SectionTitle>
-          
-          <FormGroup>
-            <Label>Budget Type</Label>
-            <Select
-              value={campaign.budget?.type ?? 'daily'}
-              onChange={(e) => updateCampaign({
-                budget: { ...(campaign.budget ?? { type: 'daily', amount: 0 }), type: e.target.value as 'daily' | 'lifetime' }
-              })}
-            >
-              <option value="daily">Daily Budget</option>
-              <option value="lifetime">Lifetime Budget</option>
-            </Select>
-          </FormGroup>
-
-          <FormGroup>
-            <Label>{(campaign.budget?.type ?? 'daily') === 'daily' ? 'Daily' : 'Lifetime'} Budget ($)</Label>
-            <Input
-              type="number"
-              value={campaign.budget?.amount ?? 0}
-              onChange={(e) => updateCampaign({
-                budget: { ...(campaign.budget ?? { type: 'daily', amount: 0 }), amount: parseFloat(e.target.value) || 0 }
-              })}
-              placeholder="Enter budget amount"
-              min="1"
-              step="0.01"
-            />
-          </FormGroup>
-        </Section>
-
-        <Section>
-          <SectionTitle>
-            <FaCalendarAlt />
-            Schedule
-          </SectionTitle>
-          
-          <FormGroup>
-            <Label>Start Date (Optional)</Label>
-            <Input
-              type="datetime-local"
-              value={campaign.schedule?.startDate || ''}
-              onChange={(e) => updateCampaign({
-                schedule: { ...(campaign.schedule ?? { startDate: '', endDate: '' }), startDate: e.target.value }
-              })}
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label>End Date (Optional)</Label>
-            <Input
-              type="datetime-local"
-              value={campaign.schedule?.endDate || ''}
-              onChange={(e) => updateCampaign({
-                schedule: { ...(campaign.schedule ?? { startDate: '', endDate: '' }), endDate: e.target.value }
-              })}
-            />
-          </FormGroup>
-        </Section>
+        {/* 6. Budget & schedule — only when campaign-level budget (same as Create) */}
+        {(campaign.budgetLevel ?? 'ad_set') === 'campaign' ? (
+          <Section>
+            <SectionTitle>
+              <FaDollarSign />
+              Budget & schedule (campaign level)
+            </SectionTitle>
+            <FormGroup>
+              <Label>Budget type</Label>
+              <Select
+                value={campaign.budget?.type ?? 'daily'}
+                onChange={(e) => updateCampaign({
+                  budget: { ...(campaign.budget ?? { type: 'daily', amount: 0 }), type: e.target.value as 'daily' | 'lifetime' }
+                })}
+              >
+                <option value="daily">Daily budget</option>
+                <option value="lifetime">Lifetime budget</option>
+              </Select>
+            </FormGroup>
+            <BudgetGrid>
+              {(campaign.budget?.type ?? 'daily') === 'daily' ? (
+                <FormGroup>
+                  <Label>Daily budget ($)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={0.01}
+                    value={campaign.budget?.amount ?? ''}
+                    onChange={(e) => updateCampaign({
+                      budget: { ...(campaign.budget ?? { type: 'daily', amount: 0 }), amount: parseFloat(e.target.value) || 0 }
+                    })}
+                    placeholder="10.00"
+                  />
+                </FormGroup>
+              ) : (
+                <FormGroup>
+                  <Label>Lifetime budget ($)</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={0.01}
+                    value={campaign.budget?.amount ?? ''}
+                    onChange={(e) => updateCampaign({
+                      budget: { ...(campaign.budget ?? { type: 'lifetime', amount: 0 }), amount: parseFloat(e.target.value) || 0 }
+                    })}
+                    placeholder="100.00"
+                  />
+                </FormGroup>
+              )}
+            </BudgetGrid>
+            <BudgetGrid>
+              <FormGroup>
+                <Label><FaCalendarAlt /> Start date (optional)</Label>
+                <Input
+                  type="datetime-local"
+                  value={campaign.schedule?.startDate || ''}
+                  onChange={(e) => updateCampaign({
+                    schedule: { ...(campaign.schedule ?? { startDate: '', endDate: '' }), startDate: e.target.value }
+                  })}
+                />
+              </FormGroup>
+              <FormGroup>
+                <Label><FaCalendarAlt /> End date (optional)</Label>
+                <Input
+                  type="datetime-local"
+                  value={campaign.schedule?.endDate || ''}
+                  onChange={(e) => updateCampaign({
+                    schedule: { ...(campaign.schedule ?? { startDate: '', endDate: '' }), endDate: e.target.value }
+                  })}
+                />
+              </FormGroup>
+            </BudgetGrid>
+          </Section>
+        ) : (
+          <Section>
+            <SectionTitle>
+              <FaDollarSign />
+              Budget & schedule
+            </SectionTitle>
+            <ReadOnlyValue>
+              Budget is set per ad set. Create or edit ad sets to set budgets and schedule.
+            </ReadOnlyValue>
+          </Section>
+        )}
 
         <ActionButtons>
           <Button
@@ -614,7 +713,7 @@ export default function EditCampaignPage() {
             whileTap={{ scale: 0.95 }}
           >
             <FaSave />
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving...' : 'Save changes'}
           </Button>
         </ActionButtons>
       </FormContainer>

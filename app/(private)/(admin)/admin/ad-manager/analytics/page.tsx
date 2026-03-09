@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Ad Manager — Analytics: account-level metrics and campaign performance. Date presets (last 7/30/90 days), platform breakdown, from Insights API.
+ * @module ad-manager/analytics
+ */
 "use client";
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
@@ -596,7 +600,9 @@ export default function AnalyticsPage() {
           {showContent ? "Ad Analytics" : "Ad Analytics"}
         </Title>
         <Subtitle>
-          {showContent ? "Comprehensive performance analytics for your Facebook and Instagram campaigns" : "Comprehensive performance analytics for your Facebook and Instagram campaigns"}
+          {showContent
+            ? "Account-level summary and campaign performance for the selected date range (Insights API)."
+            : "Account-level summary and campaign performance for the selected date range (Insights API)."}
         </Subtitle>
       </Header>
 

@@ -85,25 +85,33 @@ export async function GET(request: NextRequest) {
 
     const campaigns = await facebookAPI.getCampaigns();
     
-    // Transform Facebook campaigns to our format
-    const transformedCampaigns = campaigns.map(campaign => ({
-      id: campaign.id,
-      name: campaign.name,
-      status: (campaign.status ?? '').toString().toLowerCase(),
-      objective: campaign.objective,
-      platform: 'facebook', // Could be determined by placement or other factors
-      budget: campaign.daily_budget ? parseInt(campaign.daily_budget) / 100 : 0,
-      spent: 0, // Would need to fetch insights for this
-      impressions: 0, // Would need to fetch insights
-      clicks: 0, // Would need to fetch insights
-      conversions: 0, // Would need to fetch insights
-      createdAt: campaign.created_time,
-      ctr: 0,
-      cpc: 0,
-      cpm: 0,
-      adSets: 0,
-      ads: 0
-    }));
+    // Transform Facebook campaigns to our format (mirrors Meta: objective, buying_type, special_ad_categories)
+    const transformedCampaigns = campaigns.map(campaign => {
+      const raw = campaign.special_ad_categories;
+      const specialAdCategories: string[] = Array.isArray(raw)
+        ? raw
+        : typeof raw === 'string' ? (raw ? [raw] : []) : [];
+      return {
+        id: campaign.id,
+        name: campaign.name,
+        status: (campaign.status ?? '').toString().toLowerCase(),
+        objective: campaign.objective,
+        buying_type: (campaign as { buying_type?: string }).buying_type ?? 'AUCTION',
+        special_ad_categories: specialAdCategories,
+        platform: 'facebook',
+        budget: campaign.daily_budget ? parseInt(campaign.daily_budget) / 100 : 0,
+        spent: 0,
+        impressions: 0,
+        clicks: 0,
+        conversions: 0,
+        createdAt: campaign.created_time,
+        ctr: 0,
+        cpc: 0,
+        cpm: 0,
+        adSets: 0,
+        ads: 0
+      };
+    });
 
     return NextResponse.json({
       success: true,
@@ -169,7 +177,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, objective, status, dailyBudget, lifetimeBudget, startTime, endTime, description, platforms, special_ad_categories } = body;
+    const { name, objective, status, dailyBudget, lifetimeBudget, startTime, endTime, description, platforms, special_ad_categories, buying_type: buyingType } = body;
 
     // Validate required fields
     if (!name || !objective || !status) {
@@ -196,10 +204,11 @@ export async function POST(request: NextRequest) {
       objective,
       status: status.toUpperCase(),
       special_ad_categories: specialCategories,
-      daily_budget: dailyBudget,
-      lifetime_budget: lifetimeBudget,
-      start_time: startTime || undefined,
-      end_time: endTime || undefined,
+      buying_type: buyingType == null ? undefined : String(buyingType),
+      ...(dailyBudget != null ? { daily_budget: Number(dailyBudget) } : {}),
+      ...(lifetimeBudget != null ? { lifetime_budget: Number(lifetimeBudget) } : {}),
+      ...(startTime != null ? { start_time: startTime } : {}),
+      ...(endTime != null ? { end_time: endTime } : {}),
     });
 
     try {

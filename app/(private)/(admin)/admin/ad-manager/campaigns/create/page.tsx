@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Ad Manager — Create campaign: name, objective, buying type, special ad category, budget level (campaign vs ad set), budget & schedule when campaign-level.
+ * @module ad-manager/campaigns/create
+ */
 "use client";
 import React, { useState } from "react";
 import styled from "styled-components";
@@ -333,20 +337,32 @@ const Button = styled(motion.button)<{ $variant?: 'primary' | 'secondary' }>`
   }
 `;
 
+/** Meta special ad categories (required by Meta; use [] for standard ads). */
+const SPECIAL_AD_CATEGORY_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'None (standard ads)' },
+  { value: 'HOUSING', label: 'Housing' },
+  { value: 'EMPLOYMENT', label: 'Employment' },
+  { value: 'CREDIT', label: 'Credit' },
+  { value: 'SOCIAL_ISSUES_ELECTIONS_POLITICS', label: 'Social issues, elections or politics' },
+];
+
 interface CampaignData {
   name: string;
   objective: string;
   description: string;
-  platforms: {
-    facebook: boolean;
-    instagram: boolean;
-  };
+  platforms: { facebook: boolean; instagram: boolean };
+  /** Mirror Meta: set budget at campaign level or at ad set level. */
+  budgetLevel: 'campaign' | 'ad_set';
   budgetType: 'daily' | 'lifetime';
   dailyBudget: string;
   lifetimeBudget: string;
   startDate: string;
   endDate: string;
   status: 'active' | 'paused';
+  /** Meta buying type: Auction (default) or Reservation. */
+  buyingType: 'AUCTION' | 'RESERVATION';
+  /** Meta required; empty for standard ads. */
+  specialAdCategories: string[];
 }
 
 export default function CreateCampaignPage() {
@@ -358,16 +374,16 @@ export default function CreateCampaignPage() {
     name: '',
     objective: 'OUTCOME_TRAFFIC',
     description: '',
-    platforms: {
-      facebook: true,
-      instagram: false,
-    },
+    platforms: { facebook: true, instagram: true },
+    budgetLevel: 'ad_set',
     budgetType: 'daily',
     dailyBudget: '',
     lifetimeBudget: '',
-    startDate: '',
-    endDate: '',
-    status: 'paused',
+    startDate: '2025-04-01T00:00',
+    endDate: '2025-06-01T23:59',
+    status: 'active',
+    buyingType: 'AUCTION',
+    specialAdCategories: [],
   });
 
   const handleSubmit = async (e: React.FormEvent, action: 'save' | 'launch') => {
@@ -387,15 +403,16 @@ export default function CreateCampaignPage() {
           status: action === 'launch' ? 'ACTIVE' : 'PAUSED',
           description: campaignData.description || undefined,
           platforms: campaignData.platforms,
-          dailyBudget: campaignData.budgetType === 'daily' && campaignData.dailyBudget 
-            ? parseFloat(campaignData.dailyBudget) 
-            : undefined,
-          lifetimeBudget: campaignData.budgetType === 'lifetime' && campaignData.lifetimeBudget 
-            ? parseFloat(campaignData.lifetimeBudget) 
-            : undefined,
-          startTime: campaignData.startDate || undefined,
-          endTime: campaignData.endDate || undefined,
-          special_ad_categories: [],
+          buying_type: campaignData.buyingType,
+          special_ad_categories: campaignData.specialAdCategories.filter(Boolean),
+          ...(campaignData.budgetLevel === 'campaign'
+            ? {
+                dailyBudget: campaignData.budgetType === 'daily' && campaignData.dailyBudget ? parseFloat(campaignData.dailyBudget) : undefined,
+                lifetimeBudget: campaignData.budgetType === 'lifetime' && campaignData.lifetimeBudget ? parseFloat(campaignData.lifetimeBudget) : undefined,
+                startTime: campaignData.startDate || undefined,
+                endTime: campaignData.endDate || undefined,
+              }
+            : {}),
         }),
       });
 
@@ -448,6 +465,7 @@ export default function CreateCampaignPage() {
       )}
 
       <Form onSubmit={(e) => handleSubmit(e, 'save')}>
+        {/* 1. Campaign details — same order as Edit */}
         <Section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -455,11 +473,10 @@ export default function CreateCampaignPage() {
         >
           <SectionTitle>
             <FaInfoCircle />
-            Campaign Details
+            Campaign details
           </SectionTitle>
-          
           <FormGroup>
-            <Label>Campaign Name</Label>
+            <Label>Campaign name</Label>
             <Input
               type="text"
               value={campaignData.name}
@@ -468,11 +485,10 @@ export default function CreateCampaignPage() {
               required
             />
           </FormGroup>
-
           <FormGroup>
             <Label>
               <FaBullseye />
-              Campaign Objective
+              Campaign objective
             </Label>
             <Select
               value={campaignData.objective}
@@ -486,9 +502,8 @@ export default function CreateCampaignPage() {
               ))}
             </Select>
           </FormGroup>
-
           <FormGroup>
-            <Label>Description</Label>
+            <Label>Description (optional)</Label>
             <TextArea
               value={campaignData.description}
               onChange={(e) => setCampaignData({ ...campaignData, description: e.target.value })}
@@ -497,10 +512,78 @@ export default function CreateCampaignPage() {
           </FormGroup>
         </Section>
 
+        {/* 2. Settings — same as Edit */}
+        <Section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.15 }}
+        >
+          <SectionTitle>Settings</SectionTitle>
+          <FormGroup>
+            <Label>Buying type</Label>
+            <Select
+              value={campaignData.buyingType}
+              onChange={(e) => setCampaignData({ ...campaignData, buyingType: e.target.value as 'AUCTION' | 'RESERVATION' })}
+            >
+              <option value="AUCTION">Auction (recommended)</option>
+              <option value="RESERVATION">Reservation (reach & frequency)</option>
+            </Select>
+          </FormGroup>
+          <FormGroup>
+            <Label>Special ad category</Label>
+            <Select
+              value={campaignData.specialAdCategories[0] ?? ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                setCampaignData({ ...campaignData, specialAdCategories: v ? [v] : [] });
+              }}
+            >
+              {SPECIAL_AD_CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value || 'none'} value={opt.value}>{opt.label}</option>
+              ))}
+            </Select>
+          </FormGroup>
+        </Section>
+
+        {/* 3. Budget level — same as Edit (read-only there) */}
         <Section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <SectionTitle>Budget level</SectionTitle>
+          <FormGroup>
+            <Label>Where to set budget</Label>
+            <RadioGroup>
+              <RadioOption>
+                <input
+                  type="radio"
+                  name="budgetLevel"
+                  value="ad_set"
+                  checked={campaignData.budgetLevel === 'ad_set'}
+                  onChange={() => setCampaignData({ ...campaignData, budgetLevel: 'ad_set' })}
+                />
+                Ad set level — set budget when you create each ad set (recommended)
+              </RadioOption>
+              <RadioOption>
+                <input
+                  type="radio"
+                  name="budgetLevel"
+                  value="campaign"
+                  checked={campaignData.budgetLevel === 'campaign'}
+                  onChange={() => setCampaignData({ ...campaignData, budgetLevel: 'campaign' })}
+                />
+                Campaign level — set one budget for the whole campaign here
+              </RadioOption>
+            </RadioGroup>
+          </FormGroup>
+        </Section>
+
+        {/* 4. Platforms — same as Edit */}
+        <Section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.25 }}
         >
           <SectionTitle>
             <FaUsers />
@@ -542,95 +625,91 @@ export default function CreateCampaignPage() {
           </PlatformGrid>
         </Section>
 
-        <Section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-        >
-          <SectionTitle>
-            <FaDollarSign />
-            Budget & Schedule
-          </SectionTitle>
-          
-          <FormGroup>
-            <Label>Budget Type</Label>
-            <RadioGroup>
-              <RadioOption>
-                <input
-                  type="radio"
-                  name="budgetType"
-                  value="daily"
-                  checked={campaignData.budgetType === 'daily'}
-                  onChange={(e) => setCampaignData({ ...campaignData, budgetType: 'daily' })}
-                />
-                Daily Budget
-              </RadioOption>
-              <RadioOption>
-                <input
-                  type="radio"
-                  name="budgetType"
-                  value="lifetime"
-                  checked={campaignData.budgetType === 'lifetime'}
-                  onChange={(e) => setCampaignData({ ...campaignData, budgetType: 'lifetime' })}
-                />
-                Lifetime Budget
-              </RadioOption>
-            </RadioGroup>
-          </FormGroup>
+        {campaignData.budgetLevel === 'campaign' && (
+          <Section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            <SectionTitle>
+              <FaDollarSign />
+              Budget & schedule (campaign level)
+            </SectionTitle>
 
-          <BudgetGrid>
-            {campaignData.budgetType === 'daily' ? (
+            <FormGroup>
+              <Label>Budget type</Label>
+              <RadioGroup>
+                <RadioOption>
+                  <input
+                    type="radio"
+                    name="budgetType"
+                    value="daily"
+                    checked={campaignData.budgetType === 'daily'}
+                    onChange={() => setCampaignData({ ...campaignData, budgetType: 'daily' })}
+                  />
+                  Daily budget
+                </RadioOption>
+                <RadioOption>
+                  <input
+                    type="radio"
+                    name="budgetType"
+                    value="lifetime"
+                    checked={campaignData.budgetType === 'lifetime'}
+                    onChange={() => setCampaignData({ ...campaignData, budgetType: 'lifetime' })}
+                  />
+                  Lifetime budget
+                </RadioOption>
+              </RadioGroup>
+            </FormGroup>
+
+            <BudgetGrid>
+              {campaignData.budgetType === 'daily' ? (
+                <FormGroup>
+                  <Label>Daily budget ($)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    value={campaignData.dailyBudget}
+                    onChange={(e) => setCampaignData({ ...campaignData, dailyBudget: e.target.value })}
+                    placeholder="10.00"
+                  />
+                </FormGroup>
+              ) : (
+                <FormGroup>
+                  <Label>Lifetime budget ($)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    value={campaignData.lifetimeBudget}
+                    onChange={(e) => setCampaignData({ ...campaignData, lifetimeBudget: e.target.value })}
+                    placeholder="100.00"
+                  />
+                </FormGroup>
+              )}
+            </BudgetGrid>
+
+            <BudgetGrid>
               <FormGroup>
-                <Label>Daily Budget ($)</Label>
+                <Label><FaCalendarAlt /> Start date (optional)</Label>
                 <Input
-                  type="number"
-                  min="1"
-                  step="0.01"
-                  value={campaignData.dailyBudget}
-                  onChange={(e) => setCampaignData({ ...campaignData, dailyBudget: e.target.value })}
-                  placeholder="10.00"
+                  type="datetime-local"
+                  value={campaignData.startDate}
+                  onChange={(e) => setCampaignData({ ...campaignData, startDate: e.target.value })}
                 />
               </FormGroup>
-            ) : (
               <FormGroup>
-                <Label>Lifetime Budget ($)</Label>
+                <Label><FaCalendarAlt /> End date (optional)</Label>
                 <Input
-                  type="number"
-                  min="1"
-                  step="0.01"
-                  value={campaignData.lifetimeBudget}
-                  onChange={(e) => setCampaignData({ ...campaignData, lifetimeBudget: e.target.value })}
-                  placeholder="100.00"
+                  type="datetime-local"
+                  value={campaignData.endDate}
+                  onChange={(e) => setCampaignData({ ...campaignData, endDate: e.target.value })}
                 />
               </FormGroup>
-            )}
-          </BudgetGrid>
-
-          <BudgetGrid>
-            <FormGroup>
-              <Label>
-                <FaCalendarAlt />
-                Start Date (Optional)
-              </Label>
-              <Input
-                type="datetime-local"
-                value={campaignData.startDate}
-                onChange={(e) => setCampaignData({ ...campaignData, startDate: e.target.value })}
-              />
-            </FormGroup>
-            <FormGroup>
-              <Label>
-                <FaCalendarAlt />
-                End Date (Optional)
-              </Label>
-              <Input
-                type="datetime-local"
-                value={campaignData.endDate}
-                onChange={(e) => setCampaignData({ ...campaignData, endDate: e.target.value })}
-              />
-            </FormGroup>
-          </BudgetGrid>
-        </Section>
+            </BudgetGrid>
+          </Section>
+        )}
 
         <ButtonGroup>
           <Button

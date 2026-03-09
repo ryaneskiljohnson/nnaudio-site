@@ -870,12 +870,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     <FaBullhorn /> Campaigns
                   </SubNavItem>
                 </Link>
+                <Link href="/admin/ad-manager/ads/create">
+                  <SubNavItem
+                    $active={pathname === "/admin/ad-manager/ads/create" ? "true" : "false"}
+                    onClick={(e) => handleNavigation(e, "/admin/ad-manager/ads/create")}
+                  >
+                    <FaPlus /> Create Ad
+                  </SubNavItem>
+                </Link>
                 <Link href="/admin/ad-manager/audiences">
                   <SubNavItem
                     $active={pathname.startsWith("/admin/ad-manager/audiences") ? "true" : "false"}
                     onClick={(e) => handleNavigation(e, "/admin/ad-manager/audiences")}
                   >
-                    <FaBullseye /> Audiences
+                    <FaUsers /> Audiences
                   </SubNavItem>
                 </Link>
                 <Link href="/admin/ad-manager/analytics">
@@ -884,14 +892,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     onClick={(e) => handleNavigation(e, "/admin/ad-manager/analytics")}
                   >
                     <FaChartBar /> Analytics
-                  </SubNavItem>
-                </Link>
-                <Link href="/admin/ad-manager/ads/create">
-                  <SubNavItem
-                    $active={pathname === "/admin/ad-manager/ads/create" ? "true" : "false"}
-                    onClick={(e) => handleNavigation(e, "/admin/ad-manager/ads/create")}
-                  >
-                    <FaPlus /> Create Ad
                   </SubNavItem>
                 </Link>
                 <Link href="/admin/ad-manager/settings">
@@ -1180,6 +1180,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <FaBullhorn /> Campaigns
             </MobileNavItem>
           </Link>
+          <Link href="/admin/ad-manager/ads/create">
+            <MobileNavItem
+              $active={pathname === "/admin/ad-manager/ads/create" ? "true" : "false"}
+              variants={menuItemVariants}
+              custom={3.615}
+              initial="hidden"
+              animate="visible"
+              onClick={(e) => handleNavigation(e, "/admin/ad-manager/ads/create")}
+            >
+              <FaPlus /> Create Ad
+            </MobileNavItem>
+          </Link>
           <Link href="/admin/ad-manager/audiences">
             <MobileNavItem
               $active={pathname.startsWith("/admin/ad-manager/audiences") ? "true" : "false"}
@@ -1189,7 +1201,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               animate="visible"
               onClick={(e) => handleNavigation(e, "/admin/ad-manager/audiences")}
             >
-              <FaBullseye /> Audiences
+              <FaUsers /> Audiences
             </MobileNavItem>
           </Link>
           <Link href="/admin/ad-manager/analytics">
@@ -1202,18 +1214,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onClick={(e) => handleNavigation(e, "/admin/ad-manager/analytics")}
             >
               <FaChartBar /> Analytics
-            </MobileNavItem>
-          </Link>
-          <Link href="/admin/ad-manager/ads/create">
-            <MobileNavItem
-              $active={pathname === "/admin/ad-manager/ads/create" ? "true" : "false"}
-              variants={menuItemVariants}
-              custom={3.64}
-              initial="hidden"
-              animate="visible"
-              onClick={(e) => handleNavigation(e, "/admin/ad-manager/ads/create")}
-            >
-              <FaPlus /> Create Ad
             </MobileNavItem>
           </Link>
           <Link href="/admin/ad-manager/settings">

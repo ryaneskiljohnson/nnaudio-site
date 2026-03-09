@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Ad Manager — Create ad set for a specific campaign (campaign in URL). Budget, targeting, optimization, schedule.
+ * @module ad-manager/campaigns/[id]/adsets/create
+ */
 "use client";
 
 import React, { useState } from "react";
@@ -112,7 +116,7 @@ const SubmitButton = styled.button<{ $loading?: boolean }>`
   gap: 0.5rem;
 `;
 
-const ErrorBox = styled.div`
+const ErrorBox = styled.div.attrs({ role: 'alert' })`
   padding: 1rem;
   background: rgba(239, 68, 68, 0.15);
   border: 1px solid rgba(239, 68, 68, 0.3);
@@ -129,9 +133,15 @@ export default function CreateAdSetPage() {
 
   const [name, setName] = useState("");
   const [status, setStatus] = useState<"ACTIVE" | "PAUSED">("PAUSED");
+  const [budgetType, setBudgetType] = useState<"daily" | "lifetime">("daily");
   const [dailyBudget, setDailyBudget] = useState<string>("10");
+  const [lifetimeBudget, setLifetimeBudget] = useState<string>("");
   const [optimizationGoal, setOptimizationGoal] = useState("LINK_CLICKS");
-  const [billingEvent, setBillingEvent] = useState("IMPRESSIONS");
+  const [billingEvent, setBillingEvent] = useState("LINK_CLICKS");
+  const [countries, setCountries] = useState("US");
+  const [noEndDate, setNoEndDate] = useState(true);
+  const [startTime, setStartTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -140,7 +150,6 @@ export default function CreateAdSetPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const budget = parseFloat(dailyBudget);
       if (!name.trim()) {
         setError("Name is required");
         return;
@@ -149,24 +158,57 @@ export default function CreateAdSetPage() {
         setError("Campaign ID is missing");
         return;
       }
+      const countriesList = countries.split(/[\s,]+/).map((c) => c.trim().toUpperCase()).filter(Boolean);
+      const targeting = { geo_locations: { countries: countriesList.length ? countriesList : ["US"] } };
+
+      const payload: Record<string, unknown> = {
+        name: name.trim(),
+        campaignId,
+        status,
+        targeting,
+        optimizationGoal,
+        billingEvent,
+      };
+      if (budgetType === "lifetime") {
+        const lt = parseFloat(lifetimeBudget);
+        if (!Number.isFinite(lt) || lt <= 0) {
+          setError("Lifetime budget must be a positive number");
+          setSubmitting(false);
+          return;
+        }
+        payload.lifetimeBudget = lt;
+        if (!noEndDate && endTime?.trim()) payload.endTime = new Date(endTime.trim()).toISOString();
+        else if (noEndDate) {
+          const end = new Date();
+          end.setDate(end.getDate() + 30);
+          payload.endTime = end.toISOString();
+        }
+        if (startTime?.trim()) payload.startTime = new Date(startTime.trim()).toISOString();
+      } else {
+        const budget = parseFloat(dailyBudget);
+        payload.dailyBudget = Number.isFinite(budget) && budget > 0 ? budget : 10;
+        if (startTime?.trim()) payload.startTime = new Date(startTime.trim()).toISOString();
+        if (noEndDate) {
+          // Omit endTime so API sends end_time=0 (ongoing).
+        } else if (endTime?.trim()) {
+          payload.endTime = new Date(endTime.trim()).toISOString();
+        }
+      }
+
       const res = await fetch("/api/facebook-ads/adsets", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          campaignId,
-          status,
-          dailyBudget: Number.isFinite(budget) && budget > 0 ? budget : 10,
-          targeting: { geo_locations: { countries: ["US"] } },
-          optimizationGoal,
-          billingEvent,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
-        router.push(`/admin/ad-manager/campaigns/${campaignId}/edit`);
+        router.push(`/admin/ad-manager/campaigns/adsets?campaignId=${encodeURIComponent(campaignId)}`);
       } else {
-        setError(data.error || "Failed to create ad set");
+        let msg = data.error || "Failed to create ad set";
+        if (data.metaCode != null) msg += ` [Meta code: ${data.metaCode}]`;
+        if (data.metaData != null) msg += ` ${JSON.stringify(data.metaData)}`;
+        setError(msg);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create ad set");
@@ -190,7 +232,7 @@ export default function CreateAdSetPage() {
       </Header>
 
       <Form onSubmit={handleSubmit}>
-        {error && <ErrorBox>{error}</ErrorBox>}
+        {error && <ErrorBox role="alert" aria-label={error}>{error}</ErrorBox>}
 
         <FormGroup>
           <Label>Ad set name</Label>
@@ -206,36 +248,113 @@ export default function CreateAdSetPage() {
         <FormGroup>
           <Label>Status</Label>
           <Select value={status} onChange={(e) => setStatus(e.target.value as "ACTIVE" | "PAUSED")}>
-            <option value="PAUSED">Paused</option>
             <option value="ACTIVE">Active</option>
+            <option value="PAUSED">Paused</option>
           </Select>
         </FormGroup>
 
         <FormGroup>
-          <Label>Daily budget (USD)</Label>
+          <Label>Budget type</Label>
+          <Select value={budgetType} onChange={(e) => setBudgetType(e.target.value as "daily" | "lifetime")}>
+            <option value="daily">Daily budget</option>
+            <option value="lifetime">Lifetime budget</option>
+          </Select>
+        </FormGroup>
+
+        {budgetType === "daily" ? (
+          <FormGroup>
+            <Label>Daily budget (USD)</Label>
+            <Input
+              type="number"
+              min="1"
+              step="0.01"
+              value={dailyBudget}
+              onChange={(e) => setDailyBudget(e.target.value)}
+              placeholder="10"
+            />
+          </FormGroup>
+        ) : (
+          <FormGroup>
+            <Label>Lifetime budget (USD)</Label>
+            <Input
+              type="number"
+              min="1"
+              step="0.01"
+              value={lifetimeBudget}
+              onChange={(e) => setLifetimeBudget(e.target.value)}
+              placeholder="100"
+            />
+          </FormGroup>
+        )}
+
+        <FormGroup>
+          <Label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <input
+              type="checkbox"
+              checked={noEndDate}
+              onChange={(e) => setNoEndDate(e.target.checked)}
+            />
+            No end date (run until I turn it off)
+          </Label>
+        </FormGroup>
+
+        {!noEndDate && (
+          <>
+            <FormGroup>
+              <Label>Start time (optional)</Label>
+              <Input
+                type="datetime-local"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label>End time</Label>
+              <Input
+                type="datetime-local"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+            </FormGroup>
+          </>
+        )}
+
+        <FormGroup>
+          <Label>Targeting — countries (comma or space separated, e.g. US, CA, GB)</Label>
           <Input
-            type="number"
-            min="1"
-            step="1"
-            value={dailyBudget}
-            onChange={(e) => setDailyBudget(e.target.value)}
+            type="text"
+            value={countries}
+            onChange={(e) => setCountries(e.target.value)}
+            placeholder="US"
           />
         </FormGroup>
 
         <FormGroup>
           <Label>Optimization goal</Label>
+          <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+            Match to campaign objective (e.g. Traffic → Link clicks, Conversions → Conversions).
+          </p>
           <Select value={optimizationGoal} onChange={(e) => setOptimizationGoal(e.target.value)}>
             <option value="LINK_CLICKS">Link clicks</option>
             <option value="IMPRESSIONS">Impressions</option>
             <option value="REACH">Reach</option>
+            <option value="CONVERSIONS">Conversions</option>
+            <option value="LEADS">Leads</option>
+            <option value="LANDING_PAGE_VIEWS">Landing page views</option>
+            <option value="VIDEO_VIEWS">Video views</option>
+            <option value="POST_ENGAGEMENT">Post engagement</option>
+            <option value="BRAND_AWARENESS">Brand awareness</option>
           </Select>
         </FormGroup>
 
         <FormGroup>
           <Label>Billing event</Label>
           <Select value={billingEvent} onChange={(e) => setBillingEvent(e.target.value)}>
-            <option value="IMPRESSIONS">Impressions</option>
             <option value="LINK_CLICKS">Link clicks</option>
+            <option value="IMPRESSIONS">Impressions</option>
+            <option value="CLICKS">Clicks</option>
+            <option value="CONVERSIONS">Conversions</option>
+            <option value="VIDEO_VIEWS">Video views</option>
           </Select>
         </FormGroup>
 

@@ -40,6 +40,7 @@ function normalizeCampaignForEdit(c: FacebookCampaign) {
   const dailyCents = c.daily_budget ? parseInt(c.daily_budget, 10) : 0;
   const lifetimeCents = c.lifetime_budget ? parseInt(c.lifetime_budget, 10) : 0;
   const hasDaily = dailyCents > 0;
+  const hasCampaignBudget = dailyCents > 0 || lifetimeCents > 0;
   const raw = c.special_ad_categories;
   const specialAdCategories: string[] = Array.isArray(raw)
     ? raw
@@ -56,6 +57,8 @@ function normalizeCampaignForEdit(c: FacebookCampaign) {
       facebook: true,
       instagram: true,
     },
+    /** When true, budget is set at campaign level (CBO); when false, budget is set per ad set. */
+    budgetLevel: hasCampaignBudget ? ('campaign' as const) : ('ad_set' as const),
     budget: {
       type: (hasDaily ? 'daily' : 'lifetime') as 'daily' | 'lifetime',
       amount: hasDaily ? dailyCents / 100 : lifetimeCents / 100,
@@ -65,6 +68,7 @@ function normalizeCampaignForEdit(c: FacebookCampaign) {
       endDate: toDateTimeLocal(c.stop_time),
     },
     special_ad_categories: specialAdCategories,
+    buying_type: (c as { buying_type?: string }).buying_type ?? 'AUCTION',
     description: undefined as string | undefined,
   };
 }
@@ -92,6 +96,7 @@ export async function GET(
             facebook: true,
             instagram: false
           },
+          budgetLevel: "campaign",
           budget: {
             type: "daily",
             amount: 1000
@@ -113,6 +118,7 @@ export async function GET(
             facebook: false,
             instagram: true
           },
+          budgetLevel: "campaign",
           budget: {
             type: "lifetime",
             amount: 500
@@ -134,6 +140,7 @@ export async function GET(
             facebook: true,
             instagram: true
           },
+          budgetLevel: "campaign",
           budget: {
             type: "daily",
             amount: 750
@@ -264,7 +271,7 @@ export async function PUT(
       }, { status: 401 });
     }
 
-    const { name, objective, status, description, platforms, budget, schedule, special_ad_categories } = body;
+    const { name, objective, status, description, platforms, budget, schedule, special_ad_categories, buying_type: buyingType } = body;
 
     // Validate required fields
     if (!name || !objective || !status) {
@@ -282,14 +289,17 @@ export async function PUT(
       }, { status: 400 });
     }
 
-    // Update campaign (Meta: only name, status, objective, daily_budget, lifetime_budget, special_ad_categories are writable; start/end are read-only at campaign level)
+    // Update campaign. Meta does not allow changing objective on existing campaigns — omit it.
+    // Writable: name, status, daily_budget, lifetime_budget, special_ad_categories, buying_type.
+    const budgetUpdates: { daily_budget?: number; lifetime_budget?: number } = {};
+    if (budget?.type === 'daily' && budget.amount != null) budgetUpdates.daily_budget = budget.amount;
+    if (budget?.type === 'lifetime' && budget.amount != null) budgetUpdates.lifetime_budget = budget.amount;
     await facebookAPI.updateCampaign(campaignId, {
       name,
-      objective,
       status: status.toUpperCase(),
-      daily_budget: budget?.type === 'daily' ? budget.amount : undefined,
-      lifetime_budget: budget?.type === 'lifetime' ? budget.amount : undefined,
+      ...budgetUpdates,
       special_ad_categories: Array.isArray(special_ad_categories) ? special_ad_categories : [],
+      ...(buyingType != null ? { buying_type: String(buyingType) } : {}),
     });
 
     try {
@@ -327,10 +337,13 @@ export async function PUT(
     });
   } catch (error) {
     console.error('Error updating campaign:', error);
+    const message = error instanceof Error ? error.message : 'Failed to update campaign';
+    const statusCode = (error as { statusCode?: number }).statusCode;
+    const status = statusCode != null && statusCode >= 400 && statusCode < 500 ? statusCode : 500;
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to update campaign'
-    }, { status: 500 });
+      error: message
+    }, { status });
   }
 }
 

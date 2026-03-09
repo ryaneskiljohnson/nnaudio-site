@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Ad Manager — Create ad: three-step wizard. Step 1: Campaign & ad set; Step 2: Creative (copy, image/video, CTA); Step 3: Preview. Follows Meta hierarchy Campaign → Ad Set → Ad.
+ * @module ad-manager/ads/create
+ */
 "use client";
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
@@ -539,7 +543,7 @@ const CampaignMeta = styled.p`
   color: rgba(255, 255, 255, 0.7);
 `;
 
-const steps = ['Campaign', 'Creative', 'Preview'];
+const steps = ['Campaign & ad set', 'Creative', 'Preview'];
 
 interface Campaign {
   id: string;
@@ -573,6 +577,8 @@ export default function CreateAdPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [adSets, setAdSets] = useState<any[]>([]);
+  const [adSetsLoading, setAdSetsLoading] = useState(false);
+  const [adSetsError, setAdSetsError] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [imageHash, setImageHash] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -603,10 +609,10 @@ export default function CreateAdPage() {
 
   const fetchCampaigns = async () => {
     try {
-      const response = await fetch('/api/facebook-ads/campaigns');
+      const response = await fetch('/api/facebook-ads/campaigns', { credentials: 'include' });
       const data = await response.json();
       if (data.success) {
-        setCampaigns(data.campaigns);
+        setCampaigns(data.campaigns ?? []);
       }
     } catch (error) {
       console.error('Error fetching campaigns:', error);
@@ -614,14 +620,41 @@ export default function CreateAdPage() {
   };
 
   const fetchAdSets = async (campaignId: string) => {
+    if (!campaignId) {
+      setAdSets([]);
+      setAdSetsError(null);
+      setAdSetsLoading(false);
+      return;
+    }
+    setAdSetsLoading(true);
+    setAdSetsError(null);
+    setAdSets([]);
     try {
-      const response = await fetch(`/api/facebook-ads/adsets?campaignId=${campaignId}`);
+      const response = await fetch(`/api/facebook-ads/adsets?campaignId=${encodeURIComponent(campaignId)}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
       const data = await response.json();
-      if (data.success) {
+      if (response.status === 401) {
+        setAdSetsError('Connect to Facebook in Ad Manager → Settings to see ad sets.');
+        setAdSets([]);
+        return;
+      }
+      if (data.success && Array.isArray(data.adSets)) {
         setAdSets(data.adSets);
+        if (data.adSets.length === 0) {
+          setAdSetsError(null);
+        }
+      } else {
+        setAdSets([]);
+        setAdSetsError(data.error || 'Could not load ad sets.');
       }
     } catch (error) {
       console.error('Error fetching ad sets:', error);
+      setAdSets([]);
+      setAdSetsError('Failed to load ad sets. Try again.');
+    } finally {
+      setAdSetsLoading(false);
     }
   };
 
@@ -809,14 +842,36 @@ export default function CreateAdPage() {
                 <Select
                   value={adData.adSetId}
                   onChange={(e) => setAdData({ ...adData, adSetId: e.target.value })}
+                  disabled={adSetsLoading}
                 >
-                  <option value="">Choose an ad set...</option>
+                  <option value="">
+                    {adSetsLoading ? 'Loading ad sets...' : 'Choose an ad set...'}
+                  </option>
                   {adSets.map((adSet) => (
                     <option key={adSet.id} value={adSet.id}>
-                      {adSet.name} (Budget: ${adSet.budget})
+                      {adSet.name} (Budget: ${typeof adSet.budget === 'number' ? adSet.budget.toFixed(2) : adSet.budget ?? '0'})
                     </option>
                   ))}
                 </Select>
+                {adSetsError && (
+                  <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    {adSetsError}
+                    {adSetsError.includes('Connect') && (
+                      <Link href="/admin/ad-manager/settings" style={{ marginLeft: '0.35rem', color: 'var(--primary)' }}>Settings</Link>
+                    )}
+                  </p>
+                )}
+                {!adSetsLoading && !adSetsError && adSets.length === 0 && (
+                  <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    No ad sets in this campaign.{' '}
+                    <Link
+                      href={`/admin/ad-manager/campaigns/${adData.campaignId}/adsets/create`}
+                      style={{ color: 'var(--primary)' }}
+                    >
+                      Create one first
+                    </Link>
+                  </p>
+                )}
               </FormGroup>
             )}
           </FormContainer>
@@ -1109,14 +1164,14 @@ export default function CreateAdPage() {
               <Button
                 $variant="secondary"
                 onClick={() => handleCreateAd(true)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !!uploadError}
               >
                 <FaSave />
                 Save as Draft
               </Button>
               <Button
                 onClick={() => handleCreateAd(false)}
-                disabled={isSubmitting || !isStepValid(currentStep)}
+                disabled={isSubmitting || !!uploadError || !isStepValid(currentStep)}
               >
                 <FaPlay />
                 {isSubmitting ? 'Creating...' : 'Create & Launch Ad'}
