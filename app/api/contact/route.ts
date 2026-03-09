@@ -47,7 +47,7 @@ ${message}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Contact Form Submission - Cymasphere</title>
+    <title>New Contact Form Submission - NNAud.io</title>
     <!--[if mso]>
     <style type="text/css">
         table {border-collapse:collapse;border-spacing:0;margin:0;}
@@ -235,14 +235,14 @@ ${message}
                     <div class="divider" style="height: 3px; background: linear-gradient(90deg, #6c63ff, #4ecdc4); width: 100%; margin: 0; padding: 0;"></div>
                     <div class="header" style="background: #1a1a1a; padding: 30px 20px; text-align: center; border-bottom: 1px solid rgba(108, 99, 255, 0.2);">
                         <div class="logo-container" style="display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.webp" alt="Cymasphere Logo" class="logo" width="180" height="auto" style="width: 180px; max-width: 100%; height: auto; border: 0; display: block; margin: 0 auto;">
+                            <img src="https://znecvzfogwkzinkduyuq.supabase.co/storage/v1/object/public/images/NNAudio-logo-white.png" alt="NNAud.io Logo" class="logo" width="180" height="auto" style="width: 180px; max-width: 100%; height: auto; border: 0; display: block; margin: 0 auto;">
                         </div>
                     </div>
                     
                     <div class="content" style="padding: 30px; color: #ffffff; background-color: #121212;">
                         <h1 class="title" style="font-size: 24px; font-weight: bold; margin-bottom: 20px; text-align: center; color: #ffffff;">New <span style="color: #6c63ff;">Contact Form</span> Submission</h1>
                         
-                        <p class="message" style="margin-bottom: 20px; font-size: 16px; color: #b3b3b3;">You've received a new message through the Cymasphere contact form.</p>
+                        <p class="message" style="margin-bottom: 20px; font-size: 16px; color: #b3b3b3;">You've received a new message through the NNAud.io contact form.</p>
                         
                         <div class="field" style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
                             <span class="label" style="font-weight: bold; color: #6c63ff; display: block; margin-bottom: 5px;">Name</span>
@@ -285,7 +285,7 @@ ${message}
                     
                     <div class="footer" style="padding: 15px; text-align: center; font-size: 12px; background-color: #0a0a0a; color: #666666; border-top: 1px solid rgba(255, 255, 255, 0.05);">
                         <div class="footer-link" style="margin-bottom: 10px;">
-                            <a href="https://cymasphere.com" style="color: #6c63ff; text-decoration: none;">Cymasphere</a> by <a href="https://nnaud.io" style="color: #6c63ff; text-decoration: none;">NNAudio</a>
+                            <a href="https://nnaud.io" style="color: #6c63ff; text-decoration: none;">NNAud.io</a> — Resources for Modern Music Producers
                         </div>
                         
                         <p class="copyright" style="margin: 0; color: #666666;">© ${new Date().getFullYear()} NNAud.io. All rights reserved.</p>
@@ -299,7 +299,7 @@ ${message}
 </html>
     `;
 
-    // Send email using AWS SES
+    // Send email via SendGrid
     const result = await sendEmail({
       to: "support@nnaud.io",
       subject: emailSubject,

@@ -9,8 +9,7 @@ import {
 } from "@/utils/stripe/admin-analytics";
 import { stripe } from "@/utils/stripe/client";
 import { fetchProfile } from "@/utils/supabase/actions";
-// Email is imported dynamically to avoid Turbopack resolving @aws-sdk/client-ses
-// (ERR_PACKAGE_PATH_NOT_EXPORTED for @smithy/core/schema in nested deps).
+// Email is imported dynamically where used (SendGrid via @/utils/email).
 
 export interface UserManagementRecord {
   user_email: string;
@@ -1864,8 +1863,8 @@ async function sendSupportTicketEmailNotification(
 
     const messageChainHtmlString = messageChainHtml.join("");
 
-    // Generate ticket view URL - always use production URL for emails
-    const baseUrl = "https://www.cymasphere.com";
+    // Generate ticket view URL - use site URL for emails
+    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io").replace(/\/$/, "");
     const ticketUrl = `${baseUrl}/dashboard/support?ticket=${ticketId}`;
 
     // Create email HTML
@@ -1885,7 +1884,7 @@ async function sendSupportTicketEmailNotification(
                     <!-- Header -->
                     <tr>
                         <td style="background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); padding: 30px 24px; text-align: center;">
-                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.webp" alt="Cymasphere" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
+                            <img src="https://znecvzfogwkzinkduyuq.supabase.co/storage/v1/object/public/images/NNAudio-logo-white.png" alt="NNAud.io" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
                         </td>
                     </tr>
                     <!-- Content -->
@@ -1981,7 +1980,7 @@ ${ticketUrl}
 This is an automated notification from NNAudio Support.
     `;
 
-    // Send email (dynamic import avoids bundling @aws-sdk/client-ses at load time)
+    // Send email via SendGrid
     const { sendEmail } = await import("@/utils/email");
     const emailResult = await sendEmail({
       to: userEmail,
@@ -2212,7 +2211,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
     const messageChainHtmlString = messageChainHtml.join("");
 
     // Generate admin ticket view URL - opens ticket modal
-    const baseUrl = "https://www.cymasphere.com";
+    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io").replace(/\/$/, "");
     const ticketUrl = `${baseUrl}/admin/support-tickets?ticket=${ticketId}`;
 
     // Create email HTML
@@ -2232,7 +2231,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
                     <!-- Header -->
                     <tr>
                         <td style="background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); padding: 30px 24px; text-align: center;">
-                            <img src="https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/logos//cymasphere-logo.webp" alt="Cymasphere" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
+                            <img src="https://znecvzfogwkzinkduyuq.supabase.co/storage/v1/object/public/images/NNAudio-logo-white.png" alt="NNAud.io" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
                         </td>
                     </tr>
                     <!-- Content -->
@@ -2334,7 +2333,7 @@ ${ticketUrl}
 This is an automated notification from NNAudio Support.
     `;
 
-    // Send email to admin (dynamic import avoids bundling @aws-sdk/client-ses at load time)
+    // Send email to admin via SendGrid
     const { sendEmail } = await import("@/utils/email");
     const emailResult = await sendEmail({
       to: "support@nnaud.io",

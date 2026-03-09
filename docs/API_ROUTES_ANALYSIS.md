@@ -11,7 +11,7 @@ This document categorizes all API routes to determine which can be converted to 
 These are called by external services and must remain as API routes:
 
 - ✅ `/api/stripe/webhook` - Stripe webhook (signature verification required)
-- ✅ `/api/webhooks/ses/*` - AWS SES webhook (signature verification required)
+- ✅ `/api/webhooks/sendgrid` - SendGrid Event Webhook (optional signature verification)
 - ✅ `/api/facebook-ads/callback` - Facebook OAuth callback (external redirect)
 
 ### Public Endpoints (No Authentication)

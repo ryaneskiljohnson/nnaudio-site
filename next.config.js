@@ -15,7 +15,7 @@ const nextConfig = {
     // Turbopack config moved to top-level (deprecated in experimental)
   },
   // Exclude node-cron and canvas from Edge runtime bundling (they use native modules)
-  serverExternalPackages: ['node-cron', 'canvas', '@aws-sdk/client-ses', '@aws-sdk/client-sesv2'],
+  serverExternalPackages: ['node-cron', 'canvas'],
   async redirects() {
     return [
       { source: '/faq', destination: '/#faq', permanent: false },
@@ -128,10 +128,7 @@ const nextConfig = {
       }
       // Add AWS SDK packages to externals
       const awsSdkPackages = [
-        '@aws-sdk/client-ses',
-        '@aws-sdk/client-sesv2',
         '@aws-sdk/client-s3',
-        '@aws-sdk/client-sns',
         '@aws-sdk/client-sts',
         '@aws-sdk/credential-providers',
       ];

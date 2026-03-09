@@ -603,7 +603,7 @@ export async function POST(request: NextRequest) {
             sendResults.push({
               email: subscriber.email,
               success: emailResult.success,
-              error: emailResult.error,
+              error: emailResult.success ? undefined : emailResult.error,
               sendId: sendId,
             });
 

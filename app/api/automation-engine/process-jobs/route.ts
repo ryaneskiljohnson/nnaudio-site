@@ -573,7 +573,7 @@ async function sendAutomationEmail(subscriber: any, content: any, automationId: 
         email: recipientEmail,
         status: 'pending',
         automation_id: automationId,
-        message_id: null, // Will be updated when SES returns message ID
+        message_id: null, // Will be updated when SendGrid returns message ID
         created_at: new Date().toISOString()
       })
       .select()
@@ -599,7 +599,7 @@ async function sendAutomationEmail(subscriber: any, content: any, automationId: 
       </div>
     `;
 
-    // Send email via AWS SES
+    // Send email via SendGrid
     const emailResult = await sendEmail({
       to: recipientEmail,
       subject: emailSubject,
