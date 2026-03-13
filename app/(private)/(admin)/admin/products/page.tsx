@@ -1044,6 +1044,7 @@ export default function ProductsManagementPage() {
                           width={50}
                           height={50}
                           style={{ objectFit: 'cover' }}
+                          unoptimized
                         />
                       ) : (
                         <FaImage size={20} color="var(--text-secondary)" />
