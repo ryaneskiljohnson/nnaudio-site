@@ -981,7 +981,7 @@ function escapeCsvField(value: string): string {
 }
 
 /**
- * @brief Build CSV content for reseller codes (UTF-8 with BOM for Excel)
+ * @brief Build CSV content for reseller codes (UTF-8 with BOM for Excel). Columns: Product (optional), Serial Code.
  * @param codes - Array of reseller codes (product name from code.products when present)
  * @param options.includeProductColumn - If true, add "Product" column (for full reseller export)
  * @returns CSV string
@@ -991,30 +991,16 @@ function buildCodesCsv(
   options?: { includeProductColumn?: boolean }
 ): string {
   const includeProduct = options?.includeProductColumn ?? false;
-  const headers = includeProduct
-    ? ["Product", "Serial Code", "Status", "Created", "Redeemed", "Redeemed By"]
-    : ["Serial Code", "Status", "Created", "Redeemed", "Redeemed By"];
+  const headers = includeProduct ? ["Product", "Serial Code"] : ["Serial Code"];
   const rows = codes.map((code) => {
-    const productName = code.products?.name ?? "";
-    const status = code.redeemed_at ? "Redeemed" : "Available";
-    const created = code.created_at ? new Date(code.created_at).toISOString().slice(0, 10) : "";
-    const redeemed = code.redeemed_at ? new Date(code.redeemed_at).toISOString().slice(0, 10) : "";
-    const redeemedBy =
-      code.redeemed_by_user?.email ?? (code.redeemed_by_user_id ? "—" : "");
-    const base = [
-      formatSerialCode(code.serial_code),
-      status,
-      created,
-      redeemed,
-      redeemedBy,
-    ].map(escapeCsvField);
+    const serial = escapeCsvField(formatSerialCode(code.serial_code));
     if (includeProduct) {
-      return [escapeCsvField(productName), ...base];
+      return [escapeCsvField(code.products?.name ?? ""), serial];
     }
-    return base;
+    return [serial];
   });
   const headerLine = headers.map(escapeCsvField).join(",");
-  const dataLines = rows.map((row) => (Array.isArray(row) ? row.join(",") : row));
+  const dataLines = rows.map((row) => row.join(","));
   const bom = "\uFEFF";
   return bom + [headerLine, ...dataLines].join("\r\n");
 }
