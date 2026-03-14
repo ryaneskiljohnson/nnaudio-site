@@ -83,8 +83,8 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
   const [hasActivePromotion, setHasActivePromotion] = useState(false);
 
-  // Redirect invite tokens to /reset-password when Supabase redirects to wrong URL
-  // (e.g. Site URL in Supabase dashboard is base domain without path)
+  // Redirect auth callback tokens when Supabase redirects to Site URL with hash
+  // (e.g. invite -> reset-password; signup/email confirmation -> dashboard)
   useEffect(() => {
     if (typeof window === "undefined" || !pathname) return;
     const hash = window.location.hash?.substring(1);
@@ -93,14 +93,24 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     const type = params.get("type");
     const accessToken = params.get("access_token");
     const refreshToken = params.get("refresh_token");
+    if (!accessToken || !refreshToken) return;
+
     if (
       type === "invite" &&
-      accessToken &&
-      refreshToken &&
       !pathname.startsWith("/reset-password")
     ) {
       window.location.replace(
         `${window.location.origin}/reset-password${window.location.hash}`,
+      );
+      return;
+    }
+    // Signup or email confirmation: send to dashboard so session is established there
+    if (
+      (type === "signup" || type === "email") &&
+      !pathname.startsWith("/dashboard")
+    ) {
+      window.location.replace(
+        `${window.location.origin}/dashboard${window.location.hash}`,
       );
     }
   }, [pathname]);
