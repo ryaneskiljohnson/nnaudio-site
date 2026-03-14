@@ -48,25 +48,28 @@ const AuthContainer = styled.div`
   }
 `;
 
-const BackButton = styled.div`
+const BackButtonLink = styled(Link)`
   position: fixed;
   top: 25px;
   left: 30px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 1rem;
   z-index: 10;
-  transition: all 0.3s ease;
+  transition: color 0.2s ease;
   cursor: pointer;
+  backface-visibility: hidden;
 
   &:hover {
     color: var(--text);
+    text-decoration: none;
   }
 
   svg {
     margin-right: 8px;
+    flex-shrink: 0;
   }
 
   @media (max-width: 768px) {
@@ -555,11 +558,9 @@ function SignUp() {
           setIsCheckoutComplete={setIsCheckoutComplete}
         />
       </Suspense>
-      <Link href={`/`}>
-        <BackButton>
-          <FaArrowLeft /> {t("common.backToHome", "Back to Home")}
-        </BackButton>
-      </Link>
+      <BackButtonLink href="/">
+        <FaArrowLeft /> {t("common.backToHome", "Back to Home")}
+      </BackButtonLink>
       <FormCard
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

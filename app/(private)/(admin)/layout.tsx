@@ -258,28 +258,31 @@ const BackButtonContainer = styled.div`
   }
 `;
 
-const BackButton = styled.div`
-  display: flex;
+const BackButtonLink = styled(Link)`
+  display: inline-flex;
   align-items: center;
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 1rem;
-  transition: all 0.3s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
   padding: 8px 16px;
   border-radius: 8px;
   background-color: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
+  backface-visibility: hidden;
 
   &:hover {
     color: var(--text);
+    text-decoration: none;
     background-color: rgba(0, 0, 0, 0.5);
     border-color: var(--primary);
   }
 
   svg {
     margin-left: 8px;
+    flex-shrink: 0;
   }
 
   @media (max-width: 768px) {
@@ -1375,11 +1378,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       )}
       <Content $sidebarVisible={true}>
           <BackButtonContainer>
-          <Link href="/dashboard">
-            <BackButton>
-              Back to Dashboard <FaArrowLeft />
-            </BackButton>
-          </Link>
+          <BackButtonLink href="/dashboard">
+            Back to Dashboard <FaArrowLeft />
+          </BackButtonLink>
         </BackButtonContainer>
 
         <PageTransition

@@ -233,20 +233,23 @@ const BackButtonContainer = styled.div`
 `;
 
 const BackButton = styled.a`
-  display: flex;
+  display: inline-flex;
   align-items: center;
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 1rem;
-  transition: all 0.3s ease;
+  transition: color 0.2s ease;
   cursor: pointer;
+  backface-visibility: hidden;
 
   &:hover {
     color: var(--text);
+    text-decoration: none;
   }
 
   svg {
     margin-left: 8px;
+    flex-shrink: 0;
   }
 `;
 
