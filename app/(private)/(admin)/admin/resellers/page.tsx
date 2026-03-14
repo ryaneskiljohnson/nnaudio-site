@@ -703,6 +703,24 @@ const Input = styled.input`
   }
 `;
 
+const Select = styled.select`
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.1);
+  }
+`;
+
 const TextArea = styled.textarea`
   width: 100%;
   padding: 12px 16px;
@@ -894,7 +912,22 @@ interface Product {
   slug: string;
   featured_image_url?: string | null;
   logo_url?: string | null;
+  category?: string | null;
 }
+
+/** @brief Display labels for product_category filter in Product Select modal */
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  all: "All types",
+  "audio-fx-plugin": "Audio FX",
+  "instrument-plugin": "Instruments",
+  "midi-fx-plugin": "MIDI FX",
+  pack: "Packs",
+  bundle: "Bundles",
+  preset: "Presets",
+  template: "Templates",
+  application: "Applications",
+  plugin: "Plugins",
+};
 
 interface ResellerCode {
   id: string;
@@ -968,6 +1001,7 @@ export default function ResellersPage() {
   const [showProductSelectModal, setShowProductSelectModal] = useState(false);
   const [codeActionType, setCodeActionType] = useState<"generate" | "add" | null>(null);
   const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [productTypeFilter, setProductTypeFilter] = useState<string>("all");
   const [productQuantities, setProductQuantities] = useState<Record<string, string>>({});
   const [globalQuantity, setGlobalQuantity] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -1042,6 +1076,7 @@ export default function ResellersPage() {
           slug: p.slug,
           featured_image_url: p.featured_image_url,
           logo_url: p.logo_url,
+          category: p.category ?? null,
         }));
         setProducts(productsWithImages);
         // Debug: Check if products have images
@@ -1400,11 +1435,12 @@ export default function ResellersPage() {
 
     const productsToGenerate = products
       .filter((p) => {
+        const matchesType = productTypeFilter === "all" || (p.category ?? "") === productTypeFilter;
         const matchesSearch = p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
           p.slug.toLowerCase().includes(productSearchQuery.toLowerCase());
         const quantity = productQuantities[p.id];
         const hasQuantity = quantity !== undefined && quantity !== "" && !isNaN(parseInt(quantity)) && parseInt(quantity) >= 0;
-        return matchesSearch && hasQuantity;
+        return matchesType && matchesSearch && hasQuantity;
       })
       .map((p) => ({
         product: p,
@@ -1469,10 +1505,14 @@ export default function ResellersPage() {
     }
   };
 
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
-    product.slug.toLowerCase().includes(productSearchQuery.toLowerCase())
-  );
+  const filteredProducts = products.filter((product) => {
+    const matchesType =
+      productTypeFilter === "all" || (product.category ?? "") === productTypeFilter;
+    const matchesSearch =
+      product.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+      product.slug.toLowerCase().includes(productSearchQuery.toLowerCase());
+    return matchesType && matchesSearch;
+  });
 
   const handleGlobalQuantityApply = () => {
     if (globalQuantity === "" || isNaN(parseInt(globalQuantity)) || parseInt(globalQuantity) < 0) {
@@ -1480,12 +1520,15 @@ export default function ResellersPage() {
       return;
     }
 
-    const newQuantities: Record<string, string> = {};
+    const newQuantities: Record<string, string> = { ...productQuantities };
     filteredProducts.forEach((product) => {
       newQuantities[product.id] = globalQuantity;
     });
     setProductQuantities(newQuantities);
-    showNotification("success", `Applied quantity ${globalQuantity} to all products`);
+    showNotification(
+      "success",
+      `Applied quantity ${globalQuantity} to ${filteredProducts.length} product(s)`
+    );
   };
 
   const handleSubmitCodes = async (e: React.FormEvent) => {
@@ -2145,6 +2188,7 @@ export default function ResellersPage() {
               onClick={() => {
                 setShowProductSelectModal(false);
                 setProductSearchQuery("");
+                setProductTypeFilter("all");
                 setProductQuantities({});
                 setGlobalQuantity("");
               }}
@@ -2163,6 +2207,7 @@ export default function ResellersPage() {
                 <CloseButton               onClick={() => {
                 setShowProductSelectModal(false);
                 setProductSearchQuery("");
+                setProductTypeFilter("all");
                 setProductQuantities({});
                 setGlobalQuantity("");
               }}>
@@ -2171,6 +2216,19 @@ export default function ResellersPage() {
               </ModalHeader>
 
               <ModalBody>
+                <FormGroup>
+                  <Label>Product type</Label>
+                  <Select
+                    value={productTypeFilter}
+                    onChange={(e) => setProductTypeFilter(e.target.value)}
+                  >
+                    {Object.entries(PRODUCT_TYPE_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </Select>
+                </FormGroup>
                 <FormGroup>
                   <Label>Search Products</Label>
                   <SearchContainer>
