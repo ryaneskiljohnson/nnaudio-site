@@ -967,6 +967,73 @@ const formatSerialCode = (code: string): string => {
   return cleanCode.match(/.{1,4}/g)?.join("-") || cleanCode;
 };
 
+/**
+ * @brief Escape a CSV field (quote if contains comma, quote, or newline)
+ * @param value - Raw field value
+ * @returns Escaped string safe for CSV
+ */
+function escapeCsvField(value: string): string {
+  const s = String(value ?? "");
+  if (/[,"\r\n]/.test(s)) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+/**
+ * @brief Build CSV content for reseller codes (UTF-8 with BOM for Excel)
+ * @param codes - Array of reseller codes (product name from code.products when present)
+ * @param options.includeProductColumn - If true, add "Product" column (for full reseller export)
+ * @returns CSV string
+ */
+function buildCodesCsv(
+  codes: ResellerCode[],
+  options?: { includeProductColumn?: boolean }
+): string {
+  const includeProduct = options?.includeProductColumn ?? false;
+  const headers = includeProduct
+    ? ["Product", "Serial Code", "Status", "Created", "Redeemed", "Redeemed By"]
+    : ["Serial Code", "Status", "Created", "Redeemed", "Redeemed By"];
+  const rows = codes.map((code) => {
+    const productName = code.products?.name ?? "";
+    const status = code.redeemed_at ? "Redeemed" : "Available";
+    const created = code.created_at ? new Date(code.created_at).toISOString().slice(0, 10) : "";
+    const redeemed = code.redeemed_at ? new Date(code.redeemed_at).toISOString().slice(0, 10) : "";
+    const redeemedBy =
+      code.redeemed_by_user?.email ?? (code.redeemed_by_user_id ? "—" : "");
+    const base = [
+      formatSerialCode(code.serial_code),
+      status,
+      created,
+      redeemed,
+      redeemedBy,
+    ].map(escapeCsvField);
+    if (includeProduct) {
+      return [escapeCsvField(productName), ...base];
+    }
+    return base;
+  });
+  const headerLine = headers.map(escapeCsvField).join(",");
+  const dataLines = rows.map((row) => (Array.isArray(row) ? row.join(",") : row));
+  const bom = "\uFEFF";
+  return bom + [headerLine, ...dataLines].join("\r\n");
+}
+
+/**
+ * @brief Trigger browser download of a CSV file
+ * @param csv - Full CSV string
+ * @param filename - Suggested filename (e.g. "reseller-codes.csv")
+ */
+function downloadCsv(csv: string, filename: string): void {
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function ResellersPage() {
   const { user } = useAuth();
   const [resellers, setResellers] = useState<Reseller[]>([]);
@@ -996,6 +1063,7 @@ export default function ResellersPage() {
   const [showCodesModal, setShowCodesModal] = useState(false);
   const [viewingCodes, setViewingCodes] = useState<ResellerCode[]>([]);
   const [loadingCodes, setLoadingCodes] = useState(false);
+  const [exportingAllCodesCsv, setExportingAllCodesCsv] = useState(false);
   const [openMoreMenu, setOpenMoreMenu] = useState<string | null>(null);
   const [moreMenuPosition, setMoreMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const [showProductSelectModal, setShowProductSelectModal] = useState(false);
@@ -1343,6 +1411,37 @@ export default function ResellersPage() {
       setShowCodesModal(false);
     } finally {
       setLoadingCodes(false);
+    }
+  };
+
+  /** Export all codes for the selected reseller (all products) as CSV. */
+  const handleExportAllCodesCsv = async () => {
+    if (!selectedReseller) return;
+    setExportingAllCodesCsv(true);
+    try {
+      const response = await fetch(
+        `/api/admin/reseller-codes?reseller_id=${selectedReseller.id}`
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        showNotification("error", data.error || "Failed to load codes");
+        return;
+      }
+      const codes: ResellerCode[] = data.codes || [];
+      if (codes.length === 0) {
+        showNotification("error", "No codes to export");
+        return;
+      }
+      const csv = buildCodesCsv(codes, { includeProductColumn: true });
+      const slug = (selectedReseller.name || "reseller").replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-]/g, "");
+      const date = new Date().toISOString().slice(0, 10);
+      downloadCsv(csv, `redeem-codes-${slug}-${date}.csv`);
+      showNotification("success", `Exported ${codes.length} code(s) to CSV`);
+    } catch (err) {
+      console.error("Export all codes CSV:", err);
+      showNotification("error", "Failed to export CSV");
+    } finally {
+      setExportingAllCodesCsv(false);
     }
   };
 
@@ -1856,6 +1955,19 @@ export default function ResellersPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <DownloadButton
                     type="button"
+                    onClick={handleExportAllCodesCsv}
+                    disabled={exportingAllCodesCsv}
+                    title="Export all redeem codes for this reseller (all products) as CSV"
+                  >
+                    {exportingAllCodesCsv ? (
+                      <SpinningIcon style={{ fontSize: "0.9rem" }} />
+                    ) : (
+                      <FaDownload />
+                    )}{" "}
+                    Export CSV
+                  </DownloadButton>
+                  <DownloadButton
+                    type="button"
                     onClick={() => handleDownloadRedeemInstructionsPdf()}
                     title="Download branded PDF with instructions for redeeming serial codes on nnaud.io"
                   >
@@ -2062,6 +2174,19 @@ export default function ResellersPage() {
                   <FaEye /> Codes - {selectedProductForCodes.name}
                 </ModalTitle>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <DownloadButton
+                    type="button"
+                    onClick={() => {
+                      const csv = buildCodesCsv(viewingCodes);
+                      const slug = (selectedProductForCodes?.slug || "codes").replace(/[^a-zA-Z0-9-]/g, "-");
+                      const date = new Date().toISOString().slice(0, 10);
+                      downloadCsv(csv, `redeem-codes-${slug}-${date}.csv`);
+                    }}
+                    disabled={viewingCodes.length === 0}
+                    title="Download redeem codes for this product as CSV"
+                  >
+                    <FaDownload /> Download CSV
+                  </DownloadButton>
                   <DownloadButton
                     type="button"
                     onClick={() => handleDownloadRedeemInstructionsPdf(selectedProductForCodes.name)}
