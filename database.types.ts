@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notification_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          notify_on_paid_order: boolean
+          notify_on_free_order: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          notify_on_paid_order?: boolean
+          notify_on_free_order?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          notify_on_paid_order?: boolean
+          notify_on_free_order?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admins: {
         Row: {
           created_at: string | null

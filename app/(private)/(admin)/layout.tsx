@@ -32,6 +32,7 @@ import {
   FaStore,
   FaShoppingBag,
   FaFacebook,
+  FaBell,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
@@ -824,6 +825,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <FaTicketAlt /> Support Tickets
             </NavItem>
           </Link>
+          <Link href="/admin/notifications">
+            <NavItem
+              $active={pathname === "/admin/notifications" ? "true" : "false"}
+              onClick={(e) => handleNavigation(e, "/admin/notifications")}
+            >
+              <FaBell /> Notifications
+            </NavItem>
+          </Link>
           <Link href="/admin/site-management">
             <NavItem
               $active={pathname.startsWith("/admin/site-management") ? "true" : "false"}
@@ -1143,6 +1152,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onClick={(e) => handleNavigation(e, "/admin/support-tickets")}
             >
               <FaTicketAlt /> Support Tickets
+            </MobileNavItem>
+          </Link>
+
+          <Link href="/admin/notifications">
+            <MobileNavItem
+              $active={pathname === "/admin/notifications" ? "true" : "false"}
+              variants={menuItemVariants}
+              custom={3.25}
+              initial="hidden"
+              animate="visible"
+              onClick={(e) => handleNavigation(e, "/admin/notifications")}
+            >
+              <FaBell /> Notifications
             </MobileNavItem>
           </Link>
 
