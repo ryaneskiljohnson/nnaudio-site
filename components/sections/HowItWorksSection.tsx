@@ -400,7 +400,7 @@ const HowItWorksSection = () => {
       title: t("howItWorks.integrateWorkflow.step1.title", "DAW Compatibility"),
       description: t(
         "howItWorks.integrateWorkflow.step1.description",
-        "Use Cymasphere as a standalone application or as a VST/AU plugin within your DAW. Whether you're sketching ideas independently or integrating directly into your production, the app adapts to your preferred workflow."
+        "Use NNAudio as a standalone application or as a VST/AU plugin within your DAW. Whether you're sketching ideas independently or integrating directly into your production, the app adapts to your preferred workflow."
       ),
       image: "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/feature-images/optimized/DAW-thumb.webp",
       imageWebp: "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/feature-images/optimized/DAW.webp",
@@ -427,7 +427,7 @@ const HowItWorksSection = () => {
       title: t("howItWorks.integrateWorkflow.step4.title", "Seamless Workflow"),
       description: t(
         "howItWorks.integrateWorkflow.step4.description",
-        "Integrate Cymasphere into your production process as a powerful harmony and pattern generator. Use it to quickly sketch ideas, develop complex progressions, and create musical patterns that feed directly into your DAW's instruments."
+        "Integrate NNAudio into your production process as a powerful harmony and pattern generator. Use it to quickly sketch ideas, develop complex progressions, and create musical patterns that feed directly into your DAW's instruments."
       ),
       image: "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/feature-images/optimized/chord_scale-thumb.webp",
       imageWebp: "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/feature-images/optimized/chord_scale.webp",
@@ -533,7 +533,7 @@ const HowItWorksSection = () => {
 
       {/* Interactive demo removed 
       <PreviewNote>
-        The interactive demo below gives you just a small taste of Cymasphere's capabilities. The full application offers greatly expanded functionality, deeper customization options, and a comprehensive suite of tools for creating professional-quality music.
+        The interactive demo below gives you just a small taste of NNAudio's capabilities. The full application offers greatly expanded functionality, deeper customization options, and a comprehensive suite of tools for creating professional-quality music.
       </PreviewNote>
       
       <SynthesizerContainer 

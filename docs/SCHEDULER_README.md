@@ -109,7 +109,7 @@ curl -X POST "https://yourdomain.com/api/scheduler" \
 ### Monitoring in Production:
 ```bash
 # Check if scheduler is running
-curl "https://cymasphere.com/api/scheduler"
+curl "https://nnaud.io/api/scheduler"
 
 # View logs (in your AWS CloudWatch/application logs)
 # Look for: "📅 Email Campaign Scheduler initialized"

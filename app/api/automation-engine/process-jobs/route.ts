@@ -537,7 +537,7 @@ function personalizeEmailContent(content: any, subscriber: any): any {
     '{{subscription}}': metadata.subscription || 'none',
     '{{lifetimePurchase}}': metadata.lifetime_purchase || metadata.lifetimePurchase || 'false',
     '{{companyName}}': metadata.company_name || metadata.companyName || '',
-    '{{unsubscribeUrl}}': `${process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com'}/unsubscribe?email=${encodeURIComponent(subscriber.email)}`,
+    '{{unsubscribeUrl}}': `${process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io'}/unsubscribe?email=${encodeURIComponent(subscriber.email)}`,
     '{{currentDate}}': new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   };
   
@@ -560,7 +560,7 @@ async function sendAutomationEmail(subscriber: any, content: any, automationId: 
     const { sendEmail } = await import('../../../../utils/email');
     
     // Override email for testing - send to ryan@cymasphere.com instead of subscriber
-    const testEmailOverride = process.env.AUTOMATION_TEST_EMAIL_OVERRIDE || 'ryan@cymasphere.com';
+    const testEmailOverride = process.env.AUTOMATION_TEST_EMAIL_OVERRIDE || 'ryan@nnaud.io';
     const recipientEmail = process.env.NODE_ENV === 'production' ? subscriber.email : testEmailOverride;
     
     console.log(`📧 Sending automation email to: ${recipientEmail} ${recipientEmail !== subscriber.email ? `(overridden from ${subscriber.email})` : ''}`);

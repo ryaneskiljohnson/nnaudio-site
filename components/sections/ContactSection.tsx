@@ -270,7 +270,7 @@ const ContactSection = () => {
                 {t("contact.description", "We'd love to hear from you! Whether you have questions about features, pricing, or just want to share your feedback, our team is here to help. Fill out the form and we'll get back to you as soon as possible.")}
               </InfoText>
               <InfoText>
-                {t("contact.emailInfo", "You can also reach us directly at")} <strong>support@cymasphere.com</strong>
+                {t("contact.emailInfo", "You can also reach us directly at")} <strong>support@nnaud.io</strong>
               </InfoText>
             </motion.div>
           </ContactInfo>

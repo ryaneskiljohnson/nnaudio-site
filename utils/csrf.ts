@@ -19,7 +19,7 @@ export function validateCsrfToken(
   bodyToken: string | undefined
 ): boolean {
   if (bodyToken === undefined || bodyToken === "") {
-    return true; // No token sent (e.g. Cymasphere app) - allow
+    return true; // No token sent (e.g. NNAudio app) - allow
   }
   const cookieToken = request.cookies.get(CSRF_COOKIE_NAME)?.value;
   if (!cookieToken) return false;

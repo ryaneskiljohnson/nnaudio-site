@@ -192,14 +192,14 @@ const TestimonialsSection = () => {
 
   const testimonials = [
     {
-      text: "Cymasphere has completely transformed my approach to chord progressions. The Interactive Harmony Palette makes theory accessible and fun, while the voicing generator creates rich, professional sounds I couldn't achieve before.",
+      text: "NNAudio has completely transformed my approach to chord progressions. The Interactive Harmony Palette makes theory accessible and fun, while the voicing generator creates rich, professional sounds I couldn't achieve before.",
       author: "Sarah Johnson",
       title: "Independent Songwriter",
       rating: 5,
       image: "https://randomuser.me/api/portraits/women/44.jpg",
     },
     {
-      text: "As a music educator, I've been looking for tools that make complex harmony concepts more visual and intuitive. Cymasphere does exactly that, and my students are showing better understanding and more creativity in their compositions.",
+      text: "As a music educator, I've been looking for tools that make complex harmony concepts more visual and intuitive. NNAudio does exactly that, and my students are showing better understanding and more creativity in their compositions.",
       author: "David Chen",
       title: "Professor of Music Theory",
       rating: 5,

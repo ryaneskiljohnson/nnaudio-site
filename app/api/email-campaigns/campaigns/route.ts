@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       .insert({
         name,
         subject,
-        sender_name: senderName || "Cymasphere",
+        sender_name: senderName || "NNAudio",
         sender_email: senderEmail || "support@nnaud.io",
         reply_to_email: replyToEmail || senderEmail || "support@nnaud.io",
         preheader: preheader || null,

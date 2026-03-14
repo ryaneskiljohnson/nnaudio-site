@@ -102,7 +102,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
         setTimeout(() => {
           // Redirect to mock checkout page with plan details and force a refresh
           router.push(
-            `/mock-checkout?plan=Cymasphere Pro&billing=${billingPeriod}&price=${price}`
+            `/mock-checkout?plan=NNAudio Pro&billing=${billingPeriod}&price=${price}`
           );
           setIsLoading(false);
         }, 800);
@@ -116,7 +116,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
         // Make a request to your backend to create a checkout session
         // In production, this would be the correct API endpoint
         const apiUrl =
-          process.env.REACT_APP_API_URL || "https://api.cymasphere.com";
+          process.env.REACT_APP_API_URL || "https://nnaud.io";
 
         const response = await fetch(`${apiUrl}/create-checkout-session`, {
           method: "POST",

@@ -529,7 +529,7 @@ export default function VideosPage() {
               All Videos
             </Title>
             <Subtitle>
-              Complete library of Cymasphere tutorials with advanced filtering
+              Complete library of NNAudio tutorials with advanced filtering
               and search
             </Subtitle>
           </div>

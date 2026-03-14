@@ -936,11 +936,11 @@ export default function VisualEditor({
         fontFamily: element.fontFamily || 'Arial, sans-serif'
       }),
       ...(element.type === 'footer' && {
-        unsubscribeUrl: element.unsubscribeUrl || 'https://cymasphere.com/unsubscribe?email={{email}}',
+        unsubscribeUrl: element.unsubscribeUrl || 'https://nnaud.io/unsubscribe?email={{email}}',
         unsubscribeText: element.unsubscribeText || 'Unsubscribe',
-        privacyUrl: element.privacyUrl || 'https://cymasphere.com/privacy-policy',
+        privacyUrl: element.privacyUrl || 'https://nnaud.io/privacy-policy',
         privacyText: element.privacyText || 'Privacy Policy',
-        termsUrl: element.termsUrl || 'https://cymasphere.com/terms-of-service',
+        termsUrl: element.termsUrl || 'https://nnaud.io/terms-of-service',
         termsText: element.termsText || 'Terms of Service',
         footerText: (() => {
           const year = new Date().getFullYear();
@@ -1817,19 +1817,19 @@ export default function VisualEditor({
           backgroundColor: '#363636',
           textColor: '#ffffff',
           socialLinks: [
-            { platform: 'facebook', url: 'https://www.facebook.com/cymasphere' },
-            { platform: 'twitter', url: 'https://x.com/cymasphere' },
-            { platform: 'instagram', url: 'https://www.instagram.com/cymasphere/' },
-            { platform: 'youtube', url: 'https://www.youtube.com/@cymasphere' },
+            { platform: 'facebook', url: 'https://www.facebook.com/nnaudio' },
+            { platform: 'twitter', url: 'https://x.com/nnaudio' },
+            { platform: 'instagram', url: 'https://www.instagram.com/nnaudio/' },
+            { platform: 'youtube', url: 'https://www.youtube.com/@nnaudio' },
             { platform: 'discord', url: 'https://discord.gg/gXGqqYR47B' }
           ],
           footerText: `© ${new Date().getFullYear()} NNAud.io All rights reserved.`,
           unsubscribeText: 'Unsubscribe',
-          unsubscribeUrl: 'https://cymasphere.com/unsubscribe?email={{email}}',
+          unsubscribeUrl: 'https://nnaud.io/unsubscribe?email={{email}}',
           privacyText: 'Privacy Policy',
-          privacyUrl: 'https://cymasphere.com/privacy-policy',
+          privacyUrl: 'https://nnaud.io/privacy-policy',
           termsText: 'Terms of Service',
-          termsUrl: 'https://cymasphere.com/terms-of-service'
+          termsUrl: 'https://nnaud.io/terms-of-service'
         };
       
       case 'brand-header':
@@ -3226,10 +3226,10 @@ export default function VisualEditor({
                   const url = element.unsubscribeUrl;
                   const finalUrl = (url && typeof url === 'string' && url.trim()) 
                     ? url.trim() 
-                    : 'https://cymasphere.com/unsubscribe?email={{email}}';
+                    : 'https://nnaud.io/unsubscribe?email={{email}}';
                   // Ensure URL is always valid
                   if (!finalUrl || finalUrl === '#' || finalUrl.trim() === '') {
-                    return 'https://cymasphere.com/unsubscribe?email={{email}}';
+                    return 'https://nnaud.io/unsubscribe?email={{email}}';
                   }
                   return finalUrl;
                 })()}
@@ -3268,7 +3268,7 @@ export default function VisualEditor({
                   if (url && typeof url === 'string' && url.trim()) {
                     return url.trim();
                   }
-                  return 'https://cymasphere.com/privacy-policy';
+                  return 'https://nnaud.io/privacy-policy';
                 })()}
                 onClick={(e) => e.preventDefault()}
                 style={{ 
@@ -3293,7 +3293,7 @@ export default function VisualEditor({
                   if (url && typeof url === 'string' && url.trim()) {
                     return url.trim();
                   }
-                  return 'https://cymasphere.com/terms-of-service';
+                  return 'https://nnaud.io/terms-of-service';
                 })()}
                 onClick={(e) => e.preventDefault()}
                 style={{ 
@@ -3348,7 +3348,7 @@ export default function VisualEditor({
             {/* Logo */}
             <img 
               src="/images/cm-logo-icon.webp" 
-              alt="Cymasphere Logo" 
+              alt="NNAudio Logo" 
               style={{
                 width: '36px',
                 height: '36px',
@@ -3890,7 +3890,7 @@ export default function VisualEditor({
                                     border-radius: 0;
                                     box-shadow: none;
                                   ">
-                                    <img src="/images/cm-logo-icon.webp" alt="Cymasphere Logo" style="
+                                    <img src="/images/cm-logo-icon.webp" alt="NNAudio Logo" style="
                                       width: 36px;
                                       height: 36px;
                                       object-fit: contain;
@@ -4877,7 +4877,7 @@ export default function VisualEditor({
                           </ControlLabel>
                           <UrlInput
                             type="url"
-                            placeholder="https://cymasphere.com/unsubscribe?email={{email}}"
+                            placeholder="https://nnaud.io/unsubscribe?email={{email}}"
                             value={emailElements.find(el => el.id === selectedElementId)?.unsubscribeUrl || ''}
                             onChange={(e) => updateElement(selectedElementId, { unsubscribeUrl: e.target.value })}
                           />
@@ -4908,7 +4908,7 @@ export default function VisualEditor({
                           </ControlLabel>
                           <UrlInput
                             type="url"
-                            placeholder="https://cymasphere.com/privacy-policy"
+                            placeholder="https://nnaud.io/privacy-policy"
                             value={emailElements.find(el => el.id === selectedElementId)?.privacyUrl || ''}
                             onChange={(e) => updateElement(selectedElementId, { privacyUrl: e.target.value })}
                           />
@@ -4931,7 +4931,7 @@ export default function VisualEditor({
                           </ControlLabel>
                           <UrlInput
                             type="url"
-                            placeholder="https://cymasphere.com/terms-of-service"
+                            placeholder="https://nnaud.io/terms-of-service"
                             value={emailElements.find(el => el.id === selectedElementId)?.termsUrl || ''}
                             onChange={(e) => updateElement(selectedElementId, { termsUrl: e.target.value })}
                           />

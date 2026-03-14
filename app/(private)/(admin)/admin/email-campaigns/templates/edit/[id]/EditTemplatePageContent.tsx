@@ -810,8 +810,8 @@ function EditTemplatePage() {
   const [templateData, setTemplateData] = useState<TemplateData>({
     id: isNewTemplate ? '' : params.id as string,
     name: isNewTemplate ? "" : "Welcome Email Template",
-    subject: isNewTemplate ? "" : "Welcome to Cymasphere! ≡ƒÄ╡",
-    senderName: "Cymasphere Team",
+    subject: isNewTemplate ? "" : "Welcome to NNAudio! ≡ƒÄ╡",
+    senderName: "NNAudio Team",
     senderEmail: "support@nnaud.io",
     replyToEmail: "",
     preheader: isNewTemplate ? "" : "We're excited to have you join our community",
@@ -829,10 +829,10 @@ function EditTemplatePage() {
 
   // Email elements for the visual editor
   const [emailElements, setEmailElements] = useState([
-    { id: 'header_' + Date.now(), type: 'header', content: 'Welcome to Cymasphere! ≡ƒÄ╡' },
+    { id: 'header_' + Date.now(), type: 'header', content: 'Welcome to NNAudio! ≡ƒÄ╡' },
     { id: 'text_' + Date.now() + 1, type: 'text', content: 'Hi {{firstName}}, We\'re excited to have you join our community of music creators and synthesizer enthusiasts.' },
     { id: 'button_' + Date.now(), type: 'button', content: '≡ƒÜÇ Get Started Now', url: '#' },
-          { id: 'image_' + Date.now(), type: 'image', src: 'https://via.placeholder.com/600x300/667eea/ffffff?text=Welcome+to+Cymasphere' }
+          { id: 'image_' + Date.now(), type: 'image', src: 'https://via.placeholder.com/600x300/667eea/ffffff?text=Welcome+to+NNAudio' }
   ]);
 
   // Preview state variables
@@ -913,7 +913,7 @@ function EditTemplatePage() {
             id: template.id,
             name: template.name || '',
             subject: template.subject || '',
-            senderName: t.sender_name ?? (template as { senderName?: string }).senderName ?? 'Cymasphere Team',
+            senderName: t.sender_name ?? (template as { senderName?: string }).senderName ?? 'NNAudio Team',
             senderEmail: t.sender_email ?? (template as { senderEmail?: string }).senderEmail ?? 'support@nnaud.io',
             replyToEmail: t.reply_to_email ?? (template as { replyToEmail?: string }).replyToEmail ?? '',
             preheader: t.preheader ?? (template as { preheader?: string }).preheader ?? '',
@@ -1403,7 +1403,7 @@ function EditTemplatePage() {
                     type="text"
                     value={templateData.senderName}
                     onChange={(e) => setTemplateData({...templateData, senderName: e.target.value})}
-                    placeholder="e.g. Cymasphere Team"
+                    placeholder="e.g. NNAudio Team"
                   />
                 </FormGroup>
                 <FormGroup>
@@ -1423,7 +1423,7 @@ function EditTemplatePage() {
                     type="email"
                     value={templateData.replyToEmail}
                     onChange={(e) => setTemplateData({...templateData, replyToEmail: e.target.value})}
-                    placeholder="e.g. noreply@cymasphere.com"
+                    placeholder="e.g. noreply@nnaud.io"
                   />
                 </FormGroup>
                 <FormGroup>

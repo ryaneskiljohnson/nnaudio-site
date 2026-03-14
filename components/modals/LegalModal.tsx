@@ -250,14 +250,14 @@ const LegalModal: React.FC<LegalModalProps> = ({
           <section>
             <h3>{t("legal.terms.acceptance.title", "1. Acceptance of Terms")}</h3>
             <p>
-              {t("legal.terms.acceptance.content", "By accessing or using Cymasphere's services, website, or applications, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.")}
+              {t("legal.terms.acceptance.content", "By accessing or using NNAudio's services, website, or applications, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.")}
             </p>
           </section>
 
           <section>
             <h3>{t("legal.terms.description.title", "2. Description of Service")}</h3>
             <p>
-              {t("legal.terms.description.content", "Cymasphere provides music theory and composition tools through web and desktop applications. These services may change from time to time without prior notice.")}
+              {t("legal.terms.description.content", "NNAudio provides music theory and composition tools through web and desktop applications. These services may change from time to time without prior notice.")}
             </p>
           </section>
 
@@ -271,21 +271,21 @@ const LegalModal: React.FC<LegalModalProps> = ({
           <section>
             <h3>{t("legal.terms.content.title", "4. User Content")}</h3>
             <p>
-              {t("legal.terms.content.content", "You retain all rights to any content you create, upload, or share through our services. By uploading content, you grant Cymasphere a non-exclusive license to use, reproduce, and distribute your content solely to provide services to you.")}
+              {t("legal.terms.content.content", "You retain all rights to any content you create, upload, or share through our services. By uploading content, you grant NNAudio a non-exclusive license to use, reproduce, and distribute your content solely to provide services to you.")}
             </p>
           </section>
 
           <section>
             <h3>{t("legal.terms.ip.title", "5. Intellectual Property")}</h3>
             <p>
-              {t("legal.terms.ip.content", "Cymasphere and its content, features, and functionality are owned by us and are protected by copyright, trademark, and other intellectual property laws.")}
+              {t("legal.terms.ip.content", "NNAudio and its content, features, and functionality are owned by us and are protected by copyright, trademark, and other intellectual property laws.")}
             </p>
           </section>
 
           <section>
             <h3>{t("legal.terms.subscription.title", "6. Subscription and Payments")}</h3>
             <p>
-              {t("legal.terms.subscription.content", "Various subscription plans are available for Cymasphere. By subscribing, you agree to pay the applicable fees.")}
+              {t("legal.terms.subscription.content", "Various subscription plans are available for NNAudio. By subscribing, you agree to pay the applicable fees.")}
             </p>
           </section>
 
@@ -306,7 +306,7 @@ const LegalModal: React.FC<LegalModalProps> = ({
           <section>
             <h3>{t("legal.terms.limitation.title", "9. Limitation of Liability")}</h3>
             <p>
-              {t("legal.terms.limitation.content", "In no event shall Cymasphere be liable for any indirect, incidental, special, or consequential damages arising out of or in connection with your use of our services.")}
+              {t("legal.terms.limitation.content", "In no event shall NNAudio be liable for any indirect, incidental, special, or consequential damages arising out of or in connection with your use of our services.")}
             </p>
           </section>
 
@@ -320,14 +320,14 @@ const LegalModal: React.FC<LegalModalProps> = ({
           <section>
             <h3>{t("legal.terms.governing.title", "11. Governing Law")}</h3>
             <p>
-              {t("legal.terms.governing.content", "These terms shall be governed by the laws of the jurisdiction in which Cymasphere operates, without regard to its conflict of law provisions.")}
+              {t("legal.terms.governing.content", "These terms shall be governed by the laws of the jurisdiction in which NNAudio operates, without regard to its conflict of law provisions.")}
             </p>
           </section>
 
           <section>
             <h3>{t("legal.terms.contact.title", "12. Contact")}</h3>
             <p>
-              {t("legal.terms.contact.content", "For questions about these terms, please contact us at support@cymasphere.com.")}
+              {t("legal.terms.contact.content", "For questions about these terms, please contact us at support@nnaud.io.")}
             </p>
           </section>
 
@@ -342,7 +342,7 @@ const LegalModal: React.FC<LegalModalProps> = ({
           <section>
             <h3>{t("legal.privacy.intro.title", "1. Introduction")}</h3>
             <p>
-              {t("legal.privacy.intro.content", "This Privacy Policy explains how Cymasphere collects, uses, and protects your personal information when you use our services. We respect your privacy and are committed to protecting your personal data.")}
+              {t("legal.privacy.intro.content", "This Privacy Policy explains how NNAudio collects, uses, and protects your personal information when you use our services. We respect your privacy and are committed to protecting your personal data.")}
             </p>
           </section>
 
@@ -405,7 +405,7 @@ const LegalModal: React.FC<LegalModalProps> = ({
           <section>
             <h3>{t("legal.privacy.contact.title", "10. Contact Us")}</h3>
             <p>
-              {t("legal.privacy.contact.content", "If you have questions about this Privacy Policy, please contact us at support@cymasphere.com.")}
+              {t("legal.privacy.contact.content", "If you have questions about this Privacy Policy, please contact us at support@nnaud.io.")}
             </p>
           </section>
 

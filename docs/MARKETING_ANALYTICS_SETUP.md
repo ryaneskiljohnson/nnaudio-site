@@ -1,6 +1,6 @@
 # Marketing & Analytics Integration Guide
 
-This document outlines the marketing and analytics tools integrated into the Cymasphere website.
+This document outlines the marketing and analytics tools integrated into the NNAudio website.
 
 ## ✅ Integrated Tools
 

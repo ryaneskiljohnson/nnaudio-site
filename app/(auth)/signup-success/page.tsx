@@ -205,7 +205,7 @@ function SignupSuccessContent() {
       >
         <SuccessIcon />
         <Title>Account Created Successfully!</Title>
-        <Subtitle>Welcome to Cymasphere</Subtitle>
+        <Subtitle>Welcome to NNAudio</Subtitle>
         
         <Message>
           <p>

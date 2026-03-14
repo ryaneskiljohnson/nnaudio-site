@@ -65,7 +65,7 @@
   },
   "features": {
     "title": "功能特色",
-    "subtitle": "探索Cymasphere能为您做些什么",
+    "subtitle": "探索NNAudio能为您做些什么",
     "aiComposition": "AI作曲",
     "aiCompositionDesc": "使用我们先进的AI，一键生成音乐",
     "livePerformance": "现场演奏",
@@ -166,7 +166,7 @@
       "title": "DAW集成",
       "description": "作为VST3或AU插件与您喜爱的DAW无缝连接，实现专业工作流程。",
       "modalTitle": "专业DAW集成",
-      "modalDescription": "Cymasphere无缝集成到您现有的制作工作流程中。作为独立应用程序或作为DAW内的强大插件使用，为您提供按您喜欢的方式工作的灵活性。",
+      "modalDescription": "NNAudio无缝集成到您现有的制作工作流程中。作为独立应用程序或作为DAW内的强大插件使用，为您提供按您喜欢的方式工作的灵活性。",
       "keyFeatures": "主要功能：",
       "features": [
         "VST3插件支持 - Windows和macOS兼容性，支持所有主要DAW",
@@ -181,7 +181,7 @@
       "title": "专业音轨类型",
       "description": "使用专用的声部、模式、音序器和律动音轨进行有序的音乐创作。",
       "modalTitle": "有序音轨架构",
-      "modalDescription": "Cymasphere提供专业音轨类型，逻辑地组织您的音乐元素。每种音轨类型都针对其特定功能进行了优化，为复杂作品创建简化的工作流程。",
+      "modalDescription": "NNAudio提供专业音轨类型，逻辑地组织您的音乐元素。每种音轨类型都针对其特定功能进行了优化，为复杂作品创建简化的工作流程。",
       "keyFeatures": "主要功能：",
       "features": [
         "声部音轨 - 使用智能和弦声部和声部进行原理的丰富和声上下文",
@@ -196,7 +196,7 @@
       "title": "智能生成",
       "description": "AI驱动的动态模式、进行和鼓律动生成，适应您的音乐上下文。",
       "modalTitle": "AI驱动音乐生成",
-      "modalDescription": "Cymasphere的智能生成系统创建响应您创意输入的音乐连贯模式、进行和律动。AI理解音乐上下文并生成适合您作品的内容。",
+      "modalDescription": "NNAudio的智能生成系统创建响应您创意输入的音乐连贯模式、进行和律动。AI理解音乐上下文并生成适合您作品的内容。",
       "keyFeatures": "主要功能：",
       "features": [
         "动态模式生成 - 基于您的和弦进行创建旋律和序列",
@@ -258,7 +258,7 @@
     "integrateWorkflow": {
       "step1": {
         "title": "DAW兼容性",
-        "description": "将Cymasphere用作独立应用程序或作为DAW中的VST/AU插件。无论您是独立构思创意还是直接集成到制作中，应用程序都能适应您的首选工作流程。"
+        "description": "将NNAudio用作独立应用程序或作为DAW中的VST/AU插件。无论您是独立构思创意还是直接集成到制作中，应用程序都能适应您的首选工作流程。"
       },
       "step2": {
         "title": "多轨控制",
@@ -270,7 +270,7 @@
       },
       "step4": {
         "title": "无缝工作流程",
-        "description": "将Cymasphere作为强大的和声和模式生成器集成到您的制作过程中。用它快速构思创意、开发复杂进行，并创建直接输入到DAW乐器的音乐模式。"
+        "description": "将NNAudio作为强大的和声和模式生成器集成到您的制作过程中。用它快速构思创意、开发复杂进行，并创建直接输入到DAW乐器的音乐模式。"
       }
     }
   },
@@ -387,7 +387,7 @@
     "copyright": "© {{year}} NNAud.io。保留所有权利。",
     "privacyPolicy": "隐私政策",
     "termsOfService": "服务条款",
-    "description": "Cymasphere是为制作人、作曲家、演奏音乐家、教育工作者和学生设计的交互式音乐作曲工具。",
+    "description": "NNAudio是为制作人、作曲家、演奏音乐家、教育工作者和学生设计的交互式音乐作曲工具。",
     "navigation": "导航",
     "account": "账户",
     "accountDashboard": "账户仪表板",
@@ -668,10 +668,10 @@
       "downloadComplete": "下载完成",
       "installationInstructions": "安装说明",
       "systemRequirements": "系统要求",
-      "installers": "Cymasphere安装包",
-      "macosTitle": "Cymasphere for macOS",
+      "installers": "NNAudio安装包",
+      "macosTitle": "NNAudio for macOS",
       "macosDesc": "适用于 macOS 的桌面应用程序（支持 Apple Silicon 和 Intel）。",
-      "windowsTitle": "Cymasphere for Windows",
+      "windowsTitle": "NNAudio for Windows",
       "windowsDesc": "适用于 Windows 10/11 的桌面应用程序。",
       "updated": "已更新",
       "updateDate": "2023年3月10日",
@@ -679,7 +679,7 @@
       "downloadWindows": "下载Windows版",
       "resources": "资源",
       "quickStart": "快速入门指南",
-      "quickStartDesc": "几分钟内快速上手Cymasphere",
+      "quickStartDesc": "几分钟内快速上手NNAudio",
       "downloadPdf": "下载PDF"
     },
     "settings": {
@@ -774,11 +774,11 @@
     "terms": {
       "acceptance": {
         "title": "1. 条款接受",
-        "content": "通过访问或使用Cymasphere的服务、网站或应用程序，您同意受这些服务条款的约束。如果您不同意这些条款，请不要使用我们的服务。"
+        "content": "通过访问或使用NNAudio的服务、网站或应用程序，您同意受这些服务条款的约束。如果您不同意这些条款，请不要使用我们的服务。"
       },
       "description": {
         "title": "2. 服务描述",
-        "content": "Cymasphere通过网络和桌面应用程序提供音乐理论和作曲工具。这些服务可能不时更改，恕不另行通知。"
+        "content": "NNAudio通过网络和桌面应用程序提供音乐理论和作曲工具。这些服务可能不时更改，恕不另行通知。"
       },
       "accounts": {
         "title": "3. 用户账户",
@@ -786,15 +786,15 @@
       },
       "content": {
         "title": "4. 用户内容",
-        "content": "您保留对通过我们服务创建、上传或分享的任何内容的所有权利。通过上传内容，您授予Cymasphere非独占许可，仅为向您提供服务而使用、复制和分发您的内容。"
+        "content": "您保留对通过我们服务创建、上传或分享的任何内容的所有权利。通过上传内容，您授予NNAudio非独占许可，仅为向您提供服务而使用、复制和分发您的内容。"
       },
       "ip": {
         "title": "5. 知识产权",
-        "content": "Cymasphere及其内容、功能和功能由我们拥有，受版权、商标和其他知识产权法保护。"
+        "content": "NNAudio及其内容、功能和功能由我们拥有，受版权、商标和其他知识产权法保护。"
       },
       "subscription": {
         "title": "6. 订阅和付款",
-        "content": "Cymasphere提供各种订阅套餐。通过订阅，您同意支付适用费用。除法律要求外，订阅费用不可退还。"
+        "content": "NNAudio提供各种订阅套餐。通过订阅，您同意支付适用费用。除法律要求外，订阅费用不可退还。"
       },
       "termination": {
         "title": "7. 终止",
@@ -806,7 +806,7 @@
       },
       "limitation": {
         "title": "9. 责任限制",
-        "content": "在任何情况下，Cymasphere都不对因您使用我们服务而产生或与之相关的任何间接、偶然、特殊或后果性损害承担责任。"
+        "content": "在任何情况下，NNAudio都不对因您使用我们服务而产生或与之相关的任何间接、偶然、特殊或后果性损害承担责任。"
       },
       "changes": {
         "title": "10. 条款变更",
@@ -814,17 +814,17 @@
       },
       "governing": {
         "title": "11. 适用法律",
-        "content": "这些条款应受Cymasphere运营所在司法管辖区的法律管辖，不考虑其法律冲突条款。"
+        "content": "这些条款应受NNAudio运营所在司法管辖区的法律管辖，不考虑其法律冲突条款。"
       },
       "contact": {
         "title": "12. 联系",
-        "content": "有关这些条款的问题，请联系我们：support@cymasphere.com。"
+        "content": "有关这些条款的问题，请联系我们：support@nnaud.io。"
       }
     },
     "privacy": {
       "intro": {
         "title": "1. 介绍",
-        "content": "本隐私政策解释了Cymasphere在您使用我们的服务时如何收集、使用和保护您的个人信息。我们尊重您的隐私，致力于保护您的个人数据。"
+        "content": "本隐私政策解释了NNAudio在您使用我们的服务时如何收集、使用和保护您的个人信息。我们尊重您的隐私，致力于保护您的个人数据。"
       },
       "collect": {
         "title": "2. 我们收集的信息",
@@ -860,19 +860,19 @@
       },
       "contact": {
         "title": "10. 联系我们",
-        "content": "如果您对本隐私政策有疑问，请联系我们：support@cymasphere.com。"
+        "content": "如果您对本隐私政策有疑问，请联系我们：support@nnaud.io。"
       }
     }
   },
   "aboutUs": {
     "mission": {
       "title": "我们的使命",
-      "content": "Cymasphere的使命是架起音乐理论和音乐创造力之间的桥梁。我们相信理论应该增强和指导创作过程，而不是约束它。我们的工具旨在提供指导和自由，在灵感和作曲完整性之间取得完美平衡。",
+      "content": "NNAudio的使命是架起音乐理论和音乐创造力之间的桥梁。我们相信理论应该增强和指导创作过程，而不是约束它。我们的工具旨在提供指导和自由，在灵感和作曲完整性之间取得完美平衡。",
       "highlight": "我们致力于通过使音乐理论变得直观、互动和激励人心来赋权所有技能水平的音乐家。我们的目标是通过更好的作曲工具看到您的创意愿景蓬勃发展。"
     },
     "story": {
       "title": "我们的故事",
-      "content1": "Cymasphere成立于2022年，由一支由专业音乐家、软件工程师和音乐理论家组成的团队创立，最初是一个雄心勃勃的项目，旨在重新构想音乐家如何与和声和作曲互动。",
+      "content1": "NNAudio成立于2022年，由一支由专业音乐家、软件工程师和音乐理论家组成的团队创立，最初是一个雄心勃勃的项目，旨在重新构想音乐家如何与和声和作曲互动。",
       "content2": "在对现有音乐软件要么缺乏理论深度要么过于复杂而无法直观使用感到多年挫折后，我们的创始人着手创建一个工具，使音乐理论在创作过程中变得实用、可视化且真正有用。"
     },
     "team": {
@@ -896,7 +896,7 @@
     },
     "values": {
       "title": "我们的价值观",
-      "intro": "在Cymasphere，我们被一套塑造我们所做一切的核心价值观指导：",
+      "intro": "在NNAudio，我们被一套塑造我们所做一切的核心价值观指导：",
       "integrity": {
         "title": "音乐完整性",
         "content": "我们尊重音乐理论原则，同时拥抱创新"
@@ -916,7 +916,7 @@
     },
     "approach": {
       "title": "我们的方法",
-      "intro": "Cymasphere采用独特的音乐作曲软件方法，专注于：",
+      "intro": "NNAudio采用独特的音乐作曲软件方法，专注于：",
       "point1": "以直观方式可视化和声和声部进行",
       "point2": "在尊重您创作方向的同时提供智能建议",
       "point3": "将理论概念无缝集成到创作工作流程中",
@@ -925,7 +925,7 @@
     },
     "future": {
       "title": "展望未来",
-      "content1": "随着我们继续开发Cymasphere，我们对音乐创作的未来感到兴奋。我们的路线图包括与主要DAW的高级集成、扩展的和声调色板、更深入的AI辅助作曲功能等等。",
+      "content1": "随着我们继续开发NNAudio，我们对音乐创作的未来感到兴奋。我们的路线图包括与主要DAW的高级集成、扩展的和声调色板、更深入的AI辅助作曲功能等等。",
       "content2": "我们邀请您加入我们的旅程，帮助塑造智能音乐创作工具的未来。"
     }
   },

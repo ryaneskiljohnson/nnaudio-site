@@ -19,8 +19,8 @@ export interface WelcomeEmailData {
 export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
   const { customerName, customerEmail, purchaseType, subscriptionType, planName } = data;
   const firstName = customerName?.split(' ')[0] || 'there';
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com';
-  const logoUrl = 'https://cymasphere.com/images/cm-logo.webp';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io';
+  const logoUrl = `${siteUrl}/images/cm-logo.webp`;
   
   // Format plan name for display
   let planDisplayName = '';
@@ -56,7 +56,7 @@ export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to Cymasphere</title>
+  <title>Welcome to NNAudio</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f7f7f7; font-family: Arial, sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f7f7f7; padding: 20px 0;">
@@ -66,18 +66,18 @@ export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #1a1a1a 0%, #121212 100%); padding: 30px 24px; text-align: center;">
-              <img src="${logoUrlSupabase}" alt="Cymasphere" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
+              <img src="${logoUrlSupabase}" alt="NNAudio" style="max-width: 220px; height: auto; display: block; margin: 0 auto;" />
             </td>
           </tr>
           <!-- Content -->
           <tr>
             <td style="padding: 30px 24px;">
               <h1 style="font-size: 1.5rem; color: #333; margin: 0 0 20px 0; font-weight: 600;">
-                Welcome to Cymasphere, ${firstName}!
+                Welcome to NNAudio, ${firstName}!
               </h1>
               
               <p style="color: #666; line-height: 1.6; margin: 0 0 20px 0;">
-                Thank you for joining Cymasphere! We're thrilled to have you as part of our community of musicians, composers, and creators.
+                Thank you for joining NNAudio! We're thrilled to have you as part of our community of musicians, composers, and creators.
               </p>
               
               <div style="margin: 30px 0; padding: 20px; background-color: #f9f9f9; border-radius: 8px; border-left: 4px solid ${purchaseType === 'elite' ? '#9b59b6' : '#6c63ff'};">
@@ -110,7 +110,7 @@ export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
               ` : ''}
               
               <p style="color: #666; line-height: 1.6; margin: 20px 0;">
-                You now have full access to all premium features of Cymasphere. Whether you're composing, learning music theory, or exploring new harmonic possibilities, we're here to support your creative journey.
+                You now have full access to all premium features of NNAudio. Whether you're composing, learning music theory, or exploring new harmonic possibilities, we're here to support your creative journey.
               </p>
               
               <!-- CTA Button -->
@@ -126,7 +126,7 @@ export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
               
               <p style="color: #666; line-height: 1.6; margin: 20px 0 0 0; font-size: 0.9em;">
                 Happy creating!<br>
-                <strong style="color: #333;">The Cymasphere Team</strong>
+                <strong style="color: #333;">The NNAudio Team</strong>
               </p>
             </td>
           </tr>
@@ -158,7 +158,7 @@ export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
 export function generateWelcomeEmailText(data: WelcomeEmailData): string {
   const { customerName, purchaseType, subscriptionType, planName, isTrial, trialEndDate, trialDays } = data;
   const firstName = customerName?.split(' ')[0] || 'there';
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io';
   
   let planDisplayName = '';
   if (purchaseType === 'elite') {
@@ -184,9 +184,9 @@ export function generateWelcomeEmailText(data: WelcomeEmailData): string {
   }
 
   return `
-Welcome to Cymasphere, ${firstName}!
+Welcome to NNAudio, ${firstName}!
 
-Thank you for joining Cymasphere! We're thrilled to have you as part of our community of musicians, composers, and creators.
+Thank you for joining NNAudio! We're thrilled to have you as part of our community of musicians, composers, and creators.
 
 ${isTrial ? 'Your Free Trial' : purchaseType === 'elite' ? 'Your Elite Access' : 'Your Purchase'}: ${planDisplayName}
 ${purchaseType === 'elite' ? `
@@ -198,14 +198,14 @@ ${purchaseType === 'elite' ? `
 Your ${trialDays || 'free'} day trial gives you full access to all premium features. You won't be charged until ${trialEndDateFormatted}. You can cancel anytime during your trial with no charges.
 ` : ''}
 
-You now have full access to all premium features of Cymasphere. Whether you're composing, learning music theory, or exploring new harmonic possibilities, we're here to support your creative journey.
+You now have full access to all premium features of NNAudio. Whether you're composing, learning music theory, or exploring new harmonic possibilities, we're here to support your creative journey.
 
 Get started: ${siteUrl}/downloads
 
 If you have any questions or need assistance, our support team is here to help. Simply reply to this email or visit our support center.
 
 Happy creating!
-The Cymasphere Team
+The NNAudio Team
 
 © ${new Date().getFullYear()} NNAud.io. All rights reserved.
 ${siteUrl}/support | ${siteUrl}/terms-of-service | ${siteUrl}/privacy-policy

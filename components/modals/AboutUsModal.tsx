@@ -260,7 +260,7 @@ const AboutUsContentSection = memo(() => {
     <AboutUsContent>
       <h3>{t("aboutUs.mission.title", "Our Mission")}</h3>
       <p>
-        {t("aboutUs.mission.content", "Cymasphere's mission is to make music theory accessible without requiring years of study or technical application to an instrument. We believe that deep musical understanding should be within reach of all creators, not just trained musicians. Our tools are designed to remove traditional barriers to music creation while offering creative freedom.")}
+        {t("aboutUs.mission.content", "NNAudio's mission is to make music theory accessible without requiring years of study or technical application to an instrument. We believe that deep musical understanding should be within reach of all creators, not just trained musicians. Our tools are designed to remove traditional barriers to music creation while offering creative freedom.")}
       </p>
 
       <CompanyHighlight>
@@ -269,7 +269,7 @@ const AboutUsContentSection = memo(() => {
 
       <h3>{t("aboutUs.story.title", "Our Story")}</h3>
       <p>
-        {t("aboutUs.story.content1", "Founded by Ryan Johnson, a passionate musician, and Garrett Fleischer, an experienced software engineer, Cymasphere was born from a shared vision: to democratize music creation by eliminating the requirement of deep theoretical knowledge.")}
+        {t("aboutUs.story.content1", "Founded by Ryan Johnson, a passionate musician, and Garrett Fleischer, an experienced software engineer, NNAudio was born from a shared vision: to democratize music creation by eliminating the requirement of deep theoretical knowledge.")}
       </p>
 
       <p>
@@ -278,7 +278,7 @@ const AboutUsContentSection = memo(() => {
 
       <h3>{t("aboutUs.values.title", "Our Values")}</h3>
       <p>
-        {t("aboutUs.values.intro", "At Cymasphere, we're guided by a set of core values that shape everything we do:")}
+        {t("aboutUs.values.intro", "At NNAudio, we're guided by a set of core values that shape everything we do:")}
       </p>
 
       <ul>
@@ -298,7 +298,7 @@ const AboutUsContentSection = memo(() => {
 
       <h3>{t("aboutUs.approach.title", "Our Approach")}</h3>
       <p>
-        {t("aboutUs.approach.intro", "Cymasphere takes a unique approach to music composition software by focusing on:")}
+        {t("aboutUs.approach.intro", "NNAudio takes a unique approach to music composition software by focusing on:")}
       </p>
 
       <ol>
@@ -318,7 +318,7 @@ const AboutUsContentSection = memo(() => {
 
       <h3>{t("aboutUs.future.title", "Looking Forward")}</h3>
       <p>
-        {t("aboutUs.future.content1", "As we continue to develop Cymasphere, we're excited about the future of music creation. Our roadmap includes advanced integration with major DAWs, expanded harmonic palettes, deeper AI-assisted composition features, and much more.")}
+        {t("aboutUs.future.content1", "As we continue to develop NNAudio, we're excited about the future of music creation. Our roadmap includes advanced integration with major DAWs, expanded harmonic palettes, deeper AI-assisted composition features, and much more.")}
       </p>
 
       <p>

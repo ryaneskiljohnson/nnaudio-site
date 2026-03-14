@@ -117,7 +117,7 @@ function generateProperEmailTemplate(
     <div class="container">
         <div class="header">
             <div class="logo">
-                <span class="cyma">CYMA</span><span>SPHERE</span>
+                <span class="cyma">NN</span><span>AUDIO</span>
             </div>
         </div>
         
@@ -125,8 +125,8 @@ function generateProperEmailTemplate(
             ${contentHtml}
                             
                             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef; text-align: center; font-size: 12px; color: #666666;">
-                                <p>You're receiving this email because you're subscribed to Cymasphere updates.</p>
-                                <p><a href="https://cymasphere.com/unsubscribe" style="color: #ffffff; text-decoration: none;">Unsubscribe</a> | <a href="https://cymasphere.com" style="color: #ffffff; text-decoration: none;">Visit our website</a></p>
+                                <p>You're receiving this email because you're subscribed to NNAudio updates.</p>
+                                <p><a href="${(process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io").replace(/\/$/, "")}/unsubscribe" style="color: #ffffff; text-decoration: none;">Unsubscribe</a> | <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io"}" style="color: #ffffff; text-decoration: none;">Visit our website</a></p>
                                 <p>© ${new Date().getFullYear()} NNAud.io. All rights reserved.</p>
                             </div>
                         </td>
@@ -456,7 +456,7 @@ export async function POST(request: NextRequest) {
                   subject: personalizedSubject,
                   html: personalizedHtml,
                   text: personalizedText,
-                  from: `${campaign.sender_name || "Cymasphere"} <${
+                  from: `${campaign.sender_name || "NNAudio"} <${
                     campaign.sender_email || "support@nnaud.io"
                   }>`,
                   replyTo: campaign.reply_to_email || undefined,
@@ -572,7 +572,7 @@ export async function POST(request: NextRequest) {
               subject: personalizedSubject,
               html: personalizedHtml,
               text: personalizedText,
-              from: `${campaign.sender_name || "Cymasphere"} <${
+              from: `${campaign.sender_name || "NNAudio"} <${
                 campaign.sender_email || "support@nnaud.io"
               }>`,
               replyTo: campaign.reply_to_email || undefined,

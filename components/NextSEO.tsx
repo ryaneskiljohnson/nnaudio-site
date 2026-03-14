@@ -18,7 +18,7 @@ interface NextSEOProps {
  * This component handles all meta tags for SEO and social sharing
  */
 const NextSEO: React.FC<NextSEOProps> = ({
-  title = "Cymasphere - Discover Sound in a New Way",
+  title = "NNAudio - Discover Sound in a New Way",
   description = "A platform for exploring and creating with sound in a new dimension.",
   keywords = "music, sound, visualization, audio, synthesis",
   canonical = "",
@@ -47,7 +47,7 @@ const NextSEO: React.FC<NextSEOProps> = ({
       <meta property="og:type" content={ogType} />
       <meta property="og:url" content={canonicalUrl} />
       <meta property="og:image" content={`${siteUrl}${ogImage}`} />
-      <meta property="og:site_name" content="Cymasphere" />
+      <meta property="og:site_name" content="NNAudio" />
 
       {/* Twitter Tags */}
       <meta name="twitter:card" content={twitterCard} />

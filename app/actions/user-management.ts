@@ -344,7 +344,7 @@ export async function createUserManagementWithInvite(
         process.env.NEXT_PUBLIC_SITE_URL ||
         (typeof window !== "undefined"
           ? window.location.origin
-          : "https://cymasphere.com");
+          : "https://nnaud.io");
       const redirectTo = `${baseUrl.replace(/\/$/, "")}/reset-password`;
 
       // Build user metadata with name if provided

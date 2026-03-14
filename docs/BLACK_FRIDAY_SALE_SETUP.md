@@ -345,7 +345,7 @@ salePrices: {
 ### Sale Announcement
 ```
 "🔥 BLACK FRIDAY EXCLUSIVE 🔥
-Get Cymasphere Lifetime for just $99!
+Get NNAudio Lifetime for just $99!
 (Regular price: $249, Now: $99)
 Save $150 - Limited Time Only!"
 ```
@@ -358,7 +358,7 @@ Save $150 - Limited Time Only!"
 ### Social Media
 ```
 🎁 BLACK FRIDAY SPECIAL 🎁
-Lifetime access to Cymasphere: $99
+Lifetime access to NNAudio: $99
 ✅ Was $249, now $99
 ✅ 60% OFF
 ✅ One-time payment

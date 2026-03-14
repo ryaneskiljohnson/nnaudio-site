@@ -75,7 +75,7 @@
   },
   "features": {
     "title": "Özellikler",
-    "subtitle": "Cymasphere'in sizin için neler yapabileceğini keşfedin",
+    "subtitle": "NNAudio'in sizin için neler yapabileceğini keşfedin",
     "aiComposition": "AI Kompozisyon",
     "aiCompositionDesc": "Gelişmiş AI'mızı kullanarak tek tıkla müzik oluşturun",
     "livePerformance": "Canlı Performans",
@@ -176,7 +176,7 @@
       "title": "DAW Entegrasyonu",
       "description": "Profesyonel iş akışları için favori DAW'nizle VST3 veya AU eklentisi olarak sorunsuz bağlantı kurun.",
       "modalTitle": "Profesyonel DAW Entegrasyonu",
-      "modalDescription": "Cymasphere, mevcut üretim iş akışınıza sorunsuz bir şekilde entegre olur. Bağımsız uygulama olarak veya DAW'niz içinde güçlü bir eklenti olarak kullanın, tercih ettiğiniz şekilde çalışma esnekliği sağlayın.",
+      "modalDescription": "NNAudio, mevcut üretim iş akışınıza sorunsuz bir şekilde entegre olur. Bağımsız uygulama olarak veya DAW'niz içinde güçlü bir eklenti olarak kullanın, tercih ettiğiniz şekilde çalışma esnekliği sağlayın.",
       "keyFeatures": "Ana özellikler:",
       "features": [
         "VST3 Eklenti Desteği - Windows ve macOS uyumluluğu, tüm büyük DAW'lar ile",
@@ -191,7 +191,7 @@
       "title": "Özelleşmiş Parça Türleri",
       "description": "Düzenli müzik yaratımı için özel seslendirme, desen, sıralayıcı ve groove parçaları ile çalışın.",
       "modalTitle": "Düzenli Parça Mimarisi",
-      "modalDescription": "Cymasphere, müzik öğelerinizi mantıklı bir şekilde düzenleyen özelleşmiş parça türlerini sunar. Her parça türü, karmaşık kompozisyonlar için akıcı bir iş akışı oluşturan kendi özel işlevi için optimize edilmiştir.",
+      "modalDescription": "NNAudio, müzik öğelerinizi mantıklı bir şekilde düzenleyen özelleşmiş parça türlerini sunar. Her parça türü, karmaşık kompozisyonlar için akıcı bir iş akışı oluşturan kendi özel işlevi için optimize edilmiştir.",
       "keyFeatures": "Ana özellikler:",
       "features": [
         "Seslendirme Parçaları - Akıllı akor seslendirme ve ses yönlendirme ilkelerini kullanan zengin armonik bağlam",
@@ -206,7 +206,7 @@
       "title": "Akıllı Üretim",
       "description": "Müzik bağlamınıza uyum sağlayan dinamik desenler, ilerlemeler ve davul groove'larının AI destekli üretimi.",
       "modalTitle": "AI Destekli Müzik Üretimi",
-      "modalDescription": "Cymasphere'nin akıllı üretim sistemi, yaratıcı girdilerinize yanıt veren müzikal olarak tutarlı desenler, ilerlemeler ve groove'lar oluşturur. AI, müzik bağlamını anlar ve kompozisyonunuza uygun içerik üretir.",
+      "modalDescription": "NNAudio'nin akıllı üretim sistemi, yaratıcı girdilerinize yanıt veren müzikal olarak tutarlı desenler, ilerlemeler ve groove'lar oluşturur. AI, müzik bağlamını anlar ve kompozisyonunuza uygun içerik üretir.",
       "keyFeatures": "Ana özellikler:",
       "features": [
         "Dinamik Desen Üretimi - Akor ilerlemelerinize dayalı melodi ve diziler oluşturur",
@@ -268,7 +268,7 @@
       },
       "step2": {
         "title": "DAW senkronizasyonu",
-        "description": "MIDI saat ve taşıma kontrolü aracılığıyla favori DAW'ınızla doğrudan senkronize olun. Cymasphere'i mevcut iş akışınızda sanal enstrüman veya kompozisyon aracı olarak kullanın."
+        "description": "MIDI saat ve taşıma kontrolü aracılığıyla favori DAW'ınızla doğrudan senkronize olun. NNAudio'i mevcut iş akışınızda sanal enstrüman veya kompozisyon aracı olarak kullanın."
       },
       "step3": {
         "title": "Bulut işbirliği",
@@ -320,14 +320,14 @@
   },
   "testimonials": {
     "title": "Kullanıcılarımız ne diyor",
-    "subtitle": "Cymasphere'in müzik yaratımını nasıl dönüştürdüğünü keşfedin",
+    "subtitle": "NNAudio'in müzik yaratımını nasıl dönüştürdüğünü keşfedin",
     "testimonial1": {
-      "quote": "Cymasphere kompozisyon sürecimi devrim niteliğinde değiştirdi. Akıllı ses yönlendirme, manuel olarak asla yapamayacağım karmaşık armoniler oluşturmama olanak tanıyor.",
+      "quote": "NNAudio kompozisyon sürecimi devrim niteliğinde değiştirdi. Akıllı ses yönlendirme, manuel olarak asla yapamayacağım karmaşık armoniler oluşturmama olanak tanıyor.",
       "author": "Sarah Chen",
       "role": "Besteci"
     },
     "testimonial2": {
-      "quote": "Müzik öğretmeni olarak, karmaşık teorik kavramları göstermek için Cymasphere kullanıyorum. Öğrencilerim sonunda akor ilerlemelerinin nasıl çalıştığını anlıyor!",
+      "quote": "Müzik öğretmeni olarak, karmaşık teorik kavramları göstermek için NNAudio kullanıyorum. Öğrencilerim sonunda akor ilerlemelerinin nasıl çalıştığını anlıyor!",
       "author": "Dr. Michael Rodriguez",
       "role": "Müzik öğretmeni"
     },
@@ -491,7 +491,7 @@
     },
     "info": {
       "title": "İletişim bilgileri",
-      "email": "merhaba@cymasphere.com",
+      "email": "merhaba@nnaud.io",
       "phone": "+1 (555) 123-4567",
       "address": "123 Müzik Sokağı, Armoni Şehri, AS 12345"
     },
@@ -511,7 +511,7 @@
     "copyright": "© {{year}} NNAud.io. Tüm hakları saklıdır.",
     "privacyPolicy": "Gizlilik Politikası",
     "termsOfService": "Hizmet Şartları",
-    "description": "Cymasphere, prodüktörler, besteciler, müzisyenler, eğitmenler ve öğrenciler için etkileşimli bir müzik kompozisyon aracıdır.",
+    "description": "NNAudio, prodüktörler, besteciler, müzisyenler, eğitmenler ve öğrenciler için etkileşimli bir müzik kompozisyon aracıdır.",
     "navigation": "Navigasyon",
     "account": "Hesap",
     "accountDashboard": "Hesap Kontrol Paneli",
@@ -520,8 +520,8 @@
     "byNNAudio": "NNAudio tarafından"
   },
   "download": {
-    "title": "Cymasphere İndir",
-    "subtitle": "Cymasphere'i tercih ettiğiniz platform için indirin",
+    "title": "NNAudio İndir",
+    "subtitle": "NNAudio'i tercih ettiğiniz platform için indirin",
     "platforms": {
       "windows": "Windows",
       "mac": "macOS",
@@ -758,10 +758,10 @@
       "downloadComplete": "İndirme Tamamlandı",
       "installationInstructions": "Kurulum Talimatları",
       "systemRequirements": "Sistem Gereksinimleri",
-      "installers": "Cymasphere Kurulumları",
-      "macosTitle": "macOS için Cymasphere",
+      "installers": "NNAudio Kurulumları",
+      "macosTitle": "macOS için NNAudio",
       "macosDesc": "macOS için masaüstü uygulaması (Apple Silicon ve Intel).",
-      "windowsTitle": "Windows için Cymasphere",
+      "windowsTitle": "Windows için NNAudio",
       "windowsDesc": "Windows 10/11 için masaüstü uygulaması.",
       "updated": "Güncellendi",
       "updateDate": "10 Mart 2023",
@@ -769,7 +769,7 @@
       "downloadWindows": "Windows için İndir",
       "resources": "Kaynaklar",
       "quickStart": "Hızlı Başlangıç Kılavuzu",
-      "quickStartDesc": "Cymasphere ile dakikalar içinde başlayın",
+      "quickStartDesc": "NNAudio ile dakikalar içinde başlayın",
       "downloadPdf": "PDF İndir"
     },
     "settings": {
@@ -1054,11 +1054,11 @@
     "terms": {
       "acceptance": {
         "title": "1. Şartların Kabulü",
-        "content": "Cymasphere'in hizmetlerine, web sitesine veya uygulamalarına erişerek veya bunları kullanarak, bu Hizmet Şartları'na bağlı olmayı kabul edersiniz. Bu şartları kabul etmiyorsanız, lütfen hizmetlerimizi kullanmayın."
+        "content": "NNAudio'in hizmetlerine, web sitesine veya uygulamalarına erişerek veya bunları kullanarak, bu Hizmet Şartları'na bağlı olmayı kabul edersiniz. Bu şartları kabul etmiyorsanız, lütfen hizmetlerimizi kullanmayın."
       },
       "description": {
         "title": "2. Hizmet Açıklaması",
-        "content": "Cymasphere, web ve masaüstü uygulamaları aracılığıyla müzik teorisi ve kompozisyon araçları sağlar. Bu hizmetler zaman zaman önceden haber verilmeden değişebilir."
+        "content": "NNAudio, web ve masaüstü uygulamaları aracılığıyla müzik teorisi ve kompozisyon araçları sağlar. Bu hizmetler zaman zaman önceden haber verilmeden değişebilir."
       },
       "accounts": {
         "title": "3. Kullanıcı Hesapları",
@@ -1066,15 +1066,15 @@
       },
       "content": {
         "title": "4. Kullanıcı İçeriği",
-        "content": "Hizmetlerimiz aracılığıyla oluşturduğunuz, yüklediğiniz veya paylaştığınız herhangi bir içeriğin tüm haklarını saklı tutarsınız. İçerik yükleyerek, Cymasphere'e içeriğinizi yalnızca size hizmet sağlamak için kullanma, çoğaltma ve dağıtma konusunda münhasır olmayan bir lisans verirsiniz."
+        "content": "Hizmetlerimiz aracılığıyla oluşturduğunuz, yüklediğiniz veya paylaştığınız herhangi bir içeriğin tüm haklarını saklı tutarsınız. İçerik yükleyerek, NNAudio'e içeriğinizi yalnızca size hizmet sağlamak için kullanma, çoğaltma ve dağıtma konusunda münhasır olmayan bir lisans verirsiniz."
       },
       "ip": {
         "title": "5. Fikri Mülkiyet",
-        "content": "Cymasphere ve içeriği, özellikleri ve işlevselliği tarafımızca sahiplenilir ve telif hakkı, marka ve diğer fikri mülkiyet yasalarıyla korunur."
+        "content": "NNAudio ve içeriği, özellikleri ve işlevselliği tarafımızca sahiplenilir ve telif hakkı, marka ve diğer fikri mülkiyet yasalarıyla korunur."
       },
       "subscription": {
         "title": "6. Abonelik ve Ödemeler",
-        "content": "Cymasphere için çeşitli abonelik planları mevcuttur. Abone olarak, geçerli ücretleri ödemeyi kabul edersiniz. Abonelik ücretleri, yasaların gerektirdiği durumlar dışında iade edilmez."
+        "content": "NNAudio için çeşitli abonelik planları mevcuttur. Abone olarak, geçerli ücretleri ödemeyi kabul edersiniz. Abonelik ücretleri, yasaların gerektirdiği durumlar dışında iade edilmez."
       },
       "termination": {
         "title": "7. Fesih",
@@ -1086,7 +1086,7 @@
       },
       "limitation": {
         "title": "9. Sorumluluk Sınırlaması",
-        "content": "Hiçbir durumda Cymasphere, hizmetlerimizi kullanımınızdan kaynaklanan veya bununla bağlantılı dolaylı, tesadüfi, özel veya sonuçsal zararlardan sorumlu olmayacaktır."
+        "content": "Hiçbir durumda NNAudio, hizmetlerimizi kullanımınızdan kaynaklanan veya bununla bağlantılı dolaylı, tesadüfi, özel veya sonuçsal zararlardan sorumlu olmayacaktır."
       },
       "changes": {
         "title": "10. Şartlarda Değişiklik",
@@ -1094,17 +1094,17 @@
       },
       "governing": {
         "title": "11. Geçerli Hukuk",
-        "content": "Bu şartlar, Cymasphere'in faaliyet gösterdiği yargı alanının yasalarına tabi olacak ve kanun çatışması hükümlerine bakılmaksızın uygulanacaktır."
+        "content": "Bu şartlar, NNAudio'in faaliyet gösterdiği yargı alanının yasalarına tabi olacak ve kanun çatışması hükümlerine bakılmaksızın uygulanacaktır."
       },
       "contact": {
         "title": "12. İletişim",
-        "content": "Bu şartlarla ilgili sorularınız için lütfen support@cymasphere.com adresinden bizimle iletişime geçin."
+        "content": "Bu şartlarla ilgili sorularınız için lütfen support@nnaud.io adresinden bizimle iletişime geçin."
       }
     },
     "privacy": {
       "intro": {
         "title": "1. Giriş",
-        "content": "Bu Gizlilik Politikası, Cymasphere'in hizmetlerimizi kullandığınızda kişisel bilgilerinizi nasıl topladığını, kullandığını ve koruduğunu açıklar. Gizliliğinize saygı duyuyor ve kişisel verilerinizi korumaya kararlıyız."
+        "content": "Bu Gizlilik Politikası, NNAudio'in hizmetlerimizi kullandığınızda kişisel bilgilerinizi nasıl topladığını, kullandığını ve koruduğunu açıklar. Gizliliğinize saygı duyuyor ve kişisel verilerinizi korumaya kararlıyız."
       },
       "collect": {
         "title": "2. Topladığımız Bilgiler",
@@ -1140,19 +1140,19 @@
       },
       "contact": {
         "title": "10. Bizimle İletişime Geçin",
-        "content": "Bu Gizlilik Politikası hakkında sorularınız varsa, lütfen support@cymasphere.com adresinden bizimle iletişime geçin."
+        "content": "Bu Gizlilik Politikası hakkında sorularınız varsa, lütfen support@nnaud.io adresinden bizimle iletişime geçin."
       }
     }
   },
   "aboutUs": {
     "mission": {
       "title": "Misyonumuz",
-      "content": "Cymasphere'in misyonu, müzik teorisi ve müzikal yaratıcılık arasındaki köprüyü kurmaktır. Teorinin yaratıcı süreci kısıtlamaktan ziyade geliştirmesi ve yönlendirmesi gerektiğine inanıyoruz. Araçlarımız hem rehberlik hem de özgürlük sağlayacak şekilde tasarlanmış, ilham ve kompozisyonel bütünlük arasında mükemmel dengeyi kuruyor.",
+      "content": "NNAudio'in misyonu, müzik teorisi ve müzikal yaratıcılık arasındaki köprüyü kurmaktır. Teorinin yaratıcı süreci kısıtlamaktan ziyade geliştirmesi ve yönlendirmesi gerektiğine inanıyoruz. Araçlarımız hem rehberlik hem de özgürlük sağlayacak şekilde tasarlanmış, ilham ve kompozisyonel bütünlük arasında mükemmel dengeyi kuruyor.",
       "highlight": "Müzik teorisini sezgisel, etkileşimli ve ilham verici hale getirerek her seviyedeki müzisyeni güçlendirmeye kararlıyız. Amacımız, daha iyi kompozisyon araçları aracılığıyla yaratıcı vizyonunuzun gelişmesini görmektir."
     },
     "story": {
       "title": "Hikayemiz",
-      "content1": "2022'de müzisyen, yazılım mühendisi ve müzik teorisyenlerinden oluşan kararlı bir ekip tarafından kurulan Cymasphere, müzisyenlerin armoni ve kompozisyonla nasıl etkileşim kurduğunu yeniden tasarlamak için iddialı bir proje olarak başladı.",
+      "content1": "2022'de müzisyen, yazılım mühendisi ve müzik teorisyenlerinden oluşan kararlı bir ekip tarafından kurulan NNAudio, müzisyenlerin armoni ve kompozisyonla nasıl etkileşim kurduğunu yeniden tasarlamak için iddialı bir proje olarak başladı.",
       "content2": "Teorik sofistikasyondan yoksun veya sezgisel kullanım için çok karmaşık olan mevcut müzik yazılımlarıyla yıllarca süren hayal kırıklığından sonra, kurucularımız müzik teorisini pratik, görsel ve yaratıcı süreçte gerçekten yararlı hale getirecek bir araç yaratmaya karar verdi."
     },
     "team": {
@@ -1176,7 +1176,7 @@
     },
     "values": {
       "title": "Değerlerimiz",
-      "intro": "Cymasphere'de, yaptığımız her şeyi şekillendiren bir dizi temel değerle yönlendiriliyoruz:",
+      "intro": "NNAudio'de, yaptığımız her şeyi şekillendiren bir dizi temel değerle yönlendiriliyoruz:",
       "integrity": {
         "title": "Müzikal Bütünlük",
         "content": "İnovasyonu benimserken müzik teorisinin ilkelerine saygı duyuyoruz"
@@ -1196,7 +1196,7 @@
     },
     "approach": {
       "title": "Yaklaşımımız",
-      "intro": "Cymasphere, müzik kompozisyon yazılımına şunlara odaklanarak benzersiz bir yaklaşım getirir:",
+      "intro": "NNAudio, müzik kompozisyon yazılımına şunlara odaklanarak benzersiz bir yaklaşım getirir:",
       "point1": "Armoni ve ses yönlendirmesini sezgisel yollarla görselleştirme",
       "point2": "Yaratıcı yönünüze saygı gösterirken akıllı öneriler sağlama",
       "point3": "Teorik kavramları yaratıcı iş akışına sorunsuz entegre etme",
@@ -1205,7 +1205,7 @@
     },
     "future": {
       "title": "Geleceğe Bakış",
-      "content1": "Cymasphere'i geliştirmeye devam ederken, müzik yaratımının geleceği konusunda heyecanlıyız. Yol haritamız büyük DAW'larla gelişmiş entegrasyon, genişletilmiş armonik paletler, daha derin AI destekli kompozisyon özellikleri ve çok daha fazlasını içeriyor.",
+      "content1": "NNAudio'i geliştirmeye devam ederken, müzik yaratımının geleceği konusunda heyecanlıyız. Yol haritamız büyük DAW'larla gelişmiş entegrasyon, genişletilmiş armonik paletler, daha derin AI destekli kompozisyon özellikleri ve çok daha fazlasını içeriyor.",
       "content2": "Bu yolculukta bize katılmanızı ve akıllı müzik yaratım araçlarının geleceğini şekillendirmeye yardım etmenizi davet ediyoruz."
     }
   },

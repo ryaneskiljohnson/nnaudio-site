@@ -88,7 +88,7 @@ curl -X POST http://localhost:3000/api/meta/events \
   -H "Content-Type: application/json" \
   -d '{
     "eventName": "Purchase",
-    "userData": {"email": "test@cymasphere.com"},
+    "userData": {"email": "test@nnaud.io"},
     "testEventCode": "TEST123"
   }'
 ```
@@ -104,7 +104,7 @@ curl -X POST http://localhost:3000/api/meta/events \
   -H "Content-Type: application/json" \
   -d '{
     "eventName": "Lead",
-    "userData": {"email": "lead@cymasphere.com"}
+    "userData": {"email": "lead@nnaud.io"}
   }'
 ```
 

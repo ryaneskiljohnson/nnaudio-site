@@ -7,9 +7,9 @@ The email campaign system now has multiple safety layers to prevent accidental s
 ### 🛡️ Safety Features Active
 
 1. **DEVELOPMENT MODE WHITELIST** - Only these emails will receive test messages:
-   - `ryan@cymasphere.com` ✅ 
-   - `test@cymasphere.com` 
-   - `demo@cymasphere.com`
+   - `ryan@nnaud.io` ✅ 
+   - `test@nnaud.io` 
+   - `demo@nnaud.io`
 
 2. **TEST AUDIENCE VALIDATION** - Only audiences with these names are allowed in development:
    - "Test Audience" ✅ (already exists)
@@ -28,7 +28,7 @@ The email campaign system now has multiple safety layers to prevent accidental s
 1. **Use the existing "Test Audience"** - This audience already exists in your database
 2. **Select "Send Immediately"** in Step 3 (Review & Schedule)
 3. **The system will automatically**:
-   - Only send to `ryan@cymasphere.com` (even if audience has more subscribers)
+   - Only send to `ryan@nnaud.io` (even if audience has more subscribers)
    - Show "DEVELOPMENT MODE" in console logs
    - Display safety warnings
    - Block any non-test audiences
@@ -44,7 +44,7 @@ The email campaign system now has multiple safety layers to prevent accidental s
 ### ✅ What's Allowed
 
 - ✅ "Test Audience" - SAFE to use
-- ✅ Only `ryan@cymasphere.com` receives emails
+- ✅ Only `ryan@nnaud.io` receives emails
 - ✅ Full email content and personalization testing
 - ✅ Real AWS SES sending (but only to your email)
 
@@ -64,7 +64,7 @@ The system automatically detects:
    - Choose "Send Immediately"
    - Click "Send Campaign"
 5. **Safety Check**: System will confirm only sending to whitelisted emails
-6. **Result**: Only `ryan@cymasphere.com` receives the test email
+6. **Result**: Only `ryan@nnaud.io` receives the test email
 
 ### 🐛 Debugging
 
@@ -83,4 +83,4 @@ When ready for production:
 
 ---
 
-**⚠️ IMPORTANT**: The current setup is 100% safe for testing. Even if you accidentally select a large audience, only your email (`ryan@cymasphere.com`) will receive messages in development mode. 
+**⚠️ IMPORTANT**: The current setup is 100% safe for testing. Even if you accidentally select a large audience, only your email (`ryan@nnaud.io`) will receive messages in development mode. 

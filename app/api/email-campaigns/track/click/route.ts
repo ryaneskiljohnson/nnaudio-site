@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     if (!sendId || !campaignId || !subscriberId || !targetUrl) {
       console.log('❌ Missing required tracking parameters');
       // Redirect to a safe fallback if URL is missing
-      const fallbackUrl = targetUrl || 'https://cymasphere.com';
+      const fallbackUrl = targetUrl || 'https://nnaud.io';
       return NextResponse.redirect(fallbackUrl);
     }
 
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
     console.error('❌ Error in click tracking:', error);
     
     // Redirect to target URL even on error, or fallback
-    const targetUrl = new URL(request.url).searchParams.get('url') || 'https://cymasphere.com';
+    const targetUrl = new URL(request.url).searchParams.get('url') || 'https://nnaud.io';
     return NextResponse.redirect(targetUrl);
   }
 } 

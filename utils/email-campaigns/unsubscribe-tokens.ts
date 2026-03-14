@@ -89,7 +89,7 @@ export function verifyUnsubscribeToken(token: string, maxAgeDays: number = 30): 
  */
 export function generateUnsubscribeUrl(email: string, baseUrl?: string): string {
   const token = generateUnsubscribeToken(email);
-  const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com';
+  const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io';
   return `${siteUrl}/unsubscribe?email=${encodeURIComponent(email)}&token=${token}`;
 }
 

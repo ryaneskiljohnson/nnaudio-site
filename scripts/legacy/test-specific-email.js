@@ -65,9 +65,9 @@ async function testSpecificEmail() {
 
   // Generate what the tracking URL SHOULD be
   console.log('🔗 EXPECTED TRACKING URLS:');
-  const baseUrl = 'https://cymasphere.com'; // Production URL
+  const baseUrl = 'https://nnaud.io'; // Production URL
   const expectedPixelUrl = `${baseUrl}/api/email-campaigns/track/open?c=${recentSend.campaign_id}&u=${subscriber?.id || 'unknown'}&s=${recentSend.id}`;
-  const expectedClickUrl = `${baseUrl}/api/email-campaigns/track/click?c=${recentSend.campaign_id}&u=${subscriber?.id || 'unknown'}&s=${recentSend.id}&url=https%3A%2F%2Fcymasphere.com`;
+  const expectedClickUrl = `${baseUrl}/api/email-campaigns/track/click?c=${recentSend.campaign_id}&u=${subscriber?.id || 'unknown'}&s=${recentSend.id}&url=https%3A%2F%2Fnnaud.io`;
   
   console.log(`   Pixel URL: ${expectedPixelUrl}`);
   console.log(`   Click URL: ${expectedClickUrl}`);

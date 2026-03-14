@@ -79,7 +79,7 @@
   },
   "features": {
     "title": "Features",
-    "subtitle": "Discover what Cymasphere can do for you",
+    "subtitle": "Discover what NNAudio can do for you",
     "aiComposition": "AI Composition",
     "aiCompositionDesc": "Generate music with the click of a button using our advanced AI",
     "livePerformance": "Live Performance",
@@ -180,7 +180,7 @@
       "title": "DAW Integration",
       "description": "Seamlessly connect with your favorite DAW as a VST3 or AU plugin for professional workflows.",
       "modalTitle": "Professional DAW Integration",
-      "modalDescription": "Cymasphere integrates seamlessly with your existing production workflow. Use it as a standalone application or as a powerful plugin within your DAW, giving you the flexibility to work however you prefer.",
+      "modalDescription": "NNAudio integrates seamlessly with your existing production workflow. Use it as a standalone application or as a powerful plugin within your DAW, giving you the flexibility to work however you prefer.",
       "keyFeatures": "Key Features:",
       "features": [
         "VST3 Plugin Support for Windows and macOS compatibility with all major DAWs",
@@ -195,7 +195,7 @@
       "title": "Specialized Track Types",
       "description": "Work with dedicated voicing, pattern, sequencer, and groove tracks for organized music creation.",
       "modalTitle": "Organized Track Architecture",
-      "modalDescription": "Cymasphere features specialized track types that organize your musical elements logically. Each track type is optimized for its specific function, creating a streamlined workflow for complex compositions.",
+      "modalDescription": "NNAudio features specialized track types that organize your musical elements logically. Each track type is optimized for its specific function, creating a streamlined workflow for complex compositions.",
       "keyFeatures": "Key Features:",
       "features": [
         "Voicing Tracks with rich harmonic context that use intelligent chord voicing and voice leading principles",
@@ -210,7 +210,7 @@
       "title": "Intelligent Generation",
       "description": "AI-powered generation of dynamic patterns, progressions, and drum grooves that adapt to your musical context.",
       "modalTitle": "AI-Powered Music Generation",
-      "modalDescription": "Cymasphere's intelligent generation system creates musically coherent patterns, progressions, and grooves that respond to your creative input. The AI understands musical context and generates content that fits your composition.",
+      "modalDescription": "NNAudio's intelligent generation system creates musically coherent patterns, progressions, and grooves that respond to your creative input. The AI understands musical context and generates content that fits your composition.",
       "keyFeatures": "Key Features:",
       "features": [
         "Dynamic Pattern Generation that creates melodies and sequences based on your chord progressions",
@@ -272,7 +272,7 @@
     "integrateWorkflow": {
       "step1": {
         "title": "DAW Compatibility",
-        "description": "Use Cymasphere as a standalone application or as a VST/AU plugin within your DAW. Whether you're sketching ideas independently or integrating directly into your production, the app adapts to your preferred workflow."
+        "description": "Use NNAudio as a standalone application or as a VST/AU plugin within your DAW. Whether you're sketching ideas independently or integrating directly into your production, the app adapts to your preferred workflow."
       },
       "step2": {
         "title": "Multi-Track Control",
@@ -284,7 +284,7 @@
       },
       "step4": {
         "title": "Seamless Workflow",
-        "description": "Integrate Cymasphere into your production process as a powerful harmony and pattern generator. Use it to quickly sketch ideas, develop complex progressions, and create musical patterns that feed directly into your DAW's instruments."
+        "description": "Integrate NNAudio into your production process as a powerful harmony and pattern generator. Use it to quickly sketch ideas, develop complex progressions, and create musical patterns that feed directly into your DAW's instruments."
       }
     }
   },
@@ -931,12 +931,12 @@
   "aboutUs": {
     "mission": {
       "title": "Our Mission",
-      "content": "Cymasphere's mission is to make music theory accessible without requiring years of study or technical application to an instrument. We believe deep musical understanding should be within reach of all creators, not just classically trained musicians. Our tools are designed to remove traditional barriers to music creation while still offering creative freedom.",
+      "content": "NNAudio's mission is to make music theory accessible without requiring years of study or technical application to an instrument. We believe deep musical understanding should be within reach of all creators, not just classically trained musicians. Our tools are designed to remove traditional barriers to music creation while still offering creative freedom.",
       "highlight": "We're committed to empowering creators of all levels by making the theoretical complexity of music intuitive and accessible. Our goal is to enable you to realize your creative vision without the years of study typically required."
     },
     "story": {
       "title": "Our Story",
-      "content1": "Founded in 2022 by a team of dedicated musicians, software engineers, and music theorists, Cymasphere began as an ambitious project to reimagine how musicians interact with harmony and composition.",
+      "content1": "Founded in 2022 by a team of dedicated musicians, software engineers, and music theorists, NNAudio began as an ambitious project to reimagine how musicians interact with harmony and composition.",
       "content2": "After years of frustration with existing music software that either lacked theoretical sophistication or were too complex for intuitive use, our founders set out to create a tool that would make music theory practical, visual, and genuinely useful in the creative process."
     },
     "team": {
@@ -960,7 +960,7 @@
     },
     "values": {
       "title": "Our Values",
-      "intro": "At Cymasphere, we're guided by a set of core values that shape everything we do:",
+      "intro": "At NNAudio, we're guided by a set of core values that shape everything we do:",
       "integrity": {
         "title": "Musical Integrity",
         "content": "We respect the principles of music theory while embracing innovation"
@@ -980,7 +980,7 @@
     },
     "approach": {
       "title": "Our Approach",
-      "intro": "Cymasphere takes a unique approach to music composition software by focusing on:",
+      "intro": "NNAudio takes a unique approach to music composition software by focusing on:",
       "point1": "Visualizing harmony and voice leading in intuitive ways",
       "point2": "Providing intelligent suggestions while respecting your creative direction",
       "point3": "Integrating theoretical concepts seamlessly into the creative workflow",
@@ -989,7 +989,7 @@
     },
     "future": {
       "title": "Looking Forward",
-      "content1": "As we continue to develop Cymasphere, we're excited about the future of music creation. Our roadmap includes advanced integration with major DAWs, expanded harmonic palettes, deeper AI-assisted composition features, and much more.",
+      "content1": "As we continue to develop NNAudio, we're excited about the future of music creation. Our roadmap includes advanced integration with major DAWs, expanded harmonic palettes, deeper AI-assisted composition features, and much more.",
       "content2": "We invite you to join us on this journey and help shape the future of intelligent music creation tools."
     }
   },

@@ -68,8 +68,8 @@ async function grantLifetimeLicense(email, customerId) {
           },
         },
       },
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com'}/dashboard?lifetime_granted=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com'}/dashboard`,
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io'}/dashboard?lifetime_granted=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io'}/dashboard`,
     });
 
     console.log('✅ Checkout session created:', checkoutSession.id);

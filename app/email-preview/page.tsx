@@ -114,7 +114,7 @@ function EmailPreviewContent() {
         <div style={{ textAlign: 'center', maxWidth: 600 }}>
           <div style={{ fontSize: 18, color: '#d00', marginBottom: 12 }}>Failed to load preview</div>
           <div style={{ fontSize: 14, color: '#555', marginBottom: 20 }}>{error}</div>
-          <button onClick={() => router.push('/')} style={{ padding: '10px 16px', background: '#6c63ff', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Go to Cymasphere</button>
+          <button onClick={() => router.push('/')} style={{ padding: '10px 16px', background: '#6c63ff', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Go to NNAudio</button>
         </div>
       </div>
     );

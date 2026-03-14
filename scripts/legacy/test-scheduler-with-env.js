@@ -14,7 +14,7 @@ import fetch from "node-fetch";
 config({ path: resolve(process.cwd(), '.env.local') });
 
 // Configuration
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://cymasphere.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io";
 const CRON_SECRET = process.env.CRON_SECRET || "your-secret-key";
 
 console.log("🔧 Environment Check:");

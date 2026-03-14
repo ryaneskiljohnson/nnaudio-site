@@ -1,5 +1,5 @@
 /**
- * Synthesizer Presets for Cymasphere
+ * Synthesizer Presets for NNAudio
  *
  * This file contains various presets for the polysynth
  * Each preset defines synth parameters and effects settings

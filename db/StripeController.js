@@ -229,7 +229,7 @@ router.get('/checkout-session', async (req, res) => {
 });
 
 async function beginPortalSession(custId) {
-  const returnUrl = 'https://cymasphere.com'; // process.env.DOMAIN;
+  const returnUrl = process.env.DOMAIN || 'https://nnaud.io';
 
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: custId,
@@ -264,8 +264,8 @@ async function createCheckoutSession(priceId, custId, subscription) {
       ],
       invoice_creation: subscription ? undefined : { enabled: true },
       allow_promotion_codes: true,
-      success_url: 'https://cymasphere.com/payment-success',
-      cancel_url: 'https://cymasphere.com/plans',
+      success_url: `${process.env.DOMAIN || 'https://nnaud.io'}/payment-success`,
+      cancel_url: `${process.env.DOMAIN || 'https://nnaud.io'}/plans`,
       billing_address_collection: 'auto',
       automatic_tax: { enabled: true },
       customer_update: { address: 'auto' },

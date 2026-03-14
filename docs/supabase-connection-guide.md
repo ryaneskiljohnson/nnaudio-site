@@ -1,6 +1,6 @@
 # Supabase Database Connection Guide
 
-This guide contains direct instructions for connecting to the Supabase database for the **Cymasphere** project.
+This guide contains direct instructions for connecting to the Supabase database for the **NNAudio** project.
 
 ## Connection Credentials
 

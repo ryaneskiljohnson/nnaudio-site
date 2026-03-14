@@ -240,12 +240,12 @@ const FinishModal: React.FC<FinishModalProps> = ({
     if (t) {
       return t(
         "synth.wizard.congratsMessage",
-        'Congratulations! You\'ve just scratched the surface of Cymasphere\'s powerful music creation capabilities. Your song "{songName}" with the "{trackName}" track is just the beginning. Explore the full platform to unlock advanced features, AI-powered composition tools, and professional audio production capabilities that will transform your musical ideas into reality.',
+        'Congratulations! You\'ve just scratched the surface of NNAudio\'s powerful music creation capabilities. Your song "{songName}" with the "{trackName}" track is just the beginning. Explore the full platform to unlock advanced features, AI-powered composition tools, and professional audio production capabilities that will transform your musical ideas into reality.',
         { songName, trackName }
       );
     }
 
-    return `Congratulations! You've created a song called "${songName}" with a "${trackName}" track featuring a chord progression and melody pattern. This is just the beginning of what you can create with Cymasphere.`;
+    return `Congratulations! You've created a song called "${songName}" with a "${trackName}" track featuring a chord progression and melody pattern. This is just the beginning of what you can create with NNAudio.`;
   }, [t, songName, trackName]);
 
   return (

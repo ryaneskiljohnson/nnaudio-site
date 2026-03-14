@@ -1,8 +1,8 @@
 import { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
-  title: "Cymasphere",
-  description: "Advanced Chord Generation",
+  title: "NNAudio",
+  description: "Discover Sound in a New Way",
 };
 
 export const viewport: Viewport = {

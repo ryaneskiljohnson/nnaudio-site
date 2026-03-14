@@ -1697,7 +1697,7 @@ function CampaignsPage() {
         </div>
         
         <div class="content">
-            <h1 style="font-size: 2.5rem; color: #333; margin-bottom: 1rem; text-align: center; background: linear-gradient(135deg, #333, #666); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">${campaign?.subject || 'Welcome to Cymasphere! 🎵'}</h1>
+            <h1 style="font-size: 2.5rem; color: #333; margin-bottom: 1rem; text-align: center; background: linear-gradient(135deg, #333, #666); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">${campaign?.subject || 'Welcome to NNAudio! 🎵'}</h1>
             <p style="font-size: 1rem; color: #555; line-height: 1.6; margin-bottom: 1rem;">${campaign?.description || 'Thank you for joining our community of music creators and enthusiasts.'}</p>
         </div>
         

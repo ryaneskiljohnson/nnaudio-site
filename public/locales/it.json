@@ -75,7 +75,7 @@
   },
   "features": {
     "title": "Funzionalità",
-    "subtitle": "Scopri cosa può fare Cymasphere per te",
+    "subtitle": "Scopri cosa può fare NNAudio per te",
     "aiComposition": "Composizione IA",
     "aiCompositionDesc": "Genera musica con un clic usando la nostra IA avanzata",
     "livePerformance": "Performance dal vivo",
@@ -176,7 +176,7 @@
       "title": "Integrazione DAW",
       "description": "Connettiti senza problemi con il tuo DAW preferito come plugin VST3 o AU per flussi di lavoro professionali.",
       "modalTitle": "Integrazione DAW Professionale",
-      "modalDescription": "Cymasphere si integra senza problemi nel tuo flusso di lavoro di produzione esistente. Usalo come applicazione standalone o come plugin potente all'interno del tuo DAW, dandoti la flessibilità di lavorare come preferisci.",
+      "modalDescription": "NNAudio si integra senza problemi nel tuo flusso di lavoro di produzione esistente. Usalo come applicazione standalone o come plugin potente all'interno del tuo DAW, dandoti la flessibilità di lavorare come preferisci.",
       "keyFeatures": "Caratteristiche principali:",
       "features": [
         "Supporto Plugin VST3 per compatibilità Windows e macOS con tutti i DAW principali",
@@ -191,7 +191,7 @@
       "title": "Tipi di Traccia Specializzati",
       "description": "Lavora con tracce dedicate di voicing, pattern, sequencer e groove per creazione musicale organizzata.",
       "modalTitle": "Architettura Traccia Organizzata",
-      "modalDescription": "Cymasphere presenta tipi di traccia specializzati che organizzano i tuoi elementi musicali logicamente. Ogni tipo di traccia è ottimizzato per la sua funzione specifica, creando un flusso di lavoro semplificato per composizioni complesse.",
+      "modalDescription": "NNAudio presenta tipi di traccia specializzati che organizzano i tuoi elementi musicali logicamente. Ogni tipo di traccia è ottimizzato per la sua funzione specifica, creando un flusso di lavoro semplificato per composizioni complesse.",
       "keyFeatures": "Caratteristiche principali:",
       "features": [
         "Tracce Voicing con contesto armonico ricco che usano principi intelligenti di voicing accordi e condotta delle voci",
@@ -206,7 +206,7 @@
       "title": "Generazione Intelligente",
       "description": "Generazione alimentata da IA di pattern dinamici, progressioni e groove di batteria che si adattano al tuo contesto musicale.",
       "modalTitle": "Generazione Musicale Alimentata da IA",
-      "modalDescription": "Il sistema di generazione intelligente di Cymasphere crea pattern, progressioni e groove musicalmente coerenti che rispondono al tuo input creativo. L'IA comprende il contesto musicale e genera contenuti che si adattano alla tua composizione.",
+      "modalDescription": "Il sistema di generazione intelligente di NNAudio crea pattern, progressioni e groove musicalmente coerenti che rispondono al tuo input creativo. L'IA comprende il contesto musicale e genera contenuti che si adattano alla tua composizione.",
       "keyFeatures": "Caratteristiche principali:",
       "features": [
         "Generazione Pattern Dinamici che crea melodie e sequenze basate sulle tue progressioni di accordi",
@@ -274,7 +274,7 @@
       "backToProgression": "Torna alla progressione accordi",
       "backToTrack": "Torna alla creazione traccia",
       "finish": "Termina",
-      "congratsMessage": "Congratulazioni! Hai appena iniziato a scoprire le potenti capacità di creazione musicale di Cymasphere. La tua canzone \"{songName}\" con la traccia \"{trackName}\" è solo l'inizio. Esplora l'intera piattaforma per sbloccare funzionalità avanzate, strumenti di composizione alimentati dall'IA e capacità di produzione audio professionale che trasformeranno le tue idee musicali in realtà."
+      "congratsMessage": "Congratulazioni! Hai appena iniziato a scoprire le potenti capacità di creazione musicale di NNAudio. La tua canzone \"{songName}\" con la traccia \"{trackName}\" è solo l'inizio. Esplora l'intera piattaforma per sbloccare funzionalità avanzate, strumenti di composizione alimentati dall'IA e capacità di produzione audio professionale che trasformeranno le tue idee musicali in realtà."
     },
     "notes": {
       "C": "Do",
@@ -343,7 +343,7 @@
     "integrateWorkflow": {
       "step1": {
         "title": "Compatibilità DAW",
-        "description": "Usa Cymasphere come applicazione standalone o come plugin VST/AU nella tua DAW. Che tu stia abbozzando idee indipendentemente o integrando direttamente nella tua produzione, l'app si adatta al tuo flusso di lavoro preferito."
+        "description": "Usa NNAudio come applicazione standalone o come plugin VST/AU nella tua DAW. Che tu stia abbozzando idee indipendentemente o integrando direttamente nella tua produzione, l'app si adatta al tuo flusso di lavoro preferito."
       },
       "step2": {
         "title": "Controllo multi-traccia",
@@ -355,7 +355,7 @@
       },
       "step4": {
         "title": "Flusso di lavoro senza soluzione di continuità",
-        "description": "Integra Cymasphere nel tuo processo di produzione come potente generatore di armonia e pattern. Usalo per abbozzare rapidamente idee, sviluppare progressioni complesse e creare pattern musicali che si alimentano direttamente negli strumenti della tua DAW."
+        "description": "Integra NNAudio nel tuo processo di produzione come potente generatore di armonia e pattern. Usalo per abbozzare rapidamente idee, sviluppare progressioni complesse e creare pattern musicali che si alimentano direttamente negli strumenti della tua DAW."
       }
     }
   },
@@ -472,7 +472,7 @@
     "copyright": "© {{year}} NNAud.io. Tutti i diritti riservati.",
     "privacyPolicy": "Informativa privacy",
     "termsOfService": "Termini di servizio",
-    "description": "Cymasphere è uno strumento interattivo di composizione musicale per produttori, compositori, musicisti, educatori e studenti.",
+    "description": "NNAudio è uno strumento interattivo di composizione musicale per produttori, compositori, musicisti, educatori e studenti.",
     "navigation": "Navigazione",
     "account": "Account",
     "accountDashboard": "Dashboard account",
@@ -753,10 +753,10 @@
       "downloadComplete": "Download completato",
       "installationInstructions": "Istruzioni installazione",
       "systemRequirements": "Requisiti di sistema",
-      "installers": "Installer Cymasphere",
-      "macosTitle": "Cymasphere per macOS",
+      "installers": "Installer NNAudio",
+      "macosTitle": "NNAudio per macOS",
       "macosDesc": "Applicazione desktop per macOS (Apple Silicon e Intel).",
-      "windowsTitle": "Cymasphere per Windows",
+      "windowsTitle": "NNAudio per Windows",
       "windowsDesc": "Applicazione desktop per Windows 10/11.",
       "updated": "Aggiornato",
       "updateDate": "10 marzo 2023",
@@ -764,7 +764,7 @@
       "downloadWindows": "Scarica per Windows",
       "resources": "Risorse",
       "quickStart": "Guida avvio rapido",
-      "quickStartDesc": "Inizia con Cymasphere in pochi minuti",
+      "quickStartDesc": "Inizia con NNAudio in pochi minuti",
       "downloadPdf": "Scarica PDF"
     },
     "settings": {
@@ -859,11 +859,11 @@
     "terms": {
       "acceptance": {
         "title": "1. Accettazione dei termini",
-        "content": "Accedendo o utilizzando i servizi, il sito web o le applicazioni di Cymasphere, accetti di essere vincolato da questi Termini di servizio. Se non accetti questi termini, non utilizzare i nostri servizi."
+        "content": "Accedendo o utilizzando i servizi, il sito web o le applicazioni di NNAudio, accetti di essere vincolato da questi Termini di servizio. Se non accetti questi termini, non utilizzare i nostri servizi."
       },
       "description": {
         "title": "2. Descrizione del servizio",
-        "content": "Cymasphere fornisce strumenti di teoria musicale e composizione attraverso applicazioni web e desktop. Questi servizi possono cambiare di volta in volta senza preavviso."
+        "content": "NNAudio fornisce strumenti di teoria musicale e composizione attraverso applicazioni web e desktop. Questi servizi possono cambiare di volta in volta senza preavviso."
       },
       "accounts": {
         "title": "3. Account utente",
@@ -871,15 +871,15 @@
       },
       "content": {
         "title": "4. Contenuto utente",
-        "content": "Mantieni tutti i diritti su qualsiasi contenuto che crei, carichi o condividi attraverso i nostri servizi. Caricando contenuto, concedi a Cymasphere una licenza non esclusiva per utilizzare, riprodurre e distribuire il tuo contenuto esclusivamente per fornirti servizi."
+        "content": "Mantieni tutti i diritti su qualsiasi contenuto che crei, carichi o condividi attraverso i nostri servizi. Caricando contenuto, concedi a NNAudio una licenza non esclusiva per utilizzare, riprodurre e distribuire il tuo contenuto esclusivamente per fornirti servizi."
       },
       "ip": {
         "title": "5. Proprietà intellettuale",
-        "content": "Cymasphere e i suoi contenuti, funzionalità e funzionalità sono di nostra proprietà e sono protetti da copyright, marchi e altre leggi sulla proprietà intellettuale."
+        "content": "NNAudio e i suoi contenuti, funzionalità e funzionalità sono di nostra proprietà e sono protetti da copyright, marchi e altre leggi sulla proprietà intellettuale."
       },
       "subscription": {
         "title": "6. Abbonamento e pagamenti",
-        "content": "Sono disponibili vari piani di abbonamento per Cymasphere. Abbonandoti, accetti di pagare le tariffe applicabili. Le tariffe di abbonamento non sono rimborsabili tranne quando richiesto dalla legge."
+        "content": "Sono disponibili vari piani di abbonamento per NNAudio. Abbonandoti, accetti di pagare le tariffe applicabili. Le tariffe di abbonamento non sono rimborsabili tranne quando richiesto dalla legge."
       },
       "termination": {
         "title": "7. Risoluzione",
@@ -891,7 +891,7 @@
       },
       "limitation": {
         "title": "9. Limitazione di responsabilità",
-        "content": "In nessun caso Cymasphere sarà responsabile per danni indiretti, incidentali, speciali o consequenziali derivanti da o in connessione con il tuo uso dei nostri servizi."
+        "content": "In nessun caso NNAudio sarà responsabile per danni indiretti, incidentali, speciali o consequenziali derivanti da o in connessione con il tuo uso dei nostri servizi."
       },
       "changes": {
         "title": "10. Modifiche ai termini",
@@ -899,17 +899,17 @@
       },
       "governing": {
         "title": "11. Legge applicabile",
-        "content": "Questi termini saranno governati dalle leggi della giurisdizione in cui opera Cymasphere, senza riguardo alle sue disposizioni sui conflitti di legge."
+        "content": "Questi termini saranno governati dalle leggi della giurisdizione in cui opera NNAudio, senza riguardo alle sue disposizioni sui conflitti di legge."
       },
       "contact": {
         "title": "12. Contatto",
-        "content": "Per domande su questi termini, contattaci a support@cymasphere.com."
+        "content": "Per domande su questi termini, contattaci a support@nnaud.io."
       }
     },
     "privacy": {
       "intro": {
         "title": "1. Introduzione",
-        "content": "Questa Informativa privacy spiega come Cymasphere raccoglie, utilizza e protegge le tue informazioni personali quando usi i nostri servizi. Rispettiamo la tua privacy e siamo impegnati a proteggere i tuoi dati personali."
+        "content": "Questa Informativa privacy spiega come NNAudio raccoglie, utilizza e protegge le tue informazioni personali quando usi i nostri servizi. Rispettiamo la tua privacy e siamo impegnati a proteggere i tuoi dati personali."
       },
       "collect": {
         "title": "2. Informazioni che raccogliamo",
@@ -945,19 +945,19 @@
       },
       "contact": {
         "title": "10. Contattaci",
-        "content": "Se hai domande su questa Informativa privacy, contattaci a support@cymasphere.com."
+        "content": "Se hai domande su questa Informativa privacy, contattaci a support@nnaud.io."
       }
     }
   },
   "aboutUs": {
     "mission": {
       "title": "La nostra missione",
-      "content": "La missione di Cymasphere è colmare il divario tra teoria musicale e creatività musicale. Crediamo che la teoria dovrebbe migliorare e guidare il processo creativo, non limitarlo. I nostri strumenti sono progettati per fornire sia guida che libertà, trovando l'equilibrio perfetto tra ispirazione e integrità compositiva.",
+      "content": "La missione di NNAudio è colmare il divario tra teoria musicale e creatività musicale. Crediamo che la teoria dovrebbe migliorare e guidare il processo creativo, non limitarlo. I nostri strumenti sono progettati per fornire sia guida che libertà, trovando l'equilibrio perfetto tra ispirazione e integrità compositiva.",
       "highlight": "Siamo impegnati a potenziare musicisti di tutti i livelli di abilità rendendo la teoria musicale intuitiva, interattiva e ispiratrice. Il nostro obiettivo è vedere la tua visione creativa fiorire attraverso migliori strumenti compositivi."
     },
     "story": {
       "title": "La nostra storia",
-      "content1": "Fondata nel 2022 da un team di musicisti dedicati, ingegneri software e teorici musicali, Cymasphere è iniziata come un progetto ambizioso per reimmaginare come i musicisti interagiscono con armonia e composizione.",
+      "content1": "Fondata nel 2022 da un team di musicisti dedicati, ingegneri software e teorici musicali, NNAudio è iniziata come un progetto ambizioso per reimmaginare come i musicisti interagiscono con armonia e composizione.",
       "content2": "Dopo anni di frustrazione con software musicali esistenti che mancavano di sofisticazione teorica o erano troppo complessi per un uso intuitivo, i nostri fondatori si sono proposti di creare uno strumento che rendesse la teoria musicale pratica, visuale e genuinamente utile nel processo creativo."
     },
     "team": {
@@ -981,7 +981,7 @@
     },
     "values": {
       "title": "I nostri valori",
-      "intro": "In Cymasphere, siamo guidati da un insieme di valori fondamentali che plasmano tutto quello che facciamo:",
+      "intro": "In NNAudio, siamo guidati da un insieme di valori fondamentali che plasmano tutto quello che facciamo:",
       "integrity": {
         "title": "Integrità musicale",
         "content": "Rispettiamo i principi della teoria musicale abbracciando l'innovazione"
@@ -1001,7 +1001,7 @@
     },
     "approach": {
       "title": "Il nostro approccio",
-      "intro": "Cymasphere adotta un approccio unico al software di composizione musicale concentrandosi su:",
+      "intro": "NNAudio adotta un approccio unico al software di composizione musicale concentrandosi su:",
       "point1": "Visualizzare armonia e condotta delle voci in modi intuitivi",
       "point2": "Fornire suggerimenti intelligenti rispettando la tua direzione creativa",
       "point3": "Integrare concetti teorici senza soluzione di continuità nel flusso di lavoro creativo",
@@ -1010,7 +1010,7 @@
     },
     "future": {
       "title": "Guardando avanti",
-      "content1": "Mentre continuiamo a sviluppare Cymasphere, siamo entusiasti del futuro della creazione musicale. La nostra roadmap include integrazione avanzata con le principali DAW, palette armoniche espanse, funzionalità di composizione assistita da IA più profonde e molto altro.",
+      "content1": "Mentre continuiamo a sviluppare NNAudio, siamo entusiasti del futuro della creazione musicale. La nostra roadmap include integrazione avanzata con le principali DAW, palette armoniche espanse, funzionalità di composizione assistita da IA più profonde e molto altro.",
       "content2": "Ti invitiamo a unirti a noi in questo viaggio e aiutare a plasmare il futuro degli strumenti di creazione musicale intelligenti."
     }
   },

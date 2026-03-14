@@ -185,7 +185,7 @@ export async function previewEmail(campaignId: string): Promise<PreviewResponse>
                 <tr>
                   <td align="center" style="padding: 0; text-align: center; color: ${element.textColor || '#ffffff'};">
                     <a href="${(() => {
-                      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com';
+                      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io';
                       const url = element.unsubscribeUrl && element.unsubscribeUrl.trim() ? element.unsubscribeUrl : `${baseUrl}/unsubscribe?email={{email}}`;
                       // Ensure URL is absolute
                       if (url.startsWith('/')) {
@@ -197,9 +197,9 @@ export async function previewEmail(campaignId: string): Promise<PreviewResponse>
                       return url;
                     })()}" style="color: ${element.textColor || '#ffffff'}; text-decoration: none;">${element.unsubscribeText || "Unsubscribe"}</a>
                     &nbsp;|&nbsp;
-                    <a href="${element.privacyUrl || "https://cymasphere.com/privacy-policy"}" style="color: ${element.textColor || '#ffffff'}; text-decoration: none;">${element.privacyText || "Privacy Policy"}</a>
+                    <a href="${element.privacyUrl || "https://nnaud.io/privacy-policy"}" style="color: ${element.textColor || '#ffffff'}; text-decoration: none;">${element.privacyText || "Privacy Policy"}</a>
                     &nbsp;|&nbsp;
-                    <a href="${element.termsUrl || "https://cymasphere.com/terms-of-service"}" style="color: ${element.textColor || '#ffffff'}; text-decoration: none;">${element.termsText || "Terms of Service"}</a>
+                    <a href="${element.termsUrl || "https://nnaud.io/terms-of-service"}" style="color: ${element.textColor || '#ffffff'}; text-decoration: none;">${element.termsText || "Terms of Service"}</a>
                   </td>
                 </tr>
               </table>
@@ -207,7 +207,7 @@ export async function previewEmail(campaignId: string): Promise<PreviewResponse>
 
           case 'brand-header':
             // Use a more reliable image source and Gmail-compatible structure
-            const logoUrl = "https://cymasphere.com/images/cm-logo.webp";
+            const logoUrl = "https://nnaud.io/images/cm-logo.webp";
 
             // Force brand-header to align like send route: use constrained width container and 0 side padding
             const headerWrapperClass = 'container';
@@ -218,7 +218,7 @@ export async function previewEmail(campaignId: string): Promise<PreviewResponse>
               <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
                 <tr>
                   <td align="center" style="padding: 0;">
-                    <img src="${logoUrl}" alt="Cymasphere Logo" style="max-width: 300px; width: 100%; height: auto; object-fit: contain; display: block; margin: 0 auto; padding: 0; border: 0; outline: none;" />
+                    <img src="${logoUrl}" alt="NNAudio Logo" style="max-width: 300px; width: 100%; height: auto; object-fit: contain; display: block; margin: 0 auto; padding: 0; border: 0; outline: none;" />
                   </td>
                 </tr>
               </table>
@@ -239,7 +239,7 @@ export async function previewEmail(campaignId: string): Promise<PreviewResponse>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${campaign.subject || 'Email Preview'} - Cymasphere</title>
+    <title>${campaign.subject || 'Email Preview'} - NNAudio</title>
     
     <!-- Google Fonts for custom typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

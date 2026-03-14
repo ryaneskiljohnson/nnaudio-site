@@ -162,7 +162,7 @@ export default function TutorialCenter() {
               Tutorial Center
             </Title>
             <Subtitle>
-              Comprehensive learning platform for Cymasphere with personalized learning paths
+              Comprehensive learning platform for NNAudio with personalized learning paths
             </Subtitle>
           </div>
         </Header>

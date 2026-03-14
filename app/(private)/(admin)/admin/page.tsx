@@ -924,7 +924,7 @@ export default function AdminDashboard() {
             Admin Dashboard
           </Title>
           <Subtitle>
-            Cymasphere Analytics & Management
+            NNAudio Analytics & Management
           </Subtitle>
         </Header>
           </>

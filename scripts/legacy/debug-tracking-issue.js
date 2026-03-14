@@ -115,7 +115,7 @@ async function debugTrackingIssue() {
 
     // 6. Test tracking URL manually
     console.log('6️⃣ TESTING TRACKING URL:');
-    const testUrl = `https://cymasphere.com/api/email-campaigns/track/open?c=${latestSend.campaign_id}&u=${subscriber.id}&s=${latestSend.id}`;
+    const testUrl = `https://nnaud.io/api/email-campaigns/track/open?c=${latestSend.campaign_id}&u=${subscriber.id}&s=${latestSend.id}`;
     console.log(`   URL: ${testUrl}`);
     
     try {

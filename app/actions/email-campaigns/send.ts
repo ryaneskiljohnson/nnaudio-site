@@ -599,7 +599,7 @@ export async function sendCampaign(
             .insert({
               name: name || "Test Campaign",
               subject: subjectWithTest,
-              sender_name: "Cymasphere",
+              sender_name: "NNAudio",
               sender_email: "support@nnaud.io",
               status: "draft"
             })
@@ -894,7 +894,7 @@ export async function sendCampaign(
         .insert({
           name,
           subject,
-          sender_name: "Cymasphere",
+          sender_name: "NNAudio",
           sender_email: "support@nnaud.io",
           html_content: generateHtmlFromElements(
             emailElements,

@@ -269,8 +269,8 @@ export function injectEmailTracking(
   // Always use production URL for tracking pixels (even in development)
   // because localhost URLs won't work in external email clients
   const baseUrl = process.env.NODE_ENV === 'production' 
-    ? (process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com')
-    : 'https://cymasphere.com';
+    ? (process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io')
+    : 'https://nnaud.io';
   console.log('🔧 Using base URL:', baseUrl);
 
   // Step 1: Rewrite links for click tracking

@@ -38,8 +38,8 @@ export function generateHtmlFromElements(
       // because localhost URLs won't work in external email clients
       const baseUrl =
         process.env.NODE_ENV === "production"
-          ? process.env.NEXT_PUBLIC_SITE_URL || "https://cymasphere.com"
-          : "https://cymasphere.com";
+          ? process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io"
+          : "https://nnaud.io";
       const trackingUrl = `${baseUrl}/api/email-campaigns/track/click?c=${campaignId}&u=${subscriberId}&s=${sendId}&url=${encodeURIComponent(
         url
       )}`;
@@ -48,10 +48,10 @@ export function generateHtmlFromElements(
   };
 
   // Resolve base URL for view-in-browser and other absolute links
-  // In production, force cymasphere.com if env mistakenly points to localhost
+  // In production, force nnaud.io if env mistakenly points to localhost
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
   const resolvedBaseUrl = process.env.NODE_ENV === "production"
-    ? (siteUrl && !siteUrl.includes("localhost") ? siteUrl : "https://cymasphere.com")
+    ? (siteUrl && !siteUrl.includes("localhost") ? siteUrl : "https://nnaud.io")
     : (siteUrl || "http://localhost:3000");
 
   const elementHtml = elements
@@ -208,7 +208,7 @@ export function generateHtmlFromElements(
                 <tr>
                   <td align="center" style="padding: 0 0 24px 0; text-align: center; color: ${element.textColor || '#ffffff'}; font-size: ${footerFontSize};">
                     <a href="${(() => {
-                      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com';
+                      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io';
                       const url = element.unsubscribeUrl && element.unsubscribeUrl.trim() ? element.unsubscribeUrl : `${baseUrl}/unsubscribe?email={{email}}`;
                       // Ensure URL is absolute
                       if (url.startsWith('/')) {
@@ -221,17 +221,17 @@ export function generateHtmlFromElements(
                     })()}" style="color: ${element.textColor || '#ffffff'}; text-decoration: underline; font-size: ${footerFontSize}; cursor: pointer;">${element.unsubscribeText || "Unsubscribe"}</a>
                     &nbsp;|&nbsp;
                     <a href="${(() => {
-                      const url = element.privacyUrl && element.privacyUrl.trim() ? element.privacyUrl : "https://cymasphere.com/privacy-policy";
+                      const url = element.privacyUrl && element.privacyUrl.trim() ? element.privacyUrl : "https://nnaud.io/privacy-policy";
                       if (url.startsWith('/')) {
-                        return `${process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com'}${url}`;
+                        return `${process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io'}${url}`;
                       }
                       return url;
                     })()}" style="color: ${element.textColor || '#ffffff'}; text-decoration: underline; font-size: ${footerFontSize}; cursor: pointer;">${element.privacyText || "Privacy Policy"}</a>
                     &nbsp;|&nbsp;
                     <a href="${(() => {
-                      const url = element.termsUrl && element.termsUrl.trim() ? element.termsUrl : "https://cymasphere.com/terms-of-service";
+                      const url = element.termsUrl && element.termsUrl.trim() ? element.termsUrl : "https://nnaud.io/terms-of-service";
                       if (url.startsWith('/')) {
-                        return `${process.env.NEXT_PUBLIC_SITE_URL || 'https://cymasphere.com'}${url}`;
+                        return `${process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io'}${url}`;
                       }
                       return url;
                     })()}" style="color: ${element.textColor || '#ffffff'}; text-decoration: underline; font-size: ${footerFontSize}; cursor: pointer;">${element.termsText || "Terms of Service"}</a>
@@ -244,7 +244,7 @@ export function generateHtmlFromElements(
 
         case "brand-header":
           // Use a more reliable image source and Gmail-compatible structure
-          const logoUrl = "https://cymasphere.com/images/cm-logo.webp";
+          const logoUrl = "https://nnaud.io/images/cm-logo.webp";
           // Force brand header to align with content width
           const headerWrapperClass = "constrained-width";
 
@@ -257,7 +257,7 @@ export function generateHtmlFromElements(
                 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
                   <tr>
                     <td align="center" style="padding: 0;">
-                      <img src="${logoUrl}" alt="Cymasphere Logo" style="max-width: 300px; width: 100%; height: auto; object-fit: contain; display: block; margin: 0 auto; padding: 0; border: 0; outline: none;" />
+                      <img src="${logoUrl}" alt="NNAudio Logo" style="max-width: 300px; width: 100%; height: auto; object-fit: contain; display: block; margin: 0 auto; padding: 0; border: 0; outline: none;" />
                     </td>
                   </tr>
                 </table>
@@ -433,7 +433,7 @@ export function generateHtmlFromElements(
         <div style="padding: 15px 20px; background-color: #f8f9fa; border-bottom: 1px solid #e9ecef;">
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #666;">
                 <div style="color: #333; font-weight: 500;">
-                    ${preheader || 'Cymasphere - Your Music Production Journey'}
+                    ${preheader || 'NNAudio - Your Music Production Journey'}
                 </div>
                 <div style="text-align: right; margin-left: auto;">
                     <a href="${resolvedBaseUrl}/email-preview?c=${campaignId || 'preview'}" style="color: #6c63ff; text-decoration: underline; font-weight: 500;">View in browser</a>
@@ -452,8 +452,8 @@ export function generateHtmlFromElements(
     // because localhost URLs won't work in external email clients
     const baseUrl =
       process.env.NODE_ENV === "production"
-        ? process.env.NEXT_PUBLIC_SITE_URL || "https://cymasphere.com"
-        : "https://cymasphere.com";
+        ? process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io"
+        : "https://nnaud.io";
     const trackingPixel = `
     <!-- Email Open Tracking -->
     <img src="${baseUrl}/api/email-campaigns/track/open?c=${campaignId}&u=${subscriberId}&s=${sendId}" width="1" height="1" style="display:block;border:0;margin:0;padding:0;" alt="" />`;
@@ -503,10 +503,10 @@ export function generateTextFromElements(elements: any[]): string {
           } | ${element.privacyText || "Privacy Policy"}: ${
             element.privacyUrl || "#privacy"
           } | ${element.termsText || "Terms of Service"}: ${
-            element.termsUrl || "https://cymasphere.com/terms-of-service"
+            element.termsUrl || "https://nnaud.io/terms-of-service"
           }\n`;
         case "brand-header":
-          return `[LOGO] Cymasphere\n${"=".repeat(10)}\n`;
+          return `[LOGO] NNAudio\n${"=".repeat(10)}\n`;
         default:
           return `${element.content || ""}\n`;
       }

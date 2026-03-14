@@ -2258,7 +2258,7 @@ function CreateCampaignPage() {
       { 
         id: 'header', 
         type: 'header', 
-        content: 'Welcome to Cymasphere! 🎵', 
+        content: 'Welcome to NNAudio! 🎵', 
         fullWidth: false, 
         fontSize: '2.5rem', 
         fontWeight: '800', 
@@ -2288,19 +2288,19 @@ function CreateCampaignPage() {
         backgroundColor: 'linear-gradient(135deg, #6c757d 0%, #495057 100%)',
         textColor: '#ffffff',
         socialLinks: [
-          { platform: 'facebook', url: 'https://www.facebook.com/cymasphere' },
-          { platform: 'twitter', url: 'https://x.com/cymasphere' },
-          { platform: 'instagram', url: 'https://www.instagram.com/cymasphere/' },
-          { platform: 'youtube', url: 'https://www.youtube.com/@cymasphere' },
+          { platform: 'facebook', url: 'https://www.facebook.com/nnaudio' },
+          { platform: 'twitter', url: 'https://x.com/nnaudio' },
+          { platform: 'instagram', url: 'https://www.instagram.com/nnaudio/' },
+          { platform: 'youtube', url: 'https://www.youtube.com/@nnaudio' },
           { platform: 'discord', url: 'https://discord.gg/gXGqqYR47B' }
         ],
         footerText: `© ${new Date().getFullYear()} NNAud.io All rights reserved.`,
         unsubscribeText: 'Unsubscribe',
-        unsubscribeUrl: 'https://cymasphere.com/unsubscribe?email={{email}}',
+        unsubscribeUrl: 'https://nnaud.io/unsubscribe?email={{email}}',
         privacyText: 'Privacy Policy',
-        privacyUrl: 'https://cymasphere.com/privacy-policy',
+        privacyUrl: 'https://nnaud.io/privacy-policy',
         termsText: 'Terms of Service',
-        termsUrl: 'https://cymasphere.com/terms-of-service'
+        termsUrl: 'https://nnaud.io/terms-of-service'
       }
     ];
   };
@@ -2364,7 +2364,7 @@ function CreateCampaignPage() {
     return {
     name: "",
     subject: "",
-      senderName: "Cymasphere",
+      senderName: "NNAudio",
       senderEmail: "support@nnaud.io",
       replyToEmail: "",
     preheader: "",
@@ -2612,7 +2612,7 @@ function CreateCampaignPage() {
             setCampaignData({
               name: campaign.name || '',
               subject: campaign.subject || '',
-              senderName: campaign.senderName || 'Cymasphere',
+              senderName: campaign.senderName || 'NNAudio',
               senderEmail: campaign.senderEmail || 'support@nnaud.io',
               replyToEmail: campaign.replyToEmail || '',
               preheader: campaign.preheader || '',
@@ -3189,10 +3189,10 @@ function CreateCampaignPage() {
           ...baseElement, 
           fullWidth: true,
           socialLinks: [
-            { platform: 'facebook', url: 'https://facebook.com/cymasphere' },
-            { platform: 'twitter', url: 'https://twitter.com/cymasphere' },
-            { platform: 'instagram', url: 'https://instagram.com/cymasphere' },
-            { platform: 'youtube', url: 'https://youtube.com/cymasphere' },
+            { platform: 'facebook', url: 'https://facebook.com/nnaudio' },
+            { platform: 'twitter', url: 'https://twitter.com/nnaudio' },
+            { platform: 'instagram', url: 'https://instagram.com/nnaudio' },
+            { platform: 'youtube', url: 'https://youtube.com/nnaudio' },
             { platform: 'discord', url: 'https://discord.gg/gXGqqYR47B' }
           ],
           footerText: `© ${currentYear} NNAud.io All rights reserved.`,
@@ -3605,7 +3605,7 @@ function CreateCampaignPage() {
               border-radius: 0;
               box-shadow: none;
             ">
-              <img src="/images/cm-logo-icon.webp" alt="Cymasphere Logo" style="
+              <img src="/images/cm-logo-icon.webp" alt="NNAudio Logo" style="
                 width: 36px;
                 height: 36px;
                 object-fit: contain;
@@ -3680,11 +3680,11 @@ function CreateCampaignPage() {
                 ${element.footerText || `© ${new Date().getFullYear()} NNAud.io All rights reserved.`}
               </div>
               <div>
-                <a href="${(element.unsubscribeUrl && element.unsubscribeUrl.trim()) ? element.unsubscribeUrl : 'https://cymasphere.com/unsubscribe?email={{email}}'}" style="color: #ffffff; text-decoration: underline; cursor: pointer;">${element.unsubscribeText || "Unsubscribe"}</a>
+                <a href="${(element.unsubscribeUrl && element.unsubscribeUrl.trim()) ? element.unsubscribeUrl : 'https://nnaud.io/unsubscribe?email={{email}}'}" style="color: #ffffff; text-decoration: underline; cursor: pointer;">${element.unsubscribeText || "Unsubscribe"}</a>
                 &nbsp;|&nbsp;
-                <a href="${(element.privacyUrl && element.privacyUrl.trim()) ? element.privacyUrl : 'https://cymasphere.com/privacy-policy'}" style="color: #ffffff; text-decoration: underline; cursor: pointer;">${element.privacyText || "Privacy Policy"}</a>
+                <a href="${(element.privacyUrl && element.privacyUrl.trim()) ? element.privacyUrl : 'https://nnaud.io/privacy-policy'}" style="color: #ffffff; text-decoration: underline; cursor: pointer;">${element.privacyText || "Privacy Policy"}</a>
                 &nbsp;|&nbsp;
-                <a href="${(element.termsUrl && element.termsUrl.trim()) ? element.termsUrl : 'https://cymasphere.com/terms-of-service'}" style="color: #ffffff; text-decoration: underline; cursor: pointer;">${element.termsText || "Terms of Service"}</a>
+                <a href="${(element.termsUrl && element.termsUrl.trim()) ? element.termsUrl : 'https://nnaud.io/terms-of-service'}" style="color: #ffffff; text-decoration: underline; cursor: pointer;">${element.termsText || "Terms of Service"}</a>
               </div>
             </div>
           </div>`;
@@ -4203,7 +4203,7 @@ function CreateCampaignPage() {
                   type="text"
                   value={campaignData.senderName}
                   onChange={(e) => setCampaignData({...campaignData, senderName: e.target.value})}
-                  placeholder="e.g. Cymasphere Team"
+                  placeholder="e.g. NNAudio Team"
                 />
               </FormGroup>
               <FormGroup>
@@ -4223,7 +4223,7 @@ function CreateCampaignPage() {
                   type="email"
                   value={campaignData.replyToEmail}
                   onChange={(e) => setCampaignData({...campaignData, replyToEmail: e.target.value})}
-                  placeholder="e.g. noreply@cymasphere.com"
+                  placeholder="e.g. noreply@nnaud.io"
                 />
               </FormGroup>
               <FormGroup>

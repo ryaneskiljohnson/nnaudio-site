@@ -295,7 +295,7 @@ function UnsubscribeContent() {
             <ul style={{ margin: '0', paddingLeft: '20px', listStyle: 'none' }}>
               <li style={{ marginBottom: '8px', paddingLeft: '20px', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: '0', color: '#4ecdc4' }}>•</span>
-                You'll stop receiving marketing emails from Cymasphere
+                You'll stop receiving marketing emails from NNAudio
               </li>
               <li style={{ marginBottom: '8px', paddingLeft: '20px', position: 'relative' }}>
                 <span style={{ position: 'absolute', left: '0', color: '#4ecdc4' }}>•</span>
@@ -331,7 +331,7 @@ function UnsubscribeContent() {
               onMouseEnter={(e) => e.currentTarget.style.color = '#4ecdc4'}
               onMouseLeave={(e) => e.currentTarget.style.color = '#6c63ff'}
           >
-            ← Return to Cymasphere
+            ← Return to NNAudio
             </Link>
           </div>
         </div>
