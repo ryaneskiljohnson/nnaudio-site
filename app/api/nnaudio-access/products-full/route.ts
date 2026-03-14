@@ -2,14 +2,11 @@
  * @fileoverview NNAudio Access products-full API endpoint
  * Returns all user-accessible products with full details (downloads, images, versions)
  * in a single request to eliminate N+1 query pattern from the desktop app.
- * Supports ETag-based conditional requests: clients send If-None-Match and receive
- * 304 Not Modified when the product list has not changed, avoiding redundant JSON transfer.
  * @module nnaudio-access/products-full
  */
 
 "use server";
 
-import { createHash } from "crypto";
 import { type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
@@ -65,27 +62,6 @@ function normalizeStoragePath(path: string): string {
 }
 
 /**
- * @brief Derives a stable ETag from a list of product IDs and their versions
- * @param productIds - Sorted product UUID array
- * @param products - Product rows with version info
- * @returns Quoted ETag string (e.g. `"abc123"`)
- * @note Sorted before hashing so insertion order differences don't bust the tag
- */
-function buildETag(
-  productIds: string[],
-  products: Array<{ id: string; download_version?: string | null }>
-): string {
-  const versionMap = new Map(
-    products.map((p) => [p.id, p.download_version ?? ""])
-  );
-  const payload = [...productIds]
-    .sort()
-    .map((id) => `${id}:${versionMap.get(id) ?? ""}`)
-    .join("|");
-  return `"${createHash("sha1").update(payload).digest("hex").slice(0, 16)}"`;
-}
-
-/**
  * @brief POST handler - returns all user products with full details in one response
  */
 export async function POST(request: NextRequest) {
@@ -103,9 +79,6 @@ export async function POST(request: NextRequest) {
       return new Response(formatError("Token is invalid"), { status: 400 });
     }
 
-    // Read client's cached ETag for conditional-request support
-    const clientETag = request.headers.get("if-none-match");
-
     // Check server-side in-memory cache first
     const cached = getUserProductCache(userId);
     if (cached) {
@@ -114,20 +87,9 @@ export async function POST(request: NextRequest) {
           `[products-full] CACHE HIT total=${elapsed(requestStart)}ms`
         );
       }
-      const cachedETag = buildETag(
-        cached.products.map((p) => p.product_uuid),
-        cached.products.map((p) => ({ id: p.product_uuid, download_version: p.version }))
-      );
-      // Return 304 if client already has the current version
-      if (clientETag && clientETag === cachedETag) {
-        return new Response(null, {
-          status: 304,
-          headers: { ETag: cachedETag },
-        });
-      }
       return new Response(JSON.stringify(cached), {
         status: 200,
-        headers: { "Content-Type": "application/json", ETag: cachedETag },
+        headers: { "Content-Type": "application/json" },
       });
     }
 
@@ -329,11 +291,6 @@ export async function POST(request: NextRequest) {
 
     setUserProductCache(userId, response);
 
-    const responseETag = buildETag(
-      formattedProducts.map((p) => p.product_uuid),
-      formattedProducts.map((p) => ({ id: p.product_uuid, download_version: p.version }))
-    );
-
     const totalMs = elapsed(requestStart);
     const timingStr = timings
       .map((t) => `${t.phase}=${t.ms}ms`)
@@ -346,7 +303,7 @@ export async function POST(request: NextRequest) {
 
     return new Response(JSON.stringify(response), {
       status: 200,
-      headers: { "Content-Type": "application/json", ETag: responseETag },
+      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
