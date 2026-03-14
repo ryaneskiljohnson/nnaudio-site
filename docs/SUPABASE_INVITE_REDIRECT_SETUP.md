@@ -11,13 +11,15 @@ If the redirect URL is not in the allowlist, Supabase falls back to the **Site U
 1. Open **Supabase Dashboard** > **Authentication** > **URL Configuration**.
 2. Add the following to **Redirect URLs**:
    - `http://localhost:3000/reset-password` (local development)
-   - `https://cymasphere.com/reset-password` (production)
+   - `https://nnaud.io/reset-password` (production)
    - Or use wildcards for flexibility:
      - `http://localhost:3000/**` (matches all localhost paths)
-     - `https://cymasphere.com/**` (matches all production paths)
+     - `https://nnaud.io/**` (matches all production paths)
 3. Ensure **Site URL** is correct:
    - Local: `http://localhost:3000`
-   - Production: `https://cymasphere.com`
+   - Production: `https://nnaud.io` (or your primary domain)
+
+**If verification links show "Your connection is not private"**, turn off Click Tracking in SendGrid and ensure only SendGrid is used for auth SMTP; see [SUPABASE_VERIFICATION_EMAIL_SSL.md](./SUPABASE_VERIFICATION_EMAIL_SSL.md).
 
 ## Reference
 
