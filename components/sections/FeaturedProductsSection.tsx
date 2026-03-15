@@ -191,26 +191,28 @@ const PremierCartButton = styled.button`
   transition: opacity 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
   opacity: 0;
   pointer-events: none;
-  
+
   ${PremierImageContainer}:hover & {
     opacity: 1;
     pointer-events: auto;
   }
-  
+
   &:hover {
     transform: scale(1.1);
     box-shadow: 0 6px 24px rgba(138, 43, 226, 0.6);
   }
-  
+
   &:active {
     transform: scale(0.95);
   }
-  
+
   svg {
     font-size: 1.25rem;
   }
-  
+
   @media (max-width: 768px) {
+    opacity: 1;
+    pointer-events: auto;
     width: 44px;
     height: 44px;
     bottom: 0.75rem;

@@ -119,22 +119,28 @@ const CartButton = styled(motion.button)`
   opacity: 0;
   pointer-events: none;
   transform: translateY(-50%) scale(0.8);
-  
+
   ${ProductCardContainer}:hover & {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(-50%) scale(1);
   }
-  
+
+  @media (max-width: 768px) {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) scale(1);
+  }
+
   &:hover {
     transform: translateY(-50%) scale(1.1);
     box-shadow: 0 6px 20px rgba(138, 43, 226, 0.6);
   }
-  
+
   &:active {
     transform: translateY(-50%) scale(0.95);
   }
-  
+
   svg {
     font-size: 1rem;
   }
