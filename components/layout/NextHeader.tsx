@@ -110,15 +110,15 @@ const HeaderContent = styled.div<{ $isScrolled: boolean }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 30px;
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
+  padding: 15px 1.25rem;
   transition: padding 0.3s ease;
   position: relative;
   z-index: 3500;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
-    padding: 12px 20px;
+    padding: 12px 1rem;
   }
 `;
 

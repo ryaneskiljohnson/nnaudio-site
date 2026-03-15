@@ -25,10 +25,11 @@ export async function GET(request: NextRequest) {
       // before the session is completely ready
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Redirect based on the type of OTP verification (signup/email confirmation -> dashboard)
-      if (type === "recovery") {
+      // Redirect based on the type of OTP verification
+      if (type === "recovery" || type === "invite") {
         redirect("/reset-password");
       }
+      // signup / email / magiclink -> dashboard
       redirect("/dashboard");
     }
   }
