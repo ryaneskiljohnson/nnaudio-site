@@ -20,7 +20,8 @@
     "verify:rag": "npx tsx scripts/verify-rag.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "env:email": "bun run scripts/check-email-env.ts"
+    "env:email": "bun run scripts/check-email-env.ts",
+    "check:dead-product-audio": "npx tsx scripts/check-dead-product-audio.ts"
   },
   "packageManager": "bun@1.2.2",
   "overrides": {
