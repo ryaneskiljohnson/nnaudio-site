@@ -214,6 +214,7 @@ export async function POST(request: NextRequest) {
         total: '$0.00',
         receiptUrl: null as string | null,
         date: dateStr,
+        isFreeOrder: true,
       };
       const result = await sendEmail({
         to: email,

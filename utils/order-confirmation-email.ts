@@ -9,6 +9,12 @@
 const LOGO_URL =
   "https://znecvzfogwkzinkduyuq.supabase.co/storage/v1/object/public/images/NNAudio-logo-white.png";
 
+/** Base URL for links (my-products page, etc.). */
+const SITE_BASE_URL =
+  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_SITE_URL) ||
+  "https://nnaud.io";
+const MY_PRODUCTS_URL = `${SITE_BASE_URL.replace(/\/$/, "")}/my-products`;
+
 export interface OrderLineItem {
   name: string;
   quantity: number;
@@ -24,6 +30,8 @@ export interface OrderConfirmationData {
   total: string;
   receiptUrl: string | null;
   date: string;
+  /** When true, message says order completed (no payment) instead of payment successful. */
+  isFreeOrder?: boolean;
 }
 
 const BASE_STYLES = `
@@ -66,7 +74,11 @@ export function buildOrderConfirmationHtml(data: OrderConfirmationData): string 
     total,
     receiptUrl,
     date,
+    isFreeOrder,
   } = data;
+  const messageParagraph = isFreeOrder
+    ? "Your order was successfully completed (no payment was made). Here's a summary of your purchase."
+    : "Your payment was successful. Here's a summary of your purchase.";
 
   const itemRows = lineItems
     .map(
@@ -100,7 +112,7 @@ export function buildOrderConfirmationHtml(data: OrderConfirmationData): string 
         </div>
         <div class="content" style="padding: 30px; color: #ffffff; background-color: #121212;">
           <h1 class="title" style="font-size: 24px; font-weight: bold; margin-bottom: 20px; text-align: center; color: #ffffff;">Thank you for your <span style="color: #6c63ff;">order</span></h1>
-          <p class="message" style="margin-bottom: 20px; font-size: 16px; color: #b3b3b3;">Your payment was successful. Here’s a summary of your purchase.</p>
+          <p class="message" style="margin-bottom: 20px; font-size: 16px; color: #b3b3b3;">${escapeHtml(messageParagraph)}</p>
           ${customerName ? `<div class="field" style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);"><span class="label" style="font-weight: bold; color: #6c63ff;">Name</span><span style="color: #ffffff;">${escapeHtml(customerName)}</span></div>` : ""}
           ${orderNumber ? `<div class="field" style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);"><span class="label" style="font-weight: bold; color: #6c63ff;">Order</span><span style="color: #ffffff;">${escapeHtml(orderNumber)}</span></div>` : ""}
           <div class="message-box" style="margin-top: 25px; padding: 15px; background-color: rgba(255, 255, 255, 0.05); border-radius: 8px; border-left: 3px solid #6c63ff;">
@@ -126,7 +138,10 @@ export function buildOrderConfirmationHtml(data: OrderConfirmationData): string 
               </tbody>
             </table>
           </div>
-          ${receiptUrl ? `<p style="margin-top: 20px; text-align: center;"><a href="${escapeHtml(receiptUrl)}" class="btn" style="display: inline-block; padding: 12px 24px; background: linear-gradient(90deg, #6c63ff, #5a52e0); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold;">View receipt</a></p>` : ""}
+          <p style="margin-top: 20px; text-align: center;">
+            <a href="${escapeHtml(MY_PRODUCTS_URL)}" class="btn" style="display: inline-block; padding: 12px 24px; background: linear-gradient(90deg, #6c63ff, #5a52e0); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold;">View products</a>
+            ${receiptUrl ? ` <a href="${escapeHtml(receiptUrl)}" class="btn" style="display: inline-block; padding: 12px 24px; background: linear-gradient(90deg, #6c63ff, #5a52e0); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold; margin-left: 10px;">View receipt</a>` : ""}
+          </p>
           <div class="timestamp" style="color: #666666; font-size: 12px; margin-top: 25px; text-align: right;">${date}</div>
         </div>
         <div class="footer" style="padding: 15px; text-align: center; font-size: 12px; background-color: #0a0a0a; color: #666666; border-top: 1px solid rgba(255, 255, 255, 0.05);">
@@ -144,8 +159,11 @@ export function buildOrderConfirmationHtml(data: OrderConfirmationData): string 
  * Builds plain-text version of order confirmation.
  */
 export function buildOrderConfirmationText(data: OrderConfirmationData): string {
-  const { customerName, orderNumber, lineItems, subtotal, total, receiptUrl, date } = data;
-  const lines: string[] = ["Thank you for your order.", "", "Order details:", ...lineItems.map((i) => `  ${i.name} × ${i.quantity} - ${i.amount}`), "", `Subtotal: ${subtotal}`, `Total: ${total}`, ""];
+  const { customerName, orderNumber, lineItems, subtotal, total, receiptUrl, date, isFreeOrder } = data;
+  const intro = isFreeOrder
+    ? "Your order was successfully completed (no payment was made)."
+    : "Thank you for your order.";
+  const lines: string[] = [intro, "", "Order details:", ...lineItems.map((i) => `  ${i.name} × ${i.quantity} - ${i.amount}`), "", `Subtotal: ${subtotal}`, `Total: ${total}`, "", `View products: ${MY_PRODUCTS_URL}`];
   if (customerName) lines.unshift(`Name: ${customerName}`, "");
   if (orderNumber) lines.splice(2, 0, `Order: ${orderNumber}`, "");
   if (receiptUrl) lines.push(`View receipt: ${receiptUrl}`);
