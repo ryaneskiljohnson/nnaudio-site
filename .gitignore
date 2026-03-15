@@ -53,7 +53,3 @@ db/universe.users.trimmed.modified.csv
 # Nested git repositories (not submodules)
 cymasphere/.git
 public/images/orbitals/
-
-.cursor/skills/fix-errors/SKILL.md
-.cursor/skills/commit-changes/SKILL.md
-.cursor/commands/fixerrors.md
