@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     
     let query = (supabase as any)
       .from('products')
-      .select('*, product_reviews(rating)')
+      .select('*, product_reviews(rating, is_approved)')
       .order('created_at', { ascending: false });
     
     // Only apply limit if it's a reasonable number (to prevent abuse)
@@ -70,15 +70,15 @@ export async function GET(request: NextRequest) {
 
     // Calculate average rating for each product
     let productsWithRatings = products?.map((product: any) => {
-      const reviews = product.product_reviews || [];
-      const avgRating = reviews.length > 0
-        ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
+      const approvedReviews = (product.product_reviews || []).filter((review: any) => review.is_approved);
+      const avgRating = approvedReviews.length > 0
+        ? approvedReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / approvedReviews.length
         : 0;
       
       return {
         ...product,
         average_rating: avgRating,
-        review_count: reviews.length,
+        review_count: approvedReviews.length,
         product_reviews: undefined // Remove from response
       };
     }) || [];

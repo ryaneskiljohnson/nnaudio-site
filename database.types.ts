@@ -3177,9 +3177,15 @@ export type Database = {
           id: string
           is_approved: boolean | null
           is_verified_purchase: boolean | null
+          moderated_at: string | null
+          moderated_by: string | null
+          moderation_status: string
           product_id: string
+          rejection_reason: string | null
           rating: number
           review_text: string | null
+          stripe_payment_intent_id: string | null
+          submission_source: string
           title: string | null
           updated_at: string | null
           user_id: string | null
@@ -3191,9 +3197,15 @@ export type Database = {
           id?: string
           is_approved?: boolean | null
           is_verified_purchase?: boolean | null
+          moderated_at?: string | null
+          moderated_by?: string | null
+          moderation_status?: string
           product_id: string
+          rejection_reason?: string | null
           rating: number
           review_text?: string | null
+          stripe_payment_intent_id?: string | null
+          submission_source?: string
           title?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -3205,9 +3217,15 @@ export type Database = {
           id?: string
           is_approved?: boolean | null
           is_verified_purchase?: boolean | null
+          moderated_at?: string | null
+          moderated_by?: string | null
+          moderation_status?: string
           product_id?: string
+          rejection_reason?: string | null
           rating?: number
           review_text?: string | null
+          stripe_payment_intent_id?: string | null
+          submission_source?: string
           title?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -3563,6 +3581,102 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      review_followups: {
+        Row: {
+          checkout_session_id: string | null
+          created_at: string
+          customer_email: string
+          id: string
+          invite_email_message_id: string | null
+          invite_sent_at: string | null
+          is_refunded: boolean
+          payment_intent_id: string | null
+          purchase_date: string
+          purchase_source: string
+          purchased_product_ids: string[]
+          refunded_at: string | null
+          reward_claimed_at: string | null
+          reward_email_message_id: string | null
+          reward_email_sent_at: string | null
+          reward_review_id: string | null
+          send_at: string
+          stripe_coupon_id: string | null
+          stripe_customer_id: string | null
+          stripe_promotion_code: string | null
+          stripe_promotion_code_id: string | null
+          subscriber_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          checkout_session_id?: string | null
+          created_at?: string
+          customer_email: string
+          id?: string
+          invite_email_message_id?: string | null
+          invite_sent_at?: string | null
+          is_refunded?: boolean
+          payment_intent_id?: string | null
+          purchase_date: string
+          purchase_source?: string
+          purchased_product_ids?: string[]
+          refunded_at?: string | null
+          reward_claimed_at?: string | null
+          reward_email_message_id?: string | null
+          reward_email_sent_at?: string | null
+          reward_review_id?: string | null
+          send_at: string
+          stripe_coupon_id?: string | null
+          stripe_customer_id?: string | null
+          stripe_promotion_code?: string | null
+          stripe_promotion_code_id?: string | null
+          subscriber_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          checkout_session_id?: string | null
+          created_at?: string
+          customer_email?: string
+          id?: string
+          invite_email_message_id?: string | null
+          invite_sent_at?: string | null
+          is_refunded?: boolean
+          payment_intent_id?: string | null
+          purchase_date?: string
+          purchase_source?: string
+          purchased_product_ids?: string[]
+          refunded_at?: string | null
+          reward_claimed_at?: string | null
+          reward_email_message_id?: string | null
+          reward_email_sent_at?: string | null
+          reward_review_id?: string | null
+          send_at?: string
+          stripe_coupon_id?: string | null
+          stripe_customer_id?: string | null
+          stripe_promotion_code?: string | null
+          stripe_promotion_code_id?: string | null
+          subscriber_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_followups_reward_review_id_fkey"
+            columns: ["reward_review_id"]
+            isOneToOne: false
+            referencedRelation: "product_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_followups_subscriber_id_fkey"
+            columns: ["subscriber_id"]
+            isOneToOne: false
+            referencedRelation: "subscribers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriber_imports: {
         Row: {

@@ -3,7 +3,8 @@
  * @module app/api/stripe/webhook/route
  *
  * On checkout.session.completed we send an NNAudio-branded order confirmation via SendGrid.
- * On refund.created we send an NNAudio-branded refund confirmation email.
+ * On payment_intent.succeeded / checkout.session.completed we queue delayed review follow-ups.
+ * On refund.created we send an NNAudio-branded refund confirmation email and disable review rewards for that order.
  * In Stripe Dashboard → Settings → Customer emails you can turn off Stripe’s default receipts if desired.
  */
 "use server";
@@ -23,6 +24,11 @@ import {
   buildRefundEmailHtml,
   buildRefundEmailText,
 } from "@/utils/refund-email";
+import {
+  markReviewFollowupRefunded,
+  queueReviewFollowupForCheckoutSession,
+  queueReviewFollowupForPaymentIntent,
+} from "@/utils/reviews/review-system";
 
 /**
  * Extracts customer ID from any Stripe event
@@ -322,6 +328,21 @@ export async function POST(request: NextRequest) {
       } catch (emailError) {
         console.error("Order confirmation email error:", emailError);
       }
+
+      try {
+        await queueReviewFollowupForCheckoutSession(session);
+      } catch (queueError) {
+        console.error("Review followup queue error for checkout session:", queueError);
+      }
+    }
+
+    if (event.type === "payment_intent.succeeded") {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      try {
+        await queueReviewFollowupForPaymentIntent(paymentIntent);
+      } catch (queueError) {
+        console.error("Review followup queue error for payment intent:", queueError);
+      }
     }
 
     // Send branded refund confirmation email (one per refund, correct amount for partials)
@@ -331,6 +352,18 @@ export async function POST(request: NextRequest) {
         await sendRefundConfirmationEmail(refund);
       } catch (emailError) {
         console.error("Refund confirmation email error:", emailError);
+      }
+
+      try {
+        const paymentIntentId =
+          typeof refund.payment_intent === "string"
+            ? refund.payment_intent
+            : refund.payment_intent?.id ?? null;
+        if (paymentIntentId) {
+          await markReviewFollowupRefunded(paymentIntentId, dateTime);
+        }
+      } catch (refundQueueError) {
+        console.error("Review followup refund update error:", refundQueueError);
       }
     }
 

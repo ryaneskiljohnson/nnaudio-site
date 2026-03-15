@@ -17,7 +17,7 @@ export async function GET(
       .from('products')
       .select(`
         *,
-        product_reviews(rating, title, review_text, customer_name, created_at, is_approved)
+        product_reviews(rating, title, review_text, customer_name, created_at, is_approved, is_verified_purchase)
       `)
       .eq('slug', slug)
       .single();

@@ -4,6 +4,12 @@
       "main": true
     }
   },
+  "crons": [
+    {
+      "path": "/api/review-followups/process",
+      "schedule": "0 * * * *"
+    }
+  ],
   "buildCommand": "bun run build",
   "installCommand": "bun install --frozen-lockfile",
   "framework": "nextjs"

@@ -1078,12 +1078,14 @@ export async function createOneTimeCoupon(
  * @param code Optional custom code (if not provided, Stripe generates one)
  * @param maxRedemptions Maximum number of times this code can be used (default: 1)
  * @param expiresAt Optional expiration timestamp
+ * @param customerId Optional Stripe customer restriction for this promotion code
  */
 export async function createPromotionCode(
   couponId: string,
   code?: string,
   maxRedemptions: number = 1,
-  expiresAt?: number
+  expiresAt?: number,
+  customerId?: string
 ): Promise<{ success: boolean; promotionCode?: any; error?: string }> {
   try {
     const promotionCodeData: Stripe.PromotionCodeCreateParams = {
@@ -1099,6 +1101,10 @@ export async function createPromotionCode(
     // Add expiration if provided
     if (expiresAt) {
       promotionCodeData.expires_at = expiresAt;
+    }
+
+    if (customerId) {
+      promotionCodeData.customer = customerId;
     }
 
     const promotionCode = await stripe.promotionCodes.create(promotionCodeData);
@@ -1173,6 +1179,7 @@ export async function createOneTimeDiscountCode(
     currency?: string;
     expiresAt?: number;
     maxRedemptions?: number;
+    customerId?: string;
   }
 ): Promise<{
   success: boolean;
@@ -1202,7 +1209,8 @@ export async function createOneTimeDiscountCode(
       couponResult.coupon.id,
       options?.code,
       options?.maxRedemptions || 1,
-      options?.expiresAt
+      options?.expiresAt,
+      options?.customerId
     );
 
     if (!promotionCodeResult.success || !promotionCodeResult.promotionCode) {

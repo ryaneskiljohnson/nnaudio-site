@@ -68,6 +68,9 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     const { data: bundle, error: bundleError } = await (supabase as any)
       .from("bundles")
@@ -301,6 +304,7 @@ export async function POST(request: NextRequest) {
           bundle_slug: bundle.slug,
           tier: "lifetime",
           purchase_type: "bundle_lifetime",
+          ...(user?.id ? { user_id: user.id } : {}),
           ...(resolvedPromoId && { promotion_code: resolvedPromoId }),
         },
       });
@@ -355,6 +359,7 @@ export async function POST(request: NextRequest) {
         bundle_id: bundle.id,
         bundle_slug: bundle.slug,
         tier,
+        ...(user?.id ? { user_id: user.id } : {}),
         ...(promotionCodeId && { promotion_code: promotionCodeId }),
       },
     });

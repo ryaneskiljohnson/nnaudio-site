@@ -1,8 +1,13 @@
 "use server";
 
+/**
+ * @fileoverview Loads the authenticated user's owned products and review state.
+ * @module app/actions/my-products
+ */
+
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
-import { stripe, type Stripe } from "@/utils/stripe/client";
+import { getAccessibleProductIds } from "@/utils/nnaudio-access/access";
 
 export interface Product {
   id: string;
@@ -13,8 +18,23 @@ export interface Product {
   logo_url: string | null;
   short_description: string | null;
   tagline: string | null;
+  review_id: string | null;
+  review_rating: number | null;
+  review_text: string | null;
+  review_status: "not_submitted" | "pending" | "approved" | "rejected";
+  review_rejection_reason: string | null;
+  review_updated_at: string | null;
+  reward_eligible: boolean;
+  reward_claimed_at: string | null;
 }
 
+/**
+ * @brief Loads all products the authenticated user can access.
+ * @returns Purchased products enriched with the user's review and reward state.
+ * @note Ownership is resolved through the shared access helper so bundle expansion stays consistent.
+ * @example
+ * const result = await getMyProducts();
+ */
 export async function getMyProducts(): Promise<{
   success: boolean;
   products: Product[];
@@ -36,10 +56,9 @@ export async function getMyProducts(): Promise<{
       };
     }
 
-    // Get user's profile to check subscription and customer_id
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("subscription, customer_id, email")
+      .select("customer_id, email")
       .eq("id", user.id)
       .single();
 
@@ -52,128 +71,13 @@ export async function getMyProducts(): Promise<{
       };
     }
 
-    const purchasedProductIds = new Set<string>();
+    const access = await getAccessibleProductIds(user.id, {
+      customer_id: profile.customer_id,
+      email: profile.email,
+    });
+    const productIdsArray = Array.from(access.productIds);
 
-    // Get purchased products from orders
-    let paymentIntents: Stripe.PaymentIntent[] = [];
-    const allPaymentIntents = new Map<string, Stripe.PaymentIntent>();
-
-    // Method 1: Try to fetch by customer_id from profile
-    if (profile?.customer_id) {
-      try {
-        const customerPayments = await stripe.paymentIntents.list({
-          customer: profile.customer_id,
-          limit: 100,
-        });
-        customerPayments.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
-      } catch (error) {
-        console.error("[My Products] Error fetching by customer_id:", error);
-      }
-    }
-
-    // Method 2: Search by user_id in metadata
-    try {
-      const searchResult = await stripe.paymentIntents.search({
-        query: `metadata['user_id']:'${user.id}'`,
-        limit: 100,
-      });
-      searchResult.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
-    } catch (error) {
-      console.log("[My Products] Search API not available");
-    }
-
-    // Method 3: Search by email
-    if (profile?.email) {
-      try {
-        const customers = await stripe.customers.list({
-          email: profile.email,
-          limit: 10,
-        });
-        
-        for (const customer of customers.data) {
-          try {
-            const customerPayments = await stripe.paymentIntents.list({
-              customer: customer.id,
-              limit: 100,
-            });
-            customerPayments.data.forEach(pi => allPaymentIntents.set(pi.id, pi));
-          } catch (error) {
-            console.error("[My Products] Error fetching payment intents:", error);
-          }
-        }
-      } catch (error) {
-        console.error("[My Products] Error searching customers:", error);
-      }
-    }
-
-    paymentIntents = Array.from(allPaymentIntents.values());
-
-    // Filter to only successful payment intents (completed orders)
-    // Also check if they're refunded
-    const successfulPayments = paymentIntents.filter(
-      (pi) => pi.status === "succeeded"
-    );
-
-    // Extract product IDs from order items, excluding refunded orders
-    for (const pi of successfulPayments) {
-      // Check if order is refunded
-      let isRefunded = false;
-      if (pi.latest_charge) {
-        try {
-          const charge = await stripe.charges.retrieve(
-            typeof pi.latest_charge === "string"
-              ? pi.latest_charge
-              : pi.latest_charge.id
-          );
-          isRefunded = charge.refunded || charge.amount_refunded === charge.amount;
-        } catch (error) {
-          console.error("[My Products] Error checking refund status:", error);
-        }
-      }
-
-      // Skip refunded orders
-      if (isRefunded) {
-        continue;
-      }
-
-      try {
-        const cartItemsStr = pi.metadata?.cart_items;
-        if (cartItemsStr) {
-          const items = JSON.parse(cartItemsStr);
-          for (const item of items) {
-            if (item.id) {
-              purchasedProductIds.add(item.id);
-            }
-          }
-        }
-      } catch (e) {
-        console.error("[My Products] Error parsing cart items:", e);
-      }
-    }
-
-    // Check for product grants (free licenses) — product_grants not in generated DB types
-    if (profile?.email) {
-      const adminSupabase = await createSupabaseServiceRole();
-      const { data: productGrants, error: grantsError } = await (adminSupabase as any)
-        .from("product_grants")
-        .select("product_id")
-        .eq("user_email", profile.email.toLowerCase());
-
-      if (grantsError) {
-        console.error("[My Products] Error fetching product grants:", grantsError);
-      }
-
-      if (productGrants && productGrants.length > 0) {
-        (productGrants as { product_id: string }[]).forEach((grant) => {
-          if (grant.product_id) {
-            purchasedProductIds.add(grant.product_id);
-          }
-        });
-      }
-    }
-
-    // If no purchased products, return empty
-    if (purchasedProductIds.size === 0) {
+    if (productIdsArray.length === 0) {
       return {
         success: true,
         products: [],
@@ -181,8 +85,6 @@ export async function getMyProducts(): Promise<{
       };
     }
 
-    // Fetch product details for purchased products (products table may not be in generated DB types)
-    const productIdsArray = Array.from(purchasedProductIds);
     const adminSupabase = await createSupabaseServiceRole();
     const { data: products, error: productsError } = await (adminSupabase as any)
       .from("products")
@@ -200,9 +102,107 @@ export async function getMyProducts(): Promise<{
       };
     }
 
+    const { data: reviewRows, error: reviewError } = await (adminSupabase as any)
+      .from("product_reviews")
+      .select(`
+        id,
+        product_id,
+        rating,
+        review_text,
+        moderation_status,
+        rejection_reason,
+        is_approved,
+        updated_at
+      `)
+      .eq("user_id", user.id)
+      .in("product_id", productIdsArray);
+
+    if (reviewError) {
+      console.error("[My Products] Error fetching review state:", reviewError);
+    }
+
+    const { data: followupRows, error: followupError } = await (adminSupabase as any)
+      .from("review_followups")
+      .select("purchased_product_ids, reward_claimed_at, reward_review_id, send_at")
+      .eq("user_id", user.id)
+      .eq("is_refunded", false);
+
+    if (followupError) {
+      console.error("[My Products] Error fetching review followups:", followupError);
+    }
+
+    const reviewMap = new Map(
+      ((reviewRows as Array<{
+        id: string;
+        product_id: string;
+        rating: number;
+        review_text: string | null;
+        moderation_status: string | null;
+        rejection_reason: string | null;
+        is_approved: boolean | null;
+        updated_at: string | null;
+      }>) || []).map((review) => [review.product_id, review])
+    );
+
+    const rewardClaimedByReviewId = new Map<string, string | null>();
+    const rewardEligibleByProductId = new Map<string, boolean>();
+    const nowMs = Date.now();
+
+    for (const followup of ((followupRows as Array<{
+      purchased_product_ids: string[];
+      reward_claimed_at: string | null;
+      reward_review_id: string | null;
+      send_at: string;
+    }>) || [])) {
+      if (followup.reward_review_id) {
+        rewardClaimedByReviewId.set(followup.reward_review_id, followup.reward_claimed_at);
+      }
+
+      const eligible =
+        !followup.reward_claimed_at &&
+        new Date(followup.send_at).getTime() <= nowMs;
+
+      if (eligible) {
+        for (const productId of followup.purchased_product_ids || []) {
+          rewardEligibleByProductId.set(productId, true);
+        }
+      }
+    }
+
+    const enrichedProducts = ((products ?? []) as Array<{
+      id: string;
+      name: string;
+      slug: string;
+      category: string;
+      featured_image_url: string | null;
+      logo_url: string | null;
+      short_description: string | null;
+      tagline: string | null;
+    }>).map((product) => {
+      const review = reviewMap.get(product.id);
+      const reviewStatus = review
+        ? ((review.moderation_status ??
+            (review.is_approved ? "approved" : "pending")) as Product["review_status"])
+        : "not_submitted";
+
+      return {
+        ...product,
+        review_id: review?.id ?? null,
+        review_rating: review?.rating ?? null,
+        review_text: review?.review_text ?? null,
+        review_status: reviewStatus,
+        review_rejection_reason: review?.rejection_reason ?? null,
+        review_updated_at: review?.updated_at ?? null,
+        reward_eligible: rewardEligibleByProductId.get(product.id) ?? false,
+        reward_claimed_at: review?.id
+          ? rewardClaimedByReviewId.get(review.id) ?? null
+          : null,
+      } satisfies Product;
+    });
+
     return {
       success: true,
-      products: (products ?? []) as unknown as Product[],
+      products: enrichedProducts,
       source: "purchases",
     };
   } catch (error) {
