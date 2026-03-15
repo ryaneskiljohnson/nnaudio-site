@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
+import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { stripe } from "@/utils/stripe/client";
 
 interface CartItem {
@@ -147,9 +148,39 @@ export async function POST(request: NextRequest) {
 
     // Stripe minimum charge is $0.50 USD
     const STRIPE_MINIMUM_AMOUNT = 0.50;
-    
-    // If total is exactly $0, treat as free order
+
+    // If total is exactly $0, record free order in product_grants and return
     if (totalAmount === 0) {
+      if (!user?.id || !user?.email) {
+        return NextResponse.json(
+          { success: false, error: 'Sign in to complete your free order.' },
+          { status: 400 }
+        );
+      }
+      const productIds = [...new Set((items as CartItem[]).map((i) => i.id).filter(Boolean))] as string[];
+      if (productIds.length > 0) {
+        const adminSupabase = await createSupabaseServiceRole();
+        const now = new Date().toISOString();
+        const rows = productIds.map((product_id) => ({
+          user_email: user.email!.toLowerCase(),
+          product_id,
+          granted_at: now,
+          granted_by: user.id,
+          notes: 'Free checkout',
+          amount: 0,
+          updated_at: now,
+        }));
+        const { error: grantError } = await (adminSupabase as any)
+          .from('product_grants')
+          .upsert(rows, { onConflict: 'user_email,product_id' });
+        if (grantError) {
+          console.error('[payment-intent] Free order product_grants upsert error:', grantError);
+          return NextResponse.json(
+            { success: false, error: 'Failed to record your free order. Please try again or contact support.' },
+            { status: 500 }
+          );
+        }
+      }
       return NextResponse.json({
         success: true,
         isFreeOrder: true,
