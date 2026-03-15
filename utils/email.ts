@@ -4,7 +4,43 @@
  *
  * Uses dynamic import of @sendgrid/mail to avoid bundling issues when loading API routes.
  * Replaces previous AWS SES implementation.
+ *
+ * All sends are deduplicated: the same email (by idempotencyKey or by to+subject) is not
+ * sent again within DEDUPE_WINDOW_MS, preventing duplicate emails from double-clicks, race
+ * conditions, or retries.
  */
+
+/** Time window in ms during which the same logical email is not sent twice. */
+const DEDUPE_WINDOW_MS = 90_000; // 90 seconds
+
+/** Recent sends: key -> timestamp. Pruned when checking. */
+const recentSends = new Map<string, number>();
+
+function pruneRecentSends(): void {
+  const now = Date.now();
+  const toDelete: string[] = [];
+  for (const [key, ts] of recentSends) {
+    if (now - ts > DEDUPE_WINDOW_MS) toDelete.push(key);
+  }
+  toDelete.forEach((k) => recentSends.delete(k));
+}
+
+function getDedupeKey(params: {
+  to?: string | string[];
+  bcc?: string[];
+  subject: string;
+  idempotencyKey?: string;
+}): string {
+  if (params.idempotencyKey) return params.idempotencyKey;
+  if (params.bcc) {
+    const normalized = [...params.bcc].sort().join(",");
+    return `batch:${normalized}:${params.subject}`;
+  }
+  const to = params.to;
+  const normalized =
+    typeof to === "string" ? to : Array.isArray(to) ? [...to].sort().join(",") : "";
+  return `to:${normalized}:${params.subject}`;
+}
 
 interface SendBatchEmailParams {
   /** BCC recipients (SendGrid supports up to 1000 per request; we use BCC for batch). */
@@ -15,6 +51,8 @@ interface SendBatchEmailParams {
   from?: string;
   replyTo?: string | string[];
   listUnsubscribe?: string;
+  /** If set, same key within DEDUPE_WINDOW_MS prevents sending again. */
+  idempotencyKey?: string;
 }
 
 interface SendEmailParams {
@@ -25,6 +63,8 @@ interface SendEmailParams {
   from?: string;
   replyTo?: string | string[];
   listUnsubscribe?: string;
+  /** If set, same key within DEDUPE_WINDOW_MS prevents sending again. */
+  idempotencyKey?: string;
 }
 
 /**
@@ -46,9 +86,18 @@ export async function sendEmail({
     : "NNAudio Support <support@nnaud.io>",
   replyTo,
   listUnsubscribe,
+  idempotencyKey,
 }: SendEmailParams): Promise<
   { success: true; messageId: string } | { success: false; error: string }
 > {
+  const dedupeKey = getDedupeKey({ to, subject, idempotencyKey });
+  pruneRecentSends();
+  const lastSent = recentSends.get(dedupeKey);
+  if (lastSent != null && Date.now() - lastSent < DEDUPE_WINDOW_MS) {
+    console.log("📧 Email deduplicated (same send within window):", { subject, to });
+    return { success: true, messageId: "deduplicated" };
+  }
+
   const apiKey = process.env.SENDGRID_API_KEY;
   if (!apiKey) {
     console.error("❌ SENDGRID_API_KEY is not set.");
@@ -111,6 +160,7 @@ export async function sendEmail({
     const messageId =
       headers?.["x-message-id"] || headers?.["X-Message-Id"] || "";
     console.log("✅ Email sent via SendGrid, X-Message-Id:", messageId || "(none)");
+    recentSends.set(dedupeKey, Date.now());
     return { success: true, messageId: messageId || `sg-${Date.now()}` };
   } catch (error: unknown) {
     const err = error as { response?: { body?: unknown; statusCode?: number } };
@@ -143,10 +193,19 @@ export async function sendBatchEmail({
     : "NNAudio Support <support@nnaud.io>",
   replyTo,
   listUnsubscribe,
+  idempotencyKey,
 }: SendBatchEmailParams): Promise<
   | { success: true; messageId: string; recipientCount: number }
   | { success: false; error: string; recipientCount?: number }
 > {
+  const dedupeKey = getDedupeKey({ bcc, subject, idempotencyKey });
+  pruneRecentSends();
+  const lastSent = recentSends.get(dedupeKey);
+  if (lastSent != null && Date.now() - lastSent < DEDUPE_WINDOW_MS) {
+    console.log("📧 Batch email deduplicated (same send within window):", { subject, recipientCount: bcc.length });
+    return { success: true, messageId: "deduplicated", recipientCount: bcc.length };
+  }
+
   const apiKey = process.env.SENDGRID_API_KEY;
   if (!apiKey) {
     console.error("❌ SENDGRID_API_KEY is not set.");
@@ -221,6 +280,7 @@ export async function sendBatchEmail({
       "Recipients:",
       bcc.length
     );
+    recentSends.set(dedupeKey, Date.now());
     return {
       success: true,
       messageId: messageId || `sg-batch-${Date.now()}`,
