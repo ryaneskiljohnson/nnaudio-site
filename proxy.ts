@@ -46,9 +46,22 @@ const PROTECTED_PREFIXES = ["/dashboard", "/admin"];
  * @returns Response with session cookies and security headers
  */
 export async function proxy(request: NextRequest) {
-  const { response: supabaseResponse, user } = await updateSession(request);
-
   const path = request.nextUrl.pathname;
+  const searchParams = request.nextUrl.searchParams;
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type");
+
+  // Email verification / signup / recovery: if link landed on any page with token_hash + type in query,
+  // send to the confirm route so we verify OTP and redirect to dashboard (or reset-password).
+  if (tokenHash && type && path !== "/api/auth/confirm") {
+    const confirmUrl = request.nextUrl.clone();
+    confirmUrl.pathname = "/api/auth/confirm";
+    confirmUrl.searchParams.set("token_hash", tokenHash);
+    confirmUrl.searchParams.set("type", type);
+    return NextResponse.redirect(confirmUrl);
+  }
+
+  const { response: supabaseResponse, user } = await updateSession(request);
   const isProtected = PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
   const isAuthPage =
     path.startsWith("/login") ||
