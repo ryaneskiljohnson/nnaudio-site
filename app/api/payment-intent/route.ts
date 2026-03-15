@@ -3,6 +3,12 @@ import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { stripe } from "@/utils/stripe/client";
+import {
+  buildOrderConfirmationHtml,
+  buildOrderConfirmationText,
+  type OrderLineItem as ConfirmationLineItem,
+} from "@/utils/order-confirmation-email";
+import { getAdminEmailsForOrderCopy } from "@/lib/admin-order-email-copy";
 
 interface CartItem {
   id: string;
@@ -181,6 +187,67 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+
+      // Send order confirmation email (same as Stripe webhook for paid orders)
+      const email = user.email!;
+      const lineItems: ConfirmationLineItem[] = (items as CartItem[]).map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        amount: '$0.00',
+      }));
+      const orderNumber = 'FREE-' + Date.now().toString(36).toUpperCase().slice(-8);
+      const dateStr = new Date().toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const { sendEmail } = await import('@/utils/email');
+      const data = {
+        customerEmail: email,
+        customerName: null as string | null,
+        orderNumber,
+        lineItems,
+        subtotal: '$0.00',
+        total: '$0.00',
+        receiptUrl: null as string | null,
+        date: dateStr,
+      };
+      const result = await sendEmail({
+        to: email,
+        subject: 'Your order confirmation – NNAud.io',
+        html: buildOrderConfirmationHtml(data),
+        text: buildOrderConfirmationText(data),
+        from: 'NNAudio Support <support@nnaud.io>',
+        replyTo: 'support@nnaud.io',
+      });
+      if (result.success) {
+        console.log('[payment-intent] Free order confirmation email sent to', email);
+      } else {
+        console.error('[payment-intent] Free order confirmation email failed:', result.error);
+      }
+      const adminEmails = await getAdminEmailsForOrderCopy(false, true);
+      const subject = 'Your order confirmation – NNAud.io';
+      const html = buildOrderConfirmationHtml(data);
+      const text = buildOrderConfirmationText(data);
+      for (const adminEmail of adminEmails) {
+        const adminResult = await sendEmail({
+          to: adminEmail,
+          subject,
+          html,
+          text,
+          from: 'NNAudio Support <support@nnaud.io>',
+          replyTo: 'support@nnaud.io',
+        });
+        if (adminResult.success) {
+          console.log('[payment-intent] Free order confirmation copy sent to admin', adminEmail);
+        } else {
+          console.error('[payment-intent] Free order copy to admin failed:', adminResult.error);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         isFreeOrder: true,
