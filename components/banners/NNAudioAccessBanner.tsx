@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Fixed landing-page banner promoting NNAudio Access (product manager app).
+ * @module components/banners/NNAudioAccessBanner
+ */
 "use client";
 
 import React, { useState } from "react";
@@ -26,14 +30,17 @@ const BannerContainer = styled(motion.div)`
   z-index: 3000;
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   min-height: 56px;
   gap: 1rem;
 
   @media (max-width: 768px) {
     top: 64px;
     padding: 0.6rem 1rem;
-    min-height: 52px;
-    gap: 0.75rem;
+    min-height: auto;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.5rem 0.75rem;
   }
 `;
 
@@ -41,7 +48,10 @@ const BannerContainer = styled(motion.div)`
 const BannerSpacer = styled.div`
   min-height: 56px;
   @media (max-width: 768px) {
-    min-height: 52px;
+    min-height: 100px;
+  }
+  @media (max-width: 400px) {
+    min-height: 108px;
   }
 `;
 
@@ -53,6 +63,8 @@ const BannerLeft = styled.div`
   min-width: 0;
 
   @media (max-width: 768px) {
+    flex: 1 1 calc(100% - 2rem);
+    min-width: 0;
     gap: 0.75rem;
   }
 `;
@@ -157,8 +169,15 @@ const ButtonGroup = styled.div`
   gap: 0.5rem;
   flex-shrink: 0;
 
+  @media (max-width: 768px) {
+    flex: 1 1 100%;
+    order: 3;
+    justify-content: flex-start;
+    margin-top: 0.15rem;
+  }
   @media (max-width: 480px) {
     gap: 0.4rem;
+    flex-wrap: wrap;
   }
 `;
 
@@ -227,6 +246,8 @@ const CloseButton = styled.button`
     width: 26px;
     height: 26px;
     font-size: 0.8rem;
+    order: 2;
+    flex: 0 0 auto;
   }
 `;
 
