@@ -7,14 +7,19 @@ import {
   FaTimes,
   FaUser,
   FaSignOutAlt,
+  FaSignInAlt,
+  FaUserPlus,
   FaUserCircle,
   FaPuzzlePiece,
   FaQuestionCircle,
-  FaRegLightbulb,
   FaRegCreditCard,
   FaShieldAlt,
   FaShoppingCart,
   FaGift,
+  FaHome,
+  FaHeadphones,
+  FaThList,
+  FaBoxOpen,
 } from "react-icons/fa";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
@@ -339,12 +344,14 @@ const MobileNavLink = styled(motion.div)<{ $isActive?: boolean }>`
   transition: all 0.2s ease;
   will-change: transform;
   transform: translate3d(0, 0, 0); /* Force hardware acceleration */
+  white-space: nowrap;
 
   svg {
     margin-right: 12px;
     font-size: 1.2rem;
     color: var(--primary);
     transition: transform 0.2s ease;
+    flex-shrink: 0;
   }
 
   &:hover {
@@ -419,6 +426,10 @@ const AuthButton = styled.a<{ $isPrimary?: boolean; $isMobile?: boolean }>`
   letter-spacing: 0.3px;
   cursor: pointer;
 
+  svg {
+    flex-shrink: 0;
+  }
+
   ${(props) =>
     props.$isPrimary
       ? `
@@ -450,6 +461,7 @@ const AuthButton = styled.a<{ $isPrimary?: boolean; $isMobile?: boolean }>`
     padding: 15px 24px;
     width: 100%;
     font-size: 1.1rem;
+    white-space: nowrap;
   `}
 `;
 
@@ -880,8 +892,11 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                       initial="hidden"
                       animate="visible"
                     >
-                      {item.path === "/#features" && <FaPuzzlePiece />}
-                      {item.path === "/#how-it-works" && <FaRegLightbulb />}
+                      {item.path === "/" && <FaHome />}
+                      {item.path === "/plugins" && <FaPuzzlePiece />}
+                      {item.path === "/packs" && <FaHeadphones />}
+                      {item.path === "/products" && <FaThList />}
+                      {item.path === "/bundles" && <FaBoxOpen />}
                       {item.path === "/#pricing" && <FaRegCreditCard />}
                       {item.path === "/#faq" && <FaQuestionCircle />}
                       {item.name}
@@ -954,6 +969,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                       handleLoginClick(e);
                     }}
                   >
+                    <FaSignInAlt />
                     {getTranslation("common.login")}
                   </AuthButton>
                   <AuthButton
@@ -964,6 +980,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                       handleSignupClick(e);
                     }}
                   >
+                    <FaUserPlus />
                     {getTranslation("common.signUp")}
                   </AuthButton>
                 </MobileAuthSection>
