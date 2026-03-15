@@ -10,6 +10,7 @@ export interface Product {
   slug: string;
   category: string;
   featured_image_url: string | null;
+  logo_url: string | null;
   short_description: string | null;
   tagline: string | null;
 }
@@ -185,7 +186,7 @@ export async function getMyProducts(): Promise<{
     const adminSupabase = await createSupabaseServiceRole();
     const { data: products, error: productsError } = await (adminSupabase as any)
       .from("products")
-      .select("id, name, slug, category, featured_image_url, short_description, tagline")
+      .select("id, name, slug, category, featured_image_url, logo_url, short_description, tagline")
       .in("id", productIdsArray)
       .eq("status", "active");
 

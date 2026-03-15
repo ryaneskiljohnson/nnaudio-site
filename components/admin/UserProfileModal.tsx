@@ -20,6 +20,8 @@ import {
   getCustomerInvoicesAdmin,
   getUserSupportTicketsAdmin,
 } from "@/app/actions/user-management";
+import { getProductGrantsForEmails } from "@/app/actions/product-grants";
+import type { ProductGrant } from "@/app/actions/product-grants";
 import { getCustomerSubscriptions } from "@/utils/stripe/actions";
 import { updateUserProStatus } from "@/utils/subscriptions/check-subscription";
 
@@ -33,7 +35,7 @@ const ModalOverlay = styled(motion.div)`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 10500;
   padding: 20px;
 `;
 
@@ -212,6 +214,32 @@ const EmptyState = styled.div`
   padding: 2rem;
   color: var(--text-secondary);
   font-style: italic;
+`;
+
+/** Scrollable container for the products-owned list at the bottom of the modal */
+const ScrollableProductsSection = styled.div`
+  max-height: 320px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.02);
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
 `;
 
 const SubscriptionBadge = styled.span<{
@@ -534,6 +562,32 @@ export default function UserProfileModal({
   const [hasPaymentMethod, setHasPaymentMethod] = useState<boolean | null>(
     null
   );
+  const [userProductGrants, setUserProductGrants] = useState<ProductGrant[]>([]);
+  const [loadingProductGrants, setLoadingProductGrants] = useState(false);
+
+  const fetchUserProductGrants = useCallback(async (userEmail: string) => {
+    if (!userEmail?.trim()) {
+      setUserProductGrants([]);
+      return;
+    }
+    try {
+      setLoadingProductGrants(true);
+      const { data, error } = await getProductGrantsForEmails([
+        userEmail.trim().toLowerCase(),
+      ]);
+      if (error) {
+        console.error("Error fetching product grants:", error);
+        setUserProductGrants([]);
+      } else {
+        setUserProductGrants(data ?? []);
+      }
+    } catch (error) {
+      console.error("Error fetching product grants:", error);
+      setUserProductGrants([]);
+    } finally {
+      setLoadingProductGrants(false);
+    }
+  }, []);
 
   const fetchUserSubscriptions = useCallback(async (customerId: string) => {
     try {
@@ -653,8 +707,12 @@ export default function UserProfileModal({
       setUserPurchases([]);
       setUserInvoices([]);
       setSupportTickets([]);
+      setUserProductGrants([]);
       setHasPaymentMethod(null);
 
+      if (user.email) {
+        fetchUserProductGrants(user.email);
+      }
       if (user.customerId) {
         fetchUserSubscriptions(user.customerId);
         fetchUserPurchases(user.customerId);
@@ -686,16 +744,19 @@ export default function UserProfileModal({
       setUserPurchases([]);
       setUserInvoices([]);
       setSupportTickets([]);
+      setUserProductGrants([]);
       setHasPaymentMethod(null);
     }
   }, [
     isOpen,
     user?.id,
+    user?.email,
     user?.customerId,
     fetchUserSubscriptions,
     fetchUserPurchases,
     fetchUserInvoices,
     fetchUserSupportTickets,
+    fetchUserProductGrants,
   ]);
 
   if (!user) return null;
@@ -1133,87 +1194,6 @@ export default function UserProfileModal({
               )}
             </ModalSection>
 
-            {/* Purchases */}
-            <ModalSection>
-              <SectionTitle>
-                <FaChartLine />
-                Purchases
-              </SectionTitle>
-              {loadingPurchases ? (
-                <EmptyState>Loading purchases...</EmptyState>
-              ) : userPurchases.length > 0 ? (
-                <DataTable>
-                  <DataTableHeader>
-                    <tr>
-                      <DataTableHeaderCell>ID</DataTableHeaderCell>
-                      <DataTableHeaderCell>Description</DataTableHeaderCell>
-                      <DataTableHeaderCell>Amount</DataTableHeaderCell>
-                      <DataTableHeaderCell>Status</DataTableHeaderCell>
-                      <DataTableHeaderCell>Date</DataTableHeaderCell>
-                      {onRefundPurchase ? (
-                        <DataTableHeaderCell>Actions</DataTableHeaderCell>
-                      ) : null}
-                    </tr>
-                  </DataTableHeader>
-                  <DataTableBody>
-                    {userPurchases.map((purchase) => (
-                      <DataTableRow key={purchase.id}>
-                        <DataTableCell>
-                          <StripeLink
-                            href={`https://dashboard.stripe.com/payments/${purchase.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {purchase.id}
-                          </StripeLink>
-                        </DataTableCell>
-                        <DataTableCell>{purchase.description}</DataTableCell>
-                        <DataTableCell>
-                          {formatCurrency(purchase.amount * 100)}
-                        </DataTableCell>
-                        <DataTableCell>
-                          <StatusBadge $status={purchase.status}>
-                            {purchase.status}
-                          </StatusBadge>
-                        </DataTableCell>
-                        <DataTableCell>
-                          {formatDate(purchase.createdAt)}
-                        </DataTableCell>
-                        {onRefundPurchase && (
-                          <DataTableCell>
-                            {purchase.status === "succeeded" && (
-                              <RefundButton
-                                variant="danger"
-                                disabled={refundLoading === purchase.id}
-                                onClick={() =>
-                                  onRefundPurchase(
-                                    purchase.id,
-                                    purchase.amount,
-                                    purchase.description
-                                  )
-                                }
-                              >
-                                {refundLoading === purchase.id ? (
-                                  <LoadingSpinner />
-                                ) : (
-                                  <FaUndo />
-                                )}
-                                {refundSuccess === purchase.id
-                                  ? "Refunded"
-                                  : "Refund"}
-                              </RefundButton>
-                            )}
-                          </DataTableCell>
-                        )}
-                      </DataTableRow>
-                    ))}
-                  </DataTableBody>
-                </DataTable>
-              ) : (
-                <EmptyState>No purchases found</EmptyState>
-              )}
-            </ModalSection>
-
             {/* Invoices */}
             <ModalSection>
               <SectionTitle>
@@ -1297,6 +1277,109 @@ export default function UserProfileModal({
               ) : (
                 <EmptyState>No invoices found</EmptyState>
               )}
+            </ModalSection>
+
+            {/* Products owned - grants + purchases, full list, scrollable */}
+            <ModalSection>
+              <SectionTitle>
+                <FaChartLine />
+                Products they own
+              </SectionTitle>
+              <ScrollableProductsSection>
+                {loadingPurchases || loadingProductGrants ? (
+                  <EmptyState>Loading products...</EmptyState>
+                ) : userProductGrants.length > 0 || userPurchases.length > 0 ? (
+                  <DataTable>
+                    <DataTableHeader>
+                      <tr>
+                        <DataTableHeaderCell>Product / Description</DataTableHeaderCell>
+                        <DataTableHeaderCell>Source</DataTableHeaderCell>
+                        <DataTableHeaderCell>Amount</DataTableHeaderCell>
+                        <DataTableHeaderCell>Status</DataTableHeaderCell>
+                        <DataTableHeaderCell>Date</DataTableHeaderCell>
+                        {onRefundPurchase ? (
+                          <DataTableHeaderCell>Actions</DataTableHeaderCell>
+                        ) : null}
+                      </tr>
+                    </DataTableHeader>
+                    <DataTableBody>
+                      {userProductGrants.map((grant) => (
+                        <DataTableRow key={`grant-${grant.id}`}>
+                          <DataTableCell>
+                            {grant.products?.name ?? grant.product_id}
+                          </DataTableCell>
+                          <DataTableCell>
+                            <StatusBadge $status="active">Grant</StatusBadge>
+                          </DataTableCell>
+                          <DataTableCell>—</DataTableCell>
+                          <DataTableCell>—</DataTableCell>
+                          <DataTableCell>
+                            {formatDate(grant.granted_at)}
+                          </DataTableCell>
+                          {onRefundPurchase && <DataTableCell />}
+                        </DataTableRow>
+                      ))}
+                      {userPurchases.map((purchase) => (
+                        <DataTableRow key={`purchase-${purchase.id}`}>
+                          <DataTableCell>
+                            <StripeLink
+                              href={`https://dashboard.stripe.com/payments/${purchase.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {purchase.description}
+                            </StripeLink>
+                          </DataTableCell>
+                          <DataTableCell>
+                            <StatusBadge $status={purchase.status}>
+                              Purchase
+                            </StatusBadge>
+                          </DataTableCell>
+                          <DataTableCell>
+                            {formatCurrency(purchase.amount * 100)}
+                          </DataTableCell>
+                          <DataTableCell>
+                            <StatusBadge $status={purchase.status}>
+                              {purchase.status}
+                            </StatusBadge>
+                          </DataTableCell>
+                          <DataTableCell>
+                            {formatDate(purchase.createdAt)}
+                          </DataTableCell>
+                          {onRefundPurchase && (
+                            <DataTableCell>
+                              {purchase.status === "succeeded" && (
+                                <RefundButton
+                                  variant="danger"
+                                  disabled={refundLoading === purchase.id}
+                                  onClick={() =>
+                                    onRefundPurchase(
+                                      purchase.id,
+                                      purchase.amount,
+                                      purchase.description
+                                    )
+                                  }
+                                >
+                                  {refundLoading === purchase.id ? (
+                                    <LoadingSpinner />
+                                  ) : (
+                                    <FaUndo />
+                                  )}
+                                  {refundSuccess === purchase.id
+                                    ? "Refunded"
+                                    : "Refund"}
+                                </RefundButton>
+                              )}
+                            </DataTableCell>
+                          )}
+                        </DataTableRow>
+                      ))}
+                    </DataTableBody>
+                  </DataTable>
+                ) : (
+                  <EmptyState>No products found</EmptyState>
+                )}
+              </ScrollableProductsSection>
             </ModalSection>
           </ModalContent>
         </ModalOverlay>

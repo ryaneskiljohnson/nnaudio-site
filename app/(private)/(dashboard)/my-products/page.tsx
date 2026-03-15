@@ -420,6 +420,7 @@ interface Product {
   slug: string;
   category: string;
   featured_image_url?: string;
+  logo_url?: string;
   short_description?: string;
 }
 
@@ -694,12 +695,14 @@ export default function MyProductsPage() {
               >
                     <ProductImageCell>
                       <ProductImageWrapper>
-                  {product.featured_image_url ? (
+                  {product.featured_image_url || product.logo_url ? (
                     <Image
-                      src={product.featured_image_url}
+                      src={product.featured_image_url || product.logo_url || ""}
                       alt={product.name}
-                      fill
+                      width={60}
+                      height={60}
                       style={{ objectFit: "cover" }}
+                      unoptimized
                     />
                   ) : (
                     <div
