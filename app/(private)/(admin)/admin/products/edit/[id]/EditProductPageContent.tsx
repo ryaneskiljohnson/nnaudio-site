@@ -2031,6 +2031,7 @@ export default function EditProductPage() {
                     alt="Logo preview"
                     fill
                     style={{ objectFit: 'contain' }}
+                    unoptimized
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
@@ -2057,6 +2058,7 @@ export default function EditProductPage() {
                     alt="Background image preview"
                     fill
                     style={{ objectFit: 'contain' }}
+                    unoptimized
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
@@ -2184,7 +2186,7 @@ export default function EditProductPage() {
                       width={600}
                       height={400}
                       style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', objectFit: 'contain' }}
-                      unoptimized={feature.image_url.endsWith('.gif')}
+                      unoptimized
                     />
                   </div>
                 )}

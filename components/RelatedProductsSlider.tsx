@@ -315,6 +315,7 @@ export default function RelatedProductsSlider({ products }: RelatedProductsSlide
                         fill
                         sizes="280px"
                         style={{ objectFit: 'contain', padding: '20px' }}
+                        unoptimized
                       />
                     ) : (
                       <div style={{

@@ -582,6 +582,7 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
                       fill
                       sizes="(max-width: 768px) 100vw, 600px"
                       style={{ objectFit: 'cover' }}
+                      unoptimized
                     />
                   </div>
                   {!premierProduct.hasMultiplePricing && (

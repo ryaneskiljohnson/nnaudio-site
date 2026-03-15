@@ -626,6 +626,7 @@ export default function MyOrdersPage() {
                                   alt={item.name}
                                   fill
                                   style={{ objectFit: "cover" }}
+                                  unoptimized
                                 />
                               ) : (
                                 <div
@@ -876,6 +877,7 @@ export default function MyOrdersPage() {
                                         alt={item.name}
                                         fill
                                         style={{ objectFit: "cover" }}
+                                        unoptimized
                                       />
                                     ) : (
                                       <div
@@ -1133,6 +1135,7 @@ export default function MyOrdersPage() {
                                         alt={item.name}
                                         fill
                                         style={{ objectFit: "cover" }}
+                                        unoptimized
                                       />
                                     ) : (
                                       <div
