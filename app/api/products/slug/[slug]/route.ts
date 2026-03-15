@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { createSupabaseServiceRole } from '@/utils/supabase/service';
 
 // Disable caching so product updates (images, prices, etc.) show immediately
 export const dynamic = 'force-dynamic';
@@ -11,13 +12,15 @@ export async function GET(
 ) {
   try {
     const supabase = await createClient();
+    const adminSupabase = await createSupabaseServiceRole();
     const { slug } = await params;
 
-    const { data: product, error } = await (supabase as any)
+    // Use service role so we load all reviews, then filter to approved only for the product page.
+    const { data: product, error } = await (adminSupabase as any)
       .from('products')
       .select(`
         *,
-        product_reviews(rating, title, review_text, customer_name, created_at, is_approved, is_verified_purchase)
+        product_reviews(rating, title, review_text, customer_name, created_at, is_approved, moderation_status, is_verified_purchase)
       `)
       .eq('slug', slug)
       .single();
@@ -53,9 +56,11 @@ export async function GET(
       );
     }
 
-    // Calculate average rating
+    // Product page shows only approved reviews (rating, count, and list).
     const reviews = product.product_reviews || [];
-    const approvedReviews = reviews.filter((r: any) => r.is_approved);
+    const approvedReviews = reviews.filter(
+      (r: any) => r.is_approved === true || r.moderation_status === 'approved'
+    );
     const avgRating = approvedReviews.length > 0
       ? approvedReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / approvedReviews.length
       : 0;

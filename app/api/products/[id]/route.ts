@@ -13,21 +13,13 @@ export async function GET(
     const supabase = await createClient();
     const { id } = await params;
 
-    // If user is admin, use service-role client so we get full product (name, slug, etc.) regardless of RLS
-    let client: any = supabase;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: adminRow } = await supabase.from('admins').select('user').eq('user', user.id).maybeSingle();
-      if (adminRow) {
-        client = await createAdminClient();
-      }
-    }
-
-    const { data: product, error } = await (client as any)
+    // Use service-role so we load all reviews, then filter to approved only for the product page.
+    const adminSupabase = await createAdminClient();
+    const { data: product, error } = await (adminSupabase as any)
       .from('products')
       .select(`
         *,
-        product_reviews(rating, title, review_text, customer_name, created_at, is_approved, is_verified_purchase)
+        product_reviews(rating, title, review_text, customer_name, created_at, is_approved, moderation_status, is_verified_purchase)
       `)
       .eq('id', id)
       .single();
@@ -63,9 +55,11 @@ export async function GET(
       );
     }
 
-    // Calculate average rating
+    // Product page shows only approved reviews (rating, count, and list).
     const reviews = product.product_reviews || [];
-    const approvedReviews = reviews.filter((r: any) => r.is_approved);
+    const approvedReviews = reviews.filter(
+      (r: any) => r.is_approved === true || r.moderation_status === 'approved'
+    );
     const avgRating = approvedReviews.length > 0
       ? approvedReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / approvedReviews.length
       : 0;
