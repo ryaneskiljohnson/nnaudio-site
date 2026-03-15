@@ -1,11 +1,34 @@
 /**
- * @fileoverview Admin emails that receive order confirmation copies (paid/free).
+ * @fileoverview Admin emails for order copies and support ticket notifications.
  * @module lib/admin-order-email-copy
  *
- * Used by Stripe webhook (checkout.session.completed) and payment-intent (free orders).
+ * Used by Stripe webhook, payment-intent (free orders), and support ticket correspondence.
  */
 
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
+
+/**
+ * Fetches all admin user emails (from admins table + profiles).
+ * Used for support ticket notifications so all admins receive correspondence.
+ * @returns Array of admin email addresses (no duplicates)
+ */
+export async function getAdminEmails(): Promise<string[]> {
+  const supabase = await createSupabaseServiceRole();
+  const { data: adminRows, error: adminError } = await supabase
+    .from("admins")
+    .select("user");
+  if (adminError || !adminRows?.length) return [];
+  const userIds = [...new Set((adminRows as { user: string }[]).map((r) => r.user))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("email")
+    .in("id", userIds)
+    .not("email", "is", null);
+  const emails = (profiles ?? [])
+    .map((p) => p.email as string)
+    .filter((e): e is string => Boolean(e));
+  return [...new Set(emails)];
+}
 
 /**
  * Fetches admin emails that should receive a copy of the order confirmation.

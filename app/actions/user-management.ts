@@ -1,5 +1,6 @@
 "use server";
 
+import { getAdminEmails } from "@/lib/admin-order-email-copy";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import {
@@ -1632,10 +1633,22 @@ export async function addSupportTicketMessageAdmin(
       try {
         await sendSupportTicketEmailNotification(ticketId, message.id);
       } catch (emailError) {
-        // Don't fail the message creation if email fails
         console.error(
           "Error sending support ticket email notification:",
           emailError,
+        );
+      }
+      // Notify all admins of the new reply so they receive any correspondence
+      try {
+        await sendSupportTicketEmailNotificationToAdmin(
+          ticketId,
+          message.id,
+          true,
+        );
+      } catch (adminEmailError) {
+        console.error(
+          "Error sending support ticket notification to admins:",
+          adminEmailError,
         );
       }
     }
@@ -2024,18 +2037,19 @@ This is an automated notification from NNAudio Support.
 }
 
 /**
- * Send email notification to admin when user sends a message
+ * Send email notification to admins for support ticket correspondence.
+ * @param isAdminReply - when true, copy says a team member replied (used when admin adds a message)
  */
 async function sendSupportTicketEmailNotificationToAdmin(
   ticketId: string,
   messageId: string,
+  isAdminReply: boolean = false,
 ): Promise<void> {
   try {
-    const supabase = await createClient();
     const serviceSupabase = await createSupabaseServiceRole();
 
-    // Get ticket details
-    const { data: ticket, error: ticketError } = await supabase
+    // Get ticket details (service role so this works from any caller context)
+    const { data: ticket, error: ticketError } = await serviceSupabase
       .from("support_tickets")
       .select("id, ticket_number, subject, user_id, status")
       .eq("id", ticketId)
@@ -2078,7 +2092,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
     }
 
     // Get all messages for the ticket
-    const { data: messages, error: messagesError } = await supabase
+    const { data: messages, error: messagesError } = await serviceSupabase
       .from("support_messages")
       .select(
         `
@@ -2099,7 +2113,7 @@ async function sendSupportTicketEmailNotificationToAdmin(
 
     // Get attachments for all messages
     const messageIds = messages?.map((m) => m.id) || [];
-    const { data: attachments, error: attachmentsError } = await supabase
+    const { data: attachments, error: attachmentsError } = await serviceSupabase
       .from("support_attachments")
       .select("*")
       .in("message_id", messageIds);
@@ -2255,12 +2269,12 @@ async function sendSupportTicketEmailNotificationToAdmin(
                     <tr>
                         <td style="padding: 30px 24px;">
                             <h1 style="font-size: 1.5rem; color: #333; margin: 0 0 20px 0; font-weight: 600;">
-                                New Response to Support Ticket
+                                ${isAdminReply ? "New Reply on Support Ticket" : "New Response to Support Ticket"}
                             </h1>
                             <p style="color: #666; line-height: 1.6; margin: 0 0 20px 0;">
-                                A user has responded to support ticket <strong>${
-                                  ticket.ticket_number
-                                }</strong>: "${ticket.subject}".
+                                ${isAdminReply
+                                  ? `A team member has added a reply to support ticket <strong>${ticket.ticket_number}</strong>: "${ticket.subject}".`
+                                  : `A user has responded to support ticket <strong>${ticket.ticket_number}</strong>: "${ticket.subject}".`}
                             </p>
                             <p style="color: #666; line-height: 1.6; margin: 0 0 20px 0;">
                                 <strong>User:</strong> ${
@@ -2313,11 +2327,11 @@ async function sendSupportTicketEmailNotificationToAdmin(
 
     // Create plain text version
     const emailText = `
-New Response to Support Ticket
+${isAdminReply ? "New Reply on Support Ticket" : "New Response to Support Ticket"}
 
-A user has responded to support ticket ${ticket.ticket_number}: "${
-      ticket.subject
-    }".
+${isAdminReply
+      ? `A team member has added a reply to support ticket ${ticket.ticket_number}: "${ticket.subject}".`
+      : `A user has responded to support ticket ${ticket.ticket_number}: "${ticket.subject}".`}
 
 User: ${userName || userEmail}
 Email: ${userEmail}
@@ -2350,11 +2364,22 @@ ${ticketUrl}
 This is an automated notification from NNAudio Support.
     `;
 
-    // Send email to admin via SendGrid
+    // Send email to support inbox and all admins so every admin receives support correspondence
+    const adminEmails = await getAdminEmails();
+    const supportInbox = "support@nnaud.io";
+    const toAddresses = [supportInbox, ...adminEmails].filter(
+      (e, i, arr) => e && arr.indexOf(e) === i,
+    );
+    if (toAddresses.length === 0) {
+      toAddresses.push(supportInbox);
+    }
+
     const { sendEmail } = await import("@/utils/email");
     const emailResult = await sendEmail({
-      to: "support@nnaud.io",
-      subject: `New User Response: ${ticket.ticket_number} - ${ticket.subject}`,
+      to: toAddresses,
+      subject: isAdminReply
+        ? `New Reply: ${ticket.ticket_number} - ${ticket.subject}`
+        : `New User Response: ${ticket.ticket_number} - ${ticket.subject}`,
       html: emailHtml,
       text: emailText,
       from: "NNAudio Support <support@nnaud.io>",
@@ -2363,7 +2388,7 @@ This is an automated notification from NNAudio Support.
 
     if (emailResult.success) {
       console.log(
-        `✅ Support ticket email notification sent to admin for ticket ${ticket.ticket_number}`,
+        `✅ Support ticket email notification sent to ${toAddresses.length} admin(s) for ticket ${ticket.ticket_number}`,
       );
     } else {
       console.error(
