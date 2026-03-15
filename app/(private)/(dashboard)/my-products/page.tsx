@@ -1119,21 +1119,20 @@ export default function MyProductsPage() {
                     </AccessBadge>
                     </TableCell>
                     <ReviewActionCell onClick={(event) => event.stopPropagation()}>
-                      <ReviewActionButton
-                        type="button"
-                        onClick={() => openReviewDialog(product)}
-                      >
-                        <FaPen />
-                        {product.review_id ? "Edit Review" : "Write Review"}
-                      </ReviewActionButton>
+                      {(!product.review_id || product.review_can_edit) && (
+                        <ReviewActionButton
+                          type="button"
+                          onClick={() => openReviewDialog(product)}
+                        >
+                          <FaPen />
+                          {product.review_id ? "Edit Review" : "Write Review"}
+                        </ReviewActionButton>
+                      )}
                       <ReviewMeta>
                         <ReviewStatusBadge $status={product.review_status}>
                           {product.review_status === "pending" ? <FaClock /> : <FaCheckCircle />}
                           {getReviewStatusLabel(product.review_status)}
                         </ReviewStatusBadge>
-                        {product.review_rejection_reason && (
-                          <ReviewMetaText>{product.review_rejection_reason}</ReviewMetaText>
-                        )}
                         {product.reward_eligible && !product.reward_claimed_at && (
                           <RewardBadge>
                             <FaGift />

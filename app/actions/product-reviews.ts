@@ -244,10 +244,17 @@ export async function submitProductReview(input: ProductReviewSubmissionInput): 
 
     const { data: existingReview } = await (adminSupabase as any)
       .from("product_reviews")
-      .select("id")
+      .select("id, moderation_status")
       .eq("user_id", auth.user.id)
       .eq("product_id", input.productId)
       .maybeSingle();
+
+    if (existingReview?.id && existingReview.moderation_status !== "pending") {
+      return {
+        success: false,
+        error: "This review can no longer be edited.",
+      };
+    }
 
     let reviewId: string;
     if (existingReview?.id) {

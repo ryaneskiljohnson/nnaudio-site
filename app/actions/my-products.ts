@@ -24,6 +24,8 @@ export interface Product {
   review_status: "not_submitted" | "pending" | "approved" | "rejected";
   review_rejection_reason: string | null;
   review_updated_at: string | null;
+  /** True only when the review is still pending; approved/rejected reviews cannot be edited. */
+  review_can_edit: boolean;
   reward_eligible: boolean;
   reward_claimed_at: string | null;
 }
@@ -180,10 +182,14 @@ export async function getMyProducts(): Promise<{
       tagline: string | null;
     }>).map((product) => {
       const review = reviewMap.get(product.id);
-      const reviewStatus = review
+      const rawStatus = review
         ? ((review.moderation_status ??
             (review.is_approved ? "approved" : "pending")) as Product["review_status"])
         : "not_submitted";
+      // Do not expose rejection to the user: show as "pending" so they can edit without knowing it was rejected.
+      const reviewStatus =
+        rawStatus === "rejected" ? "pending" : rawStatus;
+      const review_can_edit = rawStatus === "pending";
 
       return {
         ...product,
@@ -191,8 +197,9 @@ export async function getMyProducts(): Promise<{
         review_rating: review?.rating ?? null,
         review_text: review?.review_text ?? null,
         review_status: reviewStatus,
-        review_rejection_reason: review?.rejection_reason ?? null,
+        review_rejection_reason: null,
         review_updated_at: review?.updated_at ?? null,
+        review_can_edit,
         reward_eligible: rewardEligibleByProductId.get(product.id) ?? false,
         reward_claimed_at: review?.id
           ? rewardClaimedByReviewId.get(review.id) ?? null
