@@ -104,11 +104,9 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       );
       return;
     }
-    // Signup or email confirmation: send to dashboard so session is established there
-    if (
-      (type === "signup" || type === "email") &&
-      !pathname.startsWith("/dashboard")
-    ) {
+    // Signup or email confirmation (any non-invite/non-recovery): send to dashboard
+    const isEmailConfirmation = ["signup", "email", "magiclink"].includes(type || "");
+    if (isEmailConfirmation && !pathname.startsWith("/dashboard")) {
       window.location.replace(
         `${window.location.origin}/dashboard${window.location.hash}`,
       );
