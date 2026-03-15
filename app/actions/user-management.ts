@@ -2741,21 +2741,36 @@ export async function createSupportTicket(data: {
       };
     }
 
-    // Create the initial message
+    // Create the initial message and notify admins of the new ticket
     if (ticket) {
-      const { error: messageError } = await supabase
+      const { data: message, error: messageError } = await supabase
         .from("support_messages")
         .insert({
           ticket_id: ticket.id,
           user_id: user.id,
           content: data.description,
           is_admin: false, // User creates it
-        });
+        })
+        .select("id")
+        .single();
 
       if (messageError) {
         console.error("Error creating initial message:", messageError);
         // Ticket was created but message failed - still return success
         // as the ticket exists
+      } else if (message?.id) {
+        try {
+          await sendSupportTicketEmailNotificationToAdmin(
+            ticket.id,
+            message.id,
+            false, // new ticket, not an admin reply
+          );
+        } catch (emailError) {
+          console.error(
+            "Error sending new support ticket notification to admin:",
+            emailError,
+          );
+        }
       }
     }
 
