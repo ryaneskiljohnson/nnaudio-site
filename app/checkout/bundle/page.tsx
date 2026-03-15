@@ -1401,7 +1401,6 @@ function BundleCheckoutPageInner() {
                     alt={bundle.name}
                     fill
                     style={{ objectFit: "cover" }}
-                    unoptimized
                   />
                 ) : (
                   <div

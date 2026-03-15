@@ -1934,7 +1934,6 @@ export default function ProductPage() {
                 fill
                 style={{ objectFit: 'contain', padding: '20px' }}
                 priority
-                unoptimized
               />
             ) : (
               <div style={{
@@ -2632,7 +2631,6 @@ export default function ProductPage() {
                   alt={`${product.name} - Image ${index + 1}`}
                   fill
                   style={{ objectFit: 'cover' }}
-                  unoptimized
                 />
               </GalleryImage>
             ))}
@@ -2654,7 +2652,6 @@ export default function ProductPage() {
                 alt={product.name}
                 fill
                 style={{ objectFit: 'cover' }}
-                unoptimized
               />
             </StickyProductImage>
             <StickyProductInfo>

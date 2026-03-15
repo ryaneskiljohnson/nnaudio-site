@@ -1473,7 +1473,6 @@ export default function CheckoutPage() {
                         alt={item.name}
                         fill
                         style={{ objectFit: 'cover' }}
-                        unoptimized
                       />
                     ) : (
                       <div style={{

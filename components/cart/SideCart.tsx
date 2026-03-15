@@ -388,7 +388,6 @@ export default function SideCart({ isOpen, onClose }: SideCartProps) {
                             alt={item.name}
                             fill
                             style={{ objectFit: 'cover' }}
-                            unoptimized
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             if (target.src !== '/images/nnaud-io/NNPurp1.webp') {

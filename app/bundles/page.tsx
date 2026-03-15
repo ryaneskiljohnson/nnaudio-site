@@ -462,7 +462,6 @@ export default function BundlesPage() {
                   alt={bundle.name}
                   fill
                   style={{ objectFit: 'cover' }}
-                  unoptimized
                 />
                 <div style={{
                   position: 'absolute',

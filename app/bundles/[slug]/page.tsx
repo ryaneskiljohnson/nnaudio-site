@@ -891,7 +891,6 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                 alt={bundle.name}
                 fill
                 style={{ objectFit: 'cover', objectPosition: 'center' }}
-                unoptimized
               />
             ) : (
               <Image
@@ -899,7 +898,6 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                 alt={bundle.name}
                 fill
                 style={{ objectFit: 'contain', padding: '40px' }}
-                unoptimized
               />
             )}
           </BundleImageContainer>
@@ -1085,7 +1083,6 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                         alt={product.name}
                         fill
                         style={{ objectFit: 'cover' }}
-                        unoptimized
                         onError={(e) => {
                           // Fallback to NNAudio logo if image fails
                           const target = e.target as HTMLImageElement;
@@ -1100,7 +1097,6 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                         alt={product.name}
                         fill
                         style={{ objectFit: 'contain', padding: '20px' }}
-                        unoptimized
                       />
                     )}
                   </ProductImage>
@@ -1159,7 +1155,6 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                   alt={bundle.name}
                   fill
                   style={{ objectFit: 'cover' }}
-                  unoptimized
                 />
               ) : (
                 <Image
@@ -1167,7 +1162,6 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
                   alt={bundle.name}
                   fill
                   style={{ objectFit: 'contain', padding: '8px' }}
-                  unoptimized
                 />
               )}
             </StickyBundleImage>

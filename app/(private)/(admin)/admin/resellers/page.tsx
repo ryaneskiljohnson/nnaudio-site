@@ -2002,7 +2002,6 @@ export default function ResellersPage() {
                                       alt={stat.product.name}
                                       fill
                                       style={{ objectFit: 'cover' }}
-                                      unoptimized
                                       onError={(e) => {
                                         console.error("[Product Stats Thumbnail] Image failed to load:", stat.product.name, (e.target as HTMLImageElement).src);
                                       }}
@@ -2408,7 +2407,6 @@ export default function ResellersPage() {
                                 alt={product.name}
                                 fill
                                 style={{ objectFit: 'cover' }}
-                                unoptimized
                                 onError={(e) => {
                                   console.error("[Product Thumbnail] Image failed to load:", product.name, imageUrl, (e.target as HTMLImageElement).src);
                                 }}

@@ -311,7 +311,6 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
               alt={product.name}
               fill
               style={{ objectFit: 'cover' }}
-              unoptimized
               onError={() => {
                 // If image fails to load, use NNAudio logo
                 if (!imageError) {

@@ -702,7 +702,6 @@ export default function MyProductsPage() {
                       width={60}
                       height={60}
                       style={{ objectFit: "cover" }}
-                      unoptimized
                     />
                   ) : (
                     <div

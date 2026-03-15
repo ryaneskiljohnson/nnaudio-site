@@ -1674,7 +1674,6 @@ export default function EditProductPage() {
                                             alt={product.name || 'Product thumbnail'}
                                             fill
                                             style={{ objectFit: 'cover' }}
-                                            unoptimized
                                             onError={(e) => {
                                               const target = e.target as HTMLImageElement;
                                               target.style.display = 'none';
@@ -1973,7 +1972,6 @@ export default function EditProductPage() {
                     alt="Featured image preview"
                     fill
                     style={{ objectFit: 'contain' }}
-                    unoptimized
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
@@ -2001,7 +1999,6 @@ export default function EditProductPage() {
                     alt="NNAudio Access PNG preview"
                     fill
                     style={{ objectFit: 'contain' }}
-                    unoptimized
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
@@ -2031,7 +2028,6 @@ export default function EditProductPage() {
                     alt="Logo preview"
                     fill
                     style={{ objectFit: 'contain' }}
-                    unoptimized
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
@@ -2058,7 +2054,6 @@ export default function EditProductPage() {
                     alt="Background image preview"
                     fill
                     style={{ objectFit: 'contain' }}
-                    unoptimized
                     onError={(e) => {
                       (e.target as HTMLImageElement).style.display = 'none';
                     }}
@@ -2085,9 +2080,8 @@ export default function EditProductPage() {
                       src={formData.background_video_url}
                       alt="Background video/GIF preview"
                       fill
-                      style={{ objectFit: 'contain' }}
-                      unoptimized
-                      onError={(e) => {
+                    style={{ objectFit: 'contain' }}
+                    onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
@@ -2186,7 +2180,6 @@ export default function EditProductPage() {
                       width={600}
                       height={400}
                       style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', objectFit: 'contain' }}
-                      unoptimized
                     />
                   </div>
                 )}
