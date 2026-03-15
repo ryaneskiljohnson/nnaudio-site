@@ -62,7 +62,7 @@ const BannerFirstRow = styled.div`
 const BannerSpacer = styled.div`
   min-height: 56px;
   @media (max-width: 768px) {
-    min-height: 92px;
+    min-height: 52px;
   }
 `;
 
@@ -205,22 +205,6 @@ const BannerDescription = styled.span`
 
   @media (max-width: 768px) {
     display: none;
-  }
-`;
-
-/** Shown only on mobile as second row (full width) */
-const BannerDescriptionMobile = styled.span`
-  display: none;
-
-  @media (max-width: 768px) {
-    display: block;
-    flex: 1 1 100%;
-    order: 10;
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.88);
-    line-height: 1.35;
-    padding-left: calc(36px + 0.5rem);
-    margin-top: 0.2rem;
   }
 `;
 
@@ -387,9 +371,6 @@ export default function NNAudioAccessBanner() {
             <FaTimes />
           </CloseButton>
         </BannerFirstRow>
-      <BannerDescriptionMobile>
-        Download, install, and update all your NNAudio products in one place.
-      </BannerDescriptionMobile>
     </BannerContainer>
       <BannerSpacer />
     </>
