@@ -83,36 +83,6 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
   const [hasActivePromotion, setHasActivePromotion] = useState(false);
 
-  // Redirect auth callback tokens when Supabase redirects to Site URL with hash
-  // (e.g. invite -> reset-password; signup/email confirmation -> dashboard)
-  useEffect(() => {
-    if (typeof window === "undefined" || !pathname) return;
-    const hash = window.location.hash?.substring(1);
-    if (!hash) return;
-    const params = new URLSearchParams(hash);
-    const type = params.get("type");
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
-    if (!accessToken || !refreshToken) return;
-
-    if (
-      type === "invite" &&
-      !pathname.startsWith("/reset-password")
-    ) {
-      window.location.replace(
-        `${window.location.origin}/reset-password${window.location.hash}`,
-      );
-      return;
-    }
-    // Signup or email confirmation (any non-invite/non-recovery): send to dashboard
-    const isEmailConfirmation = ["signup", "email", "magiclink"].includes(type || "");
-    if (isEmailConfirmation && !pathname.startsWith("/dashboard")) {
-      window.location.replace(
-        `${window.location.origin}/dashboard${window.location.hash}`,
-      );
-    }
-  }, [pathname]);
-
   // Check if there's an active promotion
   useEffect(() => {
     const checkPromotion = async () => {

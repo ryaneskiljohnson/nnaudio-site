@@ -17,10 +17,7 @@ export async function signUpWithStripe(
     // Find or create a Stripe customer
     const customer_id = await findOrCreateCustomer(email);
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const confirmUrl = `${siteUrl.replace(/\/$/, "")}/api/auth/confirm`;
-
-    // Sign up the user with Supabase
+    // Sign up the user with Supabase (no emailRedirectTo; confirm link comes from Supabase email template)
     const authResponse = await supabase.auth.signUp({
       email,
       password,
@@ -30,7 +27,6 @@ export async function signUpWithStripe(
           last_name,
           customer_id,
         },
-        emailRedirectTo: confirmUrl,
       },
     });
 
