@@ -821,7 +821,9 @@ export async function getUserSupportTicketsAdmin(userId: string): Promise<{
       return { tickets: [], error: "Unauthorized" };
     }
 
-    const { data: tickets, error: ticketsError } = await supabase
+    const serviceSupabase = await createSupabaseServiceRole();
+
+    const { data: tickets, error: ticketsError } = await serviceSupabase
       .from("support_tickets")
       .select("id, ticket_number, subject, status, created_at, updated_at")
       .eq("user_id", userId)
@@ -880,9 +882,18 @@ export async function createSupportTicketAdmin(data: {
       };
     }
 
+    const serviceSupabase = await createSupabaseServiceRole();
+    const {
+      data: { user: adminUser },
+    } = await supabase.auth.getUser();
+
+    if (!adminUser) {
+      return { success: false, error: "Not authenticated" };
+    }
+
     // Create the ticket (ticket_number required by schema)
     const ticketNumber = `TKT-${Date.now().toString(36).toUpperCase()}`;
-    const { data: ticket, error: ticketError } = await supabase
+    const { data: ticket, error: ticketError } = await serviceSupabase
       .from("support_tickets")
       .insert({
         subject: data.subject,
@@ -912,11 +923,11 @@ export async function createSupportTicketAdmin(data: {
 
     // Create the initial message
     if (ticket) {
-      const { error: messageError } = await supabase
+      const { error: messageError } = await serviceSupabase
         .from("support_messages")
         .insert({
           ticket_id: ticket.id,
-          user_id: data.userId,
+          user_id: adminUser.id,
           content: data.description,
           is_admin: true, // Admin creates it
         });
@@ -972,8 +983,10 @@ export async function updateSupportTicketStatusAdmin(
       };
     }
 
+    const serviceSupabase = await createSupabaseServiceRole();
+
     // Update the ticket status
-    const { error: updateError } = await supabase
+    const { error: updateError } = await serviceSupabase
       .from("support_tickets")
       .update({ status })
       .eq("id", ticketId);
@@ -1038,8 +1051,10 @@ export async function getSupportTicketsAdmin(): Promise<{
       return { tickets: [], error: "Unauthorized" };
     }
 
+    const serviceSupabase = await createSupabaseServiceRole();
+
     // Get tickets with user email from auth.users
-    const { data: tickets, error: ticketsError } = await supabase
+    const { data: tickets, error: ticketsError } = await serviceSupabase
       .from("support_tickets")
       .select(
         `
@@ -1070,7 +1085,7 @@ export async function getSupportTicketsAdmin(): Promise<{
     if (ticketIds.length > 0) {
       // Fetch all messages for all tickets in one query, ordered by created_at desc
       // Then we'll process them to get the last message per ticket
-      const { data: allMessages, error: messagesError } = await supabase
+      const { data: allMessages, error: messagesError } = await serviceSupabase
         .from("support_messages")
         .select("ticket_id, is_admin, created_at")
         .in("ticket_id", ticketIds)
@@ -1096,7 +1111,6 @@ export async function getSupportTicketsAdmin(): Promise<{
     }
 
     // Get user emails, names, and subscription data for all tickets using service role client
-    const serviceSupabase = await createSupabaseServiceRole();
     const userIds = [...new Set(tickets?.map((t) => t.user_id) || [])];
     const userEmailsMap = new Map<string, string | null>();
     const userNamesMap = new Map<
@@ -1231,8 +1245,10 @@ export async function getSupportTicketAdmin(ticketId: string): Promise<{
       return { ticket: null, error: "Unauthorized" };
     }
 
+    const serviceSupabase = await createSupabaseServiceRole();
+
     // Get ticket
-    const { data: ticket, error: ticketError } = await supabase
+    const { data: ticket, error: ticketError } = await serviceSupabase
       .from("support_tickets")
       .select("*")
       .eq("id", ticketId)
@@ -1246,7 +1262,6 @@ export async function getSupportTicketAdmin(ticketId: string): Promise<{
     }
 
     // Get user email using service role client
-    const serviceSupabase = await createSupabaseServiceRole();
     let userEmail = null;
     try {
       const {
@@ -1258,7 +1273,7 @@ export async function getSupportTicketAdmin(ticketId: string): Promise<{
     }
 
     // Get messages with attachments
-    const { data: messages, error: messagesError } = await supabase
+    const { data: messages, error: messagesError } = await serviceSupabase
       .from("support_messages")
       .select(
         `
@@ -1280,7 +1295,7 @@ export async function getSupportTicketAdmin(ticketId: string): Promise<{
 
     // Get attachments for all messages
     const messageIds = messages?.map((m) => m.id) || [];
-    const { data: attachments, error: attachmentsError } = await supabase
+    const { data: attachments, error: attachmentsError } = await serviceSupabase
       .from("support_attachments")
       .select("*")
       .in("message_id", messageIds);
@@ -1314,7 +1329,7 @@ export async function getSupportTicketAdmin(ticketId: string): Promise<{
         if (!url || !url.includes("supabase.co")) {
           try {
             const { data: signedUrlData, error: signedUrlError } =
-              await supabase.storage
+              await serviceSupabase.storage
                 .from(bucketName)
                 .createSignedUrl(att.storage_path, 31536000); // 1 year expiry
 
@@ -1379,8 +1394,10 @@ export async function deleteSupportTicketAdmin(ticketId: string): Promise<{
       return { success: false, error: "Unauthorized" };
     }
 
+    const serviceSupabase = await createSupabaseServiceRole();
+
     // Delete the ticket (cascade will delete messages and attachments)
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await serviceSupabase
       .from("support_tickets")
       .delete()
       .eq("id", ticketId);
@@ -1431,8 +1448,10 @@ export async function getRecentSupportTicketMessagesAdmin(
       return { messages: [], error: "Unauthorized" };
     }
 
+    const serviceSupabase = await createSupabaseServiceRole();
+
     // Get recent non-admin messages (user messages only) - get more to allow grouping
-    const { data: messages, error: messagesError } = await supabase
+    const { data: messages, error: messagesError } = await serviceSupabase
       .from("support_messages")
       .select(
         `
@@ -1458,7 +1477,7 @@ export async function getRecentSupportTicketMessagesAdmin(
 
     // Get ticket info for each message
     const ticketIds = [...new Set(messages.map((m) => m.ticket_id))];
-    const { data: tickets, error: ticketsError } = await supabase
+    const { data: tickets, error: ticketsError } = await serviceSupabase
       .from("support_tickets")
       .select("id, ticket_number, subject, status")
       .in("id", ticketIds);
@@ -1478,9 +1497,6 @@ export async function getRecentSupportTicketMessagesAdmin(
         },
       ]),
     );
-
-    // Get user emails using service role client
-    const serviceSupabase = await createSupabaseServiceRole();
     const userIds = [...new Set(messages.map((m) => m.user_id))];
     const userEmailsMap = new Map<string, string | null>();
 
@@ -1589,8 +1605,10 @@ export async function addSupportTicketMessageAdmin(
       return { success: false, error: "Not authenticated" };
     }
 
+    const serviceSupabase = await createSupabaseServiceRole();
+
     // Create the message
-    const { data: message, error: messageError } = await supabase
+    const { data: message, error: messageError } = await serviceSupabase
       .from("support_messages")
       .insert({
         ticket_id: ticketId,
@@ -1640,11 +1658,10 @@ async function sendSupportTicketEmailNotification(
   messageId: string,
 ): Promise<void> {
   try {
-    const supabase = await createClient();
     const serviceSupabase = await createSupabaseServiceRole();
 
     // Get ticket details
-    const { data: ticket, error: ticketError } = await supabase
+    const { data: ticket, error: ticketError } = await serviceSupabase
       .from("support_tickets")
       .select("id, ticket_number, subject, user_id, status")
       .eq("id", ticketId)
@@ -1687,7 +1704,7 @@ async function sendSupportTicketEmailNotification(
     }
 
     // Get all messages for the ticket
-    const { data: messages, error: messagesError } = await supabase
+    const { data: messages, error: messagesError } = await serviceSupabase
       .from("support_messages")
       .select(
         `
@@ -1708,7 +1725,7 @@ async function sendSupportTicketEmailNotification(
 
     // Get attachments for all messages
     const messageIds = messages?.map((m) => m.id) || [];
-    const { data: attachments, error: attachmentsError } = await supabase
+    const { data: attachments, error: attachmentsError } = await serviceSupabase
       .from("support_attachments")
       .select("*")
       .in("message_id", messageIds);

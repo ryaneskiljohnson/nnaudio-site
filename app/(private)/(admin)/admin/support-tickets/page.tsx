@@ -1692,6 +1692,7 @@ function SupportTicketsPage() {
   const [createTicketError, setCreateTicketError] = useState<string | null>(null);
   const [createTicketSuccess, setCreateTicketSuccess] = useState<string | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [ticketsError, setTicketsError] = useState<string | null>(null);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketDetails, setTicketDetails] = useState<Map<string, Ticket>>(new Map());
   const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
@@ -1774,15 +1775,17 @@ function SupportTicketsPage() {
 
   const fetchTickets = async () => {
     setLoadingTickets(true);
+    setTicketsError(null);
     try {
       const result = await getSupportTicketsAdmin();
-      if (result.tickets) {
-        setTickets(result.tickets);
-      } else {
+      setTickets(result.tickets || []);
+      if (result.error) {
         console.error("Error fetching tickets:", result.error);
+        setTicketsError(result.error);
       }
     } catch (error) {
       console.error("Error fetching tickets:", error);
+      setTicketsError("Failed to fetch tickets");
     } finally {
       setLoadingTickets(false);
     }
@@ -2625,6 +2628,8 @@ function SupportTicketsPage() {
             </ActionButton>
           </FiltersRow>
         </FiltersSection>
+
+        {ticketsError && <ErrorMessage>{ticketsError}</ErrorMessage>}
 
         <TableContainer>
           <Table>
