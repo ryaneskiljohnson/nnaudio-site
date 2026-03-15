@@ -657,9 +657,17 @@ function PaymentForm({
     }
   }, [user]);
 
-  // Create payment intent on mount or when promo code changes
+  // Create payment intent on mount or when promo code changes (paid orders only).
+  // Free orders are not created here to avoid double API calls and double emails when
+  // the effect runs twice (e.g. React Strict Mode) or when deps change; they are
+  // created once on submit.
   // Note: We don't recreate when savePaymentMethod changes to avoid flickering
   useEffect(() => {
+    const orderTotal = Math.max(total - (appliedPromo?.discount?.amount ?? 0), 0);
+    if (items.length === 0 || orderTotal === 0) {
+      return;
+    }
+
     async function createPaymentIntent() {
       try {
         const response = await fetch('/api/payment-intent', {
@@ -667,7 +675,7 @@ function PaymentForm({
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             items,
             promotionCodeId: appliedPromo ? appliedPromo.promotionCodeId : undefined,
             savePaymentMethod: savePaymentMethod,
@@ -677,11 +685,10 @@ function PaymentForm({
         const data = await response.json();
 
         if (data.success) {
-          // Handle free orders or orders below Stripe minimum ($0.50)
           if (data.isFreeOrder) {
-            setClientSecret(null); // No payment needed
+            setClientSecret(null);
           } else {
-          setClientSecret(data.clientSecret);
+            setClientSecret(data.clientSecret);
           }
         } else {
           setError(data.error || 'Failed to initialize payment');
@@ -691,11 +698,7 @@ function PaymentForm({
       }
     }
 
-    if (items.length > 0) {
-      createPaymentIntent();
-    }
-    // Removed savePaymentMethod from dependencies to prevent flickering
-    // We'll update the payment intent when submitting instead
+    createPaymentIntent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, appliedPromo]);
 
@@ -706,17 +709,38 @@ function PaymentForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isProcessing) return;
 
-    // If order is free, skip Stripe and mark success immediately
+    // Free order: call API once to record grants + send email, then redirect
     if (isFreeOrder) {
       setIsProcessing(true);
       setError(null);
-      setSuccess(true);
-      clearCart();
-      onOrderComplete();
-      setTimeout(() => {
-        router.push(`/checkout-success?session_id=free-order`);
-      }, 800);
+      try {
+        const piResponse = await fetch('/api/payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items,
+            promotionCodeId: appliedPromo ? appliedPromo.promotionCodeId : undefined,
+            savePaymentMethod: false,
+          }),
+        });
+        const piData = await piResponse.json();
+        if (!piData.success) {
+          setError(piData.error || 'Something went wrong.');
+          setIsProcessing(false);
+          return;
+        }
+        setSuccess(true);
+        clearCart();
+        onOrderComplete();
+        setTimeout(() => {
+          router.push(`/checkout-success?session_id=free-order`);
+        }, 800);
+      } catch (err: any) {
+        setError(err.message || 'Something went wrong.');
+        setIsProcessing(false);
+      }
       return;
     }
 
