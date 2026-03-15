@@ -8,11 +8,13 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
+  const access_token = searchParams.get("access_token");
+  const refresh_token = searchParams.get("refresh_token");
+
+  const supabase = await createClient();
 
   if (token_hash && type) {
-    const supabase = await createClient();
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
-
     if (!error) {
       await new Promise((resolve) => setTimeout(resolve, 100));
       if (type === "recovery" || type === "invite") {
@@ -22,8 +24,21 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Supabase often redirects here with tokens in the fragment (hash). Server never sees the hash.
-  // Return a page that reads the hash and redirects to dashboard so the app can establish the session.
+  if (access_token && refresh_token && type) {
+    const { error } = await supabase.auth.setSession({
+      access_token,
+      refresh_token,
+    });
+    if (!error) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (type === "recovery" || type === "invite") {
+        redirect("/reset-password");
+      }
+      redirect("/dashboard");
+    }
+  }
+
+  // Tokens in fragment (hash): server never sees them. Return HTML that reads hash and redirects.
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Confirming...</title></head><body>
 <script>
 (function() {
@@ -37,7 +52,7 @@ export async function GET(request: NextRequest) {
   if (accessToken && refreshToken) {
     window.location.replace(window.location.origin + path + (hash ? "#" + hash : ""));
   } else {
-    window.location.replace(window.location.origin + "/error");
+    window.location.replace(window.location.origin + "/login?error=verification");
   }
 })();
 </script>
