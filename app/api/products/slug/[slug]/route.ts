@@ -48,12 +48,8 @@ export async function GET(
       relationship_id: rel.id
     })) || [];
 
-    if (error) {
-      console.error('Error fetching product:', error);
-      return NextResponse.json(
-        { success: false, error: 'Product not found' },
-        { status: 404 }
-      );
+    if (relError) {
+      console.error('Error fetching related products:', relError);
     }
 
     // Product page shows only approved reviews (rating, count, and list).
