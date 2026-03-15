@@ -19,7 +19,8 @@
     "build:products-for-ads": "npx tsx scripts/build-products-for-ads.ts",
     "verify:rag": "npx tsx scripts/verify-rag.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "env:email": "bun run scripts/check-email-env.ts"
   },
   "packageManager": "bun@1.2.2",
   "overrides": {

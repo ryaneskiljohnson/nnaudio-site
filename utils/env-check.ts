@@ -36,6 +36,9 @@ export const logEnvironmentStatus = () => {
   if (isServer) {
   console.log('- SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING');
   console.log('- STRIPE_SECRET_KEY:', process.env.STRIPE_SECRET_KEY ? 'SET' : 'MISSING');
+  console.log('- SENDGRID_API_KEY:', process.env.SENDGRID_API_KEY ? 'SET' : 'MISSING');
+  console.log('- SENDER_EMAIL:', process.env.SENDER_EMAIL ? 'SET' : 'MISSING (optional)');
+  console.log('- SENDER_NAME:', process.env.SENDER_NAME ? 'SET' : 'MISSING (optional)');
   console.log('- AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID ? 'SET' : 'MISSING');
   console.log('- AWS_SECRET_ACCESS_KEY:', process.env.AWS_SECRET_ACCESS_KEY ? 'SET' : 'MISSING');
   console.log('- AWS_REGION:', process.env.AWS_REGION ? 'SET' : 'MISSING');
@@ -45,6 +48,24 @@ export const logEnvironmentStatus = () => {
     console.log('- AWS_ACCESS_KEY_ID: N/A (server-only)');
     console.log('- AWS_SECRET_ACCESS_KEY: N/A (server-only)');
     console.log('- AWS_REGION: N/A (server-only)');
+    console.log('- SENDGRID_API_KEY: N/A (server-only)');
+    console.log('- SENDER_EMAIL: N/A (server-only)');
+    console.log('- SENDER_NAME: N/A (server-only)');
   }
   console.log('- NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:', process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'SET' : 'MISSING');
+};
+
+/** Email-only env check for comparing local vs Vercel. See docs/VERCEL_EMAIL_ENV.md */
+export const logEmailEnvStatus = () => {
+  const vars: [string, string][] = [
+    ['SENDGRID_API_KEY', 'required'],
+    ['SENDER_EMAIL', 'optional'],
+    ['SENDER_NAME', 'optional'],
+    ['NEXT_PUBLIC_SITE_URL', 'recommended'],
+  ];
+  console.log('Email env (for Vercel parity):');
+  for (const [name, kind] of vars) {
+    const set = !!process.env[name];
+    console.log(`  ${name}: ${set ? 'SET' : 'MISSING'} (${kind})`);
+  }
 };
