@@ -12,6 +12,8 @@ If the redirect URL is not in the allowlist, Supabase falls back to the **Site U
 2. Add the following to **Redirect URLs**:
    - `http://localhost:3000/reset-password` (local development)
    - `https://nnaud.io/reset-password` (production)
+   - `http://localhost:3000/api/auth/confirm` (email verification → dashboard)
+   - `https://nnaud.io/api/auth/confirm` (email verification → dashboard)
    - Or use wildcards for flexibility:
      - `http://localhost:3000/**` (matches all localhost paths)
      - `https://nnaud.io/**` (matches all production paths)
@@ -20,6 +22,8 @@ If the redirect URL is not in the allowlist, Supabase falls back to the **Site U
    - Production: `https://nnaud.io` (or your primary domain)
 
 **If verification links show "Your connection is not private"**, turn off Click Tracking in SendGrid and ensure only SendGrid is used for auth SMTP; see [SUPABASE_VERIFICATION_EMAIL_SSL.md](./SUPABASE_VERIFICATION_EMAIL_SSL.md).
+
+For **account verification (confirm signup)** to redirect to the dashboard, the "Confirm signup" email template must link directly to the app with `token_hash` in the query. See [SUPABASE_CONFIRM_SIGNUP_EMAIL_TEMPLATE.md](./SUPABASE_CONFIRM_SIGNUP_EMAIL_TEMPLATE.md).
 
 ## Reference
 
