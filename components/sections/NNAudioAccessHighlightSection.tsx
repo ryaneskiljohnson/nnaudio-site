@@ -261,6 +261,21 @@ const BulletItem = styled.li`
   }
 `;
 
+/** Full bullet text — hidden on mobile */
+const BulletTextDesktop = styled.span`
+  @media (max-width: 767px) {
+    display: none;
+  }
+`;
+
+/** Short bullet text — only on mobile */
+const BulletTextMobile = styled.span`
+  display: none;
+  @media (max-width: 767px) {
+    display: inline;
+  }
+`;
+
 const ButtonGroup = styled.div`
   display: flex;
   flex-wrap: nowrap;
@@ -393,13 +408,19 @@ export default function NNAudioAccessHighlightSection() {
                 </WhatItIs>
                 <BulletList>
                   <BulletItem>
-                    <FaCheck /> Download installers for all your plugins and sample packs
+                    <FaCheck />
+                    <BulletTextDesktop>Download installers for all your plugins and sample packs</BulletTextDesktop>
+                    <BulletTextMobile>Download all your installers</BulletTextMobile>
                   </BulletItem>
                   <BulletItem>
-                    <FaCheck /> Install and update with one click—no hunting for files
+                    <FaCheck />
+                    <BulletTextDesktop>Install and update with one click—no hunting for files</BulletTextDesktop>
+                    <BulletTextMobile>One-click install &amp; update</BulletTextMobile>
                   </BulletItem>
                   <BulletItem>
-                    <FaCheck /> See your full library in one place; required to install any NNAudio product
+                    <FaCheck />
+                    <BulletTextDesktop>See your full library in one place; required to install any NNAudio product</BulletTextDesktop>
+                    <BulletTextMobile>Full library in one place</BulletTextMobile>
                   </BulletItem>
                 </BulletList>
                 <ButtonGroup>
