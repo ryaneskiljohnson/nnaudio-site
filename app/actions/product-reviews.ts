@@ -456,15 +456,13 @@ export async function getAdminProductReviews(): Promise<{
  * @brief Approves or rejects a product review as an admin.
  * @param reviewId Review row ID to moderate.
  * @param decision Moderation outcome.
- * @param rejectionReason Optional rejection note for rejected reviews.
  * @returns Mutation result.
  * @example
  * await moderateProductReview("review-uuid", "approved");
  */
 export async function moderateProductReview(
   reviewId: string,
-  decision: "approved" | "rejected",
-  rejectionReason?: string
+  decision: "approved" | "rejected"
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const supabase = await createClient();
@@ -498,8 +496,7 @@ export async function moderateProductReview(
         moderation_status: decision,
         moderated_at: now,
         moderated_by: user.id,
-        rejection_reason:
-          decision === "rejected" ? rejectionReason?.trim() || "Rejected by admin." : null,
+        rejection_reason: null,
         updated_at: now,
       })
       .eq("id", reviewId);
@@ -521,6 +518,60 @@ export async function moderateProductReview(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to moderate review",
+    };
+  }
+}
+
+/**
+ * @brief Deletes a product review as an admin (hard delete).
+ * @param reviewId Review row ID to delete.
+ * @returns Mutation result.
+ * @note review_followups.reward_review_id is ON DELETE SET NULL, so follow-ups are unchanged.
+ * @example
+ * await deleteProductReview("review-uuid");
+ */
+export async function deleteProductReview(
+  reviewId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+    if (!(await checkAdmin(supabase))) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const adminSupabase = await createSupabaseServiceRole();
+    const { data: review, error: reviewError } = await (adminSupabase as any)
+      .from("product_reviews")
+      .select("id, product_id, products(slug)")
+      .eq("id", reviewId)
+      .maybeSingle();
+
+    if (reviewError || !review) {
+      return { success: false, error: reviewError?.message || "Review not found" };
+    }
+
+    const { error: deleteError } = await (adminSupabase as any)
+      .from("product_reviews")
+      .delete()
+      .eq("id", reviewId);
+
+    if (deleteError) {
+      throw new Error(deleteError.message);
+    }
+
+    revalidatePath("/admin/reviews");
+    revalidatePath("/my-products");
+    if (review.products?.slug) {
+      revalidatePath(`/product/${review.products.slug}`);
+    }
+    revalidatePath("/products");
+
+    return { success: true };
+  } catch (error) {
+    console.error("[ProductReviews] deleteProductReview error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete review",
     };
   }
 }

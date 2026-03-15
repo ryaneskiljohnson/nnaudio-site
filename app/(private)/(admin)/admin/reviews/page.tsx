@@ -206,39 +206,89 @@ const RewardMeta = styled.div`
 const Actions = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  min-width: 180px;
+  gap: 0.5rem;
+  width: 100%;
 `;
 
-const ActionButton = styled.button<{ $variant: "approve" | "reject" }>`
+const ActionRow = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+`;
+
+const ActionButton = styled.button<{ $variant: "approve" | "reject" | "delete"; $fullWidth?: boolean }>`
   border: none;
-  border-radius: 12px;
-  padding: 0.8rem 1rem;
-  font-weight: 700;
+  border-radius: 6px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
   color: white;
+  flex: ${(props) => (props.$fullWidth ? "0 0 100%" : "1 1 50%")};
+  min-width: 0;
   background: ${(props) =>
     props.$variant === "approve"
       ? "linear-gradient(135deg, #10b981, #34d399)"
-      : "linear-gradient(135deg, #ef4444, #f87171)"};
+      : props.$variant === "reject"
+        ? "linear-gradient(135deg, #ef4444, #f87171)"
+        : "linear-gradient(135deg, #374151, #4b5563)"};
   opacity: ${(props) => (props.disabled ? 0.6 : 1)};
-`;
-
-const RejectionInput = styled.textarea`
-  width: 100%;
-  min-height: 90px;
-  resize: vertical;
-  padding: 0.8rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
-  color: white;
 `;
 
 const EmptyState = styled.div`
   padding: 3rem 1rem;
   text-align: center;
   color: rgba(255, 255, 255, 0.55);
+`;
+
+const DeleteOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const DeleteDialog = styled.div`
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.5rem 1.75rem;
+  max-width: 400px;
+  width: 90%;
+`;
+
+const DeleteDialogTitle = styled.h3`
+  margin: 0 0 0.5rem 0;
+  color: white;
+  font-size: 1.15rem;
+`;
+
+const DeleteDialogText = styled.p`
+  margin: 0 0 1.25rem 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  line-height: 1.5;
+`;
+
+const DeleteDialogActions = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+`;
+
+const DialogButton = styled.button<{ $primary?: boolean }>`
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: ${(p) => (p.$primary ? "linear-gradient(135deg, #ef4444, #f87171)" : "rgba(255,255,255,0.1)")};
+  color: white;
+  &:hover { opacity: 0.9; }
 `;
 
 /**
@@ -281,7 +331,7 @@ export default function AdminReviewsPage() {
     text: string;
   } | null>(null);
   const [actionReviewId, setActionReviewId] = useState<string | null>(null);
-  const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
+  const [deleteConfirmReviewId, setDeleteConfirmReviewId] = useState<string | null>(null);
 
   /**
    * @brief Loads admin review records from the server action.
@@ -330,11 +380,7 @@ export default function AdminReviewsPage() {
     try {
       setActionReviewId(reviewId);
       const { moderateProductReview } = await import("@/app/actions/product-reviews");
-      const result = await moderateProductReview(
-        reviewId,
-        decision,
-        decision === "rejected" ? rejectionReasons[reviewId] : undefined
-      );
+      const result = await moderateProductReview(reviewId, decision);
 
       if (!result.success) {
         setMessage({ type: "error", text: result.error || "Moderation failed." });
@@ -352,6 +398,35 @@ export default function AdminReviewsPage() {
     } catch (error) {
       console.error("Error moderating review:", error);
       setMessage({ type: "error", text: "Moderation failed." });
+    } finally {
+      setActionReviewId(null);
+    }
+  };
+
+  /** Opens the delete confirmation dialog for the given review. */
+  const openDeleteConfirm = (reviewId: string) => setDeleteConfirmReviewId(reviewId);
+
+  /**
+   * @brief Performs the delete after user confirms in the dialog.
+   * @param reviewId Review row ID.
+   */
+  const confirmDeleteReview = async (reviewId: string) => {
+    try {
+      setDeleteConfirmReviewId(null);
+      setActionReviewId(reviewId);
+      const { deleteProductReview } = await import("@/app/actions/product-reviews");
+      const result = await deleteProductReview(reviewId);
+
+      if (!result.success) {
+        setMessage({ type: "error", text: result.error || "Delete failed." });
+        return;
+      }
+
+      setMessage({ type: "success", text: "Review deleted." });
+      await loadReviews();
+    } catch (error) {
+      console.error("Error deleting review:", error);
+      setMessage({ type: "error", text: "Delete failed." });
     } finally {
       setActionReviewId(null);
     }
@@ -472,11 +547,6 @@ export default function AdminReviewsPage() {
                     {getStatusIcon(review.moderation_status)}
                     {review.moderation_status}
                   </StatusBadge>
-                  {review.rejection_reason ? (
-                    <ProductMeta style={{ marginTop: "0.75rem", maxWidth: "240px" }}>
-                      {review.rejection_reason}
-                    </ProductMeta>
-                  ) : null}
                 </Cell>
                 <Cell>
                   <RewardMeta>
@@ -498,29 +568,30 @@ export default function AdminReviewsPage() {
                     <ActionButton
                       type="button"
                       $variant="approve"
+                      $fullWidth
                       disabled={actionReviewId === review.id}
                       onClick={() => handleModeration(review.id, "approved")}
                     >
                       Approve
                     </ActionButton>
-                    <RejectionInput
-                      value={rejectionReasons[review.id] || ""}
-                      onChange={(event) =>
-                        setRejectionReasons((current) => ({
-                          ...current,
-                          [review.id]: event.target.value,
-                        }))
-                      }
-                      placeholder="Optional rejection note shown back to the reviewer"
-                    />
-                    <ActionButton
-                      type="button"
-                      $variant="reject"
-                      disabled={actionReviewId === review.id}
-                      onClick={() => handleModeration(review.id, "rejected")}
-                    >
-                      Reject
-                    </ActionButton>
+                    <ActionRow>
+                      <ActionButton
+                        type="button"
+                        $variant="reject"
+                        disabled={actionReviewId === review.id}
+                        onClick={() => handleModeration(review.id, "rejected")}
+                      >
+                        Reject
+                      </ActionButton>
+                      <ActionButton
+                        type="button"
+                        $variant="delete"
+                        disabled={actionReviewId === review.id}
+                        onClick={() => openDeleteConfirm(review.id)}
+                      >
+                        Delete
+                      </ActionButton>
+                    </ActionRow>
                   </Actions>
                 </Cell>
               </Row>
@@ -528,6 +599,29 @@ export default function AdminReviewsPage() {
           </tbody>
         </Table>
       </TableWrap>
+
+      {deleteConfirmReviewId && (
+        <DeleteOverlay onClick={() => setDeleteConfirmReviewId(null)}>
+          <DeleteDialog onClick={(e) => e.stopPropagation()}>
+            <DeleteDialogTitle>Delete review?</DeleteDialogTitle>
+            <DeleteDialogText>
+              This review will be permanently removed. This cannot be undone.
+            </DeleteDialogText>
+            <DeleteDialogActions>
+              <DialogButton type="button" onClick={() => setDeleteConfirmReviewId(null)}>
+                Cancel
+              </DialogButton>
+              <DialogButton
+                type="button"
+                $primary
+                onClick={() => confirmDeleteReview(deleteConfirmReviewId)}
+              >
+                Delete
+              </DialogButton>
+            </DeleteDialogActions>
+          </DeleteDialog>
+        </DeleteOverlay>
+      )}
     </PageContainer>
   );
 }
