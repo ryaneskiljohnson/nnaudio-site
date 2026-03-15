@@ -295,7 +295,7 @@ const MobileMenuContent = styled(motion.div)`
   height: 100%;
   position: relative;
   z-index: 1;
-  padding: 20px 0;
+  padding: 20px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   will-change: transform;
@@ -305,22 +305,31 @@ const MobileNavTitle = styled.h2`
   color: var(--text);
   font-size: 1.8rem;
   font-weight: 700;
-  margin-bottom: 30px;
+  margin-bottom: 12px;
   text-align: center;
   background: linear-gradient(90deg, var(--primary), var(--accent));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: 1px;
+  align-self: center;
+`;
+
+/** Wrapper so nav links + auth section share width of the widest item; centered */
+const MobileMenuColumn = styled.div`
+  width: max-content;
+  max-width: calc(100% - 40px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 `;
 
 const MobileNavLinks = styled.div`
   display: flex;
   flex-direction: column;
-  width: 100%;
-  max-width: 400px;
-  align-items: center;
-  padding: 20px 0;
-  margin: 0 auto;
+  width: max-content;
+  min-width: 100%;
+  align-items: stretch;
+  padding: 8px 0 20px;
   position: relative;
   z-index: 1;
 `;
@@ -332,12 +341,12 @@ const MobileNavLink = styled(motion.div)<{ $isActive?: boolean }>`
   font-weight: 500;
   margin: 8px 0;
   padding: 14px 24px;
-  text-align: center;
+  text-align: left;
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 85%;
+  justify-content: flex-start;
+  width: 100%;
   box-sizing: border-box;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
@@ -373,10 +382,8 @@ const MobileAuthSection = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 85%;
-  max-width: 400px;
-  padding: 20px;
-  margin: 0 auto;
+  width: 100%;
+  padding: 0;
   margin-top: auto;
 `;
 
@@ -384,7 +391,7 @@ const MobileUserSection = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
-  align-items: center;
+  align-items: stretch;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding-top: 20px;
   margin-top: 20px;
@@ -881,6 +888,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
               <MobileNavTitle>
                 {getTranslation("common.navigation")}
               </MobileNavTitle>
+              <MobileMenuColumn>
               <MobileNavLinks>
                 {navItems.map((item, index) => (
                   <Link key={item.name} href={item.path}>
@@ -985,6 +993,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                   </AuthButton>
                 </MobileAuthSection>
               )}
+              </MobileMenuColumn>
             </MobileMenuContent>
 
             <MobileFooter>

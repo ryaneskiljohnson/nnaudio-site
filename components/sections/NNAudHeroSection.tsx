@@ -140,7 +140,7 @@ const PrimaryButton = styled(motion.a)`
 `;
 
 const SecondaryButton = styled(motion.a)`
-  background: transparent;
+  background: rgba(255, 255, 255, 0.06);
   color: white;
   padding: 16px 40px;
   border-radius: 50px;
@@ -151,9 +151,11 @@ const SecondaryButton = styled(motion.a)`
   transition: all 0.3s ease;
   text-decoration: none;
   display: inline-block;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
     border-color: rgba(255, 255, 255, 0.5);
   }
 `;
