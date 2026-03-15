@@ -30,17 +30,14 @@ const BannerContainer = styled(motion.div)`
   z-index: 3000;
   display: flex;
   align-items: center;
-  flex-wrap: nowrap;
   min-height: 56px;
   gap: 1rem;
 
   @media (max-width: 768px) {
     top: 64px;
-    padding: 0.6rem 1rem;
-    min-height: auto;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 0.5rem 0.75rem;
+    padding: 0.5rem 0.75rem;
+    min-height: 52px;
+    gap: 0.5rem;
   }
 `;
 
@@ -48,10 +45,7 @@ const BannerContainer = styled(motion.div)`
 const BannerSpacer = styled.div`
   min-height: 56px;
   @media (max-width: 768px) {
-    min-height: 100px;
-  }
-  @media (max-width: 400px) {
-    min-height: 108px;
+    min-height: 52px;
   }
 `;
 
@@ -63,9 +57,8 @@ const BannerLeft = styled.div`
   min-width: 0;
 
   @media (max-width: 768px) {
-    flex: 1 1 calc(100% - 2rem);
+    gap: 0.5rem;
     min-width: 0;
-    gap: 0.75rem;
   }
 `;
 
@@ -79,9 +72,10 @@ const Thumbnail = styled.div`
   flex-shrink: 0;
   border: 1px solid rgba(255, 255, 255, 0.15);
 
-  @media (max-width: 480px) {
-    width: 40px;
-    height: 40px;
+  @media (max-width: 768px) {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
   }
 `;
 
@@ -96,6 +90,11 @@ const TitleRow = styled.div`
   gap: 0.75rem;
   flex-wrap: wrap;
   margin-bottom: 0.15rem;
+
+  @media (max-width: 768px) {
+    margin-bottom: 0;
+    gap: 0.35rem;
+  }
 `;
 
 const BannerTitle = styled.span`
@@ -107,10 +106,32 @@ const BannerTitle = styled.span`
   text-overflow: ellipsis;
 
   @media (max-width: 768px) {
-    font-size: 1rem;
+    font-size: 0.9375rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  @media (max-width: 480px) {
-    white-space: normal;
+`;
+
+/** Short title for mobile single-line layout */
+const BannerTitleShort = styled.span`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: inline;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+`;
+
+/** Full title hidden on mobile when short title is shown */
+const BannerTitleFull = styled.span`
+  @media (max-width: 768px) {
+    display: none;
   }
 `;
 
@@ -132,6 +153,11 @@ const NewBadge = styled.span`
   background: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%);
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+
+  @media (max-width: 768px) {
+    padding: 0.15rem 0.35rem;
+    font-size: 0.6rem;
+  }
 `;
 
 const FreeBadge = styled.span`
@@ -145,6 +171,11 @@ const FreeBadge = styled.span`
   background: linear-gradient(135deg, #4ecdc4 0%, #81e6d9 100%);
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+
+  @media (max-width: 768px) {
+    padding: 0.15rem 0.35rem;
+    font-size: 0.6rem;
+  }
 `;
 
 const BannerDescription = styled.span`
@@ -156,10 +187,7 @@ const BannerDescription = styled.span`
   text-overflow: ellipsis;
 
   @media (max-width: 768px) {
-    font-size: 0.8rem;
-  }
-  @media (max-width: 480px) {
-    white-space: normal;
+    display: none;
   }
 `;
 
@@ -170,14 +198,32 @@ const ButtonGroup = styled.div`
   flex-shrink: 0;
 
   @media (max-width: 768px) {
-    flex: 1 1 100%;
-    order: 3;
-    justify-content: flex-start;
-    margin-top: 0.15rem;
+    gap: 0.35rem;
   }
-  @media (max-width: 480px) {
-    gap: 0.4rem;
-    flex-wrap: wrap;
+`;
+
+const LearnMoreButton = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 50px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  background: transparent;
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
+  @media (max-width: 768px) {
+    display: none;
   }
 `;
 
@@ -216,9 +262,9 @@ const BannerButton = styled(Link)<{ $primary?: boolean }>`
     }
   `}
 
-  @media (max-width: 480px) {
-    padding: 0.4rem 0.75rem;
-    font-size: 0.8rem;
+  @media (max-width: 768px) {
+    padding: 0.4rem 0.65rem;
+    font-size: 0.8125rem;
   }
 `;
 
@@ -243,11 +289,9 @@ const CloseButton = styled.button`
   }
 
   @media (max-width: 768px) {
-    width: 26px;
-    height: 26px;
-    font-size: 0.8rem;
-    order: 2;
-    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
   }
 `;
 
@@ -291,13 +335,14 @@ export default function NNAudioAccessBanner() {
             src={BANNER_THUMBNAIL_URL}
             alt="NNAudio Access"
             fill
-            sizes="44px"
+            sizes="(max-width: 768px) 36px, 44px"
             style={{ objectFit: "cover" }}
           />
         </Thumbnail>
         <BannerText>
           <TitleRow>
-            <BannerTitle>NNAudio Access — Product Manager</BannerTitle>
+            <BannerTitleFull>NNAudio Access — Product Manager</BannerTitleFull>
+            <BannerTitleShort>NNAudio Access</BannerTitleShort>
             <BadgeRow>
               <NewBadge>New</NewBadge>
               <FreeBadge>Free</FreeBadge>
@@ -309,9 +354,9 @@ export default function NNAudioAccessBanner() {
         </BannerText>
       </BannerLeft>
       <ButtonGroup>
-        <BannerButton href={PRODUCT_URL} prefetch $primary={false}>
+        <LearnMoreButton href={PRODUCT_URL} prefetch>
           Learn more
-        </BannerButton>
+        </LearnMoreButton>
         <BannerButton href={DOWNLOAD_URL} prefetch $primary>
           <FaDownload size={12} />
           Download
