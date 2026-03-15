@@ -200,7 +200,7 @@
             
             <p class="message">Thanks for joining NNAudio. Please verify your email address by clicking the button below.</p>
             
-            <a href="{{ .ConfirmationURL }}" class="verification-button">Verify Account</a>
+            <a href="{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=signup" class="verification-button">Verify Account</a>
             
             <p class="message" style="margin-top: 30px; font-size: 14px;">
                 This link will expire in 24 hours. If you didn't create this account, you can ignore this email.
@@ -210,7 +210,7 @@
                 If the button doesn't work, copy and paste this link:
             </p>
             
-            <a href="{{ .ConfirmationURL }}" class="verification-link">{{ .ConfirmationURL }}</a>
+            <a href="{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=signup" class="verification-link">{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=signup</a>
         </div>
         
         <div class="footer">

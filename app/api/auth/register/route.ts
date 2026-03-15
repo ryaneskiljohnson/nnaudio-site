@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
         data: {
           name: name || email.split("@")[0],
         },
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/confirm`,
       },
     });
 

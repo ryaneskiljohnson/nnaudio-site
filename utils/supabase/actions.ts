@@ -17,7 +17,7 @@ export async function signUpWithStripe(
     // Find or create a Stripe customer
     const customer_id = await findOrCreateCustomer(email);
 
-    // Sign up the user with Supabase (no emailRedirectTo; confirm link comes from Supabase email template)
+    // Sign up the user with Supabase; redirect after verification goes to app confirm route → dashboard
     const authResponse = await supabase.auth.signUp({
       email,
       password,
@@ -27,6 +27,7 @@ export async function signUpWithStripe(
           last_name,
           customer_id,
         },
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/confirm`,
       },
     });
 
