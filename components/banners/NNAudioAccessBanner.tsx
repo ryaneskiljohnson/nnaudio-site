@@ -36,7 +36,24 @@ const BannerContainer = styled(motion.div)`
   @media (max-width: 768px) {
     top: 64px;
     padding: 0.5rem 0.75rem;
-    min-height: 52px;
+    min-height: auto;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.35rem 0.5rem;
+  }
+`;
+
+/** Groups thumbnail, title, Learn more, and close so they stay on first row on mobile; only description wraps to row 2 */
+const BannerFirstRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
     gap: 0.5rem;
   }
 `;
@@ -45,7 +62,7 @@ const BannerContainer = styled(motion.div)`
 const BannerSpacer = styled.div`
   min-height: 56px;
   @media (max-width: 768px) {
-    min-height: 52px;
+    min-height: 92px;
   }
 `;
 
@@ -191,6 +208,22 @@ const BannerDescription = styled.span`
   }
 `;
 
+/** Shown only on mobile as second row (full width) */
+const BannerDescriptionMobile = styled.span`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: block;
+    flex: 1 1 100%;
+    order: 10;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1.35;
+    padding-left: calc(36px + 0.5rem);
+    margin-top: 0.2rem;
+  }
+`;
+
 const ButtonGroup = styled.div`
   display: flex;
   align-items: center;
@@ -223,11 +256,12 @@ const LearnMoreButton = styled(Link)`
   }
 
   @media (max-width: 768px) {
-    display: none;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.8125rem;
   }
 `;
 
-const BannerButton = styled(Link)<{ $primary?: boolean }>`
+const DownloadButton = styled(Link)`
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -239,32 +273,17 @@ const BannerButton = styled(Link)<{ $primary?: boolean }>`
   text-decoration: none;
   transition: all 0.3s ease;
   white-space: nowrap;
-
-  ${(p) =>
-    p.$primary
-      ? `
-    background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
-    color: white;
-    border: none;
-    box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 24px rgba(138, 43, 226, 0.5);
-    }
-  `
-      : `
-    background: transparent;
-    color: white;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    &:hover {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.5);
-    }
-  `}
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(138, 43, 226, 0.5);
+  }
 
   @media (max-width: 768px) {
-    padding: 0.4rem 0.65rem;
-    font-size: 0.8125rem;
+    display: none;
   }
 `;
 
@@ -292,6 +311,7 @@ const CloseButton = styled.button`
     width: 24px;
     height: 24px;
     font-size: 0.75rem;
+    order: 2;
   }
 `;
 
@@ -329,42 +349,47 @@ export default function NNAudioAccessBanner() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
       >
-        <BannerLeft>
-        <Thumbnail>
-          <Image
-            src={BANNER_THUMBNAIL_URL}
-            alt="NNAudio Access"
-            fill
-            sizes="(max-width: 768px) 36px, 44px"
-            style={{ objectFit: "cover" }}
-          />
-        </Thumbnail>
-        <BannerText>
-          <TitleRow>
-            <BannerTitleFull>NNAudio Access — Product Manager</BannerTitleFull>
-            <BannerTitleShort>NNAudio Access</BannerTitleShort>
-            <BadgeRow>
-              <NewBadge>New</NewBadge>
-              <FreeBadge>Free</FreeBadge>
-            </BadgeRow>
-          </TitleRow>
-          <BannerDescription>
-            Download, install, and update all your NNAudio products in one place.
-          </BannerDescription>
-        </BannerText>
-      </BannerLeft>
-      <ButtonGroup>
-        <LearnMoreButton href={PRODUCT_URL} prefetch>
-          Learn more
-        </LearnMoreButton>
-        <BannerButton href={DOWNLOAD_URL} prefetch $primary>
-          <FaDownload size={12} />
-          Download
-        </BannerButton>
-      </ButtonGroup>
-      <CloseButton type="button" onClick={handleClose} title="Close banner" aria-label="Close banner">
-        <FaTimes />
-      </CloseButton>
+        <BannerFirstRow>
+          <BannerLeft>
+            <Thumbnail>
+              <Image
+                src={BANNER_THUMBNAIL_URL}
+                alt="NNAudio Access"
+                fill
+                sizes="(max-width: 768px) 36px, 44px"
+                style={{ objectFit: "cover" }}
+              />
+            </Thumbnail>
+            <BannerText>
+              <TitleRow>
+                <BannerTitleFull>NNAudio Access — Product Manager</BannerTitleFull>
+                <BannerTitleShort>NNAudio Access</BannerTitleShort>
+                <BadgeRow>
+                  <NewBadge>New</NewBadge>
+                  <FreeBadge>Free</FreeBadge>
+                </BadgeRow>
+              </TitleRow>
+              <BannerDescription>
+                Download, install, and update all your NNAudio products in one place.
+              </BannerDescription>
+            </BannerText>
+          </BannerLeft>
+          <ButtonGroup>
+            <LearnMoreButton href={PRODUCT_URL} prefetch>
+              Learn more
+            </LearnMoreButton>
+            <DownloadButton href={DOWNLOAD_URL} prefetch>
+              <FaDownload size={12} />
+              Download
+            </DownloadButton>
+          </ButtonGroup>
+          <CloseButton type="button" onClick={handleClose} title="Close banner" aria-label="Close banner">
+            <FaTimes />
+          </CloseButton>
+        </BannerFirstRow>
+      <BannerDescriptionMobile>
+        Download, install, and update all your NNAudio products in one place.
+      </BannerDescriptionMobile>
     </BannerContainer>
       <BannerSpacer />
     </>

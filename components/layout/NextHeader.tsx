@@ -229,6 +229,9 @@ const MobileActions = styled.div`
 `;
 
 const MenuToggle = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1.5rem;
   cursor: pointer;
   color: white;
