@@ -18,7 +18,7 @@ const DOWNLOAD_URL = "/downloads";
 
 const BannerContainer = styled(motion.div)`
   position: fixed;
-  top: 70px;
+  top: 69px; /* 1px overlap with header to avoid sub-pixel gap */
   left: 0;
   right: 0;
   width: 100%;
@@ -34,7 +34,7 @@ const BannerContainer = styled(motion.div)`
   gap: 1rem;
 
   @media (max-width: 768px) {
-    top: 64px;
+    top: 63px; /* 1px overlap with header on mobile */
     padding: 0.5rem 0.75rem;
     min-height: auto;
     flex-wrap: wrap;
