@@ -1,3 +1,9 @@
+/**
+ * @fileoverview Admin and user account management server actions, including CRM access,
+ * support ticket operations, notification helpers, and related billing lookups.
+ * @module app/actions/user-management
+ */
+
 "use server";
 
 import { getAdminEmails } from "@/lib/admin-order-email-copy";
@@ -22,8 +28,26 @@ export interface UserManagementRecord {
 
 /** Resolved Supabase client type (createClient returns Promise). */
 type SupabaseClientType = Awaited<ReturnType<typeof createClient>>;
+type ServiceRoleClientType = Awaited<ReturnType<typeof createSupabaseServiceRole>>;
 
-// Helper to check if user is admin
+interface SupportTicketReplyState {
+  latestMessageId: string | null;
+  lastReplyIsAdmin: boolean;
+  awaitingAdminResponse: boolean;
+}
+
+/**
+ * @brief Checks whether the current authenticated user is an admin.
+ * @param supabase Supabase client tied to the current request.
+ * @returns Promise<boolean> True when the current user exists in the admins table.
+ * @note This helper uses the request-scoped auth session and should be called before
+ * privileged admin actions.
+ * @example
+ * ```ts
+ * const supabase = await createClient();
+ * const isAdmin = await checkAdmin(supabase);
+ * ```
+ */
 export async function checkAdmin(supabase: SupabaseClientType) {
   const {
     data: { user },
@@ -40,6 +64,118 @@ export async function checkAdmin(supabase: SupabaseClientType) {
     .single();
 
   return adminError?.code !== "PGRST116" && !!adminCheck;
+}
+
+/**
+ * @brief Builds the default reply state for a support ticket.
+ * @returns SupportTicketReplyState Non-awaiting state used when a ticket has no visible customer reply.
+ * @note This keeps list rows and unread-count badge fallbacks consistent.
+ * @example
+ * ```ts
+ * const state = getDefaultSupportTicketReplyState();
+ * ```
+ */
+function getDefaultSupportTicketReplyState(): SupportTicketReplyState {
+  return {
+    latestMessageId: null,
+    lastReplyIsAdmin: false,
+    awaitingAdminResponse: false,
+  };
+}
+
+/**
+ * @brief Resolves the latest reply state for each support ticket for a specific admin.
+ * @param ticketIds Ticket ids to inspect.
+ * @param adminUserId Admin user whose dismissed notifications should be applied.
+ * @returns Promise<Map<string, SupportTicketReplyState>> Map keyed by ticket id.
+ * @note A ticket awaits a response only when the newest message is from the customer
+ * and that exact message has not already been dismissed by the current admin.
+ * @example
+ * ```ts
+ * const replyStateMap = await getSupportTicketReplyStateMapAdmin(["ticket-id"], adminId);
+ * ```
+ */
+export async function getSupportTicketReplyStateMapAdmin(
+  ticketIds: string[],
+  adminUserId: string,
+): Promise<Map<string, SupportTicketReplyState>> {
+  const replyStateMap = new Map<string, SupportTicketReplyState>();
+
+  for (const ticketId of ticketIds) {
+    replyStateMap.set(ticketId, getDefaultSupportTicketReplyState());
+  }
+
+  if (ticketIds.length === 0) {
+    return replyStateMap;
+  }
+
+  const serviceSupabase: ServiceRoleClientType =
+    await createSupabaseServiceRole();
+
+  const { data: messages, error: messagesError } = await serviceSupabase
+    .from("support_messages")
+    .select("id, ticket_id, is_admin, created_at")
+    .in("ticket_id", ticketIds)
+    .order("created_at", { ascending: false });
+
+  if (messagesError) {
+    console.error(
+      "Error fetching support ticket reply state messages:",
+      messagesError,
+    );
+    return replyStateMap;
+  }
+
+  const latestMessageByTicket = new Map<
+    string,
+    { id: string; is_admin: boolean }
+  >();
+
+  for (const message of messages || []) {
+    if (!latestMessageByTicket.has(message.ticket_id)) {
+      latestMessageByTicket.set(message.ticket_id, {
+        id: message.id,
+        is_admin: message.is_admin,
+      });
+    }
+  }
+
+  const dismissedMessageByTicket = new Map<string, string | null>();
+  const { data: ticketStateRows, error: ticketStateError } = await (serviceSupabase as any)
+    .from("admin_support_ticket_state")
+    .select("ticket_id, dismissed_message_id")
+    .eq("admin_user_id", adminUserId)
+    .in("ticket_id", ticketIds);
+
+  if (ticketStateError && ticketStateError.code !== "42P01") {
+    console.error(
+      "Error fetching admin support ticket dismissal state:",
+      ticketStateError,
+    );
+  } else {
+    for (const stateRow of ticketStateRows || []) {
+      dismissedMessageByTicket.set(
+        stateRow.ticket_id,
+        stateRow.dismissed_message_id ?? null,
+      );
+    }
+  }
+
+  for (const ticketId of ticketIds) {
+    const latestMessage = latestMessageByTicket.get(ticketId);
+    const dismissedMessageId = dismissedMessageByTicket.get(ticketId) ?? null;
+    const awaitingAdminResponse = latestMessage
+      ? !latestMessage.is_admin && latestMessage.id !== dismissedMessageId
+      : false;
+
+    replyStateMap.set(ticketId, {
+      latestMessageId: latestMessage?.id ?? null,
+      lastReplyIsAdmin: latestMessage?.is_admin ?? false,
+      awaitingAdminResponse,
+    });
+  }
+
+  return replyStateMap;
 }
 
 /**
@@ -1041,6 +1177,7 @@ export async function getSupportTicketsAdmin(): Promise<{
     user_product_count?: number;
     user_order_count?: number;
     last_reply_is_admin?: boolean;
+    awaiting_admin_response?: boolean;
     created_at: string;
     updated_at: string;
     resolved_at: string | null;
@@ -1053,6 +1190,14 @@ export async function getSupportTicketsAdmin(): Promise<{
 
     if (!(await checkAdmin(supabase))) {
       return { tickets: [], error: "Unauthorized" };
+    }
+
+    const {
+      data: { user: adminUser },
+    } = await supabase.auth.getUser();
+
+    if (!adminUser) {
+      return { tickets: [], error: "Not authenticated" };
     }
 
     const serviceSupabase = await createSupabaseServiceRole();
@@ -1081,38 +1226,11 @@ export async function getSupportTicketsAdmin(): Promise<{
       return { tickets: [], error: ticketsError.message };
     }
 
-    // Get the last message for each ticket to determine if admin was last to reply
-    // Use a more efficient approach: fetch all messages and find the last one per ticket
     const ticketIds = tickets?.map((t) => t.id) || [];
-    const lastMessageMap = new Map<string, boolean>();
-
-    if (ticketIds.length > 0) {
-      // Fetch all messages for all tickets in one query, ordered by created_at desc
-      // Then we'll process them to get the last message per ticket
-      const { data: allMessages, error: messagesError } = await serviceSupabase
-        .from("support_messages")
-        .select("ticket_id, is_admin, created_at")
-        .in("ticket_id", ticketIds)
-        .order("created_at", { ascending: false });
-
-      if (!messagesError && allMessages) {
-        // Process messages to get the last one per ticket
-        const seenTickets = new Set<string>();
-        for (const message of allMessages) {
-          if (!seenTickets.has(message.ticket_id)) {
-            lastMessageMap.set(message.ticket_id, message.is_admin);
-            seenTickets.add(message.ticket_id);
-          }
-        }
-      }
-
-      // For tickets with no messages, default to false
-      for (const ticketId of ticketIds) {
-        if (!lastMessageMap.has(ticketId)) {
-          lastMessageMap.set(ticketId, false);
-        }
-      }
-    }
+    const replyStateMap = await getSupportTicketReplyStateMapAdmin(
+      ticketIds,
+      adminUser.id,
+    );
 
     // Get user emails, names, and subscription data for all tickets using service role client
     const userIds = [...new Set(tickets?.map((t) => t.user_id) || [])];
@@ -1231,7 +1349,10 @@ export async function getSupportTicketsAdmin(): Promise<{
         user_has_nfr: subscriptionData.hasNfr,
         user_product_count: userProductCountMap.get(ticket.user_id) ?? 0,
         user_order_count: userOrderCountMap.get(ticket.user_id) ?? 0,
-        last_reply_is_admin: lastMessageMap.get(ticket.id) ?? false,
+        last_reply_is_admin:
+          replyStateMap.get(ticket.id)?.lastReplyIsAdmin ?? false,
+        awaiting_admin_response:
+          replyStateMap.get(ticket.id)?.awaitingAdminResponse ?? false,
       };
     });
 
@@ -1241,6 +1362,104 @@ export async function getSupportTicketsAdmin(): Promise<{
     return {
       tickets: [],
       error: error instanceof Error ? error.message : "Failed to fetch tickets",
+    };
+  }
+}
+
+/**
+ * @brief Dismisses the current awaiting-response notification for the active admin.
+ * @param ticketId Support ticket whose latest customer reply should be dismissed.
+ * @returns Promise<{ success: boolean; error?: string }> Success result for the dismiss write.
+ * @note Dismissal is stored against the latest customer message id so a newer customer
+ * reply will automatically re-appear for the same admin.
+ * @example
+ * ```ts
+ * const result = await dismissSupportTicketNotificationAdmin(ticketId);
+ * ```
+ */
+export async function dismissSupportTicketNotificationAdmin(
+  ticketId: string,
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const supabase = await createClient();
+
+    if (!(await checkAdmin(supabase))) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const {
+      data: { user: adminUser },
+    } = await supabase.auth.getUser();
+
+    if (!adminUser) {
+      return { success: false, error: "Not authenticated" };
+    }
+
+    const serviceSupabase = await createSupabaseServiceRole();
+
+    const { data: latestMessage, error: latestMessageError } = await serviceSupabase
+      .from("support_messages")
+      .select("id, is_admin")
+      .eq("ticket_id", ticketId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestMessageError) {
+      console.error(
+        "Error fetching latest support ticket message for dismiss:",
+        latestMessageError,
+      );
+      return {
+        success: false,
+        error:
+          latestMessageError.message ||
+          "Failed to dismiss support ticket notification",
+      };
+    }
+
+    if (!latestMessage || latestMessage.is_admin) {
+      return { success: true };
+    }
+
+    const { error: upsertError } = await (serviceSupabase as any)
+      .from("admin_support_ticket_state")
+      .upsert(
+        {
+          admin_user_id: adminUser.id,
+          ticket_id: ticketId,
+          dismissed_message_id: latestMessage.id,
+          dismissed_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "admin_user_id,ticket_id",
+        },
+      );
+
+    if (upsertError) {
+      console.error(
+        "Error dismissing support ticket notification:",
+        upsertError,
+      );
+      return {
+        success: false,
+        error:
+          upsertError.message || "Failed to dismiss support ticket notification",
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error in dismissSupportTicketNotificationAdmin:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to dismiss support ticket notification",
     };
   }
 }

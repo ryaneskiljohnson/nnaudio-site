@@ -1,5 +1,11 @@
+/**
+ * @fileoverview Shared admin layout with sidebar navigation, access guard, and
+ * support-ticket unread badge refresh behavior.
+ * @module app/(private)/(admin)/layout
+ */
+
 "use client";
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import {
@@ -38,6 +44,9 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
+
+const SUPPORT_TICKETS_UNREAD_UPDATED_EVENT =
+  "admin-support-tickets-unread-updated";
 import NNAudioLogo from "@/components/common/NNAudioLogo";
 
 import NextLanguageSelector from "@/components/i18n/NextLanguageSelector";
@@ -674,6 +683,35 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const isAdManagerActive = () => pathname.startsWith("/admin/ad-manager");
 
+  /**
+   * @brief Fetches the current admin's unread support ticket count.
+   * @returns Promise<void>
+   * @note This is reused on route changes and custom refresh events dispatched by the
+   * support tickets page after dismisses or replies.
+   * @example
+   * ```ts
+   * await fetchSupportTicketsUnreadCount();
+   * ```
+   */
+  const fetchSupportTicketsUnreadCount = useCallback(async () => {
+    if (!user?.is_admin) return;
+
+    try {
+      const res = await fetch("/api/admin/support-tickets/unread-count");
+      if (!res.ok) {
+        setSupportTicketsUnreadCount(0);
+        return;
+      }
+
+      const data = await res.json();
+      setSupportTicketsUnreadCount(
+        typeof data.count === "number" ? data.count : 0,
+      );
+    } catch {
+      setSupportTicketsUnreadCount(0);
+    }
+  }, [user?.is_admin]);
+
   // Auto-expand email campaigns section if any sub-route is active
   useEffect(() => {
     if (isEmailCampaignsActive()) {
@@ -691,23 +729,28 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   // Fetch support tickets unread count for sidebar badge
   useEffect(() => {
     if (!user?.is_admin) return;
-    let cancelled = false;
-    const fetchUnread = async () => {
-      try {
-        const res = await fetch("/api/admin/support-tickets/unread-count");
-        if (!cancelled && res.ok) {
-          const data = await res.json();
-          setSupportTicketsUnreadCount(typeof data.count === "number" ? data.count : 0);
-        }
-      } catch {
-        if (!cancelled) setSupportTicketsUnreadCount(0);
-      }
+    void fetchSupportTicketsUnreadCount();
+  }, [fetchSupportTicketsUnreadCount, pathname, user?.is_admin]);
+
+  useEffect(() => {
+    if (!user?.is_admin) return;
+
+    const handleUnreadRefresh = () => {
+      void fetchSupportTicketsUnreadCount();
     };
-    fetchUnread();
+
+    window.addEventListener(
+      SUPPORT_TICKETS_UNREAD_UPDATED_EVENT,
+      handleUnreadRefresh,
+    );
+
     return () => {
-      cancelled = true;
+      window.removeEventListener(
+        SUPPORT_TICKETS_UNREAD_UPDATED_EVENT,
+        handleUnreadRefresh,
+      );
     };
-  }, [user?.is_admin, pathname]);
+  }, [fetchSupportTicketsUnreadCount, user?.is_admin]);
 
   useEffect(() => {
     const isMobileViewport = window.innerWidth <= 768;

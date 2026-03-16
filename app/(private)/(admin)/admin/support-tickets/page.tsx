@@ -1,3 +1,9 @@
+/**
+ * @fileoverview Admin support tickets page with ticket list, conversation view,
+ * AI drafting, attachments, and per-ticket awaiting-response indicators.
+ * @module app/(private)/(admin)/admin/support-tickets/page
+ */
+
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -36,7 +42,8 @@ import {
   FaUserShield,
   FaChartLine,
   FaTrash,
-  FaMagic
+  FaMagic,
+  FaBell
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import styled from "styled-components";
@@ -50,12 +57,16 @@ import {
   addSupportTicketMessageAdmin,
   deleteSupportTicketMessageAdmin,
   uploadSupportTicketAttachment,
-  getUserByIdAdmin
+  getUserByIdAdmin,
+  dismissSupportTicketNotificationAdmin
 } from "@/app/actions/user-management";
 import type { UserData } from "@/utils/stripe/admin-analytics";
 import UserProfileModal from "@/components/admin/UserProfileModal";
 
 import TableLoadingRow from "@/components/common/TableLoadingRow";
+
+const SUPPORT_TICKETS_UNREAD_UPDATED_EVENT =
+  "admin-support-tickets-unread-updated";
 
 const TicketsContainer = styled.div`
   width: 100%;
@@ -406,6 +417,22 @@ const ReplyIcon = styled(FaReply)`
   flex-shrink: 0;
 `;
 
+const AwaitingResponseBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 102, 0, 0.16);
+  border: 1px solid rgba(255, 102, 0, 0.4);
+  color: #ffb46b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+`;
+
 const TicketSubject = styled.div`
   font-weight: 600;
   color: var(--text);
@@ -740,6 +767,15 @@ const MoreMenuItem = styled.button<{ $variant?: 'danger' }>`
 
   &:hover {
     background-color: ${props => props.$variant === 'danger' ? 'rgba(231, 76, 60, 0.1)' : 'rgba(255, 255, 255, 0.05)'};
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &:disabled:hover {
+    background-color: transparent;
   }
 
   svg {
@@ -1792,6 +1828,7 @@ interface Ticket {
   user_product_count?: number;
   user_order_count?: number;
   last_reply_is_admin?: boolean;
+  awaiting_admin_response?: boolean;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
@@ -1837,6 +1874,7 @@ function SupportTicketsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [dismissingTicketId, setDismissingTicketId] = useState<string | null>(null);
   const [newMessages, setNewMessages] = useState<{[key: string]: string}>({});
   const [uploadingFiles, setUploadingFiles] = useState<{[key: string]: boolean}>({});
   const [pendingAttachments, setPendingAttachments] = useState<{[key: string]: File[]}>({});
@@ -1890,6 +1928,20 @@ function SupportTicketsPage() {
       style: "currency",
       currency: "USD",
     }).format(amount / 100);
+  };
+
+  /**
+   * @brief Requests a refresh of the admin support-ticket unread badge in the layout.
+   * @returns void
+   * @note The list page and sidebar live in separate components, so a custom event keeps
+   * the badge in sync after dismisses and replies without forcing a route change.
+   * @example
+   * ```ts
+   * emitSupportTicketsUnreadRefresh();
+   * ```
+   */
+  const emitSupportTicketsUnreadRefresh = () => {
+    window.dispatchEvent(new Event(SUPPORT_TICKETS_UNREAD_UPDATED_EVENT));
   };
 
   const getDisplayName = (user: UserData) => {
@@ -2523,9 +2575,51 @@ function SupportTicketsPage() {
       await fetchTicketDetails(ticketId, true);
       // Refresh tickets list to update updated_at
       await fetchTickets();
+      emitSupportTicketsUnreadRefresh();
     } catch (error) {
       console.error("Error sending message:", error);
       alert("An error occurred while sending the message");
+    }
+  };
+
+  /**
+   * @brief Dismisses the awaiting-response badge for the current admin on one ticket.
+   * @param ticketId Support ticket id whose latest customer reply should be dismissed.
+   * @returns Promise<void>
+   * @note This updates the row immediately, then refreshes server state so the list and
+   * sidebar badge stay aligned.
+   * @example
+   * ```ts
+   * await handleDismissNotification(ticket.id);
+   * ```
+   */
+  const handleDismissNotification = async (ticketId: string) => {
+    setDismissingTicketId(ticketId);
+    setOpenMoreMenu(null);
+    setMoreMenuPosition(null);
+
+    try {
+      const result = await dismissSupportTicketNotificationAdmin(ticketId);
+      if (!result.success) {
+        alert(result.error || "Failed to dismiss notification");
+        return;
+      }
+
+      setTickets((prev) =>
+        prev.map((ticket) =>
+          ticket.id === ticketId
+            ? { ...ticket, awaiting_admin_response: false }
+            : ticket,
+        ),
+      );
+
+      await fetchTickets();
+      emitSupportTicketsUnreadRefresh();
+    } catch (error) {
+      console.error("Error dismissing notification:", error);
+      alert("An error occurred while dismissing the notification");
+    } finally {
+      setDismissingTicketId(null);
     }
   };
 
@@ -2554,6 +2648,9 @@ function SupportTicketsPage() {
       case 'view':
         openTicketModal(ticket.id);
         break;
+      case 'dismiss':
+        await handleDismissNotification(ticket.id);
+        break;
       case 'delete':
         setTicketToDelete(ticket);
         setShowDeleteModal(true);
@@ -2579,6 +2676,7 @@ function SupportTicketsPage() {
         });
         setShowDeleteModal(false);
         setTicketToDelete(null);
+        emitSupportTicketsUnreadRefresh();
       } else {
         alert(result.error || "Failed to delete ticket");
       }
@@ -2907,13 +3005,19 @@ function SupportTicketsPage() {
                 <React.Fragment key={ticket.id}>
                   <TableRow data-status-open={openStatusDropdown === ticket.id ? "true" : "false"}>
                   <TableCell>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <TicketId 
                         onClick={() => openTicketModal(ticket.id)}
                         style={{ cursor: 'pointer', textDecoration: 'underline' }}
                       >
                         {ticket.ticket_number}
                       </TicketId>
+                      {ticket.awaiting_admin_response && (
+                        <AwaitingResponseBadge title="Customer is waiting for a reply">
+                          <FaBell />
+                          Needs reply
+                        </AwaitingResponseBadge>
+                      )}
                       {ticket.last_reply_is_admin && (
                         <ReplyIcon 
                           title="Replied to user"
@@ -3087,6 +3191,17 @@ function SupportTicketsPage() {
                               <FaEye />
                               {t("admin.supportTickets.ticketActions.view", "View Ticket")}
                             </MoreMenuItem>
+                            {ticket.awaiting_admin_response && (
+                              <MoreMenuItem
+                                onClick={() => handleMoreMenuAction('dismiss', ticket)}
+                                disabled={dismissingTicketId === ticket.id}
+                              >
+                                <FaBell />
+                                {dismissingTicketId === ticket.id
+                                  ? "Dismissing..."
+                                  : "Dismiss notification"}
+                              </MoreMenuItem>
+                            )}
                             <MoreMenuItem 
                               $variant="danger"
                               onClick={() => handleMoreMenuAction('delete', ticket)}
@@ -3489,6 +3604,12 @@ function SupportTicketsPage() {
                               <TicketId style={{ cursor: 'default', textDecoration: 'none' }}>
                                 {ticket.ticket_number}
                               </TicketId>
+                              {ticket.awaiting_admin_response && (
+                                <AwaitingResponseBadge title="Customer is waiting for a reply">
+                                  <FaBell />
+                                  Needs reply
+                                </AwaitingResponseBadge>
+                              )}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
