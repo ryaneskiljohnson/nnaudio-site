@@ -281,7 +281,7 @@ const Table = styled.table`
   overflow: visible !important;
 
   /* Define column widths */
-  th:nth-child(1), td:nth-child(1) { width: 100px; }   /* Ticket ID */
+  th:nth-child(1), td:nth-child(1) { width: 160px; }   /* Ticket ID */
   th:nth-child(2), td:nth-child(2) { width: 300px; }   /* Subject */
   th:nth-child(3), td:nth-child(3) { width: 350px; }   /* User */
   th:nth-child(4), td:nth-child(4) { width: 90px; min-width: 90px; }    /* Products */
