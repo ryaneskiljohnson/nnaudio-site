@@ -3,6 +3,7 @@
 import { getAdminEmails } from "@/lib/admin-order-email-copy";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { getAccessibleProductIds } from "@/utils/nnaudio-access/access";
 import {
   getAllUsersForCRM,
   getUsersForCRMCount,
@@ -1037,6 +1038,8 @@ export async function getSupportTicketsAdmin(): Promise<{
     user_last_name: string | null;
     user_subscription?: string;
     user_has_nfr?: boolean;
+    user_product_count?: number;
+    user_order_count?: number;
     last_reply_is_admin?: boolean;
     created_at: string;
     updated_at: string;
@@ -1122,6 +1125,8 @@ export async function getSupportTicketsAdmin(): Promise<{
       string,
       { subscription: string; hasNfr: boolean }
     >();
+    const userProductCountMap = new Map<string, number>();
+    const userOrderCountMap = new Map<string, number>();
 
     for (const userId of userIds) {
       try {
@@ -1131,10 +1136,10 @@ export async function getSupportTicketsAdmin(): Promise<{
         const email = user?.email || null;
         userEmailsMap.set(userId, email);
 
-        // Get subscription and name from profiles table
+        // Get subscription, name, and customer_id from profiles table
         const { data: profile } = await serviceSupabase
           .from("profiles")
-          .select("subscription, first_name, last_name")
+          .select("subscription, first_name, last_name, customer_id")
           .eq("id", userId)
           .single();
 
@@ -1160,6 +1165,35 @@ export async function getSupportTicketsAdmin(): Promise<{
           subscription: profile?.subscription || "none",
           hasNfr,
         });
+
+        // Product count (grants + Stripe purchases)
+        try {
+          const { productIds } = await getAccessibleProductIds(userId, {
+            customer_id: profile?.customer_id ?? null,
+            email: email ?? null,
+          });
+          userProductCountMap.set(userId, productIds.size);
+        } catch (productErr) {
+          console.error(`Error fetching product count for user ${userId}:`, productErr);
+          userProductCountMap.set(userId, 0);
+        }
+
+        // Order count (succeeded Stripe payment intents for customer)
+        try {
+          if (profile?.customer_id) {
+            const { data: paymentIntents } = await stripe.paymentIntents.list({
+              customer: profile.customer_id,
+              limit: 100,
+            });
+            const count = paymentIntents.filter((pi) => pi.status === "succeeded").length;
+            userOrderCountMap.set(userId, count);
+          } else {
+            userOrderCountMap.set(userId, 0);
+          }
+        } catch (orderErr) {
+          console.error(`Error fetching order count for user ${userId}:`, orderErr);
+          userOrderCountMap.set(userId, 0);
+        }
       } catch (error) {
         console.error(`Error fetching user ${userId}:`, error);
         userEmailsMap.set(userId, null);
@@ -1168,6 +1202,8 @@ export async function getSupportTicketsAdmin(): Promise<{
           subscription: "none",
           hasNfr: false,
         });
+        userProductCountMap.set(userId, 0);
+        userOrderCountMap.set(userId, 0);
       }
     }
 
@@ -1187,6 +1223,8 @@ export async function getSupportTicketsAdmin(): Promise<{
         user_last_name: userNameData.lastName,
         user_subscription: subscriptionData.subscription,
         user_has_nfr: subscriptionData.hasNfr,
+        user_product_count: userProductCountMap.get(ticket.user_id) ?? 0,
+        user_order_count: userOrderCountMap.get(ticket.user_id) ?? 0,
         last_reply_is_admin: lastMessageMap.get(ticket.id) ?? false,
       };
     });

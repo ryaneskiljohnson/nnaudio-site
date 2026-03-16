@@ -270,13 +270,14 @@ const Table = styled.table`
   overflow: visible !important;
 
   /* Define column widths */
-  th:nth-child(1), td:nth-child(1) { width: 100px; } /* Ticket ID */
-  th:nth-child(2), td:nth-child(2) { width: 300px; } /* Subject */
-  th:nth-child(3), td:nth-child(3) { width: 350px; } /* User */
-  th:nth-child(4), td:nth-child(4) { width: 150px; } /* Subscription */
-  th:nth-child(5), td:nth-child(5) { width: 120px; } /* Status */
-  th:nth-child(6), td:nth-child(6) { width: 110px; } /* Created */
-  th:nth-child(7), td:nth-child(7) { width: 160px; } /* Actions */
+  th:nth-child(1), td:nth-child(1) { width: 100px; }   /* Ticket ID */
+  th:nth-child(2), td:nth-child(2) { width: 300px; }   /* Subject */
+  th:nth-child(3), td:nth-child(3) { width: 350px; }   /* User */
+  th:nth-child(4), td:nth-child(4) { width: 90px; min-width: 90px; }    /* Products */
+  th:nth-child(5), td:nth-child(5) { width: 90px; min-width: 90px; }    /* Orders */
+  th:nth-child(6), td:nth-child(6) { width: 120px; }   /* Status */
+  th:nth-child(7), td:nth-child(7) { width: 110px; }   /* Created */
+  th:nth-child(8), td:nth-child(8) { width: 160px; }   /* Actions */
 `;
 
 const TableHeader = styled.thead`
@@ -381,6 +382,13 @@ const UserHeaderCell = styled(TableHeaderCell)`
   }
 `;
 
+const ProductsHeaderCell = styled(TableHeaderCell)`
+  text-align: center;
+`;
+const OrdersHeaderCell = styled(TableHeaderCell)`
+  text-align: center;
+`;
+
 const TicketId = styled.span`
   font-family: monospace;
   background-color: rgba(255, 255, 255, 0.05);
@@ -460,6 +468,39 @@ const SubscriptionCell = styled(TableCell)`
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+`;
+
+const ProductsCell = styled(TableCell)`
+  text-align: center;
+  white-space: nowrap;
+`;
+
+const OrdersCell = styled(TableCell)`
+  text-align: center;
+  white-space: nowrap;
+`;
+
+const CountLink = styled.button`
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white !important;
+  cursor: pointer;
+
+  &:hover {
+    color: rgba(255, 255, 255, 0.9) !important;
+    background: rgba(255, 255, 255, 0.1);
+  }
+`;
+
+const ProductsCountLink = styled(CountLink)``;
+const OrdersCountLink = styled(CountLink)``;
+
+const CountPlaceholder = styled.span`
+  color: rgba(255, 255, 255, 0.45);
 `;
 
 const StatusBadge = styled.span<{ $status: string; $clickable?: boolean }>`
@@ -1466,6 +1507,105 @@ const DeleteModalButton = styled(motion.button)<{ $variant?: 'danger' | 'seconda
   }
 `;
 
+const ProductsDialogContent = styled(motion.div)`
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 420px;
+  width: 90vw;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+`;
+const ProductsDialogTitle = styled.h3`
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+`;
+const ProductsDialogList = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+`;
+const ProductsDialogItem = styled.li`
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.95rem;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+const ProductsDialogThumb = styled.img`
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+`;
+const ProductsDialogLink = styled.a`
+  color: white;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const OrdersDialogContent = styled(motion.div)`
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 420px;
+  width: 90vw;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+`;
+const OrdersDialogTitle = styled.h3`
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: white;
+`;
+const OrdersDialogList = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+`;
+const OrdersDialogItem = styled.li`
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.95rem;
+  color: var(--text);
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
 const FormGroup = styled.div`
   margin-bottom: 1.5rem;
 `;
@@ -1649,12 +1789,27 @@ interface Ticket {
   user_last_name?: string | null;
   user_subscription?: string;
   user_has_nfr?: boolean;
+  user_product_count?: number;
+  user_order_count?: number;
   last_reply_is_admin?: boolean;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
   closed_at: string | null;
   messages?: TicketMessage[];
+}
+
+interface UserProduct {
+  id: string;
+  name: string;
+  slug: string;
+  featured_image_url?: string | null;
+}
+
+interface UserOrder {
+  id: string;
+  amount: number;
+  created: string | null;
 }
 
 function SupportTicketsPage() {
@@ -1700,6 +1855,12 @@ function SupportTicketsPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiResponse, setAiResponse] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [productsDialogUserId, setProductsDialogUserId] = useState<string | null>(null);
+  const [userProductsList, setUserProductsList] = useState<UserProduct[]>([]);
+  const [userProductsLoading, setUserProductsLoading] = useState(false);
+  const [ordersDialogUserId, setOrdersDialogUserId] = useState<string | null>(null);
+  const [userOrdersList, setUserOrdersList] = useState<UserOrder[]>([]);
+  const [userOrdersLoading, setUserOrdersLoading] = useState(false);
   const itemsPerPage = 10;
   
   const { t } = useTranslation();
@@ -1942,10 +2103,25 @@ function SupportTicketsPage() {
 
   const sortedTickets = [...filteredTickets].sort((a, b) => {
     if (!sortField) return 0;
-    
+
+    if (sortField === 'user_product_count') {
+      const aVal = a.user_product_count ?? 0;
+      const bVal = b.user_product_count ?? 0;
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    }
+    if (sortField === 'user_order_count') {
+      const aVal = a.user_order_count ?? 0;
+      const bVal = b.user_order_count ?? 0;
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    }
+
     let aValue = a[sortField as keyof typeof a];
     let bValue = b[sortField as keyof typeof b];
-    
+
     if (aValue == null || bValue == null) return 0;
     if (typeof aValue === 'string') aValue = aValue.toLowerCase();
     if (typeof bValue === 'string') bValue = bValue.toLowerCase();
@@ -2467,6 +2643,54 @@ function SupportTicketsPage() {
     return ["lifetime", "admin"].includes(subscription);
   };
 
+  const openProductsDialog = useCallback(async (userId: string) => {
+    setProductsDialogUserId(userId);
+    setUserProductsList([]);
+    setUserProductsLoading(true);
+    try {
+      const res = await fetch(`/api/admin/user-products?user_id=${encodeURIComponent(userId)}`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.products)) {
+        setUserProductsList(data.products);
+      } else {
+        setUserProductsList([]);
+      }
+    } catch {
+      setUserProductsList([]);
+    } finally {
+      setUserProductsLoading(false);
+    }
+  }, []);
+
+  const closeProductsDialog = useCallback(() => {
+    setProductsDialogUserId(null);
+    setUserProductsList([]);
+  }, []);
+
+  const openOrdersDialog = useCallback(async (userId: string) => {
+    setOrdersDialogUserId(userId);
+    setUserOrdersList([]);
+    setUserOrdersLoading(true);
+    try {
+      const res = await fetch(`/api/admin/user-orders?user_id=${encodeURIComponent(userId)}`);
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.orders)) {
+        setUserOrdersList(data.orders);
+      } else {
+        setUserOrdersList([]);
+      }
+    } catch {
+      setUserOrdersList([]);
+    } finally {
+      setUserOrdersLoading(false);
+    }
+  }, []);
+
+  const closeOrdersDialog = useCallback(() => {
+    setOrdersDialogUserId(null);
+    setUserOrdersList([]);
+  }, []);
+
   const handleViewUser = async (userId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -2647,9 +2871,14 @@ function SupportTicketsPage() {
                   {t("admin.supportTickets.ticketTable.user", "User")}
                   {getSortIcon('user')}
                 </UserHeaderCell>
-                <TableHeaderCell>
-                  {t("admin.supportTickets.ticketTable.subscription", "Subscription")}
-                </TableHeaderCell>
+                <ProductsHeaderCell onClick={() => handleSort('user_product_count')}>
+                  {t("admin.supportTickets.ticketTable.products", "Products")}
+                  {getSortIcon('user_product_count')}
+                </ProductsHeaderCell>
+                <OrdersHeaderCell onClick={() => handleSort('user_order_count')}>
+                  {t("admin.supportTickets.ticketTable.orders", "Orders")}
+                  {getSortIcon('user_order_count')}
+                </OrdersHeaderCell>
                 <TableHeaderCell onClick={() => handleSort('status')}>
                   {t("admin.supportTickets.ticketTable.status", "Status")}
                   {getSortIcon('status')}
@@ -2665,10 +2894,10 @@ function SupportTicketsPage() {
             </TableHeader>
             <TableBody>
               {loadingTickets ? (
-                <TableLoadingRow colSpan={7} message="Loading tickets..." />
+                <TableLoadingRow colSpan={8} message="Loading tickets..." />
               ) : paginatedTickets.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                     No support tickets found
                   </td>
                 </tr>
@@ -2731,21 +2960,36 @@ function SupportTicketsPage() {
                       </TicketUser>
                     )}
                   </UserTableCell>
-                  <SubscriptionCell>
-                    <SubscriptionBadge
-                      $color={getSubscriptionBadgeColor(
-                        ticket.user_has_nfr ? "nfr" : (ticket.user_subscription || "none")
-                      )}
-                      $variant={
-                        ticket.user_has_nfr || isSubscriptionPremium(ticket.user_subscription || "none")
-                          ? "premium"
-                          : "default"
-                      }
-                    >
-                      {ticket.user_has_nfr ? <FaCrown /> : getSubscriptionIcon(ticket.user_subscription || "none")}
-                      {ticket.user_has_nfr ? "NFR" : (ticket.user_subscription || "none")}
-                    </SubscriptionBadge>
-                  </SubscriptionCell>
+                  <ProductsCell>
+                    {ticket.user_id && (ticket.user_product_count ?? 0) > 0 ? (
+                      <ProductsCountLink
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openProductsDialog(ticket.user_id);
+                        }}
+                      >
+                        {ticket.user_product_count}
+                      </ProductsCountLink>
+                    ) : (
+                      <CountPlaceholder>—</CountPlaceholder>
+                    )}
+                  </ProductsCell>
+                  <OrdersCell>
+                    {ticket.user_id && (ticket.user_order_count ?? 0) > 0 ? (
+                      <OrdersCountLink
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openOrdersDialog(ticket.user_id);
+                        }}
+                      >
+                        {ticket.user_order_count}
+                      </OrdersCountLink>
+                    ) : (
+                      <CountPlaceholder>—</CountPlaceholder>
+                    )}
+                  </OrdersCell>
                   <TableCell data-has-dropdown>
                     <StatusContainer data-status-dropdown>
                       <StatusBadge 
@@ -3076,6 +3320,112 @@ function SupportTicketsPage() {
           getDisplayName={getDisplayName}
         />
 
+        {/* User products dialog */}
+        <AnimatePresence>
+          {productsDialogUserId && (
+            <ModalOverlay
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeProductsDialog();
+              }}
+            >
+              <ProductsDialogContent
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ProductsDialogTitle>
+                  <span>Products owned</span>
+                  <CloseButton type="button" onClick={closeProductsDialog} aria-label="Close">
+                    <FaTimes />
+                  </CloseButton>
+                </ProductsDialogTitle>
+                {userProductsLoading ? (
+                  <div style={{ padding: "1rem", textAlign: "center", color: "var(--text-secondary)" }}>
+                    Loading…
+                  </div>
+                ) : userProductsList.length === 0 ? (
+                  <div style={{ padding: "1rem", color: "var(--text-secondary)" }}>
+                    No products
+                  </div>
+                ) : (
+                  <ProductsDialogList>
+                    {userProductsList.map((p) => (
+                      <ProductsDialogItem key={p.id}>
+                        <ProductsDialogLink href={`/product/${p.slug}`} target="_blank" rel="noopener noreferrer">
+                          {p.featured_image_url ? (
+                            <ProductsDialogThumb src={p.featured_image_url} alt="" />
+                          ) : (
+                            <ProductsDialogThumb as="div" style={{ background: "rgba(255,255,255,0.08)" }} aria-hidden />
+                          )}
+                          <span>{p.name}</span>
+                        </ProductsDialogLink>
+                      </ProductsDialogItem>
+                    ))}
+                  </ProductsDialogList>
+                )}
+              </ProductsDialogContent>
+            </ModalOverlay>
+          )}
+        </AnimatePresence>
+
+        {/* User orders dialog */}
+        <AnimatePresence>
+          {ordersDialogUserId && (
+            <ModalOverlay
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeOrdersDialog();
+              }}
+            >
+              <OrdersDialogContent
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <OrdersDialogTitle style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>Orders</span>
+                  <CloseButton type="button" onClick={closeOrdersDialog} aria-label="Close">
+                    <FaTimes />
+                  </CloseButton>
+                </OrdersDialogTitle>
+                {userOrdersLoading ? (
+                  <div style={{ padding: "1rem", textAlign: "center", color: "var(--text-secondary)" }}>
+                    Loading…
+                  </div>
+                ) : userOrdersList.length === 0 ? (
+                  <div style={{ padding: "1rem", color: "var(--text-secondary)" }}>
+                    No orders
+                  </div>
+                ) : (
+                  <OrdersDialogList>
+                    {userOrdersList.map((order) => (
+                      <OrdersDialogItem key={order.id}>
+                        {order.created
+                          ? new Date(order.created).toLocaleDateString(undefined, {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })
+                          : "—"}{" "}
+                        · {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(order.amount / 100)}
+                      </OrdersDialogItem>
+                    ))}
+                  </OrdersDialogList>
+                )}
+              </OrdersDialogContent>
+            </ModalOverlay>
+          )}
+        </AnimatePresence>
+
         {/* Ticket Conversation Modal */}
         <AnimatePresence>
           {selectedTicketId && (() => {
@@ -3173,21 +3523,41 @@ function SupportTicketsPage() {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
-                                {t("admin.supportTickets.ticketTable.subscription", "Subscription")}
+                                {t("admin.supportTickets.ticketTable.products", "Products")}
                               </div>
-                              <SubscriptionBadge
-                                $color={getSubscriptionBadgeColor(
-                                  ticket.user_has_nfr ? "nfr" : (ticket.user_subscription || "none")
-                                )}
-                                $variant={
-                                  ticket.user_has_nfr || isSubscriptionPremium(ticket.user_subscription || "none")
-                                    ? "premium"
-                                    : "default"
-                                }
-                              >
-                                {ticket.user_has_nfr ? <FaCrown /> : getSubscriptionIcon(ticket.user_subscription || "none")}
-                                {ticket.user_has_nfr ? "NFR" : (ticket.user_subscription || "none")}
-                              </SubscriptionBadge>
+                              {ticket.user_id && (ticket.user_product_count ?? 0) > 0 ? (
+                                <ProductsCountLink
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openProductsDialog(ticket.user_id);
+                                  }}
+                                  style={{ alignSelf: 'flex-start' }}
+                                >
+                                  {ticket.user_product_count}
+                                </ProductsCountLink>
+                              ) : (
+                                <CountPlaceholder>—</CountPlaceholder>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
+                                {t("admin.supportTickets.ticketTable.orders", "Orders")}
+                              </div>
+                              {ticket.user_id && (ticket.user_order_count ?? 0) > 0 ? (
+                                <OrdersCountLink
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openOrdersDialog(ticket.user_id);
+                                  }}
+                                  style={{ alignSelf: 'flex-start' }}
+                                >
+                                  {ticket.user_order_count}
+                                </OrdersCountLink>
+                              ) : (
+                                <CountPlaceholder>—</CountPlaceholder>
+                              )}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
