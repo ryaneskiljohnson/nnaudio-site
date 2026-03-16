@@ -244,7 +244,7 @@ export function generateHtmlFromElements(
 
         case "brand-header":
           // Use a more reliable image source and Gmail-compatible structure
-          const logoUrl = "https://nnaud.io/images/cm-logo.webp";
+          const logoUrl = "https://nnaud.io/images/nnaud-io/NNAudio-logo-white.webp";
           // Force brand header to align with content width
           const headerWrapperClass = "constrained-width";
 

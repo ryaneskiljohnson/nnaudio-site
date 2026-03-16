@@ -49,7 +49,7 @@ interface DynamicNextLayoutProps {
 
 const DynamicNextLayout: React.FC<DynamicNextLayoutProps> = ({
   children,
-  title = "CYMASPHERE - Sound Therapy & Brainwave Entertainment",
+  title = "NNAud.io – Resources for Modern Music Producers",
   showHeader = true,
   showFooter = true,
 }) => {
@@ -63,7 +63,7 @@ const DynamicNextLayout: React.FC<DynamicNextLayoutProps> = ({
         />
         <meta
           name="description"
-          content="CYMASPHERE offers sound therapy and brainwave entertainment through advanced frequency technology. Experience immersive soundscapes designed to enhance meditation, focus, creativity, and relaxation."
+          content="Discover premium plugins, sample packs, and tools designed to elevate your music production workflow."
         />
       </Head>
 

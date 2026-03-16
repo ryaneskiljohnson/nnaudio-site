@@ -579,7 +579,7 @@
     },
     "main": {
       "welcome": "Tekrar hoş geldiniz, {{name}}!",
-      "welcomeSubtitle": "CYMASPHERE hesabınızın genel bakışı",
+      "welcomeSubtitle": "NNAudio hesabınızın genel bakışı",
       "pleaseSignIn": "Kontrol panelinize erişmek için lütfen giriş yapın",
       "deviceConnections": "Cihaz Bağlantıları",
       "activeDevices": "Aktif cihaz bağlantıları",

@@ -20,7 +20,7 @@ export function generateWelcomeEmailHtml(data: WelcomeEmailData): string {
   const { customerName, customerEmail, purchaseType, subscriptionType, planName } = data;
   const firstName = customerName?.split(' ')[0] || 'there';
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io';
-  const logoUrl = `${siteUrl}/images/cm-logo.webp`;
+  const logoUrl = `${siteUrl}/images/nnaud-io/NNAudio-logo-white.webp`;
   
   // Format plan name for display
   let planDisplayName = '';

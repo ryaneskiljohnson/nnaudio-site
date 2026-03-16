@@ -1836,7 +1836,7 @@ export default function VisualEditor({
         return { 
           ...baseElement, 
           fullWidth: true,
-          content: 'CYMASPHERE',
+          content: 'NNAudio',
           backgroundColor: 'linear-gradient(135deg, #1a1a1a 0%, #121212 100%)',
           textColor: '#ffffff',
           logoStyle: 'gradient' // 'solid', 'gradient', 'outline'
@@ -3347,7 +3347,7 @@ export default function VisualEditor({
           }}>
             {/* Logo */}
             <img 
-              src="/images/cm-logo-icon.webp" 
+              src="/images/nnaud-io/logo-icon.webp" 
               alt="NNAudio Logo" 
               style={{
                 width: '36px',
@@ -3401,7 +3401,7 @@ export default function VisualEditor({
                   </span>
                 </>
               ) : (
-                <span>{element.content || 'CYMASPHERE'}</span>
+                <span>{element.content || 'NNAudio'}</span>
               )}
             </EditableText>
             
@@ -3890,7 +3890,7 @@ export default function VisualEditor({
                                     border-radius: 0;
                                     box-shadow: none;
                                   ">
-                                    <img src="/images/cm-logo-icon.webp" alt="NNAudio Logo" style="
+                                    <img src="/images/nnaud-io/logo-icon.webp" alt="NNAudio Logo" style="
                                       width: 36px;
                                       height: 36px;
                                       object-fit: contain;
@@ -4033,7 +4033,7 @@ export default function VisualEditor({
                           fontWeight: 'bold',
                           letterSpacing: '0.2em'
                       }}>
-                          [LOGO] {element.content || 'CYMASPHERE'}
+                          [LOGO] {element.content || 'NNAudio'}
                       </div>
                       )}
                       </div>

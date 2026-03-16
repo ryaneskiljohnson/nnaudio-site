@@ -570,7 +570,7 @@
     },
     "main": {
       "welcome": "Bon retour, {{name}} !",
-      "welcomeSubtitle": "Voici un aperçu de votre compte CYMASPHERE",
+      "welcomeSubtitle": "Voici un aperçu de votre compte NNAudio",
       "pleaseSignIn": "Veuillez vous connecter pour accéder à votre tableau de bord",
       "deviceConnections": "Connexions d'Appareils",
       "activeDevices": "Connexions d'appareils actives",

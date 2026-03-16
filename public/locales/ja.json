@@ -573,7 +573,7 @@
     },
     "main": {
       "welcome": "おかえりなさい、{{name}}さん！",
-      "welcomeSubtitle": "CYMASPHEREアカウントの概要です",
+      "welcomeSubtitle": "NNAudioアカウントの概要です",
       "pleaseSignIn": "ダッシュボードにアクセスするにはサインインしてください",
       "deviceConnections": "デバイス接続",
       "activeDevices": "アクティブなデバイス接続",

@@ -207,7 +207,7 @@ export async function previewEmail(campaignId: string): Promise<PreviewResponse>
 
           case 'brand-header':
             // Use a more reliable image source and Gmail-compatible structure
-            const logoUrl = "https://nnaud.io/images/cm-logo.webp";
+            const logoUrl = "https://nnaud.io/images/nnaud-io/NNAudio-logo-white.webp";
 
             // Force brand-header to align like send route: use constrained width container and 0 side padding
             const headerWrapperClass = 'container';

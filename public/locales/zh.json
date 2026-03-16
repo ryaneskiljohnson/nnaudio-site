@@ -487,7 +487,7 @@
     },
     "main": {
       "welcome": "欢迎回来，{{name}}！",
-      "welcomeSubtitle": "这是您的CYMASPHERE账户概览",
+      "welcomeSubtitle": "这是您的NNAudio账户概览",
       "pleaseSignIn": "请登录以访问您的仪表板",
       "deviceConnections": "设备连接",
       "activeDevices": "活跃设备连接",

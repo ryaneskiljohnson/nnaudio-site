@@ -3605,7 +3605,7 @@ function CreateCampaignPage() {
               border-radius: 0;
               box-shadow: none;
             ">
-              <img src="/images/cm-logo-icon.webp" alt="NNAudio Logo" style="
+              <img src="/images/nnaud-io/logo-icon.webp" alt="NNAudio Logo" style="
                 width: 36px;
                 height: 36px;
                 object-fit: contain;

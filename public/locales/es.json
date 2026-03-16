@@ -569,7 +569,7 @@
     },
     "main": {
       "welcome": "Bienvenido de nuevo, {{name}}!",
-      "welcomeSubtitle": "Aquí tienes un resumen de tu cuenta CYMASPHERE",
+      "welcomeSubtitle": "Aquí tienes un resumen de tu cuenta NNAudio",
       "pleaseSignIn": "Por favor, inicia sesión para acceder a tu panel de control",
       "deviceConnections": "Conexiones de Dispositivos",
       "activeDevices": "Conexiones de dispositivos activas",
