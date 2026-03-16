@@ -296,6 +296,39 @@ const MobileMenu = styled(motion.div)`
   }
 `;
 
+/** Wrapper for mobile menu content; matches landing page hamburger structure */
+const MobileMenuContent = styled(motion.div)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+`;
+
+/** Column so nav links share width and are left-aligned in boxes (like landing) */
+const MobileMenuColumn = styled.div`
+  width: max-content;
+  max-width: calc(100% - 40px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+`;
+
+const MobileNavLinks = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: 100%;
+  align-items: stretch;
+  padding: 8px 0 20px;
+  position: relative;
+  z-index: 1;
+`;
+
 interface NavItemProps {
   $active: string;
 }
@@ -352,62 +385,75 @@ interface MobileNavItemProps {
   $active: string;
 }
 
+/** Boxed, left-aligned nav item to match landing page mobile hamburger style */
 const MobileNavItem = styled(motion.div)<MobileNavItemProps>`
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 15px 30px;
+  justify-content: flex-start;
+  padding: 14px 24px;
   color: ${(props) =>
-    props.$active === "true" ? "var(--primary)" : "rgba(255, 255, 255, 0.7)"};
+    props.$active === "true" ? "var(--primary)" : "var(--text)"};
   font-weight: ${(props) => (props.$active === "true" ? "600" : "500")};
   letter-spacing: 0.3px;
   text-decoration: none;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   width: 100%;
+  box-sizing: border-box;
   cursor: pointer;
-  margin: 0.5rem 0;
+  margin: 8px 0;
   position: relative;
   font-size: 1.1rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-height: 50px;
+  min-height: 48px;
+  text-align: left;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
 
   &:hover {
-    color: white;
+    color: var(--primary);
+    background: rgba(108, 99, 255, 0.08);
+    transform: translate3d(0, -1px, 0);
+  }
+
+  &:active {
+    transform: translate3d(0, 0, 0);
   }
 
   svg {
-    margin-right: 1rem;
+    margin-right: 12px;
     font-size: 1.2rem;
+    color: var(--primary);
     flex-shrink: 0;
+    transition: transform 0.2s ease;
   }
 
-  &:after {
-    content: "";
-    position: absolute;
-    bottom: -2px;
-    left: 20%;
-    width: ${(props) => (props.$active === "true" ? "60%" : "0")};
-    height: 2px;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    transition: width 0.3s ease;
+  &:hover svg {
+    transform: scale(1.05);
   }
 
-  &:hover:after {
-    width: 60%;
-  }
+  ${(props) =>
+    props.$active === "true" &&
+    `
+    background: rgba(108, 99, 255, 0.12);
+    font-weight: 600;
+  `}
 `;
 
-const MobileNavTitle = styled.h3`
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0 0 1.5rem;
-  padding: 0 2rem;
+const MobileNavTitle = styled.h2`
+  color: var(--text);
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 12px;
   text-align: center;
-  width: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 1px;
+  align-self: center;
 `;
 
 const MobileFooterSection = styled.div`
@@ -561,12 +607,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     },
   };
 
-  // Function to handle navigation with router
+  // Function to handle navigation with router (close menu then navigate)
   const handleNavigation = (
-    e: React.MouseEvent<HTMLElement>,
+    _e: React.MouseEvent<HTMLElement>,
     path: string
   ) => {
-    e.preventDefault();
     setSidebarOpen(false);
     router.push(path);
   };
@@ -685,30 +730,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             className="mobile-logo"
             style={{ display: "flex", alignItems: "center" }}
           >
-            <span
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: "bold",
-                fontFamily: '"Montserrat", sans-serif',
-                letterSpacing: "2px",
-                textTransform: "uppercase",
-                marginLeft: "6px",
-              }}
-            >
-              <span
-                style={{
-                  background:
-                    "linear-gradient(90deg, var(--primary), var(--accent))",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
-              >
-                {t("common.brandFirst", "CYMA")}
-              </span>
-              <span style={{ color: "white" }}>
-                {t("common.brandSecond", "SPHERE")}
-              </span>
-            </span>
+            <NNAudioLogo size="44px" fontSize="1.5rem" />
           </div>
         </MobileLogoContent>
 
@@ -718,110 +740,104 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </MobileHeader>
       {sidebarOpen && (
         <MobileMenu initial="hidden" animate="visible" variants={fadeIn}>
-          <MobileNavTitle>
-            {t("dashboard.layout.account", "Account")}
-          </MobileNavTitle>
-
-          <Link href="/dashboard">
+          <MobileMenuContent>
+            <MobileNavTitle>
+              {t("dashboard.layout.account", "Account")}
+            </MobileNavTitle>
+            <MobileMenuColumn>
+              <MobileNavLinks>
+          <Link href="/dashboard" onClick={() => setSidebarOpen(false)}>
             <MobileNavItem
               $active={pathname === "/dashboard" ? "true" : "false"}
               variants={menuItemVariants}
               custom={0}
               initial="hidden"
               animate="visible"
-              onClick={(e) => handleNavigation(e, "/dashboard")}
             >
               <FaTachometerAlt /> {t("dashboard.layout.dashboard", "Dashboard")}
             </MobileNavItem>
           </Link>
 
-          <Link href="/profile">
+          <Link href="/profile" onClick={() => setSidebarOpen(false)}>
             <MobileNavItem
               $active={pathname === "/profile" ? "true" : "false"}
               variants={menuItemVariants}
               custom={1}
               initial="hidden"
               animate="visible"
-              onClick={(e) => handleNavigation(e, "/profile")}
             >
               <FaUser /> {t("dashboard.layout.profile", "Profile")}
             </MobileNavItem>
           </Link>
 
-          <Link href="/billing">
+          <Link href="/billing" onClick={() => setSidebarOpen(false)}>
             <MobileNavItem
               $active={pathname === "/billing" ? "true" : "false"}
               variants={menuItemVariants}
               custom={2}
               initial="hidden"
               animate="visible"
-              onClick={(e) => handleNavigation(e, "/billing")}
             >
               <FaCreditCard /> {t("dashboard.layout.billing", "Billing")}
             </MobileNavItem>
           </Link>
 
-          <Link href="/downloads">
+          <Link href="/downloads" onClick={() => setSidebarOpen(false)}>
             <MobileNavItem
               $active={pathname === "/downloads" ? "true" : "false"}
               variants={menuItemVariants}
               custom={3}
               initial="hidden"
               animate="visible"
-              onClick={(e) => handleNavigation(e, "/downloads")}
             >
               <FaDownload /> {t("dashboard.layout.downloads", "Downloads")}
             </MobileNavItem>
           </Link>
 
-          <Link href="/my-products">
+          <Link href="/my-products" onClick={() => setSidebarOpen(false)}>
             <MobileNavItem
               $active={pathname === "/my-products" ? "true" : "false"}
               variants={menuItemVariants}
               custom={4}
               initial="hidden"
               animate="visible"
-              onClick={(e) => handleNavigation(e, "/my-products")}
             >
               <FaBox /> {t("dashboard.layout.myProducts", "My Products")}
             </MobileNavItem>
           </Link>
 
-          <Link href="/support">
+          <Link href="/support" onClick={() => setSidebarOpen(false)}>
             <MobileNavItem
               $active={pathname === "/support" ? "true" : "false"}
               variants={menuItemVariants}
               custom={5}
               initial="hidden"
               animate="visible"
-              onClick={(e) => handleNavigation(e, "/support")}
             >
               <FaTicketAlt /> {t("dashboard.layout.support", "Support")}
             </MobileNavItem>
           </Link>
 
-          <Link href="/settings">
+          <Link href="/settings" onClick={() => setSidebarOpen(false)}>
             <MobileNavItem
               $active={pathname === "/settings" ? "true" : "false"}
               variants={menuItemVariants}
               custom={6}
               initial="hidden"
               animate="visible"
-              onClick={(e) => handleNavigation(e, "/settings")}
             >
               <FaCog /> {t("dashboard.layout.settings", "Settings")}
             </MobileNavItem>
           </Link>
 
           {user.is_admin && (
-            <Link href="/admin">
+            <Link href="/admin" onClick={() => setSidebarOpen(false)}>
               <MobileNavItem
                 $active={pathname.startsWith("/admin") ? "true" : "false"}
                 variants={menuItemVariants}
                 custom={7}
                 initial="hidden"
                 animate="visible"
-                onClick={(e) => handleNavigation(e, "/admin")}
               >
                 <FaShieldAlt />{" "}
                 {t("dashboard.layout.adminConsole", "Admin Console")}
@@ -829,18 +845,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </Link>
           )}
 
-          <Link href="/">
+          <Link href="/" onClick={() => setSidebarOpen(false)}>
             <MobileNavItem
               $active="false"
               variants={menuItemVariants}
               custom={8}
               initial="hidden"
               animate="visible"
-              onClick={(e) => handleNavigation(e, "/")}
             >
               <FaHome /> {t("dashboard.layout.backToHome", "Back to Home")}
             </MobileNavItem>
           </Link>
+              </MobileNavLinks>
+            </MobileMenuColumn>
 
           <MobileFooterSection>
             <MobileLanguageWrapper>
@@ -864,6 +881,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <FaSignOutAlt /> {t("dashboard.layout.logout", "Logout")}
             </LogoutButton>
           </MobileFooterSection>
+          </MobileMenuContent>
         </MobileMenu>
       )}
       <BackButtonContainer>
