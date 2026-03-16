@@ -1,10 +1,20 @@
+/**
+ * @fileoverview Full-screen WKWebView loading the NNAudio admin site; handles loading state and refresh.
+ * @note Uses a Safari-like User-Agent and a custom header so Vercel WAF can bypass the app without disabling Attack Challenge Mode.
+ */
 import UIKit
 import WebKit
+
+/// Header sent by the iOS app so Vercel Firewall can bypass Attack Challenge for this client only. Must match the WAF rule value.
+private let nnaudioAppBypassHeaderName = "X-NNAudio-App"
+private let nnaudioAppBypassHeaderValue = "1"
 
 class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     private var webView: WKWebView!
     private var loadingIndicator: UIActivityIndicatorView!
     private var refreshButton: UIButton!
+    /// True when we triggered a load with the bypass header; avoid cancelling it so we don't get "frame load interrupted".
+    private var loadingWithBypassHeader = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -50,7 +60,7 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     @objc private func refreshButtonTapped() {
         print("Refresh button tapped")
         refreshButton.isEnabled = false
-        webView.reload()
+        loadWebContent()
     }
     
     private func setupWebView() {
@@ -63,12 +73,27 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        
+        // Use Safari iOS User-Agent so the server doesn't block the WebView (e.g. 403 Forbidden).
+        // Default WKWebView UA can be blocked by CDNs/hosts; matching Safari avoids this.
+        webView.customUserAgent = safariLikeUserAgent()
+        
         view.addSubview(webView)
         
         // Enable debugging output
         if #available(iOS 16.4, *) {
             webView.isInspectable = true
         }
+    }
+    
+    /// Returns a Safari-on-iOS User-Agent so Vercel and other hosts recognize the request as a real browser.
+    /// Matches the exact format Safari sends (Version, Safari build, Mobile token).
+    /// - Returns: A User-Agent string matching Safari on the current iOS version.
+    private func safariLikeUserAgent() -> String {
+        let v = ProcessInfo.processInfo.operatingSystemVersion
+        let osToken = "\(v.majorVersion)_\(v.minorVersion)_\(v.patchVersion)"
+        let versionString = "\(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
+        return "Mozilla/5.0 (iPhone; CPU iPhone OS \(osToken) like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/\(versionString) Mobile/15E148 Safari/605.1.15"
     }
     
     private func setupLoadingIndicator() {
@@ -88,7 +113,9 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             return
         }
         
-        let request = URLRequest(url: url)
+        var request = URLRequest(url: url)
+        request.setValue(nnaudioAppBypassHeaderValue, forHTTPHeaderField: nnaudioAppBypassHeaderName)
+        loadingWithBypassHeader = true
         webView.load(request)
         loadingIndicator.startAnimating()
     }
@@ -111,6 +138,31 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     
     // MARK: - WKNavigationDelegate
+    
+    /// Send the bypass header on every main-frame request (redirects, link clicks). Our own loads are allowed so we don't get "frame load interrupted".
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        if loadingWithBypassHeader {
+            loadingWithBypassHeader = false
+            decisionHandler(.allow)
+            return
+        }
+        let isMainFrame = navigationAction.targetFrame?.isMainFrame ?? true
+        guard isMainFrame,
+              let url = navigationAction.request.url,
+              url.host?.lowercased().hasSuffix("nnaud.io") == true else {
+            decisionHandler(.allow)
+            return
+        }
+        if navigationAction.request.value(forHTTPHeaderField: nnaudioAppBypassHeaderName) != nil {
+            decisionHandler(.allow)
+            return
+        }
+        decisionHandler(.cancel)
+        var request = URLRequest(url: url)
+        request.setValue(nnaudioAppBypassHeaderValue, forHTTPHeaderField: nnaudioAppBypassHeaderName)
+        loadingWithBypassHeader = true
+        webView.load(request)
+    }
     
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         print("Started loading...")
@@ -140,10 +192,12 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         refreshButton.isEnabled = true
         refreshButton.alpha = 1.0
         
-        // Only show error if it's not a cancelled load
-        if (error as NSError).code != NSURLErrorCancelled {
-            showError(message: error.localizedDescription)
-        }
+        // Don't show alert for cancelled or interrupted loads (we cancel to re-load with bypass header).
+        let nsErr = error as NSError
+        if nsErr.code == NSURLErrorCancelled { return }
+        if nsErr.domain == "WebKitErrorDomain" && nsErr.code == 102 { return } // Frame load interrupted
+        if error.localizedDescription.lowercased().contains("interrupted") { return }
+        showError(message: error.localizedDescription)
     }
 }
 
