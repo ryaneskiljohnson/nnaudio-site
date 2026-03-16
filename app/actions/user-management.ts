@@ -1178,18 +1178,24 @@ export async function getSupportTicketsAdmin(): Promise<{
           userProductCountMap.set(userId, 0);
         }
 
-        // Order count (succeeded Stripe payment intents for customer)
+        // Order count (succeeded Stripe payment intents + product grants)
         try {
+          let orderCount = 0;
           if (profile?.customer_id) {
             const { data: paymentIntents } = await stripe.paymentIntents.list({
               customer: profile.customer_id,
               limit: 100,
             });
-            const count = paymentIntents.filter((pi) => pi.status === "succeeded").length;
-            userOrderCountMap.set(userId, count);
-          } else {
-            userOrderCountMap.set(userId, 0);
+            orderCount += paymentIntents.filter((pi) => pi.status === "succeeded").length;
           }
+          if (email) {
+            const { count: grantCount } = await (serviceSupabase as any)
+              .from("product_grants")
+              .select("id", { count: "exact", head: true })
+              .eq("user_email", email.toLowerCase().trim());
+            orderCount += grantCount ?? 0;
+          }
+          userOrderCountMap.set(userId, orderCount);
         } catch (orderErr) {
           console.error(`Error fetching order count for user ${userId}:`, orderErr);
           userOrderCountMap.set(userId, 0);

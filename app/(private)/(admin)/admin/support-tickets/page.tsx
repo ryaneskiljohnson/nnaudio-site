@@ -1808,8 +1808,10 @@ interface UserProduct {
 
 interface UserOrder {
   id: string;
-  amount: number;
+  type: "stripe" | "grant";
+  amountCents: number;
   created: string | null;
+  productName?: string | null;
 }
 
 function SupportTicketsPage() {
@@ -3408,7 +3410,7 @@ function SupportTicketsPage() {
                 ) : (
                   <OrdersDialogList>
                     {userOrdersList.map((order) => (
-                      <OrdersDialogItem key={order.id}>
+                      <OrdersDialogItem key={`${order.type}-${order.id}`}>
                         {order.created
                           ? new Date(order.created).toLocaleDateString(undefined, {
                               year: "numeric",
@@ -3416,7 +3418,8 @@ function SupportTicketsPage() {
                               day: "numeric",
                             })
                           : "—"}{" "}
-                        · {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(order.amount / 100)}
+                        · {order.type === "grant" ? (order.productName ? `Product grant: ${order.productName}` : "Product grant") : "Order"}{" "}
+                        · {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(order.amountCents / 100)}
                       </OrdersDialogItem>
                     ))}
                   </OrdersDialogList>
