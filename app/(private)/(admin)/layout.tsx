@@ -7,8 +7,8 @@ import {
   FaSignOutAlt,
   FaBars,
   FaHome,
-  FaArrowLeft,
   FaShieldAlt,
+  FaTachometerAlt,
   FaUsers,
   FaUserShield,
   FaTicketAlt,
@@ -196,6 +196,14 @@ const MobileLogoContent = styled.div`
   cursor: pointer;
 `;
 
+/** Left side of mobile header: logo + optional back link (matches dashboard layout) */
+const MobileHeaderLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+`;
+
 const UserInfo = styled.div`
   display: flex;
   flex-direction: column;
@@ -241,55 +249,6 @@ const LogoutButton = styled.button`
 
   svg {
     margin-right: 8px;
-  }
-`;
-
-const BackButtonContainer = styled.div`
-  position: fixed;
-  top: 25px;
-  right: 30px;
-  display: flex;
-  align-items: center;
-  z-index: 2000;
-  gap: 20px;
-
-  @media (max-width: 768px) {
-    top: 15px;
-    right: 15px;
-    z-index: 10001; /* Above mobile header */
-  }
-`;
-
-const BackButtonLink = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-size: 1rem;
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
-  padding: 8px 16px;
-  border-radius: 8px;
-  background-color: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  cursor: pointer;
-  backface-visibility: hidden;
-
-  &:hover {
-    color: var(--text);
-    text-decoration: none;
-    background-color: rgba(0, 0, 0, 0.5);
-    border-color: var(--primary);
-  }
-
-  svg {
-    margin-left: 8px;
-    flex-shrink: 0;
-  }
-
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-    padding: 6px 12px;
   }
 `;
 
@@ -1161,26 +1120,22 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </Sidebar>
           <MobileOverlay $isOpen={sidebarOpen} aria-hidden="true" />
           <MobileHeader>
+        <MobileHeaderLeft>
+          <MobileLogoContent
+            onClick={(e) => {
+              e.preventDefault();
+              handleNavigation(e as React.MouseEvent<HTMLElement>, "/admin");
+            }}
+            role="button"
+            aria-label="Admin dashboard"
+          >
+            <NNAudioLogo size="44px" fontSize="1.5rem" />
+          </MobileLogoContent>
+        </MobileHeaderLeft>
+
         <MenuButton onClick={() => setSidebarOpen(!sidebarOpen)}>
           {sidebarOpen ? <FaTimes /> : <FaBars />}
         </MenuButton>
-
-        <MobileLogoContent>
-          <NNAudioLogo
-            size="40px"
-            fontSize="1.4rem"
-            href="/admin"
-            onClick={(e: React.MouseEvent<HTMLElement>) =>
-              handleNavigation(
-                e as React.MouseEvent<HTMLAnchorElement>,
-                "/admin"
-              )
-            }
-            className="mobile-admin-logo"
-          />
-        </MobileLogoContent>
-
-        <div style={{ width: "24px" }} />
       </MobileHeader>
       {sidebarOpen && (
         <MobileMenu
@@ -1202,6 +1157,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onClick={(e) => handleNavigation(e, "/admin")}
             >
               <FaShieldAlt /> Admin Dashboard
+            </MobileNavItem>
+
+            <MobileNavItem
+              $active={pathname === "/dashboard" ? "true" : "false"}
+              variants={menuItemVariants}
+              custom={0.5}
+              initial="hidden"
+              animate="visible"
+              onClick={(e) => handleNavigation(e, "/dashboard")}
+            >
+              <FaTachometerAlt /> User Dashboard
             </MobileNavItem>
 
             <MobileNavItem
@@ -1483,12 +1449,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </MobileMenu>
       )}
       <Content $sidebarVisible={true}>
-          <BackButtonContainer>
-          <BackButtonLink href="/dashboard">
-            Back to Dashboard <FaArrowLeft />
-          </BackButtonLink>
-        </BackButtonContainer>
-
         <PageTransition
           initial="hidden"
           animate="visible"
