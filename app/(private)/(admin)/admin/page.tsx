@@ -31,6 +31,8 @@ import {
   getAverageSubscriptionLifespan,
   getYTDSales,
   getAnalyticsTimeSeries,
+  getRevenueSummaries,
+  type RevenueSummaries,
   AdminActivity,
 } from "@/utils/stripe/admin-analytics";
 import StatLoadingSpinner from "@/components/common/StatLoadingSpinner";
@@ -572,7 +574,9 @@ export default function AdminDashboard() {
     created_at: string;
     message_count: number;
   }>>([]);
-  
+  const [revenueSummaries, setRevenueSummaries] = useState<RevenueSummaries | null>(null);
+  const [loadingRevenueSummaries, setLoadingRevenueSummaries] = useState(true);
+
   // Individual loading states
   const [loadingTotalUsers, setLoadingTotalUsers] = useState(true);
   const [loadingActiveSubscriptions, setLoadingActiveSubscriptions] = useState(true);
@@ -752,6 +756,18 @@ export default function AdminDashboard() {
       }
     };
 
+    const fetchRevenueSummaries = async () => {
+      try {
+        setLoadingRevenueSummaries(true);
+        const data = await getRevenueSummaries();
+        setRevenueSummaries(data);
+      } catch (err) {
+        console.error("Error fetching revenue summaries:", err);
+      } finally {
+        setLoadingRevenueSummaries(false);
+      }
+    };
+
     // Fetch all stats independently
     fetchTotalUsers();
     fetchActiveSubscriptions();
@@ -766,6 +782,7 @@ export default function AdminDashboard() {
     fetchAverageSubscriptionLifespan();
     fetchRecentActivity();
     fetchSupportNotifications();
+    fetchRevenueSummaries();
 
     // Poll for new support notifications every 30 seconds
     const notificationInterval = setInterval(() => {
@@ -927,6 +944,41 @@ export default function AdminDashboard() {
             NNAudio Analytics & Management
           </Subtitle>
         </Header>
+        <StatsGrid>
+          <StatCard variants={fadeIn}>
+            <StatIcon><FaDollarSign /></StatIcon>
+            <StatContent>
+              <StatLabel>Total revenue today</StatLabel>
+              {loadingRevenueSummaries ? (
+                <StatValue><StatLoadingSpinner /></StatValue>
+              ) : (
+                <StatValue>{formatCurrency(revenueSummaries?.today ?? 0)}</StatValue>
+              )}
+            </StatContent>
+          </StatCard>
+          <StatCard variants={fadeIn}>
+            <StatIcon><FaMoneyBillWave /></StatIcon>
+            <StatContent>
+              <StatLabel>Last 7 days</StatLabel>
+              {loadingRevenueSummaries ? (
+                <StatValue><StatLoadingSpinner /></StatValue>
+              ) : (
+                <StatValue>{formatCurrency(revenueSummaries?.last7Days ?? 0)}</StatValue>
+              )}
+            </StatContent>
+          </StatCard>
+          <StatCard variants={fadeIn}>
+            <StatIcon><FaChartLine /></StatIcon>
+            <StatContent>
+              <StatLabel>Last 30 days</StatLabel>
+              {loadingRevenueSummaries ? (
+                <StatValue><StatLoadingSpinner /></StatValue>
+              ) : (
+                <StatValue>{formatCurrency(revenueSummaries?.last30Days ?? 0)}</StatValue>
+              )}
+            </StatContent>
+          </StatCard>
+        </StatsGrid>
           </>
         )}
 

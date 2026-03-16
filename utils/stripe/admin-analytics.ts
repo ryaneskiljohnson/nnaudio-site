@@ -486,6 +486,72 @@ export async function getMonthlyRevenue(): Promise<number> {
 }
 
 /**
+ * Revenue totals for today, last 7 days, and last 30 days (Stripe balance transactions, charge type).
+ * @returns { today, last7Days, last30Days } in dollars
+ */
+export interface RevenueSummaries {
+  today: number;
+  last7Days: number;
+  last30Days: number;
+}
+
+export async function getRevenueSummaries(): Promise<RevenueSummaries> {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return { today: 0, last7Days: 0, last30Days: 0 };
+    }
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    const oneDayAgo = nowSec - 24 * 60 * 60;
+    const sevenDaysAgo = nowSec - 7 * 24 * 60 * 60;
+    const thirtyDaysAgo = nowSec - 30 * 24 * 60 * 60;
+
+    let today = 0;
+    let last7Days = 0;
+    let last30Days = 0;
+    let hasMore = true;
+    let startingAfter: string | undefined = undefined;
+
+    while (hasMore) {
+      const balanceTransactions: Stripe.Response<
+        Stripe.ApiList<Stripe.BalanceTransaction>
+      > = await stripe.balanceTransactions.list({
+        created: { gte: thirtyDaysAgo },
+        limit: 100,
+        starting_after: startingAfter,
+      });
+
+      for (const transaction of balanceTransactions.data) {
+        if (transaction.type !== "charge" || transaction.amount <= 0) continue;
+        const amount = transaction.amount / 100;
+        const created = transaction.created;
+        last30Days += amount;
+        if (created >= sevenDaysAgo) last7Days += amount;
+        if (created >= oneDayAgo) today += amount;
+      }
+
+      hasMore = balanceTransactions.has_more;
+      if (balanceTransactions.data.length > 0) {
+        startingAfter =
+          balanceTransactions.data[balanceTransactions.data.length - 1].id;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    const round = (n: number) => Math.round(n * 100) / 100;
+    return {
+      today: round(today),
+      last7Days: round(last7Days),
+      last30Days: round(last30Days),
+    };
+  } catch (error) {
+    console.error("Error fetching revenue summaries:", error);
+    throw error;
+  }
+}
+
+/**
  * Fetches lifetime revenue using Balance Transactions API
  * This is much more efficient than querying invoices and charges separately
  */
