@@ -389,6 +389,29 @@ const NavItem = styled.div<NavItemProps>`
   `}
 `;
 
+const NavItemLabel = styled.span`
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const SupportTicketsBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: white;
+  background: #e74c3c;
+  border-radius: 999px;
+  flex-shrink: 0;
+`;
+
 const NavSection = styled.div`
   margin: 0.5rem 0;
 `;
@@ -578,6 +601,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [emailCampaignsExpanded, setEmailCampaignsExpanded] = useState(false);
   const [adManagerExpanded, setAdManagerExpanded] = useState(false);
+  const [supportTicketsUnreadCount, setSupportTicketsUnreadCount] = useState(0);
   const { user, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -659,6 +683,27 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       setAdManagerExpanded(true);
     }
   }, [pathname]);
+
+  // Fetch support tickets unread count for sidebar badge
+  useEffect(() => {
+    if (!user?.is_admin) return;
+    let cancelled = false;
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch("/api/admin/support-tickets/unread-count");
+        if (!cancelled && res.ok) {
+          const data = await res.json();
+          setSupportTicketsUnreadCount(typeof data.count === "number" ? data.count : 0);
+        }
+      } catch {
+        if (!cancelled) setSupportTicketsUnreadCount(0);
+      }
+    };
+    fetchUnread();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.is_admin, pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -823,7 +868,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               $active={pathname === "/admin/support-tickets" ? "true" : "false"}
               onClick={(e) => handleNavigation(e, "/admin/support-tickets")}
             >
-              <FaTicketAlt /> Support Tickets
+              <FaTicketAlt />
+              <NavItemLabel>Support Tickets</NavItemLabel>
+              {supportTicketsUnreadCount > 0 && (
+                <SupportTicketsBadge title={`${supportTicketsUnreadCount} unread`}>
+                  {supportTicketsUnreadCount > 99 ? "99+" : supportTicketsUnreadCount}
+                </SupportTicketsBadge>
+              )}
             </NavItem>
           </Link>
           <Link href="/admin/reviews">
@@ -1161,6 +1212,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onClick={(e) => handleNavigation(e, "/admin/support-tickets")}
             >
               <FaTicketAlt /> Support Tickets
+              {supportTicketsUnreadCount > 0 && (
+                <SupportTicketsBadge title={`${supportTicketsUnreadCount} unread`}>
+                  {supportTicketsUnreadCount > 99 ? "99+" : supportTicketsUnreadCount}
+                </SupportTicketsBadge>
+              )}
             </MobileNavItem>
           </Link>
           <Link href="/admin/reviews">
