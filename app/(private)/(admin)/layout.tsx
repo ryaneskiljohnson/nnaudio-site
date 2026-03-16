@@ -103,8 +103,7 @@ const Sidebar = styled.div<SidebarProps>`
   }
 
   @media (max-width: 768px) {
-    transform: ${(props) =>
-      props.$isOpen ? "translateX(0)" : "translateX(-100%)"};
+    display: none; /* Hide sidebar on mobile; use hamburger overlay only */
   }
 
   > * {
@@ -126,6 +125,7 @@ const MobileOverlay = styled.div<MobileOverlayProps>`
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 90;
   display: ${(props) => (props.$isOpen ? "block" : "none")};
+  pointer-events: none; /* don't capture clicks; menu (z-index 999) receives them */
 `;
 
 const LogoContainer = styled.div`
@@ -299,7 +299,7 @@ const MobileMenu = styled(motion.div)`
   left: 0;
   width: 100%;
   height: calc(100vh - 60px);
-  z-index: 999;
+  z-index: 9998; /* just below MobileHeader (9999) so menu receives all taps */
   padding: 1.5rem 0;
   overflow-y: auto;
   display: flex;
@@ -335,6 +335,39 @@ const MobileMenu = styled(motion.div)`
     z-index: -1;
     pointer-events: none;
   }
+`;
+
+/** Wrapper for mobile menu content; matches landing/dashboard hamburger structure */
+const MobileMenuContent = styled(motion.div)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+`;
+
+/** Column so nav links share width and are left-aligned in boxes */
+const MobileMenuColumn = styled.div`
+  width: max-content;
+  max-width: calc(100% - 40px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+`;
+
+const MobileNavLinks = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  min-width: 100%;
+  align-items: stretch;
+  padding: 8px 0 20px;
+  position: relative;
+  z-index: 1;
 `;
 
 interface NavItemProps {
@@ -512,62 +545,75 @@ interface MobileNavItemProps {
   $active: string;
 }
 
+/** Boxed, left-aligned nav item to match landing/dashboard mobile hamburger style */
 const MobileNavItem = styled(motion.div)<MobileNavItemProps>`
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 15px 30px;
+  justify-content: flex-start;
+  padding: 14px 24px;
   color: ${(props) =>
-    props.$active === "true" ? "var(--primary)" : "rgba(255, 255, 255, 0.7)"};
+    props.$active === "true" ? "var(--primary)" : "var(--text)"};
   font-weight: ${(props) => (props.$active === "true" ? "600" : "500")};
   letter-spacing: 0.3px;
   text-decoration: none;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   width: 100%;
+  box-sizing: border-box;
   cursor: pointer;
-  margin: 0.5rem 0;
+  margin: 8px 0;
   position: relative;
   font-size: 1.1rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-height: 50px;
+  min-height: 48px;
+  text-align: left;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
 
   &:hover {
-    color: white;
+    color: var(--primary);
+    background: rgba(108, 99, 255, 0.08);
+    transform: translate3d(0, -1px, 0);
+  }
+
+  &:active {
+    transform: translate3d(0, 0, 0);
   }
 
   svg {
-    margin-right: 1rem;
+    margin-right: 12px;
     font-size: 1.2rem;
+    color: var(--primary);
     flex-shrink: 0;
+    transition: transform 0.2s ease;
   }
 
-  &:after {
-    content: "";
-    position: absolute;
-    bottom: -2px;
-    left: 20%;
-    width: ${(props) => (props.$active === "true" ? "60%" : "0")};
-    height: 2px;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    transition: width 0.3s ease;
+  &:hover svg {
+    transform: scale(1.05);
   }
 
-  &:hover:after {
-    width: 60%;
-  }
+  ${(props) =>
+    props.$active === "true" &&
+    `
+    background: rgba(108, 99, 255, 0.12);
+    font-weight: 600;
+  `}
 `;
 
-const MobileNavTitle = styled.h3`
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0 0 1.5rem;
-  padding: 0 2rem;
+const MobileNavTitle = styled.h2`
+  color: var(--text);
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 12px;
   text-align: center;
-  width: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 1px;
+  align-self: center;
 `;
 
 const PageTransition = styled(motion.div)`
@@ -606,6 +652,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   // Check if user is admin
   useEffect(() => {
@@ -645,11 +692,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return "Guest";
   }, [user]);
 
-  const handleNavigation = (
-    e: React.MouseEvent<HTMLElement>,
-    href: string
-  ) => {
+  const handleNavigation = (e: React.MouseEvent<HTMLElement>, href: string) => {
     e.preventDefault();
+    e.stopPropagation();
     setSidebarOpen(false);
     router.push(href);
   };
@@ -706,18 +751,26 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }, [user?.is_admin, pathname]);
 
   useEffect(() => {
+    const isMobileViewport = window.innerWidth <= 768;
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        sidebarRef.current &&
-        !sidebarRef.current.contains(event.target as Node)
-      ) {
+      const target = event.target as Node;
+      const clickedDesktopSidebar =
+        sidebarRef.current?.contains(target) ?? false;
+      const clickedMobileMenu =
+        mobileMenuRef.current?.contains(target) ?? false;
+
+      if (!clickedDesktopSidebar && !clickedMobileMenu) {
         setSidebarOpen(false);
       }
     };
 
     if (sidebarOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
       document.body.style.overflow = "hidden";
+
+      if (!isMobileViewport) {
+        document.addEventListener("mousedown", handleClickOutside);
+      }
     } else {
       document.body.style.overflow = "unset";
     }
@@ -1106,7 +1159,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </LogoutButton>
         </UserInfo>
       </Sidebar>
-          <MobileOverlay $isOpen={sidebarOpen} />
+          <MobileOverlay $isOpen={sidebarOpen} aria-hidden="true" />
           <MobileHeader>
         <MenuButton onClick={() => setSidebarOpen(!sidebarOpen)}>
           {sidebarOpen ? <FaTimes /> : <FaBars />}
@@ -1114,8 +1167,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         <MobileLogoContent>
           <NNAudioLogo
-            size="24px"
-            fontSize="1.2rem"
+            size="40px"
+            fontSize="1.4rem"
             href="/admin"
             onClick={(e: React.MouseEvent<HTMLElement>) =>
               handleNavigation(
@@ -1130,10 +1183,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div style={{ width: "24px" }} />
       </MobileHeader>
       {sidebarOpen && (
-        <MobileMenu initial="hidden" animate="visible" variants={fadeIn}>
-          <MobileNavTitle>Admin Console</MobileNavTitle>
-
-          <Link href="/admin">
+        <MobileMenu
+          ref={mobileMenuRef}
+          initial="hidden"
+          animate="visible"
+          variants={fadeIn}
+        >
+          <MobileMenuContent>
+            <MobileNavTitle>Admin Console</MobileNavTitle>
+            <MobileMenuColumn>
+              <MobileNavLinks>
             <MobileNavItem
               $active={pathname === "/admin" ? "true" : "false"}
               variants={menuItemVariants}
@@ -1144,9 +1203,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaShieldAlt /> Admin Dashboard
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/users">
             <MobileNavItem
               $active={pathname === "/admin/users" ? "true" : "false"}
               variants={menuItemVariants}
@@ -1158,9 +1215,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <FaUsers />
               Users
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/coupons">
             <MobileNavItem
               $active={pathname === "/admin/coupons" ? "true" : "false"}
               variants={menuItemVariants}
@@ -1172,9 +1227,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <FaTag />
               Coupons
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/products">
             <MobileNavItem
               $active={pathname.startsWith("/admin/products") ? "true" : "false"}
               variants={menuItemVariants}
@@ -1186,9 +1239,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <FaBox />
               Products
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/promotions">
             <MobileNavItem
               $active={pathname === "/admin/promotions" ? "true" : "false"}
               variants={menuItemVariants}
@@ -1200,9 +1251,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <FaBullhorn />
               Promotions
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/support-tickets">
             <MobileNavItem
               $active={pathname === "/admin/support-tickets" ? "true" : "false"}
               variants={menuItemVariants}
@@ -1218,8 +1267,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 </SupportTicketsBadge>
               )}
             </MobileNavItem>
-          </Link>
-          <Link href="/admin/reviews">
             <MobileNavItem
               $active={pathname === "/admin/reviews" ? "true" : "false"}
               variants={menuItemVariants}
@@ -1230,9 +1277,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaStar /> Reviews
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/notifications">
             <MobileNavItem
               $active={pathname === "/admin/notifications" ? "true" : "false"}
               variants={menuItemVariants}
@@ -1243,9 +1288,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaBell /> Notifications
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/site-management">
             <MobileNavItem
               $active={pathname.startsWith("/admin/site-management") ? "true" : "false"}
               variants={menuItemVariants}
@@ -1256,9 +1299,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaCog /> Site Management
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/ad-manager">
             <MobileNavItem
               $active={pathname === "/admin/ad-manager" ? "true" : "false"}
               variants={menuItemVariants}
@@ -1269,8 +1310,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaFacebook /> Ad Manager
             </MobileNavItem>
-          </Link>
-          <Link href="/admin/ad-manager/campaigns">
             <MobileNavItem
               $active={pathname.startsWith("/admin/ad-manager/campaigns") ? "true" : "false"}
               variants={menuItemVariants}
@@ -1281,8 +1320,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaBullhorn /> Campaigns
             </MobileNavItem>
-          </Link>
-          <Link href="/admin/ad-manager/ads/create">
             <MobileNavItem
               $active={pathname === "/admin/ad-manager/ads/create" ? "true" : "false"}
               variants={menuItemVariants}
@@ -1293,8 +1330,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaPlus /> Create Ad
             </MobileNavItem>
-          </Link>
-          <Link href="/admin/ad-manager/audiences">
             <MobileNavItem
               $active={pathname.startsWith("/admin/ad-manager/audiences") ? "true" : "false"}
               variants={menuItemVariants}
@@ -1305,8 +1340,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaUsers /> Audiences
             </MobileNavItem>
-          </Link>
-          <Link href="/admin/ad-manager/analytics">
             <MobileNavItem
               $active={pathname.startsWith("/admin/ad-manager/analytics") ? "true" : "false"}
               variants={menuItemVariants}
@@ -1317,8 +1350,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaChartBar /> Analytics
             </MobileNavItem>
-          </Link>
-          <Link href="/admin/ad-manager/settings">
             <MobileNavItem
               $active={pathname.startsWith("/admin/ad-manager/settings") ? "true" : "false"}
               variants={menuItemVariants}
@@ -1329,9 +1360,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaCog /> Settings
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/email-campaigns/subscribers">
             <MobileNavItem
               $active={
                 pathname === "/admin/email-campaigns/subscribers"
@@ -1342,15 +1371,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               custom={5}
               initial="hidden"
               animate="visible"
-              onClick={(e) =>
-                handleNavigation(e, "/admin/email-campaigns/subscribers")
-              }
+              onClick={(e) => handleNavigation(e, "/admin/email-campaigns/subscribers")}
             >
               <FaUser /> Subscribers
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/email-campaigns/audiences">
             <MobileNavItem
               $active={
                 pathname === "/admin/email-campaigns/audiences"
@@ -1361,15 +1386,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               custom={6}
               initial="hidden"
               animate="visible"
-              onClick={(e) =>
-                handleNavigation(e, "/admin/email-campaigns/audiences")
-              }
+              onClick={(e) => handleNavigation(e, "/admin/email-campaigns/audiences")}
             >
               <FaUsers /> Audiences
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/email-campaigns/campaigns">
             <MobileNavItem
               $active={
                 pathname === "/admin/email-campaigns/campaigns"
@@ -1380,15 +1401,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               custom={7}
               initial="hidden"
               animate="visible"
-              onClick={(e) =>
-                handleNavigation(e, "/admin/email-campaigns/campaigns")
-              }
+              onClick={(e) => handleNavigation(e, "/admin/email-campaigns/campaigns")}
             >
               <FaEnvelopeOpen /> Campaigns
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/email-campaigns/templates">
             <MobileNavItem
               $active={
                 pathname === "/admin/email-campaigns/templates"
@@ -1399,15 +1416,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               custom={8}
               initial="hidden"
               animate="visible"
-              onClick={(e) =>
-                handleNavigation(e, "/admin/email-campaigns/templates")
-              }
+              onClick={(e) => handleNavigation(e, "/admin/email-campaigns/templates")}
             >
               <FaFileAlt /> Templates
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/email-campaigns/automations">
             <MobileNavItem
               $active={
                 pathname === "/admin/email-campaigns/automations"
@@ -1418,15 +1431,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               custom={9}
               initial="hidden"
               animate="visible"
-              onClick={(e) =>
-                handleNavigation(e, "/admin/email-campaigns/automations")
-              }
+              onClick={(e) => handleNavigation(e, "/admin/email-campaigns/automations")}
             >
               <FaCogs /> Automations
             </MobileNavItem>
-          </Link>
 
-          <Link href="/admin/email-campaigns/deliverability">
             <MobileNavItem
               $active={
                 pathname === "/admin/email-campaigns/deliverability"
@@ -1437,16 +1446,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               custom={10}
               initial="hidden"
               animate="visible"
-              onClick={(e) =>
-                handleNavigation(e, "/admin/email-campaigns/deliverability")
-              }
+              onClick={(e) => handleNavigation(e, "/admin/email-campaigns/deliverability")}
             >
               <FaShieldAlt /> Deliverability
             </MobileNavItem>
-          </Link>
 
 
-          <Link href="/">
             <MobileNavItem
               $active="false"
               variants={menuItemVariants}
@@ -1457,7 +1462,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaHome /> Back to Home
             </MobileNavItem>
-          </Link>
+              </MobileNavLinks>
+            </MobileMenuColumn>
 
           <MobileFooterSection>
             <MobileLanguageWrapper>
@@ -1473,6 +1479,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <FaSignOutAlt /> Logout
             </LogoutButton>
           </MobileFooterSection>
+          </MobileMenuContent>
         </MobileMenu>
       )}
       <Content $sidebarVisible={true}>
