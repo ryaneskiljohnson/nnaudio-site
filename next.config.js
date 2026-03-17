@@ -14,6 +14,16 @@ const nextConfig = {
     },
     // Turbopack config moved to top-level (deprecated in experimental)
   },
+  // Reduce serverless bundle: exclude build-only and test files from output tracing (Vercel 250 MB limit)
+  // See https://vercel.com/kb/guide/troubleshooting-function-250mb-limit
+  outputFileTracingExcludes: {
+    '*': [
+      './scripts/**',
+      '**/__tests__/**',
+      '**/*.test.{ts,tsx,js,jsx}',
+      '**/*.spec.{ts,tsx,js,jsx}',
+    ],
+  },
   // Keep serverless function under 250 MB: externalize heavy deps (loaded from node_modules at runtime)
   serverExternalPackages: [
     'node-cron',
