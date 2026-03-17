@@ -48,7 +48,7 @@ const theme = {
   },
 };
 
-const LayoutWrapper = styled.div`
+const LayoutWrapper = styled.div.attrs({ suppressHydrationWarning: true })`
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -59,7 +59,7 @@ const LayoutWrapper = styled.div`
 `;
 
 // Use simple div by default, upgrade to motion.main when animations are needed
-const Main = styled.main`
+const Main = styled.main.attrs({ suppressHydrationWarning: true })`
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -229,7 +229,7 @@ function LayoutContent({
   const shouldShowPromotion =
     hasActivePromotion && user?.profile?.subscription !== "lifetime";
   const isLandingPage = pathname === "/";
-  const showAccessBanner = isLandingPage && !shouldShowPromotion;
+  const showAccessBanner = !isLandingPage && !shouldShowPromotion;
   const hasAnyBanner = showAccessBanner || shouldShowPromotion;
 
   return (

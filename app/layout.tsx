@@ -6,7 +6,7 @@ import "./set-global-react";
 
 import { Geist } from "next/font/google";
 import { Montserrat } from "next/font/google";
-import { Metadata } from "next";
+import { Metadata, Viewport } from "next";
 import StyledComponentsRegistry from "./registry";
 import ClientLayout from "./ClientLayout";
 import I18nProvider from "@/app/i18n/I18nProvider";
@@ -21,8 +21,9 @@ export const dynamic = 'force-dynamic';
 
 // Metadata configuration – favicon and icons use NNAud.io logo (dev and release)
 export const metadata: Metadata = {
-  title: "NNAud.io – Resources for Modern Music Producers",
-  description: "Discover premium plugins, sample packs, and tools designed to elevate your music production workflow",
+  title: "NNAud.io – Plugins, Packs, And Creative Tools For Producers",
+  description:
+    "Discover free tools, premium plugins, deep sample packs, and NNAudio Access for a cleaner modern production workflow.",
   icons: {
     icon: [
       { url: "/images/nnaud-io/logo-icon.webp", sizes: "any" },
@@ -34,6 +35,11 @@ export const metadata: Metadata = {
     ],
     shortcut: "/images/nnaud-io/logo-icon.webp",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 // Theme configuration
@@ -94,7 +100,8 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//connect.facebook.net" />
         <link rel="dns-prefetch" href="//www.youtube.com" />
       </head>
-      <body>
+      {/* suppressHydrationWarning: Cursor browser/snapshot tooling can inject data-cursor-ref into the DOM before/during hydration, causing server/client attribute mismatch. In a normal browser (no Cursor extension) this does not occur. */}
+      <body suppressHydrationWarning>
         <Analytics />
         <SpeedInsights />
         <StyledComponentsRegistry>
