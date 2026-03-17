@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Primary site header with desktop and mobile navigation.
+ * @module components/layout/NextHeader
+ */
+
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
@@ -23,6 +28,7 @@ import {
 } from "react-icons/fa";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
+import { scrollToHash } from "@/utils/scrollToHash";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -150,7 +156,7 @@ const LogoText = styled.div`
 const Nav = styled.nav`
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 8px;
 
   @media (max-width: 968px) {
     display: none;
@@ -169,7 +175,7 @@ const NavLink = styled.div<{ $isActive: boolean }>`
   letter-spacing: 0.3px;
   position: relative;
   transition: color 0.3s ease;
-  margin: 0 15px;
+  margin: 0 10px;
   text-decoration: none !important;
   cursor: pointer;
 
@@ -631,6 +637,9 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [sideCartOpen, setSideCartOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    typeof window !== "undefined" ? window.innerWidth <= 991 : false
+  );
   const { user, signOut } = useAuth();
   const { getItemCount, items, isLoaded: isCartLoaded, suppressCartOpen, clearSuppressCartOpen } = useCart();
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -659,19 +668,34 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
     return undefined;
   }, []);
 
-  // Define nav items matching nnaud.io structure
+  /**
+   * @brief Defines the primary public navigation for storefront discovery.
+   * @note The logo already covers the home route, so the nav prioritizes
+   * catalog access and key conversion anchors.
+   */
   const navItems = useMemo(
     () => [
-      { name: "Home", path: "/" },
+      { name: "Free Tools", path: "/free-tools" },
       { name: "Plugins", path: "/plugins" },
       { name: "Packs", path: "/packs" },
-      { name: "All Products", path: "/products" },
       { name: "Bundles", path: "/bundles" },
+      { name: "All Products", path: "/products" },
       { name: "Pricing", path: "/#pricing" },
       { name: "FAQ", path: "/#faq" },
     ],
     [language]
   ); // Re-compute when language changes
+
+  useEffect(() => {
+    const syncViewport = () => {
+      setIsMobileViewport(window.innerWidth <= 991);
+    };
+
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+
+    return () => window.removeEventListener("resize", syncViewport);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -830,7 +854,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
 
   return (
     <>
-      <HeaderContainer $isScrolled={isScrolled} $menuOpen={menuOpen} $hasActiveBanner={hasActiveBanner}>
+      <HeaderContainer $isScrolled={isScrolled} $menuOpen={menuOpen} $hasActiveBanner={hasActiveBanner} suppressHydrationWarning>
         <HeaderContent $isScrolled={isScrolled}>
           <Link href="/" style={{ textDecoration: "none" }}>
             <LogoText>
@@ -845,34 +869,48 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
             </LogoText>
           </Link>
 
-          <Nav>
-            {navItems.map((item) => (
-              <Link key={item.name} href={item.path}>
-                <NavLink
-                  $isActive={
-                    pathname === item.path ||
-                    activeSection === item.path.replace("/#", "")
+          {!isMobileViewport ? (
+            <Nav>
+              {navItems.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.path}
+                  onClick={
+                    item.path.includes("#")
+                      ? (e) => {
+                          if (scrollToHash(item.path, pathname ?? "/")) {
+                            e.preventDefault();
+                          }
+                        }
+                      : undefined
                   }
                 >
-                  {item.name}
-                </NavLink>
-              </Link>
-            ))}
-            <div className="language-selector">
-              <NextLanguageSelector />
-            </div>
-            <AuthSection>{renderAuthSection()}</AuthSection>
-          </Nav>
-
-          <MobileActions>
-            <CartButton onClick={() => setSideCartOpen(true)}>
-              <FaShoppingCart />
-              {cartItemCount > 0 && <CartBadge>{cartItemCount > 99 ? '99+' : cartItemCount}</CartBadge>}
-            </CartButton>
-            <MenuToggle onClick={() => setMenuOpen(!menuOpen)}>
-              {menuOpen ? <FaTimes /> : <FaBars />}
-            </MenuToggle>
-          </MobileActions>
+                  <NavLink
+                    $isActive={
+                      pathname === item.path ||
+                      activeSection === item.path.replace("/#", "")
+                    }
+                  >
+                    {item.name}
+                  </NavLink>
+                </Link>
+              ))}
+              <div className="language-selector">
+                <NextLanguageSelector />
+              </div>
+              <AuthSection>{renderAuthSection()}</AuthSection>
+            </Nav>
+          ) : (
+            <MobileActions>
+              <CartButton onClick={() => setSideCartOpen(true)}>
+                <FaShoppingCart />
+                {cartItemCount > 0 && <CartBadge>{cartItemCount > 99 ? '99+' : cartItemCount}</CartBadge>}
+              </CartButton>
+              <MenuToggle onClick={() => setMenuOpen(!menuOpen)}>
+                {menuOpen ? <FaTimes /> : <FaBars />}
+              </MenuToggle>
+            </MobileActions>
+          )}
         </HeaderContent>
       </HeaderContainer>
       <AnimatePresence mode="wait">
@@ -891,16 +929,27 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
               <MobileMenuColumn>
               <MobileNavLinks>
                 {navItems.map((item, index) => (
-                  <Link key={item.name} href={item.path}>
+                  <Link
+                    key={item.name}
+                    href={item.path}
+                    onClick={(e) => {
+                      if (item.path.includes("#")) {
+                        if (scrollToHash(item.path, pathname ?? "/")) {
+                          e.preventDefault();
+                        }
+                      }
+                      setMenuOpen(false);
+                    }}
+                  >
                     <MobileNavLink
                       $isActive={pathname === item.path}
-                      onClick={() => setMenuOpen(false)}
                       variants={menuItemVariants}
                       custom={index}
                       initial="hidden"
                       animate="visible"
                     >
                       {item.path === "/" && <FaHome />}
+                      {item.path === "/free-tools" && <FaGift />}
                       {item.path === "/plugins" && <FaPuzzlePiece />}
                       {item.path === "/packs" && <FaHeadphones />}
                       {item.path === "/products" && <FaThList />}

@@ -18,6 +18,9 @@ import dynamic from "next/dynamic";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import i18next from "i18next";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { scrollToHash } from "@/utils/scrollToHash";
 // Import common pricing components
 import BillingToggle from "../pricing/BillingToggle";
 import PricingCard from "../pricing/PricingCard";
@@ -39,69 +42,40 @@ const NNAudioLogo = dynamic(() => import("../common/NNAudioLogo"), {
 }) as React.ComponentType<NNAudioLogoProps>;
 
 const PricingContainer = styled.section`
-  padding: 140px 20px;
-  background: radial-gradient(circle at 15% 20%, rgba(142, 65, 255, 0.18), transparent 32%),
-    radial-gradient(circle at 80% 0%, rgba(78, 205, 196, 0.18), transparent 30%),
-    linear-gradient(180deg, #06070f 0%, #0b0f1f 100%);
+  padding: 88px 20px 72px;
+  background: linear-gradient(180deg, #05060d 0%, #0b0f1f 100%);
   position: relative;
-  overflow: visible;
 `;
 
-const Glow = styled.div`
-    position: absolute;
-  width: 520px;
-  height: 520px;
-  border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.35;
-  background: radial-gradient(circle, rgba(138, 43, 226, 0.9), transparent 55%);
-  top: -120px;
-  left: -140px;
-  pointer-events: none;
-`;
-
-const GlowRight = styled(Glow)`
-  width: 420px;
-  height: 420px;
-  background: radial-gradient(circle, rgba(78, 205, 196, 0.9), transparent 55%);
-  top: 40px;
-  right: -120px;
-  left: auto;
-`;
-
-const ContentContainer = styled.div`
-  max-width: 980px;
+const Inner = styled.div`
+  max-width: 1200px;
   margin: 0 auto;
-  position: relative;
-  z-index: 3;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  padding: 52px 44px;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(8px);
+`;
+
+const Eyebrow = styled.p`
+  margin: 0 0 0.75rem;
+  text-align: center;
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 `;
 
 const SectionTitle = styled.h2`
-  font-size: 2.4rem;
+  margin: 0 0 1rem;
   text-align: center;
-  margin-bottom: 0.4rem;
-  margin-top: 0;
-  position: relative;
-  letter-spacing: -0.02em;
-  background: linear-gradient(90deg, #8a2be2 0%, #4ecdc4 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font-size: clamp(2rem, 3.5vw, 3rem);
 `;
 
 const SectionSubtitle = styled.p`
+  max-width: 760px;
+  margin: 0 auto 1.5rem;
   text-align: center;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 1.08rem;
-  max-width: 820px;
-  margin: 0 auto 22px;
-  line-height: 1.6;
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  line-height: 1.7;
 `;
 
 const PillRow = styled.div`
@@ -109,7 +83,7 @@ const PillRow = styled.div`
   flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
-  margin: 24px auto 32px;
+  margin: 1.5rem auto 2rem;
 `;
 
 const Pill = styled.span`
@@ -125,59 +99,71 @@ const Pill = styled.span`
 const Columns = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
-  margin-top: 22px;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
 `;
 
 const Card = styled.div`
-  background: rgba(255, 255, 255, 0.03);
+  padding: 1.25rem 1.35rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 20px 22px;
-  color: white;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
-  position: relative;
-  overflow: hidden;
-
-  &:before {
-    content: "";
-    position: absolute;
-    inset: 1px;
-    border-radius: 12px;
-    background: linear-gradient(140deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
-    pointer-events: none;
-  }
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.16);
 `;
 
 const CardTitle = styled.h3`
-  margin: 0 0 8px;
+  margin: 0 0 0.5rem;
+  color: var(--text);
   font-size: 1.1rem;
   font-weight: 700;
 `;
 
 const CardText = styled.p`
   margin: 0;
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.65;
-  font-size: 0.97rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-size: 0.95rem;
 `;
 
-// Simplified particle element - just one subtle accent
-const Particle = styled.div`
-  position: absolute;
-  background: linear-gradient(90deg, var(--primary), var(--accent));
-  border-radius: 50%;
-  opacity: 0.05;
-  z-index: 0;
-  filter: blur(20px);
-  width: 200px;
-  height: 200px;
-  bottom: 5%;
-  right: 5%;
+const ActionRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2.5rem;
+`;
+
+const ActionLink = styled(Link)<{ $primary?: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem 1.4rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 700;
+  transition: all 0.25s ease;
+
+  ${(props) =>
+    props.$primary
+      ? `
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    box-shadow: 0 12px 30px rgba(108, 99, 255, 0.28);
+  `
+      : `
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: white;
+  `}
+
+  &:hover {
+    transform: translateY(-2px);
+  }
 `;
 
 const PricingSection = () => {
   const { t } = useTranslation();
+  const pathname = usePathname();
   // Get authentication context
   const { user } = useAuth();
 
@@ -331,28 +317,29 @@ const PricingSection = () => {
 
   return (
     <PricingContainer id="pricing">
-      <Particle />
-      <ContentContainer>
+      <Inner>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true, amount: 0.2 }}
         >
+          <Eyebrow>{t("pricing.eyebrow", "Pricing")}</Eyebrow>
           <SectionTitle>
             {t("pricing.simpleTransparent", "Simple, Transparent Pricing")}
           </SectionTitle>
 
           {/* Promotional Sale Banner - Only show if header banner has been dismissed (to avoid duplicate) and user doesn't have lifetime */}
           {/* CRITICAL: Check user subscription FIRST - never show for lifetime users */}
-          {!(user?.profile?.subscription === "lifetime") && 
-           hasActiveSale && 
-           isBannerDismissed && 
-           <PromotionBanner showCountdown={true} dismissible={false} variant="card" />}
+          {!(user?.profile?.subscription === "lifetime") &&
+            hasActiveSale &&
+            isBannerDismissed && (
+              <PromotionBanner showCountdown={true} dismissible={false} variant="card" />
+            )}
 
           <SectionSubtitle>
-            We keep pricing frictionless: own singles forever, bundle to save,
-            or subscribe if you want fresh drops and updates rolling in.
+            Start with free tools, buy only what fits, or move into bundles when
+            you want more range and a bigger setup in one move.
           </SectionSubtitle>
 
           <PillRow>
@@ -365,27 +352,42 @@ const PricingSection = () => {
             <Card>
               <CardTitle>Individual Products</CardTitle>
               <CardText>
-                Every plugin, MIDI pack, loop pack, and preset is a one-time purchase. Buy it once,
-                keep it forever. Zero subscriptions required.
+                Every plugin, MIDI pack, loop pack, and preset is a one-time purchase.
+                Buy it once, keep it, and use it on your own terms.
               </CardText>
             </Card>
             <Card>
               <CardTitle>Bundles</CardTitle>
               <CardText>
-                Get everything in a category (or everything we make) and save. Grab a one-time bundle
-                to own it all, or pick monthly/annual if you want lower upfront and constant updates.
+                Get deeper value fast. Bundles are the cleanest path when you
+                already know you want more sounds, more tools, and a more complete setup.
               </CardText>
             </Card>
             <Card>
               <CardTitle>Subscriptions</CardTitle>
               <CardText>
-                Subscriptions keep you synced with new drops and updates in the bundle you choose.
-                Cancel anytime. Prefer ownership? There’s always a one-time option right beside it.
+                Prefer lower upfront cost? Subscription options keep you current
+                on the bundle you choose. Prefer ownership? One-time options are right there too.
               </CardText>
             </Card>
           </Columns>
+
+          <ActionRow>
+            <ActionLink
+              href="#bundles"
+              $primary
+              onClick={(e) => {
+                if (scrollToHash("#bundles", pathname ?? "/")) e.preventDefault();
+              }}
+            >
+              See Elite Bundles
+            </ActionLink>
+            <ActionLink href="/product/cymasphere">
+              Explore Cymasphere
+            </ActionLink>
+          </ActionRow>
         </motion.div>
-      </ContentContainer>
+      </Inner>
     </PricingContainer>
   );
 };

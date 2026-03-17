@@ -1,6 +1,10 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { scrollToHash } from "@/utils/scrollToHash";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaXTwitter,
@@ -359,6 +363,7 @@ function getTranslation(key: string, defaultValue: string, options?: Record<stri
 }
 
 const Footer = () => {
+  const pathname = usePathname();
   // All hooks at the top in consistent order
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -367,6 +372,7 @@ const Footer = () => {
   const [contactForm, setContactForm] = useState({
     name: "",
     email: "",
+    subject: "",
     message: "",
   });
   const [isContactSubmitting, setIsContactSubmitting] = useState(false);
@@ -408,7 +414,7 @@ const Footer = () => {
     e.preventDefault();
     
     // Basic validation
-    if (!contactForm.name || !contactForm.email || !contactForm.message) {
+    if (!contactForm.name || !contactForm.email || !contactForm.subject || !contactForm.message) {
       alert(getTranslation("dashboard.main.fillAllFields", "Please fill in all fields"));
       return;
     }
@@ -416,14 +422,29 @@ const Footer = () => {
     setIsContactSubmitting(true);
 
     try {
-      // TODO: Implement actual contact form submission
-      // Simulate an API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: contactForm.name,
+          email: contactForm.email,
+          subject: contactForm.subject,
+          message: contactForm.message,
+        }),
+      });
 
-      // Show success message
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to send message");
+      }
+
       setContactForm({
         name: "",
         email: "",
+        subject: "",
         message: "",
       });
       setShowContactModal(false);
@@ -437,7 +458,7 @@ const Footer = () => {
   };
 
   return (
-    <FooterContainer>
+    <FooterContainer suppressHydrationWarning>
       <FooterContent>
         <FooterColumn>
           <Link href="/">
@@ -459,7 +480,10 @@ const Footer = () => {
             </FooterLogo>
           </Link>
           <FooterDescription>
-            {getTranslation("footer.description", "Resources for Modern Music Producers. Discover premium plugins, sample packs, and tools designed to elevate your music production workflow.")}
+            {getTranslation(
+              "footer.description",
+              "Free tools, premium plugins, deep sample packs, and a better way to manage everything you own with NNAudio Access."
+            )}
           </FooterDescription>
           <SocialLinks>
             <SocialIcon
@@ -502,6 +526,9 @@ const Footer = () => {
           <Link href="/">
             <FooterLink>{getTranslation("header.home", "Home")}</FooterLink>
           </Link>
+          <Link href="/free-tools">
+            <FooterLink>Free Tools</FooterLink>
+          </Link>
           <Link href="/plugins">
             <FooterLink>Plugins</FooterLink>
           </Link>
@@ -511,12 +538,26 @@ const Footer = () => {
           <Link href="/products">
             <FooterLink>All Products</FooterLink>
           </Link>
-          <FooterAnchor as="a" href="#pricing">
-            {getTranslation("header.pricing", "Pricing")}
-          </FooterAnchor>
-          <FooterAnchor as="a" href="/#faq">
-            {getTranslation("header.faq", "FAQ")}
-          </FooterAnchor>
+          <Link
+            href="/#pricing"
+            onClick={(e) => {
+              if (scrollToHash("/#pricing", pathname ?? "/")) e.preventDefault();
+            }}
+          >
+            <FooterAnchor as="span">
+              {getTranslation("header.pricing", "Pricing")}
+            </FooterAnchor>
+          </Link>
+          <Link
+            href="/#faq"
+            onClick={(e) => {
+              if (scrollToHash("/#faq", pathname ?? "/")) e.preventDefault();
+            }}
+          >
+            <FooterAnchor as="span">
+              {getTranslation("header.faq", "FAQ")}
+            </FooterAnchor>
+          </Link>
         </FooterColumn>
 
         <FooterColumn>
@@ -632,6 +673,26 @@ const Footer = () => {
                       name="email"
                       type="email"
                       value={contactForm.email}
+                      onChange={handleContactInputChange}
+                      required
+                    />
+                  </div>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label
+                      htmlFor="contact-subject"
+                      style={{
+                        display: "block",
+                        marginBottom: "0.5rem",
+                        color: "var(--text-secondary)",
+                      }}
+                    >
+                      {getTranslation("dashboard.support.form.subject", "Subject")}
+                    </label>
+                    <FormInput
+                      id="contact-subject"
+                      name="subject"
+                      type="text"
+                      value={contactForm.subject}
                       onChange={handleContactInputChange}
                       required
                     />

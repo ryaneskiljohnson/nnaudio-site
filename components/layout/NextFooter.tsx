@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Site footer with navigation, company links, and legal modals.
+ * @module components/layout/NextFooter
+ */
+
 import React, { useState } from "react";
 import styled from "styled-components";
 import Link from "next/link";
@@ -13,6 +18,7 @@ import AboutUsModal from "../modals/AboutUsModal";
 import NNAudioLogo from "../common/NNAudioLogo";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
+import { scrollToHash } from "@/utils/scrollToHash";
 
 const FooterContainer = styled.footer`
   background-color: var(--surface);
@@ -199,7 +205,8 @@ const NextFooter = () => {
             </FooterLogoLink>
           </Link>
           <FooterDescription>
-            Resources for Modern Music Producers. Discover premium plugins, sample packs, and tools designed to elevate your music production workflow.
+            Free tools, premium plugins, deep sample packs, and a better way to
+            manage everything you own with NNAudio Access.
           </FooterDescription>
           <SocialLinks>
             <SocialIcon
@@ -242,6 +249,9 @@ const NextFooter = () => {
           <Link href="/">
             <FooterLink>Home</FooterLink>
           </Link>
+          <Link href="/free-tools">
+            <FooterLink>Free Tools</FooterLink>
+          </Link>
           <Link href="/plugins">
             <FooterLink>Plugins</FooterLink>
           </Link>
@@ -251,12 +261,22 @@ const NextFooter = () => {
           <Link href="/products">
             <FooterLink>All Products</FooterLink>
           </Link>
-          <FooterLink as="a" href="#pricing">
-            Pricing
-          </FooterLink>
-          <FooterLink as="a" href="/#faq">
-            FAQ
-          </FooterLink>
+          <Link
+            href="/#pricing"
+            onClick={(e) => {
+              if (scrollToHash("/#pricing", pathname ?? "/")) e.preventDefault();
+            }}
+          >
+            <FooterLink>Pricing</FooterLink>
+          </Link>
+          <Link
+            href="/#faq"
+            onClick={(e) => {
+              if (scrollToHash("/#faq", pathname ?? "/")) e.preventDefault();
+            }}
+          >
+            <FooterLink>FAQ</FooterLink>
+          </Link>
         </FooterColumn>
 
         <FooterColumn>

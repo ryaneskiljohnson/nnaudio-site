@@ -1,10 +1,18 @@
+/**
+ * @fileoverview Homepage hero section for the primary public growth promise and
+ * top-of-funnel CTA routing.
+ * @module components/sections/NNAudHeroSection
+ */
+
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import styled from "styled-components";
 import { motion, useAnimation } from "framer-motion";
 import Image from "next/image";
 import HeroMosaic from "./HeroMosaic";
+import { scrollToHash } from "@/utils/scrollToHash";
 
 const HeroContainer = styled.section`
   min-height: 100vh;
@@ -51,6 +59,16 @@ const HeroContent = styled.div`
   @media (max-width: 768px) {
     padding: 2rem 1.5rem;
   }
+`;
+
+const Eyebrow = styled(motion.p)`
+  margin: 0 0 0.9rem;
+  color: rgba(78, 205, 196, 0.95);
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
 `;
 
 const LogoContainer = styled(motion.div)`
@@ -160,7 +178,13 @@ const SecondaryButton = styled(motion.a)`
   }
 `;
 
+/**
+ * @brief Renders the homepage hero and routes visitors into the primary growth
+ * paths.
+ * @returns NNAud.io hero section.
+ */
 const NNAudHeroSection = () => {
+  const pathname = usePathname();
   const [allProducts, setAllProducts] = useState<Array<{
     id: string;
     name: string;
@@ -229,12 +253,20 @@ const NNAudHeroSection = () => {
           />
         </LogoContainer>
 
+        <Eyebrow
+          initial={{ opacity: 0, y: 20 }}
+          animate={subtitleControls}
+          transition={{ duration: 0.8, delay: 0.15 }}
+        >
+          Free tools • premium plugins • deep packs • NNAudio Access
+        </Eyebrow>
+
         <HeroTitle
           initial={{ opacity: 0, y: 20 }}
           animate={titleControls}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          Resources for Modern Music Producers
+          Build better sessions with sounds and tools that keep you moving.
         </HeroTitle>
 
         <HeroSubtitle
@@ -242,8 +274,8 @@ const NNAudHeroSection = () => {
           animate={subtitleControls}
           transition={{ duration: 0.8, delay: 0.4 }}
         >
-          Discover premium plugins, sample packs, MIDI tools, and more<br />
-          designed to elevate your music production workflow
+          Start with the free collection, move into standout plugins, packs,
+          and bundles, and keep everything organized through NNAudio Access.
         </HeroSubtitle>
 
         <ButtonGroup
@@ -252,18 +284,21 @@ const NNAudHeroSection = () => {
           transition={{ duration: 0.8, delay: 0.6 }}
         >
           <PrimaryButton
-            href="/plugins"
+            href="/free-tools"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            Browse Plugins
+            Get Free Tools
           </PrimaryButton>
           <SecondaryButton
-            href="#packs"
+            href="#featured"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={(e) => {
+              if (scrollToHash("#featured", pathname ?? "/")) e.preventDefault();
+            }}
           >
-            View Packs
+            See Best Sellers
           </SecondaryButton>
         </ButtonGroup>
       </HeroContent>
