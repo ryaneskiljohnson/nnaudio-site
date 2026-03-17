@@ -1,10 +1,18 @@
+/**
+ * @fileoverview Full public catalog page with search, sort, and category-aware
+ * deep links from the homepage merch sections.
+ * @module app/products/page
+ */
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
 import styled from "styled-components";
+import { useSearchParams } from "next/navigation";
 import ProductCard from "@/components/products/ProductCard";
 import ProductSearchAndSort, { SortOption } from "@/components/products/ProductSearchAndSort";
 import LoadingComponent from "@/components/common/LoadingComponent";
+import { ALL_CATEGORIES, CATEGORY_LABELS } from "@/utils/catalog-taxonomy";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -73,16 +81,42 @@ const ProductsGrid = styled.div`
 `;
 
 export default function ProductsPage() {
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
+  const categoryLabels = CATEGORY_LABELS;
+
+  const categoryOptions = useMemo(
+    () => ["all", ...ALL_CATEGORIES],
+    []
+  );
+
   useEffect(() => {
     fetchProducts();
   }, []);
 
+  /**
+   * @brief Syncs homepage deep-link params into the catalog filters.
+   * @note Supported params: `category` and `q`.
+   */
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    const queryParam = searchParams.get('q');
+
+    setSelectedCategory(
+      categoryParam && categoryOptions.includes(categoryParam) ? categoryParam : 'all'
+    );
+    setSearchQuery(queryParam ?? '');
+  }, [searchParams, categoryOptions]);
+
+  /**
+   * @brief Loads the full active product catalog for public browsing.
+   * @returns Promise that resolves after state has been updated.
+   */
   const fetchProducts = async () => {
     try {
       setLoading(true);
@@ -192,7 +226,7 @@ export default function ProductsPage() {
     <Container>
       <Header>
         <Title>All Products</Title>
-        <Subtitle>Discover our complete collection of music production tools</Subtitle>
+        <Subtitle>Browse the full NNAud.io catalog across plugins, packs, bundles, apps, and the edge-case tools that do not fit a single merch slot on the homepage.</Subtitle>
       </Header>
 
       {!loading && (
@@ -206,16 +240,7 @@ export default function ProductsPage() {
             totalCount={products.length}
           />
         <FilterBar>
-            {['all', 'audio-fx-plugin', 'instrument-plugin', 'pack', 'bundle', 'preset', 'template'].map(category => {
-              const categoryLabels: Record<string, string> = {
-                'all': 'All Products',
-                'audio-fx-plugin': 'Audio FX',
-                'instrument-plugin': 'Instruments',
-                'pack': 'Packs',
-                'bundle': 'Bundles',
-                'preset': 'Presets',
-                'template': 'Templates',
-              };
+            {categoryOptions.map(category => {
               return (
             <FilterButton
               key={category}
