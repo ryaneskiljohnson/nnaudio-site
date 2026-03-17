@@ -14,8 +14,22 @@ const nextConfig = {
     },
     // Turbopack config moved to top-level (deprecated in experimental)
   },
-  // Exclude node-cron and canvas from Edge runtime bundling (they use native modules)
-  serverExternalPackages: ['node-cron', 'canvas'],
+  // Keep serverless function under 250 MB: externalize heavy deps (loaded from node_modules at runtime)
+  serverExternalPackages: [
+    'node-cron',
+    'canvas',
+    '@aws-sdk/client-s3',
+    '@aws-sdk/client-sts',
+    '@aws-sdk/credential-providers',
+    'langchain',
+    '@langchain/classic',
+    '@langchain/core',
+    '@langchain/openai',
+    '@langchain/textsplitters',
+    'jsdom',
+    'jspdf',
+    'openai',
+  ],
   async redirects() {
     return [
       { source: '/faq', destination: '/#faq', permanent: false },
