@@ -192,22 +192,28 @@ export async function getSubscribers(
       throw new Error('Failed to fetch subscribers');
     }
 
-    // Get stats for all subscribers
-    const { data: statsData } = await supabase
-      .from('subscribers')
-      .select('status')
-      .neq('status', null);
+    // Get stats using count queries (avoids default 1000 row limit on select)
+    const totalForStats = count ?? 0;
+    const [
+      { count: activeCount },
+      { count: unsubscribedCount },
+      { count: bouncedCount },
+      { count: pendingCount },
+    ] = await Promise.all([
+      supabase.from('subscribers').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('subscribers').select('id', { count: 'exact', head: true }).eq('status', 'unsubscribed'),
+      supabase.from('subscribers').select('id', { count: 'exact', head: true }).eq('status', 'bounced'),
+      supabase.from('subscribers').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    ]);
 
+    const active = activeCount ?? 0;
     const stats = {
-      total: count || 0,
-      active: statsData?.filter((s) => s.status === 'active').length || 0,
-      unsubscribed:
-        statsData?.filter((s) => s.status === 'unsubscribed').length || 0,
-      bounced: statsData?.filter((s) => s.status === 'bounced').length || 0,
-      pending: statsData?.filter((s) => s.status === 'pending').length || 0,
-      highEngagement: Math.floor(
-        (statsData?.filter((s) => s.status === 'active').length || 0) * 0.3
-      ),
+      total: totalForStats,
+      active,
+      unsubscribed: unsubscribedCount ?? 0,
+      bounced: bouncedCount ?? 0,
+      pending: pendingCount ?? 0,
+      highEngagement: Math.floor(active * 0.3),
       growthRate: '12%',
     };
 
