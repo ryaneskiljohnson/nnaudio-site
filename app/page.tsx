@@ -1,9 +1,19 @@
 "use client";
 
-// NNAud.io style landing page
+/**
+ * @fileoverview Public homepage that merchandises the NNAud.io growth ladder:
+ * free tools, bundles, flagship products, pricing, and FAQ.
+ * @module app/page
+ */
+
 import { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import NNAudHeroSection from "@/components/sections/NNAudHeroSection";
+import StartHereSection from "@/components/sections/StartHereSection";
+import ProofPointsSection from "@/components/sections/ProofPointsSection";
+import ConversionCtaSection from "@/components/sections/ConversionCtaSection";
+import PremiumSpotlightSection from "@/components/sections/PremiumSpotlightSection";
+import FreeCollectionSection from "@/components/sections/FreeCollectionSection";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import ProductsSectionSkeleton from "@/components/sections/ProductsSectionSkeleton";
 import FeaturedProductsSectionSkeleton from "@/components/sections/FeaturedProductsSectionSkeleton";
@@ -223,6 +233,10 @@ const staticFeaturedProducts = [
   },
 ];
 
+function isFreeProduct(product: { price?: number | null; sale_price?: number | null }) {
+  return product.price === 0 || product.sale_price === 0;
+}
+
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
   const [bundles, setBundles] = useState<any[]>([]);
@@ -275,14 +289,33 @@ export default function Home() {
                 hasMultiplePricing: isBundle || p.category === 'bundle',
               };
             });
-          setFeaturedProducts(mappedFeatured || []);
+          const curatedFeaturedOrder = [
+            "ultimate-bundle",
+            "cymasphere",
+            "curio-texture-generator",
+            "reiya",
+            "obscura-tortured-orchestral-box",
+          ];
+          const sortedFeatured = mappedFeatured
+            .sort((a: any, b: any) => {
+              const aIndex = curatedFeaturedOrder.indexOf(a.slug);
+              const bIndex = curatedFeaturedOrder.indexOf(b.slug);
+              const normalizedA = aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex;
+              const normalizedB = bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex;
+              return normalizedA - normalizedB;
+            })
+            .slice(0, 5);
+          setFeaturedProducts(sortedFeatured || []);
         } else {
           setFeaturedProducts([]);
         }
 
         // Map bundles from /api/bundles: correct pricing, images (bundle or first product), totalValue for strikethrough
         if (bundlesData.success && bundlesData.bundles) {
-          const mappedBundles = bundlesData.bundles.map((b: any) => {
+          const eliteBundleSlugs = ['ultimate-bundle', 'producers-arsenal', 'beat-lab'];
+          const mappedBundles = bundlesData.bundles
+            .filter((b: any) => eliteBundleSlugs.includes((b.slug || '').toLowerCase()))
+            .map((b: any) => {
             const isSub = !!b.isSubscriptionBundle;
             const lifetime = b.pricing?.lifetime;
             const price = isSub ? 0 : (lifetime?.sale_price ?? lifetime?.price ?? 0);
@@ -311,7 +344,9 @@ export default function Home() {
 
         // Map instrument plugins
         if (instrumentData.success) {
-          const mappedInstrumentPlugins = instrumentData.products.map((p: any) => ({
+          const mappedInstrumentPlugins = instrumentData.products
+            .filter((p: any) => !isFreeProduct(p))
+            .map((p: any) => ({
             id: p.id,
             name: p.name,
             slug: p.slug,
@@ -329,9 +364,10 @@ export default function Home() {
           setInstrumentPlugins(mappedInstrumentPlugins);
         }
 
-        // Map audio FX plugins
+        // Map audio FX plugins (include free so section has enough for slider + arrows)
         if (fxData.success) {
-          const mappedFxPlugins = fxData.products.map((p: any) => ({
+          const mappedFxPlugins = fxData.products
+            .map((p: any) => ({
             id: p.id,
             name: p.name,
             slug: p.slug,
@@ -351,7 +387,9 @@ export default function Home() {
 
         // Map packs
         if (packsData.success) {
-          const mappedPacks = packsData.products.map((p: any) => ({
+          const mappedPacks = packsData.products
+            .filter((p: any) => !isFreeProduct(p))
+            .map((p: any) => ({
             id: p.id,
             name: p.name,
             slug: p.slug,
@@ -416,13 +454,32 @@ export default function Home() {
           )}
         </div>
       </Suspense>
-      
+
+      <ProofPointsSection />
+      <StartHereSection />
+
+      {!loading && freeProducts.length > 0 ? (
+        <FreeCollectionSection products={freeProducts} />
+      ) : (
+        <ProductsSectionSkeleton 
+          title="Free Tools"
+          subtitle="High-quality plugins and samples available at no cost"
+          cardCount={4}
+        />
+      )}
+      {!loading && <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#06070f" />}
+
+      <PremiumSpotlightSection />
+
       {/* Featured Products section */}
       <div style={{ position: 'relative', overflow: 'visible' }}>
         {!loading && featuredProducts.length > 0 ? (
           <FeaturedProductsSection
             id="featured"
-            title="Spotlight"
+            eyebrow="Best Of NNAudio"
+            title="Start with the ones producers come back to"
+            subtitle="A few of the strongest ways into the catalog when you want to hear what defines the NNAudio sound and workflow."
+            footerNote="These are the products most likely to tell you quickly whether the NNAudio sound and workflow fit the way you create."
             products={featuredProducts}
           />
         ) : (
@@ -438,11 +495,15 @@ export default function Home() {
         {!loading && bundles.length > 0 ? (
           <ProductsSection
             id="bundles"
-            title="Elite Bundles"
-            subtitle="Complete collections of premium plugins and samples at unbeatable value"
+            eyebrow="Elite Bundles"
+            title="Own More In One Move"
+            subtitle="When you already know the sound fits, this is the fastest way to build a deeper setup without piecing it together product by product."
+            footerNote="The 3 elite bundles are the top-shelf ownership path when you want more range, more tools, and a bigger NNAudio setup in one move."
             products={bundles}
             maxCardsPerView={3}
             cardSize="large"
+            browseAllHref="/bundles"
+            browseAllLabel="Browse All Bundles"
           />
         ) : (
           <ProductsSectionSkeleton 
@@ -462,10 +523,14 @@ export default function Home() {
         {!loading && instrumentPlugins.length > 0 ? (
           <ProductsSection
             id="instrument-plugins"
-            title="Instrument Plugins"
-            subtitle="Powerful synthesizers and sampled instruments for your productions"
+            eyebrow="Playable Color"
+            title="Instruments"
+            subtitle="Textures, keys, guitars, winds, and layered engines built to bring more character into real sessions."
+            footerNote="When you want more playable identity and character, this is where the catalog opens up."
             products={instrumentPlugins}
             fetchAllUrl="/api/products?category=instrument-plugin&status=active&limit=10000"
+            browseAllHref="/products?category=instrument-plugin"
+            browseAllLabel="Browse All Instruments"
           />
         ) : (
           <ProductsSectionSkeleton 
@@ -484,10 +549,15 @@ export default function Home() {
         {!loading && audioFxPlugins.length > 0 ? (
           <ProductsSection
             id="audio-fx-plugins"
-            title="Audio FX Plugins"
-            subtitle="Professional effects processors to shape and enhance your sound"
+            eyebrow="Mix + Motion"
+            title="Effects"
+            subtitle="Creative processors for width, motion, depth, and the kind of finish that makes a track feel more alive."
+            footerNote="These are the tools for movement, space, energy, and the kind of final detail that makes a track feel less flat."
             products={audioFxPlugins}
+            maxCardsPerView={3}
             fetchAllUrl="/api/products?category=audio-fx-plugin&status=active&limit=10000"
+            browseAllHref="/products?category=audio-fx-plugin"
+            browseAllLabel="Browse All Effects"
           />
         ) : (
           <ProductsSectionSkeleton 
@@ -506,10 +576,14 @@ export default function Home() {
         {!loading && packs.length > 0 ? (
           <ProductsSection
             id="packs"
-            title="Sample Packs"
-            subtitle="Curated collections of high-quality sounds and samples"
+            eyebrow="Fast Inspiration"
+            title="MIDI And Sample Packs"
+            subtitle="Fast inspiration for producers who want stronger ideas without losing momentum hunting for them."
+            footerNote="When the hardest part is getting started, these packs are built to get you moving faster."
             products={packs}
             fetchAllUrl="/api/products?category=pack&status=active&limit=10000"
+            browseAllHref="/packs"
+            browseAllLabel="Browse All Packs"
           />
         ) : (
           <ProductsSectionSkeleton 
@@ -518,33 +592,12 @@ export default function Home() {
             cardCount={4}
           />
         )}
-        {!loading && freeProducts.length > 0 && (
-          <WaveformTransition barCount={150} topColor="#1a1a2e" bottomColor="#06070f" />
-        )}
       </div>
-      
-      {/* Free Products section */}
-      <div style={{ position: 'relative', overflow: 'visible' }}>
-        {!loading && freeProducts.length > 0 ? (
-          <ProductsSection
-            id="free-products"
-            title="Free Tools"
-            subtitle="High-quality plugins and samples available at no cost"
-            products={freeProducts}
-            fetchAllUrl="/api/products?free=true&status=active&limit=10000"
-          />
-        ) : (
-          <ProductsSectionSkeleton 
-            title="Free Tools"
-            subtitle="High-quality plugins and samples available at no cost"
-            cardCount={4}
-          />
-        )}
-        {!loading && <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#06070f" />}
-      </div>
-      
-      {/* NNAudio Access highlight - above pricing */}
+
+      {/* NNAudio Access highlight - after the catalog story */}
       <NNAudioAccessHighlightSection />
+
+      <ConversionCtaSection />
 
       {/* Pricing section - Always render */}
       <PricingSection />

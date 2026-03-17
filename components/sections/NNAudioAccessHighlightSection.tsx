@@ -117,6 +117,16 @@ const SectionHeading = styled.h2`
   }
 `;
 
+const SectionEyebrow = styled.p`
+  margin: 0 0 0.65rem;
+  text-align: center;
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+`;
+
 const ContentBlock = styled(motion.div)`
   display: flex;
   align-items: flex-start;
@@ -379,7 +389,8 @@ export default function NNAudioAccessHighlightSection() {
       <SectionBackground aria-hidden="true" />
       <SectionOverlay aria-hidden="true" />
       <Container>
-        <SectionHeading>One app to manage everything</SectionHeading>
+        <SectionEyebrow>NNAudio Access</SectionEyebrow>
+        <SectionHeading>Your NNAudio library, downloads, and updates in one place</SectionHeading>
         <TwoColumnRow>
           <ContentColumn>
             <TextMask>
@@ -404,33 +415,33 @@ export default function NNAudioAccessHighlightSection() {
                   <FreeBadge>Free</FreeBadge>
                 </TitleRow>
                 <WhatItIs>
-                  Free desktop app for Mac &amp; Windows. Your single hub to get and manage every NNAudio product you own.
+                  Free desktop app for Mac &amp; Windows. Install faster, stay current, and keep every NNAudio product you own organized in one cleaner workspace.
                 </WhatItIs>
                 <BulletList>
                   <BulletItem>
                     <FaCheck />
-                    <BulletTextDesktop>Download installers for all your plugins and sample packs</BulletTextDesktop>
+                    <BulletTextDesktop>Download every plugin and sample pack you own without digging through old emails or accounts</BulletTextDesktop>
                     <BulletTextMobile>Download all your installers</BulletTextMobile>
                   </BulletItem>
                   <BulletItem>
                     <FaCheck />
-                    <BulletTextDesktop>Install and update with one click—no hunting for files</BulletTextDesktop>
+                    <BulletTextDesktop>Install and update faster with a cleaner workflow built for real production use</BulletTextDesktop>
                     <BulletTextMobile>One-click install &amp; update</BulletTextMobile>
                   </BulletItem>
                   <BulletItem>
                     <FaCheck />
-                    <BulletTextDesktop>See your full library in one place; required to install any NNAudio product</BulletTextDesktop>
+                    <BulletTextDesktop>See your full NNAudio library in one place and stay synced as your setup grows</BulletTextDesktop>
                     <BulletTextMobile>Full library in one place</BulletTextMobile>
                   </BulletItem>
                 </BulletList>
                 <ButtonGroup>
                   <StyledLink href="/product/nnaudio-access" prefetch $primary={false}>
                     <FaDesktop size={16} />
-                    Learn more
+                    See how it works
                   </StyledLink>
                   <StyledLink href="/downloads" prefetch $primary>
                     <FaDownload size={16} />
-                    Get it free
+                    Download free
                   </StyledLink>
                 </ButtonGroup>
               </Content>

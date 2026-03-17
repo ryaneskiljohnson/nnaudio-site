@@ -39,6 +39,76 @@ const SectionTitle = styled(motion.h2)`
   }
 `;
 
+const SectionEyebrow = styled(motion.p)`
+  margin: 0 0 0.65rem;
+  text-align: center;
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+`;
+
+const SectionSubtitle = styled(motion.p)`
+  font-size: 1.18rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.74);
+  margin: 0 auto 2.2rem;
+  max-width: 820px;
+  line-height: 1.7;
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    margin-bottom: 1.75rem;
+  }
+`;
+
+const SectionVisual = styled.div`
+  margin: 0 auto 2.25rem;
+  max-width: 980px;
+  min-height: 240px;
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(7, 8, 15, 0.15), rgba(7, 8, 15, 0.76)),
+    url("/images/landing/best-of-visual.webp");
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+  display: flex;
+  align-items: flex-end;
+
+  @media (max-width: 768px) {
+    min-height: 200px;
+    margin-bottom: 1.9rem;
+  }
+`;
+
+const SectionVisualOverlay = styled.div`
+  width: 100%;
+  padding: 1.25rem 1.4rem;
+  background: linear-gradient(
+    180deg,
+    rgba(7, 8, 15, 0) 0%,
+    rgba(7, 8, 15, 0.68) 48%,
+    rgba(7, 8, 15, 0.88) 100%
+  );
+`;
+
+const SectionVisualTitle = styled.h3`
+  margin: 0 0 0.35rem;
+  color: var(--text);
+  font-size: 1.15rem;
+`;
+
+const SectionVisualBody = styled.p`
+  margin: 0;
+  color: rgba(255, 255, 255, 0.84);
+  line-height: 1.55;
+`;
+
 // Spotlight beams positioned at the top of the section, projecting downward
 const SpotlightBeam = styled.div<{ $side: 'left' | 'right' }>`
   position: absolute;
@@ -240,6 +310,20 @@ const PremierContent = styled.div`
   
   @media (max-width: 768px) {
     padding: 0.75rem 1.5rem 0.75rem;
+  }
+`;
+
+const PremierEyebrow = styled.div`
+  margin-bottom: 0.4rem;
+  color: rgba(78, 205, 196, 0.95);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+
+  @media (max-width: 768px) {
+    font-size: 0.72rem;
+    margin-bottom: 0.3rem;
   }
 `;
 
@@ -448,11 +532,14 @@ interface FeaturedProduct {
 
 interface FeaturedProductsSectionProps {
   title: string;
+  eyebrow?: string;
+  subtitle?: string;
+  footerNote?: string;
   products: FeaturedProduct[];
   id: string;
 }
 
-const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title, products, id }) => {
+const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title, eyebrow, subtitle, footerNote, products, id }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [translateX, setTranslateX] = useState(0);
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -548,6 +635,16 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
       <SpotlightBeam $side="right" />
       
       <ContentContainer>
+        {eyebrow ? (
+          <SectionEyebrow
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            {eyebrow}
+          </SectionEyebrow>
+        ) : null}
         <SectionTitle
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -556,6 +653,39 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
         >
           {title}
         </SectionTitle>
+
+        {subtitle ? (
+          <SectionSubtitle
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+          >
+            {subtitle}
+          </SectionSubtitle>
+        ) : null}
+
+        {footerNote ? (
+          <SectionSubtitle
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            style={{ fontSize: "0.95rem", marginBottom: "2.25rem", color: "rgba(255, 255, 255, 0.58)" }}
+          >
+            {footerNote}
+          </SectionSubtitle>
+        ) : null}
+
+        <SectionVisual>
+          <SectionVisualOverlay>
+            <SectionVisualTitle>These are the products that define the feel of the catalog</SectionVisualTitle>
+            <SectionVisualBody>
+              If you want the fastest sense of what makes NNAudio worth coming back to,
+              this is where to listen first.
+            </SectionVisualBody>
+          </SectionVisualOverlay>
+        </SectionVisual>
 
         {/* Premier Product */}
         {premierProduct && (
@@ -609,6 +739,11 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
                     </PremierCartButton>
                   )}
                   <PremierContent>
+                    <PremierEyebrow>
+                      {premierProduct.hasMultiplePricing
+                        ? "Featured Premium Bundle"
+                        : "Featured Product"}
+                    </PremierEyebrow>
                     <PremierTitle>{premierProduct.name}</PremierTitle>
                     <PremierDescription>
                       {cleanHtmlText(premierProduct.tagline || premierProduct.description || '')}
@@ -630,7 +765,9 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
                           }
                         }}
                       >
-                        Learn More
+                        {premierProduct.hasMultiplePricing
+                          ? "See Pricing Options"
+                          : `Explore ${premierProduct.name}`}
                       </PremierButton>
                     </PremierActions>
                   </PremierContent>

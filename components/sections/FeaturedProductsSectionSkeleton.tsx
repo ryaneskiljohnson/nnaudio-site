@@ -99,7 +99,7 @@ export default function FeaturedProductsSectionSkeleton() {
   return (
     <SectionContainer>
       <ContentContainer>
-        <SectionTitle>Spotlight</SectionTitle>
+        <SectionTitle>Best Sellers</SectionTitle>
 
         <PremierSkeleton />
 

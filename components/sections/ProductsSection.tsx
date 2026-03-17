@@ -1,6 +1,13 @@
+/**
+ * @fileoverview Reusable homepage merch section for product sliders, centered
+ * elite-bundle presentation, and optional catalog exit links.
+ * @module components/sections/ProductsSection
+ */
+
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
@@ -37,32 +44,40 @@ const SectionTitle = styled(motion.h2)`
   }
 `;
 
-const SectionSubtitle = styled(motion.p)`
-  font-size: 1.3rem;
+const SectionEyebrow = styled(motion.p)`
+  margin: 0 0 0.65rem;
   text-align: center;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 1.5rem;
-  max-width: 1400px;
+  color: var(--accent);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+`;
+
+const SectionSubtitle = styled(motion.p)`
+  font-size: 1.15rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.74);
+  margin-bottom: 1.85rem;
+  max-width: 900px;
   margin-left: auto;
   margin-right: auto;
-  
-  @media (min-width: 1024px) {
-    white-space: nowrap;
-  }
+  line-height: 1.7;
   
   @media (max-width: 768px) {
-    font-size: 1.1rem;
+    font-size: 1rem;
     margin-bottom: 2rem;
   }
 `;
 
 const MOBILE_PADDING_PX = 16;
 
-const SliderWrapper = styled.div`
+const SliderWrapper = styled.div<{ $centerMode?: boolean }>`
   position: relative;
   margin-top: 2rem;
-  overflow: hidden;
+  overflow: ${props => props.$centerMode ? 'visible' : 'hidden'};
   padding: 0;
+  width: 100%;
 
   @media (max-width: 768px) {
     margin-top: 1.5rem;
@@ -74,13 +89,24 @@ const SliderWrapper = styled.div`
   }
 `;
 
-const ProductsSlider = styled.div<{ $translateX: number; $centered: boolean }>`
+/** When all cards fit (e.g. Elite Bundles), wraps the slider and centers it via left: 50% + translate(-50%) */
+const SliderCenterInner = styled.div`
+  position: relative;
+  width: 100%;
+  min-height: 1px;
+`;
+
+const ProductsSlider = styled.div<{ $translateX: number; $centered: boolean; $asCenteredItem?: boolean }>`
   display: flex;
   gap: 2rem;
-  transform: translateX(${props => props.$translateX}px);
   transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   will-change: transform;
   ${props => props.$centered ? 'justify-content: center;' : ''}
+  ${props => props.$asCenteredItem
+    ? `position: relative;
+       left: 50%;
+       transform: translate(calc(-50% + ${props.$translateX}px), 0);`
+    : `transform: translateX(${props.$translateX}px);`}
 
   > * {
     flex-shrink: 0;
@@ -239,6 +265,85 @@ const ShowAllButton = styled.button`
   }
 `;
 
+const SectionActions = styled.div`
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 2rem;
+`;
+
+const SectionActionLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 210px;
+  padding: 0.95rem 1.5rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 700;
+  color: white;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  transition: transform 0.25s ease, border-color 0.25s ease,
+    background 0.25s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.08);
+  }
+`;
+
+const SectionFooterNote = styled.p`
+  margin: 1rem auto 0;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  max-width: 720px;
+`;
+
+const SectionVisual = styled.div`
+  margin: 0 auto 2rem;
+  max-width: 980px;
+  min-height: 220px;
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
+  display: flex;
+  align-items: flex-end;
+
+  @media (max-width: 768px) {
+    min-height: 190px;
+  }
+`;
+
+const SectionVisualOverlay = styled.div`
+  width: 100%;
+  padding: 1.2rem 1.4rem;
+  background: linear-gradient(
+    180deg,
+    rgba(7, 8, 15, 0) 0%,
+    rgba(7, 8, 15, 0.68) 48%,
+    rgba(7, 8, 15, 0.88) 100%
+  );
+`;
+
+const SectionVisualTitle = styled.h3`
+  margin: 0 0 0.35rem;
+  color: var(--text);
+  font-size: 1.12rem;
+`;
+
+const SectionVisualBody = styled.p`
+  margin: 0;
+  color: rgba(255, 255, 255, 0.84);
+  line-height: 1.55;
+`;
+
 const ProductsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -273,15 +378,37 @@ interface Product {
 
 interface ProductsSectionProps {
   title: string;
+  eyebrow?: string;
   subtitle?: string;
+  footerNote?: string;
+  visualImage?: string;
+  visualTitle?: string;
+  visualBody?: string;
   products: Product[];
   id: string;
   fetchAllUrl?: string;
   maxCardsPerView?: number;
   cardSize?: 'normal' | 'large' | 'medium';
+  browseAllHref?: string;
+  browseAllLabel?: string;
 }
 
-const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, products, id, fetchAllUrl, maxCardsPerView, cardSize = 'normal' }) => {
+const ProductsSection: React.FC<ProductsSectionProps> = ({
+  title,
+  eyebrow,
+  subtitle,
+  footerNote,
+  visualImage,
+  visualTitle,
+  visualBody,
+  products,
+  id,
+  fetchAllUrl,
+  maxCardsPerView,
+  cardSize = 'normal',
+  browseAllHref,
+  browseAllLabel,
+}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [translateX, setTranslateX] = useState(0);
   const [showAll, setShowAll] = useState(false);
@@ -355,6 +482,8 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
     };
   }, [displayedProducts.length, isMobile, showAll, maxCardsPerView]);
 
+  const allCardsFit = displayedProducts.length <= cardsPerView;
+
   useEffect(() => {
     if (!sliderRef.current) return;
     const gap = window.innerWidth <= 768 ? 12 : 32;
@@ -364,6 +493,12 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
       // Mobile: card is full-width with padding; first card at 0
       const translateValue = -(currentIndex * cardWithGap);
       setTranslateX(translateValue);
+      return;
+    }
+
+    // When all cards fit, center via wrapper flexbox; no transform offset
+    if (allCardsFit) {
+      setTranslateX(0);
       return;
     }
 
@@ -377,7 +512,7 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
     const centerOffset = arrowSpace + (availableWidth - totalCardsWidth) / 2;
     const translateValue = centerOffset - (currentIndex * cardWithGap);
     setTranslateX(translateValue);
-  }, [currentIndex, cardWidth, cardsPerView, isMobile]);
+  }, [currentIndex, cardWidth, cardsPerView, isMobile, allCardsFit]);
 
   const nextSlide = useCallback(() => {
     const calculatedMaxIndex = Math.max(0, displayedProducts.length - cardsPerView);
@@ -457,6 +592,16 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
   return (
     <SectionContainer id={id}>
       <ContentContainer>
+        {eyebrow ? (
+          <SectionEyebrow
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            {eyebrow}
+          </SectionEyebrow>
+        ) : null}
         <SectionTitle
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -476,6 +621,23 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
             {subtitle}
           </SectionSubtitle>
         )}
+
+        {footerNote ? <SectionFooterNote>{footerNote}</SectionFooterNote> : null}
+
+        {visualImage ? (
+          <SectionVisual
+            style={{
+              backgroundImage: `linear-gradient(180deg, rgba(7, 8, 15, 0.15), rgba(7, 8, 15, 0.76)), url("${visualImage}")`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+            <SectionVisualOverlay>
+              {visualTitle ? <SectionVisualTitle>{visualTitle}</SectionVisualTitle> : null}
+              {visualBody ? <SectionVisualBody>{visualBody}</SectionVisualBody> : null}
+            </SectionVisualOverlay>
+          </SectionVisual>
+        ) : null}
 
         {isMobile && showAll ? (
         <ProductsGrid>
@@ -510,11 +672,56 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
             })}
           </ProductsGrid>
         ) : (
-          <SliderWrapper>
-            <ProductsSlider
-              ref={sliderRef}
-              $translateX={translateX}
-              $centered={displayedProducts.length <= cardsPerView}
+          <SliderWrapper $centerMode={allCardsFit && !isMobile}>
+            {allCardsFit && !isMobile ? (
+              <SliderCenterInner>
+                <ProductsSlider
+                  ref={sliderRef}
+                  $translateX={translateX}
+                  $centered={allCardsFit}
+                  $asCenteredItem
+                  onTouchStart={onTouchStart}
+                  onTouchMove={onTouchMove}
+                  onTouchEnd={onTouchEnd}
+                >
+                  {displayedProducts.map((product, index) => {
+                    const productData = {
+                      id: product.id,
+                      name: product.name,
+                      slug: product.slug,
+                      tagline: product.tagline,
+                      short_description: (product as any).short_description,
+                      description: product.description,
+                      category: (product as any).category,
+                      price: typeof product.price === 'string'
+                        ? parseFloat(product.price.replace('$', '')) || 0
+                        : product.price,
+                      sale_price: product.sale_price,
+                      featured_image_url: product.featured_image_url || undefined,
+                      logo_url: product.logo_url || undefined,
+                      image: product.image || product.featured_image_url || product.logo_url || '/images/nnaud-io/NNPurp1.webp',
+                      hasMultiplePricing: product.hasMultiplePricing,
+                      compareAtPrice: product.compareAtPrice,
+                    };
+
+                    return (
+                      <ProductCardWrapper key={product.id} $width={cardWidth}>
+                        <ProductCard
+                          product={productData}
+                          index={index}
+                          showCartButton={true}
+                          showPluginType={false}
+                        />
+                      </ProductCardWrapper>
+                    );
+                  })}
+                </ProductsSlider>
+              </SliderCenterInner>
+            ) : (
+              <ProductsSlider
+                ref={sliderRef}
+                $translateX={translateX}
+                $centered={allCardsFit}
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
@@ -551,6 +758,7 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
                 );
               })}
             </ProductsSlider>
+            )}
 
             {displayedProducts.length > cardsPerView && (
               <>
@@ -598,6 +806,14 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ title, subtitle, prod
             )}
           </SliderWrapper>
         )}
+
+        {browseAllHref ? (
+          <SectionActions>
+            <SectionActionLink href={browseAllHref}>
+              {browseAllLabel ?? `Browse All ${title}`}
+            </SectionActionLink>
+          </SectionActions>
+        ) : null}
 
         {isMobile && !showAll && (fetchAllUrl || allProducts.length > mobileLimit) && (
           <ShowAllButton
