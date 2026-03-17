@@ -1,10 +1,31 @@
+/**
+ * @fileoverview Server-side Supabase actions used by auth and profile flows.
+ * @module utils/supabase/actions
+ */
+
 "use server";
 
 import { PostgrestError } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { Profile } from "@/utils/supabase/types";
 import { findOrCreateCustomer } from "@/utils/stripe/actions";
+import {
+  ATTRIBUTION_COOKIE_NAME,
+  attributionToSubscriberMetadata,
+  getSubscriberSource,
+  parseAttributionCookie,
+} from "@/utils/marketing/attribution";
 
+/**
+ * @brief Signs up a user, creates a Stripe customer, and stores subscriber and
+ * attribution metadata for lifecycle marketing.
+ * @param first_name - Subscriber first name.
+ * @param last_name - Subscriber last name.
+ * @param email - Subscriber email.
+ * @param password - Account password.
+ * @returns Supabase auth response for the created user.
+ */
 export async function signUpWithStripe(
   first_name: string,
   last_name: string,
@@ -13,6 +34,10 @@ export async function signUpWithStripe(
 ) {
   try {
     const supabase = await createClient();
+    const cookieStore = await cookies();
+    const attribution = parseAttributionCookie(
+      cookieStore.get(ATTRIBUTION_COOKIE_NAME)?.value
+    );
 
     // Find or create a Stripe customer
     const customer_id = await findOrCreateCustomer(email);
@@ -40,15 +65,19 @@ export async function signUpWithStripe(
             id: authResponse.data.user.id, // Use user ID as subscriber ID
             user_id: authResponse.data.user.id,
             email: authResponse.data.user.email || email, // Use fallback email
-            source: "signup",
+            source: getSubscriberSource(attribution),
             status: "active",
-            tags: ["free-user"],
+            tags: [
+              "free-user",
+              ...(attribution?.utm_source ? [`source:${attribution.utm_source}`] : []),
+            ],
             metadata: {
               first_name: first_name || "",
               last_name: last_name || "",
               subscription: "none",
               auth_created_at: authResponse.data.user.created_at,
               profile_updated_at: new Date().toISOString(),
+              ...attributionToSubscriberMetadata(attribution),
             },
           });
 

@@ -8,6 +8,14 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
+import {
+  ATTRIBUTION_COOKIE_MAX_AGE_SECONDS,
+  ATTRIBUTION_COOKIE_NAME,
+  extractAttributionFromUrl,
+  mergeAttribution,
+  parseAttributionCookie,
+  serializeAttributionCookie,
+} from "@/utils/marketing/attribution";
 
 /**
  * Applies security headers to a response.
@@ -34,6 +42,50 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
       "max-age=31536000; includeSubDomains; preload"
     );
   }
+  return response;
+}
+
+/**
+ * @brief Persists marketing attribution parameters into a durable cookie when
+ * a visitor lands with UTM or click-id query parameters.
+ * @param request - The current request.
+ * @param response - Response to mutate with attribution cookies.
+ * @returns The same response for chaining.
+ */
+function applyAttributionCookie(
+  request: NextRequest,
+  response: NextResponse
+): NextResponse {
+  const incomingAttribution = extractAttributionFromUrl(
+    request.nextUrl,
+    request.headers.get("referer")
+  );
+
+  if (!incomingAttribution) {
+    return response;
+  }
+
+  const existingAttribution = parseAttributionCookie(
+    request.cookies.get(ATTRIBUTION_COOKIE_NAME)?.value
+  );
+
+  const mergedAttribution = mergeAttribution(
+    existingAttribution,
+    incomingAttribution
+  );
+
+  response.cookies.set(
+    ATTRIBUTION_COOKIE_NAME,
+    serializeAttributionCookie(mergedAttribution),
+    {
+      httpOnly: false,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: ATTRIBUTION_COOKIE_MAX_AGE_SECONDS,
+    }
+  );
+
   return response;
 }
 
@@ -77,10 +129,10 @@ export async function proxy(request: NextRequest) {
     supabaseResponse.cookies.getAll().forEach((cookie) =>
       redirectResponse.cookies.set(cookie.name, cookie.value)
     );
-    return applySecurityHeaders(redirectResponse);
+    return applySecurityHeaders(applyAttributionCookie(request, redirectResponse));
   }
 
-  return applySecurityHeaders(supabaseResponse);
+  return applySecurityHeaders(applyAttributionCookie(request, supabaseResponse));
 }
 
 export const config = {

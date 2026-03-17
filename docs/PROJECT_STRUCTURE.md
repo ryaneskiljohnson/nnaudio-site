@@ -19,6 +19,7 @@ Overview of the project folder organization.
 
 - **docs/** – Project documentation
   - Guides, audits, summaries, quick references
+  - `docs/SCALING_WITH_ADS_RESEARCH.md` – Product catalog (including free products), ad-scaling playbook, and campaign recommendations
   - `docs/scripts/` – Cymasphere tutorial content
   - `docs/context-packs/` – Context pack docs
 
