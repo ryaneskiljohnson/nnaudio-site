@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Auth registration API for direct form signups.
+ * @module app/api/auth/register/route
+ */
+
 "use server";
 
 import { NextRequest, NextResponse } from "next/server";
@@ -5,7 +10,18 @@ import { createClient } from "@supabase/supabase-js";
 import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
 import { registerSchema } from "@/utils/apiSchemas";
 import { validateCsrfToken } from "@/utils/csrf";
+import {
+  ATTRIBUTION_COOKIE_NAME,
+  attributionToSubscriberMetadata,
+  getSubscriberSource,
+  parseAttributionCookie,
+} from "@/utils/marketing/attribution";
 
+/**
+ * @brief Handles account registration and initial subscriber creation.
+ * @param request - Incoming registration form request.
+ * @returns Registration result payload.
+ */
 export async function POST(request: NextRequest) {
   try {
     const clientIp = getClientIp(request);
@@ -48,6 +64,10 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
+    const attribution = parseAttributionCookie(
+      request.cookies.get(ATTRIBUTION_COOKIE_NAME)?.value
+    );
+
     // Register the user
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -79,15 +99,19 @@ export async function POST(request: NextRequest) {
             id: authData.user.id,
             user_id: authData.user.id,
             email: authData.user.email,
-            source: 'signup',
+            source: getSubscriberSource(attribution),
             status: 'active',
-            tags: ['free-user'],
+            tags: [
+              'free-user',
+              ...(attribution?.utm_source ? [`source:${attribution.utm_source}`] : []),
+            ],
             metadata: {
               first_name: name?.split(' ')[0] || '',
               last_name: name?.split(' ').slice(1).join(' ') || '',
               subscription: 'none',
               auth_created_at: authData.user.created_at,
-              profile_updated_at: new Date().toISOString()
+              profile_updated_at: new Date().toISOString(),
+              ...attributionToSubscriberMetadata(attribution),
             }
           });
 

@@ -1,7 +1,18 @@
+/**
+ * @fileoverview Cart checkout API that creates Stripe Checkout Sessions for
+ * multi-item purchases and attaches attribution metadata for reporting.
+ * @module app/api/stripe/cart-checkout/route
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
 import { stripe } from "@/utils/stripe/client";
+import {
+  ATTRIBUTION_COOKIE_NAME,
+  attributionToStripeMetadata,
+  parseAttributionCookie,
+} from "@/utils/marketing/attribution";
 
 interface CartItem {
   id: string;
@@ -15,6 +26,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { items, customerEmail, customerId } = body;
+    const attribution = parseAttributionCookie(
+      request.cookies.get(ATTRIBUTION_COOKIE_NAME)?.value
+    );
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -95,6 +109,7 @@ export async function POST(request: NextRequest) {
           quantity: item.quantity,
         }))),
         total_amount: total.toString(),
+        ...attributionToStripeMetadata(attribution),
       },
     });
 

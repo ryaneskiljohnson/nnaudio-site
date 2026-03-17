@@ -1,9 +1,20 @@
+/**
+ * @fileoverview Stripe checkout API for Cymasphere plan purchases and payment
+ * method collection, with attribution metadata persisted for growth reporting.
+ * @module app/api/stripe/checkout/route
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { PlanType } from "@/types/stripe";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { randomUUID } from "crypto";
 import { stripe } from "@/utils/stripe/client";
+import {
+  ATTRIBUTION_COOKIE_NAME,
+  attributionToStripeMetadata,
+  parseAttributionCookie,
+} from "@/utils/marketing/attribution";
 
 /**
  * Map price_id to plan name for Meta tracking
@@ -32,6 +43,9 @@ async function getPlanName(priceId: string, planType: PlanType): Promise<string>
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const attribution = parseAttributionCookie(
+      request.cookies.get(ATTRIBUTION_COOKIE_NAME)?.value
+    );
     const {
       planType,
       email,
@@ -150,7 +164,8 @@ export async function POST(request: NextRequest) {
       planType,
       collectPaymentMethod,
       isSignedUp,
-      isPlanChange
+      isPlanChange,
+      attribution
     );
 
     return NextResponse.json(result);
@@ -354,7 +369,8 @@ async function createCheckoutSession(
   planType: PlanType,
   collectPaymentMethod: boolean = false,
   isSignedUp: boolean = false,
-  isPlanChange: boolean = false
+  isPlanChange: boolean = false,
+  attribution: ReturnType<typeof parseAttributionCookie> = null
 ): Promise<{ url: string | null; error?: string }> {
   try {
     // Return error if customer ID is not provided
@@ -452,6 +468,7 @@ async function createCheckoutSession(
         ...(userId && { user_id: userId }),
         ...(userEmail && { email: userEmail }), // Always include email if available for webhook fallback
         event_id: eventId,
+        ...attributionToStripeMetadata(attribution),
       },
     };
 
@@ -478,6 +495,7 @@ async function createCheckoutSession(
         metadata: {
           purchase_type: "lifetime",
           ...(userId && { user_id: userId }),
+          ...attributionToStripeMetadata(attribution),
         },
       };
       // Also set metadata on invoice when it's created
@@ -486,6 +504,7 @@ async function createCheckoutSession(
         invoice_data: {
           metadata: {
             purchase_type: "lifetime",
+            ...attributionToStripeMetadata(attribution),
           },
         },
       };

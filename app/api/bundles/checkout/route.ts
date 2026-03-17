@@ -9,6 +9,11 @@ import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { stripe } from "@/utils/stripe/client";
+import {
+  ATTRIBUTION_COOKIE_NAME,
+  attributionToStripeMetadata,
+  parseAttributionCookie,
+} from "@/utils/marketing/attribution";
 
 type BundleTier = "monthly" | "annual" | "lifetime";
 
@@ -43,6 +48,9 @@ async function findOrCreateCustomer(email: string): Promise<string> {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const attribution = parseAttributionCookie(
+      request.cookies.get(ATTRIBUTION_COOKIE_NAME)?.value
+    );
     const {
       bundle_slug,
       tier,
@@ -212,6 +220,7 @@ export async function POST(request: NextRequest) {
         bundle_name: bundle.name,
         tier,
         checkout_type: "bundle",
+        ...attributionToStripeMetadata(attribution),
       },
       allow_promotion_codes: true,
     };
@@ -222,6 +231,7 @@ export async function POST(request: NextRequest) {
           purchase_type: "bundle_lifetime",
           bundle_id: bundle.id,
           bundle_slug: bundle.slug,
+          ...attributionToStripeMetadata(attribution),
         },
       };
       sessionParams.invoice_creation = {
@@ -230,6 +240,7 @@ export async function POST(request: NextRequest) {
           metadata: {
             purchase_type: "bundle_lifetime",
             bundle_id: bundle.id,
+            ...attributionToStripeMetadata(attribution),
           },
         },
       };
