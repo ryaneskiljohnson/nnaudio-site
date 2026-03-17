@@ -264,7 +264,7 @@ const FAQSection = () => {
         ))}
 
         <ActionRow>
-          <ActionLink href="mailto:support@nnaud.io" $primary>
+          <ActionLink href="/contact" $primary>
             Get Support
           </ActionLink>
           <ActionLink href="/free-tools">
