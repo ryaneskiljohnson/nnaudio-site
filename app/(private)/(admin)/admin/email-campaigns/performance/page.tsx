@@ -306,12 +306,52 @@ const ChartTitle = styled.h3`
 
 const ChartContent = styled.div`
   padding: 1.5rem;
-  height: 300px;
+  min-height: 300px;
+`;
+
+const ChartStack = styled.div`
   display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
+
+const ChartRow = styled.div`
+  display: grid;
+  grid-template-columns: 150px 1fr 70px;
+  gap: 0.75rem;
   align-items: center;
-  justify-content: center;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ChartLabel = styled.div`
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+`;
+
+const ChartBarTrack = styled.div`
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+`;
+
+const ChartBarFill = styled.div<{ $width: number; $color?: string }>`
+  width: ${(props) => props.$width}%;
+  height: 100%;
+  border-radius: 999px;
+  background: ${(props) => props.$color || "linear-gradient(90deg, var(--primary), var(--accent))"};
+`;
+
+const ChartNumber = styled.div`
   color: var(--text-secondary);
-  font-style: italic;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: right;
 `;
 
 const DeviceBreakdownGrid = styled.div`
@@ -544,31 +584,21 @@ function PerformancePage() {
       });
       
       if (result.success) {
-        // Transform analytics data to performance format
-        const { summary, campaigns } = result.data;
+        const { summary, trends, devices, campaigns } = result.data;
         
         const transformedData: PerformanceData = {
           overview: {
             totalSent: summary.totalSent,
             totalOpens: summary.totalOpened,
             totalClicks: summary.totalClicked,
-            totalUnsubscribes: 0, // TODO: Track unsubscribes
+            totalUnsubscribes: summary.totalUnsubscribes,
             openRate: summary.openRate,
             clickRate: summary.clickRate,
-            unsubscribeRate: 0, // TODO: Calculate unsubscribe rate
+            unsubscribeRate: summary.unsubscribeRate,
             bounceRate: summary.bounceRate
           },
-          trends: {
-            openRateChange: 0, // TODO: Calculate trends
-            clickRateChange: 0,
-            unsubscribeRateChange: 0,
-            bounceRateChange: 0
-          },
-          devices: {
-            mobile: 58.3, // TODO: Track device metrics
-            desktop: 32.1,
-            tablet: 9.6
-          },
+          trends,
+          devices,
           campaigns: campaigns.map((campaign: any) => ({
             id: campaign.id,
             name: campaign.name,
@@ -642,6 +672,48 @@ function PerformancePage() {
     router.push(`/admin/email-campaigns/campaigns/${campaignId}`);
   };
 
+  const topCampaigns = [...(performanceData?.campaigns || [])]
+    .sort((a, b) => b.openRate - a.openRate)
+    .slice(0, 6);
+
+  const engagementBreakdown = performanceData
+    ? [
+        {
+          label: "Opens",
+          value: performanceData.overview.totalOpens,
+          percentage:
+            performanceData.overview.totalSent > 0
+              ? (performanceData.overview.totalOpens /
+                  performanceData.overview.totalSent) *
+                100
+              : 0,
+          color: "linear-gradient(90deg, #28a745, #20c997)",
+        },
+        {
+          label: "Clicks",
+          value: performanceData.overview.totalClicks,
+          percentage:
+            performanceData.overview.totalSent > 0
+              ? (performanceData.overview.totalClicks /
+                  performanceData.overview.totalSent) *
+                100
+              : 0,
+          color: "linear-gradient(90deg, #17a2b8, #6f42c1)",
+        },
+        {
+          label: "Unsubscribes",
+          value: performanceData.overview.totalUnsubscribes,
+          percentage:
+            performanceData.overview.totalSent > 0
+              ? (performanceData.overview.totalUnsubscribes /
+                  performanceData.overview.totalSent) *
+                100
+              : 0,
+          color: "linear-gradient(90deg, #ffc107, #fd7e14)",
+        },
+      ]
+    : [];
+
   return (
     <>
       <NextSEO
@@ -703,8 +775,8 @@ function PerformancePage() {
             </MetricHeader>
             <MetricValue>{performanceData?.overview.totalSent.toLocaleString()}</MetricValue>
             <MetricChange positive={true}>
-              <FaArrowUp />
-              +12.5% from last period
+              <FaEnvelopeOpen />
+              {performanceData?.overview.totalOpens.toLocaleString()} opens tracked
             </MetricChange>
           </MetricCard>
 
@@ -781,7 +853,17 @@ function PerformancePage() {
               </ActionButton>
             </ChartHeader>
             <ChartContent>
-              📈 Interactive chart would be rendered here using a charting library like Chart.js or Recharts
+              <ChartStack>
+                {topCampaigns.map((campaign) => (
+                  <ChartRow key={campaign.id}>
+                    <ChartLabel>{campaign.name}</ChartLabel>
+                    <ChartBarTrack>
+                      <ChartBarFill $width={Math.max(3, Math.min(100, campaign.openRate))} />
+                    </ChartBarTrack>
+                    <ChartNumber>{campaign.openRate.toFixed(1)}%</ChartNumber>
+                  </ChartRow>
+                ))}
+              </ChartStack>
             </ChartContent>
           </ChartCard>
 
@@ -793,7 +875,22 @@ function PerformancePage() {
               </ChartTitle>
             </ChartHeader>
             <ChartContent>
-              🥧 Pie chart showing engagement distribution would be rendered here
+              <ChartStack>
+                {engagementBreakdown.map((item) => (
+                  <ChartRow key={item.label}>
+                    <ChartLabel>{item.label}</ChartLabel>
+                    <ChartBarTrack>
+                      <ChartBarFill
+                        $width={Math.max(2, Math.min(100, item.percentage))}
+                        $color={item.color}
+                      />
+                    </ChartBarTrack>
+                    <ChartNumber>
+                      {item.percentage.toFixed(1)}% ({item.value.toLocaleString()})
+                    </ChartNumber>
+                  </ChartRow>
+                ))}
+              </ChartStack>
             </ChartContent>
           </ChartCard>
         </ChartsGrid>

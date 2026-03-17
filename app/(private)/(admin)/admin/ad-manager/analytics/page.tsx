@@ -274,15 +274,51 @@ const ChartTitle = styled.h3`
   gap: 0.5rem;
 `;
 
-const ChartPlaceholder = styled.div`
-  height: 300px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
-  border-radius: 8px;
+const ChartStack = styled.div`
   display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 300px;
+`;
+
+const ChartRow = styled.div`
+  display: grid;
+  grid-template-columns: 150px 1fr 80px;
+  gap: 0.75rem;
   align-items: center;
-  justify-content: center;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ChartLabel = styled.div`
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 600;
+`;
+
+const ChartBarTrack = styled.div`
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+`;
+
+const ChartBarFill = styled.div<{ $width: number; $color?: string }>`
+  width: ${(props) => props.$width}%;
+  height: 100%;
+  border-radius: 999px;
+  background: ${(props) =>
+    props.$color || "linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)"};
+`;
+
+const ChartValue = styled.div`
+  text-align: right;
   color: var(--text-secondary);
-  border: 1px dashed rgba(255, 255, 255, 0.2);
+  font-size: 0.85rem;
+  font-weight: 700;
 `;
 
 const PlatformBreakdown = styled.div`
@@ -457,74 +493,6 @@ interface AnalyticsData {
   }>;
 }
 
-const mockAnalytics: AnalyticsData = {
-  overview: {
-    totalSpent: 12459.75,
-    totalImpressions: 4562300,
-    totalClicks: 89456,
-    totalConversions: 2347,
-    averageCTR: 1.96,
-    averageCPC: 0.139,
-    averageCPM: 2.73,
-    roas: 4.2
-  },
-  trends: {
-    spentTrend: 'up',
-    impressionsTrend: 'up',
-    clicksTrend: 'down',
-    conversionsTrend: 'up'
-  },
-  platformBreakdown: {
-    facebook: {
-      spent: 8234.50,
-      impressions: 3045200,
-      clicks: 61234,
-      conversions: 1678
-    },
-    instagram: {
-      spent: 4225.25,
-      impressions: 1517100,
-      clicks: 28222,
-      conversions: 669
-    }
-  },
-  campaigns: [
-    {
-      id: "1",
-      name: "Cymasphere Launch Campaign",
-      status: "active",
-      spent: 5234.75,
-      impressions: 2134500,
-      clicks: 42890,
-      conversions: 1123,
-      ctr: 2.01,
-      cpc: 0.122
-    },
-    {
-      id: "2",
-      name: "Instagram Promotion",
-      status: "paused",
-      spent: 2456.30,
-      impressions: 967800,
-      clicks: 18456,
-      conversions: 445,
-      ctr: 1.91,
-      cpc: 0.133
-    },
-    {
-      id: "3",
-      name: "Brand Awareness Drive",
-      status: "active",
-      spent: 4768.70,
-      impressions: 1460000,
-      clicks: 28110,
-      conversions: 779,
-      ctr: 1.93,
-      cpc: 0.170
-    }
-  ]
-};
-
 const emptyAnalytics: AnalyticsData = {
   overview: { totalSpent: 0, totalImpressions: 0, totalClicks: 0, totalConversions: 0, averageCTR: 0, averageCPC: 0, averageCPM: 0, roas: 0 },
   trends: { spentTrend: 'neutral', impressionsTrend: 'neutral', clicksTrend: 'neutral', conversionsTrend: 'neutral' },
@@ -585,6 +553,32 @@ export default function AnalyticsPage() {
       default: return null;
     }
   };
+
+  const getTrendLabel = (trend: 'up' | 'down' | 'neutral') => {
+    switch (trend) {
+      case 'up':
+        return 'Improving';
+      case 'down':
+        return 'Declining';
+      default:
+        return 'Stable';
+    }
+  };
+
+  const topCampaigns = [...data.campaigns]
+    .sort((a, b) => b.ctr - a.ctr)
+    .slice(0, 6);
+
+  const totalPlatformSpend =
+    data.platformBreakdown.facebook.spent + data.platformBreakdown.instagram.spent;
+  const facebookShare =
+    totalPlatformSpend > 0
+      ? (data.platformBreakdown.facebook.spent / totalPlatformSpend) * 100
+      : 0;
+  const instagramShare =
+    totalPlatformSpend > 0
+      ? (data.platformBreakdown.instagram.spent / totalPlatformSpend) * 100
+      : 0;
 
   // Show page immediately - no early returns
   const showContent = user;
@@ -658,7 +652,7 @@ export default function AnalyticsPage() {
               <FaDollarSign />
             </MetricIcon>
             <MetricTrend $trend={data.trends.spentTrend}>
-              {getTrendIcon(data.trends.spentTrend)} 12.5%
+              {getTrendIcon(data.trends.spentTrend)} {getTrendLabel(data.trends.spentTrend)}
             </MetricTrend>
           </MetricHeader>
           <MetricValue>{loading ? <StatLoadingSpinner size={20} /> : formatCurrency(data.overview.totalSpent)}</MetricValue>
@@ -675,7 +669,7 @@ export default function AnalyticsPage() {
               <FaEye />
             </MetricIcon>
             <MetricTrend $trend={data.trends.impressionsTrend}>
-              {getTrendIcon(data.trends.impressionsTrend)} 8.3%
+              {getTrendIcon(data.trends.impressionsTrend)} {getTrendLabel(data.trends.impressionsTrend)}
             </MetricTrend>
           </MetricHeader>
           <MetricValue>{loading ? <StatLoadingSpinner size={20} /> : formatNumber(data.overview.totalImpressions)}</MetricValue>
@@ -692,7 +686,7 @@ export default function AnalyticsPage() {
               <FaMousePointer />
             </MetricIcon>
             <MetricTrend $trend={data.trends.clicksTrend}>
-              {getTrendIcon(data.trends.clicksTrend)} 3.2%
+              {getTrendIcon(data.trends.clicksTrend)} {getTrendLabel(data.trends.clicksTrend)}
             </MetricTrend>
           </MetricHeader>
           <MetricValue>{loading ? <StatLoadingSpinner size={20} /> : formatNumber(data.overview.totalClicks)}</MetricValue>
@@ -709,7 +703,7 @@ export default function AnalyticsPage() {
               <FaUsers />
             </MetricIcon>
             <MetricTrend $trend={data.trends.conversionsTrend}>
-              {getTrendIcon(data.trends.conversionsTrend)} 15.7%
+              {getTrendIcon(data.trends.conversionsTrend)} {getTrendLabel(data.trends.conversionsTrend)}
             </MetricTrend>
           </MetricHeader>
           <MetricValue>{loading ? <StatLoadingSpinner size={20} /> : formatNumber(data.overview.totalConversions)}</MetricValue>
@@ -783,15 +777,24 @@ export default function AnalyticsPage() {
             <FaChartLine />
             Performance Over Time
           </ChartTitle>
-          <ChartPlaceholder>
-            <div>
-              <FaInfoCircle style={{ fontSize: '2rem', marginBottom: '1rem' }} />
-              <div>Interactive charts coming soon</div>
-              <div style={{ fontSize: '0.8rem', marginTop: '0.5rem', opacity: 0.7 }}>
-                Spend, impressions, clicks, and conversions over time
-              </div>
-            </div>
-          </ChartPlaceholder>
+          <ChartStack>
+            {topCampaigns.length === 0 ? (
+              <EmptyState>
+                <FaInfoCircle style={{ fontSize: '1.6rem', marginBottom: '0.75rem' }} />
+                <div>No campaign-level insights returned yet.</div>
+              </EmptyState>
+            ) : (
+              topCampaigns.map((campaign) => (
+                <ChartRow key={campaign.id}>
+                  <ChartLabel>{campaign.name}</ChartLabel>
+                  <ChartBarTrack>
+                    <ChartBarFill $width={Math.max(3, Math.min(100, campaign.ctr * 20))} />
+                  </ChartBarTrack>
+                  <ChartValue>{campaign.ctr.toFixed(2)}% CTR</ChartValue>
+                </ChartRow>
+              ))
+            )}
+          </ChartStack>
         </ChartCard>
 
         <ChartCard
@@ -816,7 +819,7 @@ export default function AnalyticsPage() {
               </PlatformInfo>
               <PlatformValue>
                 <PlatformAmount>{formatCurrency(data.platformBreakdown.facebook.spent)}</PlatformAmount>
-                <PlatformPercentage>66.1%</PlatformPercentage>
+                <PlatformPercentage>{facebookShare.toFixed(1)}%</PlatformPercentage>
               </PlatformValue>
             </PlatformItem>
 
@@ -832,7 +835,7 @@ export default function AnalyticsPage() {
               </PlatformInfo>
               <PlatformValue>
                 <PlatformAmount>{formatCurrency(data.platformBreakdown.instagram.spent)}</PlatformAmount>
-                <PlatformPercentage>33.9%</PlatformPercentage>
+                <PlatformPercentage>{instagramShare.toFixed(1)}%</PlatformPercentage>
               </PlatformValue>
             </PlatformItem>
           </PlatformBreakdown>

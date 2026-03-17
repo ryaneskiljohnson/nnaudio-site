@@ -555,87 +555,6 @@ const EmptyState = styled.div`
   }
 `;
 
-// Mock data
-const mockDeliverabilityData = {
-  overview: {
-    deliveryRate: 94.2,
-    bounceRate: 3.1,
-    spamRate: 2.7,
-    reputation: 87
-  },
-  domains: [
-    {
-      id: "1",
-      domain: "gmail.com",
-      reputation: 92,
-      delivered: 15420,
-      bounced: 234,
-      spam: 156,
-      blocked: 45,
-      lastChecked: "2024-01-20T10:30:00Z"
-    },
-    {
-      id: "2", 
-      domain: "outlook.com",
-      reputation: 88,
-      delivered: 8930,
-      bounced: 167,
-      spam: 89,
-      blocked: 23,
-      lastChecked: "2024-01-20T10:25:00Z"
-    },
-    {
-      id: "3",
-      domain: "yahoo.com", 
-      reputation: 85,
-      delivered: 6750,
-      bounced: 145,
-      spam: 78,
-      blocked: 34,
-      lastChecked: "2024-01-20T10:20:00Z"
-    },
-    {
-      id: "4",
-      domain: "apple.com",
-      reputation: 90,
-      delivered: 4320,
-      bounced: 67,
-      spam: 23,
-      blocked: 12,
-      lastChecked: "2024-01-20T10:15:00Z"
-    }
-  ],
-  bounces: [
-    {
-      id: "1",
-      email: "user1@example.com",
-      domain: "example.com",
-      type: "hard",
-      reason: "Mailbox does not exist",
-      campaign: "Newsletter #45",
-      timestamp: "2024-01-20T09:45:00Z"
-    },
-    {
-      id: "2",
-      email: "user2@company.org",
-      domain: "company.org", 
-      type: "soft",
-      reason: "Mailbox full",
-      campaign: "Product Update",
-      timestamp: "2024-01-20T09:30:00Z"
-    },
-    {
-      id: "3",
-      email: "contact@business.net",
-      domain: "business.net",
-      type: "hard", 
-      reason: "Domain does not exist",
-      campaign: "Welcome Series",
-      timestamp: "2024-01-20T09:15:00Z"
-    }
-  ]
-};
-
 function DeliverabilityPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -664,16 +583,23 @@ function DeliverabilityPage() {
       try {
         setLoading(true);
         const data = await getDeliverability();
-        console.log('✅ Real deliverability data loaded:', data);
-        console.log('📊 Domains in response:', data.domains?.length || 0);
-        console.log('📊 Bounces in response:', data.bounces?.length || 0);
-        console.log('📊 Sample domain:', data.domains?.[0]);
-        console.log('📊 Sample bounce:', data.bounces?.[0]);
         setDeliverabilityData(data);
       } catch (error) {
         console.error('Error fetching deliverability data:', error);
-        // Fall back to mock data if API fails
-        setDeliverabilityData(mockDeliverabilityData);
+        setDeliverabilityData({
+          domains: [],
+          bounces: [],
+          overall: {
+            totalSent: 0,
+            totalDelivered: 0,
+            totalBounced: 0,
+            deliveryRate: 0,
+            bounceRate: 0,
+            totalSpam: 0,
+            spamRate: 0,
+            reputationScore: 0,
+          },
+        });
       } finally {
         setLoading(false);
       }
@@ -720,10 +646,6 @@ function DeliverabilityPage() {
     return matchesSearch && matchesFilter;
   }) || [];
 
-  // Debug what's being displayed
-  console.log('🖥️ Displaying domains:', filteredDomains.length, filteredDomains);
-  console.log('🖥️ Displaying bounces:', filteredBounces.length, filteredBounces);
-
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: (i: number) => ({
@@ -747,9 +669,6 @@ function DeliverabilityPage() {
     try {
       setLoading(true);
       const data = await getDeliverability();
-      console.log('✅ Real deliverability data refreshed:', data);
-      console.log('📊 Refreshed - Domains:', data.domains?.length || 0);
-      console.log('📊 Refreshed - Bounces:', data.bounces?.length || 0);
       setDeliverabilityData(data);
     } catch (error) {
       console.error('Error refreshing deliverability data:', error);
@@ -852,10 +771,10 @@ function DeliverabilityPage() {
                 <FaSpam />
               </CardIcon>
             </CardHeader>
-            <CardValue variant="warning">0%</CardValue>
+            <CardValue variant="warning">{deliverabilityData?.overall?.spamRate?.toFixed(2) || 0}%</CardValue>
             <CardChange positive={false}>
-              <FaArrowUp />
-              Not tracked
+              <FaArrowDown />
+              {deliverabilityData?.overall?.totalSpam > 0 ? `${deliverabilityData.overall.totalSpam} spam events` : 'No spam events'}
             </CardChange>
           </OverviewCard>
 
@@ -871,10 +790,10 @@ function DeliverabilityPage() {
                 <FaShieldAlt />
               </CardIcon>
             </CardHeader>
-            <CardValue>{Math.round(deliverabilityData?.overall?.deliveryRate || 0)}</CardValue>
+            <CardValue>{Math.round(deliverabilityData?.overall?.reputationScore || 0)}</CardValue>
             <CardChange positive={true}>
               <FaArrowUp />
-              +3 points this month
+              Based on real domain performance
             </CardChange>
           </OverviewCard>
         </OverviewGrid>
@@ -958,11 +877,10 @@ function DeliverabilityPage() {
                 ) : (
                   filteredDomains.map((domain: any, index: number) => {
                     const domainId = domain.domain || `domain-${index}`;
-                    // Calculate reputation score from delivery rate (0-100 scale)
-                    const reputation = Math.round(domain.deliveredRate || 0);
+                    const reputation = Math.round(domain.reputation || domain.deliveredRate || 0);
                     const delivered = domain.delivered || 0;
                     const bounced = domain.bounced || 0;
-                    const spam = 0; // Not tracked in current data
+                    const spam = domain.spam || 0;
                     
                     return (
                       <TableRow
@@ -996,7 +914,7 @@ function DeliverabilityPage() {
                         </TableCell>
                         <TableCell>
                           <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                            N/A
+                            {domain.lastChecked ? new Date(domain.lastChecked).toLocaleDateString() : 'N/A'}
                           </span>
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
@@ -1078,7 +996,7 @@ function DeliverabilityPage() {
                     const isHardBounce = bounce.reason?.toLowerCase().includes('does not exist') ||
                                        bounce.reason?.toLowerCase().includes('invalid') ||
                                        bounce.reason?.toLowerCase().includes('permanent');
-                    const bounceType = isHardBounce ? 'hard' : 'soft';
+                    const bounceType = bounce.type || (isHardBounce ? 'hard' : 'soft');
                     const timestamp = bounce.bouncedAt || bounce.timestamp;
                     
                     return (

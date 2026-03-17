@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from "@/utils/supabase/server";
 
 interface CampaignDeliverabilityRow {
   id: string;
@@ -8,15 +8,42 @@ interface CampaignDeliverabilityRow {
   emails_sent?: number;
   emails_delivered?: number;
   emails_bounced?: number;
+  emails_spam?: number;
 }
 
 interface EmailSendRow {
   email?: string;
   status?: string;
   sent_at?: string | null;
+  campaign_id?: string | null;
+}
+
+interface EmailBounceRow {
   bounce_reason?: string | null;
+  bounce_type?: string | null;
   bounced_at?: string | null;
   campaign_id?: string | null;
+  subscriber_id?: string | null;
+}
+
+interface SubscriberRow {
+  id?: string;
+  email?: string;
+}
+
+interface WebhookLogRow {
+  event_type?: string;
+  campaign_id?: string | null;
+}
+
+interface DomainReputationRow {
+  domain: string;
+  reputation_score?: number | null;
+  is_blacklisted?: boolean | null;
+  last_checked_at?: string | null;
+  spf_status?: string | null;
+  dkim_status?: string | null;
+  dmarc_status?: string | null;
 }
 
 export interface DeliverabilityData {
@@ -27,11 +54,21 @@ export interface DeliverabilityData {
     bounced: number;
     deliveredRate: number;
     bounceRate: number;
+    spam: number;
+    blocked: number;
+    reputation: number;
+    lastChecked: string | null;
+    authentication: {
+      spf: string | null;
+      dkim: string | null;
+      dmarc: string | null;
+    };
   }>;
   bounces: Array<{
     email: string;
     domain: string;
     reason: string;
+    type: string;
     bouncedAt: string;
     campaignId: string | null;
     campaignName: string | null;
@@ -42,6 +79,9 @@ export interface DeliverabilityData {
     totalBounced: number;
     deliveryRate: number;
     bounceRate: number;
+    totalSpam: number;
+    spamRate: number;
+    reputationScore: number;
   };
 }
 
@@ -52,160 +92,271 @@ export async function getDeliverability(): Promise<DeliverabilityData> {
   try {
     const supabase = await createClient();
 
-    // Note: RLS will enforce admin access - if user is not admin, queries will fail
-
-    // Get overall campaign statistics
     const { data: campaigns, error: campaignsError } = await supabase
-      .from('email_campaigns')
+      .from("email_campaigns")
       .select(`
         id,
         name,
-        status,
         emails_sent,
         emails_delivered,
         emails_bounced,
-        total_recipients,
-        sent_at,
-        created_at
+        emails_spam
       `)
-      .not('emails_sent', 'is', null)
-      .gt('emails_sent', 0);
+      .not("emails_sent", "is", null)
+      .gt("emails_sent", 0);
 
     if (campaignsError) {
-      console.error('Error fetching campaigns:', campaignsError);
-      throw new Error('Failed to fetch campaigns');
+      console.error("Error fetching campaigns:", campaignsError);
+      throw new Error("Failed to fetch campaigns");
     }
 
-    const campaignsList = (campaigns ?? null) as unknown as CampaignDeliverabilityRow[] | null;
+    const [
+      emailSendsResult,
+      emailBouncesResult,
+      domainReputationResult,
+      webhookLogsResult,
+      subscribersResult,
+    ] = await Promise.all([
+      supabase
+        .from("email_sends")
+        .select("email, status, sent_at, campaign_id")
+        .not("sent_at", "is", null)
+        .order("sent_at", { ascending: false })
+        .limit(2000),
+      supabase
+        .from("email_bounces")
+        .select("bounce_reason, bounce_type, bounced_at, campaign_id, subscriber_id")
+        .not("bounced_at", "is", null)
+        .order("bounced_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("email_domain_reputation")
+        .select(
+          "domain, reputation_score, is_blacklisted, last_checked_at, spf_status, dkim_status, dmarc_status"
+        ),
+      supabase
+        .from("email_webhook_logs")
+        .select("event_type, campaign_id")
+        .limit(2000),
+      supabase
+        .from("subscribers")
+        .select("id, email")
+        .not("email", "is", null),
+    ]);
 
-    // Get subscriber data for domain analysis
-    const { data: subscribers, error: subscribersError } = await supabase
-      .from('subscribers')
-      .select('email, status')
-      .eq('status', 'active');
-
-    if (subscribersError) {
-      console.error('Error fetching subscribers:', subscribersError);
-      throw new Error('Failed to fetch subscribers');
+    if (emailSendsResult.error) {
+      console.error("Error fetching email sends:", emailSendsResult.error);
+    }
+    if (emailBouncesResult.error) {
+      console.error("Error fetching email bounces:", emailBouncesResult.error);
+    }
+    if (domainReputationResult.error) {
+      console.error(
+        "Error fetching domain reputation:",
+        domainReputationResult.error
+      );
+    }
+    if (webhookLogsResult.error) {
+      console.error("Error fetching webhook logs:", webhookLogsResult.error);
+    }
+    if (subscribersResult.error) {
+      console.error("Error fetching subscribers:", subscribersResult.error);
     }
 
-    // Get email sends for more detailed tracking
-    const { data: emailSends, error: sendsError } = await supabase
-      .from('email_sends')
-      .select('email, status, sent_at, bounce_reason, bounced_at, campaign_id')
-      .not('sent_at', 'is', null)
-      .order('sent_at', { ascending: false })
-      .limit(1000); // Limit to recent sends
+    const campaignsList =
+      ((campaigns ?? []) as unknown as CampaignDeliverabilityRow[]) || [];
+    const sendsList =
+      ((emailSendsResult.data ?? []) as unknown as EmailSendRow[]) || [];
+    const bounceList =
+      ((emailBouncesResult.data ?? []) as unknown as EmailBounceRow[]) || [];
+    const domainReputationRows =
+      ((domainReputationResult.data ?? []) as unknown as DomainReputationRow[]) ||
+      [];
+    const webhookLogs =
+      ((webhookLogsResult.data ?? []) as unknown as WebhookLogRow[]) || [];
+    const subscribers =
+      ((subscribersResult.data ?? []) as unknown as SubscriberRow[]) || [];
 
-    if (sendsError) {
-      console.error('Error fetching email sends:', sendsError);
-      // Continue without email sends data
-    }
-
-    // Calculate overall metrics
-    const totalSent =
-      campaignsList?.reduce((sum, c) => sum + (c.emails_sent || 0), 0) || 0;
-    const totalDelivered =
-      campaignsList?.reduce((sum, c) => sum + (c.emails_delivered || 0), 0) || 0;
-    const totalBounced =
-      campaignsList?.reduce((sum, c) => sum + (c.emails_bounced || 0), 0) || 0;
+    const totalSent = campaignsList.reduce(
+      (sum, campaign) => sum + (campaign.emails_sent || 0),
+      0
+    );
+    const totalDelivered = campaignsList.reduce(
+      (sum, campaign) => sum + (campaign.emails_delivered || 0),
+      0
+    );
+    const totalBounced = campaignsList.reduce(
+      (sum, campaign) => sum + (campaign.emails_bounced || 0),
+      0
+    );
+    const totalSpam = campaignsList.reduce(
+      (sum, campaign) => sum + (campaign.emails_spam || 0),
+      0
+    );
 
     const deliveryRate = totalSent > 0 ? (totalDelivered / totalSent) * 100 : 0;
     const bounceRate = totalSent > 0 ? (totalBounced / totalSent) * 100 : 0;
+    const spamRate = totalSent > 0 ? (totalSpam / totalSent) * 100 : 0;
 
-    // Analyze by domain
-    const domainStats = new Map<string, { sent: number; delivered: number; bounced: number }>();
-
-    // Extract domains from subscribers
-    subscribers?.forEach((subscriber) => {
-      if (subscriber.email) {
-        const domain = subscriber.email.split('@')[1];
-        if (domain) {
-          const current = domainStats.get(domain) || { sent: 0, delivered: 0, bounced: 0 };
-          current.sent += 1; // Approximate - would need actual send data
-          current.delivered += 1; // Approximate
-          domainStats.set(domain, current);
-        }
+    const subscriberEmailById = new Map<string, string>();
+    for (const subscriber of subscribers) {
+      if (subscriber.id && subscriber.email) {
+        subscriberEmailById.set(subscriber.id, subscriber.email);
       }
-    });
+    }
 
-    const sendsList = (emailSends ?? null) as EmailSendRow[] | null;
-
-    // Process email sends for more accurate domain stats
-    sendsList?.forEach((send) => {
-      if (send.email) {
-        const domain = send.email.split('@')[1];
-        if (domain) {
-          const current = domainStats.get(domain) || { sent: 0, delivered: 0, bounced: 0 };
-          current.sent += 1;
-          if (send.status === 'delivered') {
-            current.delivered += 1;
-          } else if (send.status === 'bounced') {
-            current.bounced += 1;
-          }
-          domainStats.set(domain, current);
-        }
+    const domainStats = new Map<
+      string,
+      {
+        sent: number;
+        delivered: number;
+        bounced: number;
+        spam: number;
+        blocked: number;
+        lastChecked: string | null;
       }
-    });
+    >();
 
-    // Convert domain stats to array format
+    for (const send of sendsList) {
+      if (!send.email) continue;
+      const domain = send.email.split("@")[1];
+      if (!domain) continue;
+
+      const current = domainStats.get(domain) || {
+        sent: 0,
+        delivered: 0,
+        bounced: 0,
+        spam: 0,
+        blocked: 0,
+        lastChecked: send.sent_at || null,
+      };
+
+      current.sent += 1;
+      if (send.status === "delivered" || send.status === "sent") {
+        current.delivered += 1;
+      }
+      if (!current.lastChecked || (send.sent_at && send.sent_at > current.lastChecked)) {
+        current.lastChecked = send.sent_at || null;
+      }
+
+      domainStats.set(domain, current);
+    }
+
+    for (const bounce of bounceList) {
+      const email = bounce.subscriber_id
+        ? subscriberEmailById.get(bounce.subscriber_id)
+        : undefined;
+      const domain = email?.split("@")[1];
+      if (!domain) continue;
+
+      const current = domainStats.get(domain) || {
+        sent: 0,
+        delivered: 0,
+        bounced: 0,
+        spam: 0,
+        blocked: 0,
+        lastChecked: bounce.bounced_at || null,
+      };
+
+      current.bounced += 1;
+      if (
+        bounce.bounce_type?.toLowerCase() === "blocked" ||
+        bounce.bounce_reason?.toLowerCase().includes("blocked")
+      ) {
+        current.blocked += 1;
+      }
+      if (
+        !current.lastChecked ||
+        (bounce.bounced_at && bounce.bounced_at > current.lastChecked)
+      ) {
+        current.lastChecked = bounce.bounced_at || null;
+      }
+      domainStats.set(domain, current);
+    }
+
+    const reputationMap = new Map(
+      domainReputationRows.map((row) => [row.domain, row])
+    );
+
     const domains = Array.from(domainStats.entries()).map(([domain, stats]) => {
-      const total = stats.sent || 1; // Avoid division by zero
+      const total = Math.max(stats.sent, 1);
+      const domainReputation = reputationMap.get(domain);
+      const deliveredRate = (stats.delivered / total) * 100;
+      const domainBounceRate = (stats.bounced / total) * 100;
+      const derivedReputation = Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round(
+            domainReputation?.reputation_score ??
+              deliveredRate - domainBounceRate * 2 - stats.blocked * 5
+          )
+        )
+      );
+
       return {
         domain,
         sent: stats.sent,
         delivered: stats.delivered,
         bounced: stats.bounced,
-        deliveredRate: total > 0 ? (stats.delivered / total) * 100 : 0,
-        bounceRate: total > 0 ? (stats.bounced / total) * 100 : 0,
+        deliveredRate,
+        bounceRate: domainBounceRate,
+        spam: stats.spam,
+        blocked: stats.blocked,
+        reputation: derivedReputation,
+        lastChecked: domainReputation?.last_checked_at || stats.lastChecked,
+        authentication: {
+          spf: domainReputation?.spf_status || null,
+          dkim: domainReputation?.dkim_status || null,
+          dmarc: domainReputation?.dmarc_status || null,
+        },
       };
     });
 
-    // Get bounce details
-    const bounces: Array<{
-      email: string;
-      domain: string;
-      reason: string;
-      bouncedAt: string;
-      campaignId: string | null;
-      campaignName: string | null;
-    }> = [];
-
-    sendsList?.forEach((send) => {
-      if (send.status === 'bounced' && send.bounced_at) {
-        const email = send.email || '';
-        const domain = email.split('@')[1] || 'unknown';
-        const campaign = campaignsList?.find((c) => c.id === send.campaign_id);
-        bounces.push({
-          email,
-          domain,
-          reason: send.bounce_reason || 'Unknown reason',
-          bouncedAt: send.bounced_at,
-          campaignId: send.campaign_id || null,
-          campaignName: campaign?.name || null,
-        });
-      }
+    const bounces = bounceList.map((bounce) => {
+      const email = bounce.subscriber_id
+        ? subscriberEmailById.get(bounce.subscriber_id) || ""
+        : "";
+      const domain = email.split("@")[1] || "unknown";
+      const campaign = campaignsList.find((c) => c.id === bounce.campaign_id);
+      return {
+        email,
+        domain,
+        reason: bounce.bounce_reason || "Unknown reason",
+        type: bounce.bounce_type || "unknown",
+        bouncedAt: bounce.bounced_at || "",
+        campaignId: bounce.campaign_id || null,
+        campaignName: campaign?.name || null,
+      };
     });
 
-    // Sort domains by sent count (descending)
     domains.sort((a, b) => b.sent - a.sent);
+    bounces.sort(
+      (a, b) => new Date(b.bouncedAt).getTime() - new Date(a.bouncedAt).getTime()
+    );
 
-    // Sort bounces by date (most recent first)
-    bounces.sort((a, b) => new Date(b.bouncedAt).getTime() - new Date(a.bouncedAt).getTime());
+    const averageReputation =
+      domains.length > 0
+        ? domains.reduce((sum, domain) => sum + domain.reputation, 0) /
+          domains.length
+        : deliveryRate;
 
     return {
-      domains: domains.slice(0, 50), // Top 50 domains
-      bounces: bounces.slice(0, 100), // Most recent 100 bounces
+      domains: domains.slice(0, 50),
+      bounces: bounces.slice(0, 100),
       overall: {
         totalSent,
         totalDelivered,
         totalBounced,
         deliveryRate,
         bounceRate,
+        totalSpam,
+        spamRate,
+        reputationScore: averageReputation,
       },
     };
   } catch (error) {
-    console.error('Error in getDeliverability:', error);
+    console.error("Error in getDeliverability:", error);
     throw error;
   }
 }

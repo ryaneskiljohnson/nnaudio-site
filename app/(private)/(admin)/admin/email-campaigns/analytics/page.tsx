@@ -14,6 +14,7 @@ import {
   FaDownload
 } from 'react-icons/fa';
 import StatLoadingSpinner from '@/components/common/StatLoadingSpinner';
+import { getAnalytics } from '@/app/actions/email-campaigns';
 
 const Container = styled.div`
   max-width: 1400px;
@@ -183,16 +184,52 @@ const ChartTitle = styled.h2`
   margin-bottom: 1.5rem;
 `;
 
-const ChartPlaceholder = styled.div`
-  height: 300px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 12px;
+const ChartStack = styled.div`
   display: flex;
+  flex-direction: column;
+  gap: 1rem;
+`;
+
+const ChartRow = styled.div`
+  display: grid;
+  grid-template-columns: 160px 1fr 64px;
+  gap: 0.75rem;
   align-items: center;
-  justify-content: center;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ChartLabel = styled.div`
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+`;
+
+const ChartBarWrap = styled.div`
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: #edf0f5;
+  overflow: hidden;
+`;
+
+const ChartBar = styled.div<{ $width: number; $variant?: 'primary' | 'secondary' }>`
+  width: ${(props) => props.$width}%;
+  height: 100%;
+  border-radius: 999px;
+  background: ${(props) =>
+    props.$variant === 'secondary'
+      ? 'linear-gradient(135deg, #17a2b8 0%, #20c997 100%)'
+      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'};
+`;
+
+const ChartValue = styled.div`
+  font-size: 0.85rem;
+  font-weight: 700;
   color: #666;
-  font-size: 1.1rem;
-  font-weight: 500;
+  text-align: right;
 `;
 
 const TableCard = styled.div`
@@ -289,65 +326,86 @@ interface CampaignData {
   clicked: number;
   unsubscribed: number;
   sentDate: string;
+  openRate: number;
+  clickRate: number;
+  bounceRate: number;
+}
+
+interface AnalyticsState {
+  summary: {
+    totalSent: number;
+    totalDelivered: number;
+    totalOpened: number;
+    totalClicked: number;
+    totalBounced: number;
+    totalUnsubscribes: number;
+    openRate: number;
+    clickRate: number;
+    bounceRate: number;
+    unsubscribeRate: number;
+    activeSubscribers: number;
+  };
+  trends: {
+    openRateChange: number;
+    clickRateChange: number;
+    unsubscribeRateChange: number;
+    bounceRateChange: number;
+  };
+  campaigns: CampaignData[];
 }
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState('30d');
   const [loading, setLoading] = useState(true);
-  const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsState | null>(null);
 
   useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      setCampaigns([
-        {
-          id: '1',
-          name: 'Welcome Series #1',
-          type: 'Automation',
-          sent: 1247,
-          delivered: 1198,
-          opened: 456,
-          clicked: 89,
-          unsubscribed: 3,
-          sentDate: '2024-01-15'
-        },
-        {
-          id: '2',
-          name: 'Monthly Newsletter',
-          type: 'Broadcast',
-          sent: 5420,
-          delivered: 5267,
-          opened: 1876,
-          clicked: 234,
-          unsubscribed: 12,
-          sentDate: '2024-01-10'
-        },
-        {
-          id: '3',
-          name: 'Product Launch',
-          type: 'Broadcast',
-          sent: 3200,
-          delivered: 3089,
-          opened: 1654,
-          clicked: 456,
-          unsubscribed: 8,
-          sentDate: '2024-01-08'
+    const loadAnalytics = async () => {
+      try {
+        setLoading(true);
+        const result = await getAnalytics({ timeRange });
+        if (!result.success) {
+          throw new Error('Failed to load analytics');
         }
-      ]);
-      setLoading(false);
-    }, 1000);
+
+        setAnalytics({
+          summary: result.data.summary,
+          trends: result.data.trends,
+          campaigns: result.data.campaigns.map((campaign) => ({
+            id: campaign.id,
+            name: campaign.name,
+            type: campaign.type,
+            sent: campaign.sent,
+            delivered: campaign.delivered,
+            opened: campaign.opens,
+            clicked: campaign.clicks,
+            unsubscribed: campaign.unsubscribes,
+            sentDate: campaign.sentAt || '',
+            openRate: campaign.openRate,
+            clickRate: campaign.clickRate,
+            bounceRate: campaign.bounceRate,
+          })),
+        });
+      } catch (error) {
+        console.error('Error loading analytics:', error);
+        setAnalytics(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadAnalytics();
   }, [timeRange]);
 
-  const totalSent = campaigns.reduce((sum, campaign) => sum + campaign.sent, 0);
-  const totalDelivered = campaigns.reduce((sum, campaign) => sum + campaign.delivered, 0);
-  const totalOpened = campaigns.reduce((sum, campaign) => sum + campaign.opened, 0);
-  const totalClicked = campaigns.reduce((sum, campaign) => sum + campaign.clicked, 0);
-  const totalUnsubscribed = campaigns.reduce((sum, campaign) => sum + campaign.unsubscribed, 0);
-
-  const deliveryRate = totalSent > 0 ? (totalDelivered / totalSent * 100).toFixed(1) : '0';
-  const openRate = totalDelivered > 0 ? (totalOpened / totalDelivered * 100).toFixed(1) : '0';
-  const clickRate = totalOpened > 0 ? (totalClicked / totalOpened * 100).toFixed(1) : '0';
-  const unsubscribeRate = totalSent > 0 ? (totalUnsubscribed / totalSent * 100).toFixed(2) : '0';
+  const campaigns = analytics?.campaigns || [];
+  const summary = analytics?.summary;
+  const trends = analytics?.trends;
+  const topOpenCampaigns = [...campaigns]
+    .sort((a, b) => b.openRate - a.openRate)
+    .slice(0, 6);
+  const topClickCampaigns = [...campaigns]
+    .sort((a, b) => b.clickRate - a.clickRate)
+    .slice(0, 6);
 
 
 
@@ -387,9 +445,9 @@ export default function AnalyticsPage() {
               <FaEnvelope />
             </StatIcon>
           </StatHeader>
-          <StatValue>{loading ? <StatLoadingSpinner size={20} /> : totalSent.toLocaleString()}</StatValue>
+          <StatValue>{loading ? <StatLoadingSpinner size={20} /> : (summary?.totalSent || 0).toLocaleString()}</StatValue>
           <StatLabel>Emails Sent</StatLabel>
-          <StatChange positive={true}>+12.5% from last period</StatChange>
+          <StatChange positive={true}>{summary ? `${summary.activeSubscribers.toLocaleString()} active subscribers` : 'No subscriber data'}</StatChange>
         </StatCard>
 
         <StatCard
@@ -402,9 +460,9 @@ export default function AnalyticsPage() {
               <FaUsers />
             </StatIcon>
           </StatHeader>
-          <StatValue>{loading ? <StatLoadingSpinner size={20} /> : `${deliveryRate}%`}</StatValue>
+          <StatValue>{loading ? <StatLoadingSpinner size={20} /> : `${(summary ? ((summary.totalDelivered / Math.max(summary.totalSent, 1)) * 100) : 0).toFixed(1)}%`}</StatValue>
           <StatLabel>Delivery Rate</StatLabel>
-          <StatChange positive={true}>+0.8% from last period</StatChange>
+          <StatChange positive={true}>{summary ? `${summary.totalDelivered.toLocaleString()} delivered` : 'No delivery data'}</StatChange>
         </StatCard>
 
         <StatCard
@@ -417,9 +475,9 @@ export default function AnalyticsPage() {
               <FaEye />
             </StatIcon>
           </StatHeader>
-          <StatValue>{loading ? <StatLoadingSpinner size={20} /> : `${openRate}%`}</StatValue>
+          <StatValue>{loading ? <StatLoadingSpinner size={20} /> : `${summary?.openRate.toFixed(1) || '0.0'}%`}</StatValue>
           <StatLabel>Open Rate</StatLabel>
-          <StatChange positive={false}>-2.1% from last period</StatChange>
+          <StatChange positive={(trends?.openRateChange || 0) >= 0}>{trends ? `${trends.openRateChange > 0 ? '+' : ''}${trends.openRateChange.toFixed(2)} pts vs prior period` : 'No trend data'}</StatChange>
         </StatCard>
 
         <StatCard
@@ -432,25 +490,56 @@ export default function AnalyticsPage() {
               <FaMousePointer />
             </StatIcon>
           </StatHeader>
-          <StatValue>{loading ? <StatLoadingSpinner size={20} /> : `${clickRate}%`}</StatValue>
+          <StatValue>{loading ? <StatLoadingSpinner size={20} /> : `${summary?.clickRate.toFixed(1) || '0.0'}%`}</StatValue>
           <StatLabel>Click Rate</StatLabel>
-          <StatChange positive={true}>+5.3% from last period</StatChange>
+          <StatChange positive={(trends?.clickRateChange || 0) >= 0}>{trends ? `${trends.clickRateChange > 0 ? '+' : ''}${trends.clickRateChange.toFixed(2)} pts vs prior period` : 'No trend data'}</StatChange>
         </StatCard>
       </StatsGrid>
 
         <ChartsGrid>
           <ChartCard>
-          <ChartTitle>Performance Over Time</ChartTitle>
-            <ChartPlaceholder>
-            Interactive chart showing email performance trends
-            </ChartPlaceholder>
+          <ChartTitle>Top Campaigns by Open Rate</ChartTitle>
+            <ChartStack>
+              {loading ? (
+                <LoadingState><StatLoadingSpinner size={24} /></LoadingState>
+              ) : topOpenCampaigns.length === 0 ? (
+                <LoadingState>No campaign data available.</LoadingState>
+              ) : (
+                topOpenCampaigns.map((campaign) => (
+                  <ChartRow key={`open-${campaign.id}`}>
+                    <ChartLabel>{campaign.name}</ChartLabel>
+                    <ChartBarWrap>
+                      <ChartBar $width={Math.max(3, Math.min(100, campaign.openRate))} />
+                    </ChartBarWrap>
+                    <ChartValue>{campaign.openRate.toFixed(1)}%</ChartValue>
+                  </ChartRow>
+                ))
+              )}
+            </ChartStack>
           </ChartCard>
           
           <ChartCard>
-          <ChartTitle>Campaign Types</ChartTitle>
-            <ChartPlaceholder>
-            Pie chart showing campaign type distribution
-            </ChartPlaceholder>
+          <ChartTitle>Top Campaigns by Click Rate</ChartTitle>
+            <ChartStack>
+              {loading ? (
+                <LoadingState><StatLoadingSpinner size={24} /></LoadingState>
+              ) : topClickCampaigns.length === 0 ? (
+                <LoadingState>No campaign data available.</LoadingState>
+              ) : (
+                topClickCampaigns.map((campaign) => (
+                  <ChartRow key={`click-${campaign.id}`}>
+                    <ChartLabel>{campaign.name}</ChartLabel>
+                    <ChartBarWrap>
+                      <ChartBar
+                        $width={Math.max(3, Math.min(100, campaign.clickRate * 4))}
+                        $variant="secondary"
+                      />
+                    </ChartBarWrap>
+                    <ChartValue>{campaign.clickRate.toFixed(1)}%</ChartValue>
+                  </ChartRow>
+                ))
+              )}
+            </ChartStack>
           </ChartCard>
         </ChartsGrid>
 
@@ -470,12 +559,8 @@ export default function AnalyticsPage() {
           </thead>
           <tbody>
             {campaigns.map(campaign => {
-              const campaignOpenRate = campaign.delivered > 0 
-                ? (campaign.opened / campaign.delivered * 100).toFixed(1)
-                : '0';
-              const campaignClickRate = campaign.opened > 0 
-                ? (campaign.clicked / campaign.opened * 100).toFixed(1)
-                : '0';
+              const campaignOpenRate = campaign.openRate.toFixed(1);
+              const campaignClickRate = campaign.clickRate.toFixed(1);
 
               return (
                 <TableRow key={campaign.id}>
@@ -496,7 +581,7 @@ export default function AnalyticsPage() {
                     </MetricBadge>
                   </TableCell>
                   <TableCell>{campaign.unsubscribed}</TableCell>
-                  <TableCell>{new Date(campaign.sentDate).toLocaleDateString()}</TableCell>
+                  <TableCell>{campaign.sentDate ? new Date(campaign.sentDate).toLocaleDateString() : 'N/A'}</TableCell>
                 </TableRow>
               );
             })}

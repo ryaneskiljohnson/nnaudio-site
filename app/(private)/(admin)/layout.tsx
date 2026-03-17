@@ -40,6 +40,7 @@ import {
   FaFacebook,
   FaBell,
   FaStar,
+  FaRocket,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
@@ -956,6 +957,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <FaCog /> Site Management
             </NavItem>
           </Link>
+          <Link href="/admin/growth-strategy">
+            <NavItem
+              $active={pathname === "/admin/growth-strategy" ? "true" : "false"}
+              onClick={(e) => handleNavigation(e, "/admin/growth-strategy")}
+            >
+              <FaRocket /> Growth Strategy
+            </NavItem>
+          </Link>
           <NavSection>
             <NavSectionHeader
               $expanded={adManagerExpanded}
@@ -1307,6 +1316,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onClick={(e) => handleNavigation(e, "/admin/site-management")}
             >
               <FaCog /> Site Management
+            </MobileNavItem>
+
+            <MobileNavItem
+              $active={pathname === "/admin/growth-strategy" ? "true" : "false"}
+              variants={menuItemVariants}
+              custom={3.55}
+              initial="hidden"
+              animate="visible"
+              onClick={(e) => handleNavigation(e, "/admin/growth-strategy")}
+            >
+              <FaRocket /> Growth Strategy
             </MobileNavItem>
 
             <MobileNavItem
