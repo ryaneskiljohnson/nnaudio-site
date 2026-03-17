@@ -276,14 +276,17 @@ export default function Home() {
             .filter((p: any) => p)
             .map((p: any) => {
               const isBundle = bundleSlugs.includes(p.slug);
+              const productImage = p.featured_image_url || '';
+              const logoOrProduct = p.logo_url || productImage || '';
+              const useProductImageOnly = (p.slug || '').toLowerCase() === 'cymasphere';
               return {
                 id: p.id,
                 name: p.name,
                 slug: p.slug,
                 tagline: p.tagline || p.short_description || '',
                 description: p.description,
-                logo: p.logo_url || p.featured_image_url || '',
-                thumbnail: p.featured_image_url || p.logo_url || '',
+                logo: useProductImageOnly ? productImage : logoOrProduct,
+                thumbnail: useProductImageOnly ? productImage : (productImage || p.logo_url || ''),
                 backgroundImage: p.background_image_url || p.background_video_url || '',
                 price: `$${p.sale_price || p.price}`,
                 hasMultiplePricing: isBundle || p.category === 'bundle',
@@ -478,7 +481,7 @@ export default function Home() {
             id="featured"
             eyebrow="Best Of NNAudio"
             title="Start with the ones producers come back to"
-            subtitle="A few of the strongest ways into the catalog when you want to hear what defines the NNAudio sound and workflow."
+            subtitle="A few of the strongest ways into the catalog—whether you want to hear the NNAudio sound or build with the flagship composition workflow."
             footerNote="These are the products most likely to tell you quickly whether the NNAudio sound and workflow fit the way you create."
             products={featuredProducts}
           />

@@ -6,6 +6,7 @@
 
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -233,8 +234,25 @@ const EliteItem = styled.li`
  * the free or mid-tier catalog.
  * @returns Premium spotlight section.
  */
+/** Fallback logo when product image is not available */
+const CYMASPHERE_LOGO_FALLBACK = "/logo-cymasphere.svg";
+
 export default function PremiumSpotlightSection() {
   const pathname = usePathname();
+  const [cymasphereImageUrl, setCymasphereImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/products/slug/cymasphere")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: { product?: { featured_image_url?: string | null } }) => {
+        const url = data?.product?.featured_image_url?.trim();
+        if (url) setCymasphereImageUrl(url);
+      })
+      .catch(() => {});
+  }, []);
+
+  const cymasphereSrc = cymasphereImageUrl || CYMASPHERE_LOGO_FALLBACK;
+
   return (
     <Section>
       <Inner>
@@ -286,11 +304,12 @@ export default function PremiumSpotlightSection() {
               <PriceNow>$149</PriceNow>
             </PriceBadge>
             <Image
-              src="/images/cymasphere-logo.png"
+              src={cymasphereSrc}
               alt="Cymasphere"
               width={320}
               height={120}
-              style={{ width: "100%", height: "auto", maxWidth: "320px", margin: "0 auto 1rem", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.45))" }}
+              style={{ width: "100%", height: "auto", maxWidth: "320px", margin: "0 auto 1rem", filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.45))", objectFit: "contain" }}
+              unoptimized={cymasphereSrc.startsWith("http")}
             />
             <CardTitle>Intelligent Music Creation</CardTitle>
             <CardBody>
