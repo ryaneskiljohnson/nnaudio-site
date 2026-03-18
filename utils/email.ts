@@ -16,6 +16,57 @@ const DEDUPE_WINDOW_MS = 90_000; // 90 seconds
 /** Recent sends: key -> timestamp. Pruned when checking. */
 const recentSends = new Map<string, number>();
 
+/** Verified-style From when env is missing or invalid (must match SendGrid sender auth). */
+const FALLBACK_FROM_EMAIL = "support@nnaud.io";
+
+/**
+ * @brief Normalizes SENDER_EMAIL from env (trim, strip wrapping quotes) and validates shape.
+ * @returns Parsed email or null if unusable.
+ * @note Vercel/dashboard copy-paste often leaves quotes around the value, which breaks SendGrid From.
+ */
+function normalizeEnvSenderEmail(raw: string | undefined): string | null {
+  if (raw == null || typeof raw !== "string") return null;
+  let s = raw.trim();
+  if (
+    (s.startsWith('"') && s.endsWith('"')) ||
+    (s.startsWith("'") && s.endsWith("'"))
+  ) {
+    s = s.slice(1, -1).trim();
+  }
+  // Pragmatic check: no spaces, angle brackets, or obvious garbage
+  if (!/^[^\s<>"']+@[^\s<>"']+\.[^\s<>"']+$/.test(s)) return null;
+  return s;
+}
+
+/**
+ * @brief Resolves default From name/email from env with safe fallbacks.
+ * @returns Display name and email for SendGrid `from`.
+ */
+function getDefaultSenderFromEnv(): { email: string; name: string } {
+  const email = normalizeEnvSenderEmail(process.env.SENDER_EMAIL);
+  const rawName = (process.env.SENDER_NAME || "NNAudio Support").trim();
+  const name =
+    rawName.replace(/[\r\n<>]/g, "").slice(0, 128).trim() || "NNAudio Support";
+  if (!email) {
+    if (process.env.SENDER_EMAIL?.trim()) {
+      console.warn(
+        "[email] SENDER_EMAIL is invalid after normalize (check for quotes/typos); using",
+        FALLBACK_FROM_EMAIL
+      );
+    }
+    return { email: FALLBACK_FROM_EMAIL, name: "NNAudio Support" };
+  }
+  return { email, name };
+}
+
+/**
+ * @brief RFC-style From header string for defaults (Name <email>).
+ */
+function defaultFromHeaderString(): string {
+  const { email, name } = getDefaultSenderFromEnv();
+  return `${name} <${email}>`;
+}
+
 function pruneRecentSends(): void {
   const now = Date.now();
   const toDelete: string[] = [];
@@ -81,9 +132,7 @@ export async function sendEmail({
   subject,
   text,
   html,
-  from = process.env.SENDER_EMAIL
-    ? `${process.env.SENDER_NAME || "NNAudio Support"} <${process.env.SENDER_EMAIL}>`
-    : "NNAudio Support <support@nnaud.io>",
+  from = defaultFromHeaderString(),
   replyTo,
   listUnsubscribe,
   idempotencyKey,
@@ -188,9 +237,7 @@ export async function sendBatchEmail({
   subject,
   text,
   html,
-  from = process.env.SENDER_EMAIL
-    ? `${process.env.SENDER_NAME || "NNAudio Support"} <${process.env.SENDER_EMAIL}>`
-    : "NNAudio Support <support@nnaud.io>",
+  from = defaultFromHeaderString(),
   replyTo,
   listUnsubscribe,
   idempotencyKey,

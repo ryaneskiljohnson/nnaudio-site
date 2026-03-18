@@ -1,7 +1,39 @@
+/**
+ * @fileoverview POST /api/contact — validates input, rate-limits, emails support via SendGrid.
+ * @module app/api/contact/route
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { sendEmail } from "@/utils/email";
 import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
 import { contactSchema } from "@/utils/apiSchemas";
+
+/**
+ * @brief Turns SendGrid (or similar) errors into a short message for the browser (no raw JSON).
+ * @param providerError - Error string returned from sendEmail.
+ * @returns User-safe copy; full providerError is logged server-side.
+ */
+function contactFormSendErrorForClient(providerError: string): string {
+  const trimmed = providerError.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed) as Array<{ field?: string; message?: string }>;
+      const first = parsed[0];
+      if (first?.field === "from" || String(first?.message).toLowerCase().includes("from")) {
+        return "We couldn't send from our mail system. Please email support@nnaud.io directly.";
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  if (
+    trimmed.toLowerCase().includes("invalid") &&
+    trimmed.toLowerCase().includes("from")
+  ) {
+    return "We couldn't send from our mail system. Please email support@nnaud.io directly.";
+  }
+  return "We couldn't send your message right now. Please try again later or email support@nnaud.io.";
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -299,24 +331,22 @@ ${message}
 </html>
     `;
 
-    // Send email via SendGrid
+    // Send email via SendGrid — same From as receipts/order confirmations (webhook, payment-intent).
     const result = await sendEmail({
       to: "support@nnaud.io",
       subject: emailSubject,
       text: textContent,
       html: htmlContent,
-      replyTo: email, // Set reply-to so responses go to the user
+      from: "NNAudio Support <support@nnaud.io>",
+      replyTo: email,
     });
 
     if (!result.success) {
-      console.error("Failed to send email:", result.error);
-      
-      // Return error with the actual error message
+      console.error("Contact form: sendEmail failed:", result.error);
       return NextResponse.json(
-        { 
-          success: false, 
-          error: result.error || "Failed to send email",
-          details: "Check server logs for more information about AWS credentials"
+        {
+          success: false,
+          error: contactFormSendErrorForClient(result.error || ""),
         },
         { status: 500 }
       );
