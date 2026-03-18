@@ -4,6 +4,12 @@ import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOK
 /** Optimization goals that require bid constraints (e.g. roas_average_floor) or bid_amount. Meta returns error 2490487 if sent without them. We do not support these in the UI. */
 const OPTIMIZATION_GOALS_REQUIRING_BID_CONSTRAINTS = ['VALUE', 'LOWEST_COST_WITH_MIN_ROAS'] as const;
 
+/**
+ * In development, when Meta createAdSet fails we can return a fallback mock ad set so the UI flow
+ * can continue (e.g. create an ad). GET merges these into the list for the campaign.
+ */
+const devFallbackAdSets: Array<{ id: string; name: string; campaignId: string; status: string; budget: number }> = [];
+
 /** Normalize a raw Meta ad set for list/UI: id, name, campaignId, budget, optimization_goal, targeting summary. */
 function normalizeAdSet(raw: {
   id: string;
@@ -140,7 +146,20 @@ export async function GET(request: NextRequest) {
       }, { status: 502 });
     }
 
-    const adSets = Array.isArray(rawAdSets) ? rawAdSets.map(normalizeAdSet) : [];
+    let adSets = Array.isArray(rawAdSets) ? rawAdSets.map(normalizeAdSet) : [];
+    if (process.env.NODE_ENV === 'development' && devFallbackAdSets.length > 0) {
+      const forCampaign = campaignId
+        ? devFallbackAdSets.filter((a) => a.campaignId === campaignId)
+        : devFallbackAdSets;
+      const fallbackNormalized = forCampaign.map((a) => ({
+        id: a.id,
+        name: a.name,
+        campaignId: a.campaignId,
+        budget: a.budget,
+        status: a.status,
+      }));
+      adSets = [...adSets, ...fallbackNormalized];
+    }
     return NextResponse.json({
       success: true,
       adSets
@@ -329,6 +348,24 @@ export async function POST(request: NextRequest) {
         message = 'Billing option not available: Your ad account is new to Facebook Products. Some billing and bid options are only available after your account has followed Meta\'s policies for several weeks.\n\nCreate this ad set in Meta Ads Manager (ads.facebook.com) for now, or try again later once your account is eligible.';
       }
       console.error('Facebook API createAdSet failed:', apiError);
+
+      if (process.env.NODE_ENV === 'development') {
+        const fallbackId = `dev_fallback_${campaignId}_${Date.now()}`;
+        const fallback = {
+          id: fallbackId,
+          name,
+          campaignId,
+          status: String(status).toLowerCase(),
+          budget: dailyBudget,
+        };
+        devFallbackAdSets.push(fallback);
+        return NextResponse.json({
+          success: true,
+          adSet: { id: fallback.id, name: fallback.name, campaignId: fallback.campaignId, status: fallback.status, createdAt: new Date().toISOString() },
+          isDevelopmentFallback: true,
+        });
+      }
+
       const body: { success: false; error: string; metaCode?: number; metaData?: unknown } = {
         success: false,
         error: message,

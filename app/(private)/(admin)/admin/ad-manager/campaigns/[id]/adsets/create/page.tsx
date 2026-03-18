@@ -4,7 +4,7 @@
  */
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import { FaArrowLeft, FaSave, FaBullseye } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
@@ -144,6 +144,13 @@ export default function CreateAdSetPage() {
   const [endTime, setEndTime] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,7 +208,7 @@ export default function CreateAdSetPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ success: false, error: "Invalid response from server" }));
       if (data.success) {
         router.push(`/admin/ad-manager/campaigns/adsets?campaignId=${encodeURIComponent(campaignId)}`);
       } else {
@@ -232,7 +239,13 @@ export default function CreateAdSetPage() {
       </Header>
 
       <Form onSubmit={handleSubmit}>
-        {error && <ErrorBox role="alert" aria-label={error}>{error}</ErrorBox>}
+        {error && (
+          <div ref={errorRef}>
+            <ErrorBox role="alert" aria-live="assertive" aria-label={error}>
+              {error}
+            </ErrorBox>
+          </div>
+        )}
 
         <FormGroup>
           <Label>Ad set name</Label>
