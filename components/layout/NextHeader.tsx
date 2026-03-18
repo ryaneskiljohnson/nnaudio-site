@@ -35,8 +35,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import NextLanguageSelector from "@/components/i18n/NextLanguageSelector";
 import Image from "next/image";
 import SideCart from "@/components/cart/SideCart";
-// Import translations directly to avoid hook ordering issues
 import i18next from "i18next";
+import { useTranslation } from "react-i18next";
 
 // Fallback values for common keys (used when translations not yet loaded)
 const TRANSLATION_FALLBACKS: Record<string, string> = {
@@ -49,16 +49,7 @@ const TRANSLATION_FALLBACKS: Record<string, string> = {
   "header.howItWorks": "How It Works",
   "header.pricing": "Pricing",
   "header.faq": "FAQ",
-};
-
-// Function to get translations without using hooks
-const getTranslation = (key: string): string => {
-  if (i18next.isInitialized) {
-    const result = i18next.t(key);
-    // When resources are empty (before async load), i18next returns the key
-    if (result !== key) return result;
-  }
-  return TRANSLATION_FALLBACKS[key] ?? key;
+  "common.adminConsole": "Admin Console",
 };
 
 // Animation variants - optimized for mobile performance
@@ -642,6 +633,12 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
   );
   const { user, signOut } = useAuth();
   const { getItemCount, items, isLoaded: isCartLoaded, suppressCartOpen, clearSuppressCartOpen } = useCart();
+  const { t: tMenu } = useTranslation();
+  /** Re-renders when translations load (bindI18nStore) or language changes; fallbacks before API bundle. */
+  const menuLabel = (key: string) => {
+    const v = tMenu(key);
+    return v !== key ? v : TRANSLATION_FALLBACKS[key] ?? key;
+  };
   const userMenuRef = useRef<HTMLDivElement>(null);
   const cartItemCount = getItemCount();
   const prevCartItemCountRef = useRef<number>(cartItemCount);
@@ -815,7 +812,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
             <Link href="/dashboard">
               <UserMenuItem onClick={() => setUserMenuOpen(false)}>
                 <FaUser />
-                {getTranslation("common.myAccount")}
+                {menuLabel("common.myAccount")}
               </UserMenuItem>
             </Link>
             <Link href="/redeem">
@@ -828,23 +825,23 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
               <Link href="/admin">
                 <UserMenuItem onClick={() => setUserMenuOpen(false)}>
                   <FaShieldAlt />
-                  {getTranslation("common.adminConsole")}
+                  {menuLabel("common.adminConsole")}
                 </UserMenuItem>
               </Link>
             )}
             <UserMenuLogout onClick={handleLogout}>
               <FaSignOutAlt />
-              {getTranslation("common.logout")}
+              {menuLabel("common.logout")}
             </UserMenuLogout>
           </UserDropdown>
         </UserMenuContainer>
         ) : (
           <>
             <AuthButton onClick={handleLoginClick}>
-              {getTranslation("common.login")}
+              {menuLabel("common.login")}
             </AuthButton>
             <AuthButton $isPrimary onClick={handleSignupClick}>
-              {getTranslation("common.signUp")}
+              {menuLabel("common.signUp")}
             </AuthButton>
           </>
         )}
@@ -924,7 +921,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
           >
             <MobileMenuContent>
               <MobileNavTitle>
-                {getTranslation("common.navigation")}
+                {menuLabel("common.navigation")}
               </MobileNavTitle>
               <MobileMenuColumn>
               <MobileNavLinks>
@@ -976,7 +973,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                         animate="visible"
                       >
                         <FaUser />
-                        {getTranslation("common.myAccount")}
+                        {menuLabel("common.myAccount")}
                       </MobileNavLink>
                     </Link>
                     {user.is_admin && (
@@ -993,7 +990,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                           animate="visible"
                         >
                           <FaShieldAlt />
-                          {getTranslation("common.adminConsole")}
+                          {menuLabel("common.adminConsole")}
                         </MobileNavLink>
                       </Link>
                     )}
@@ -1009,7 +1006,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                       animate="visible"
                     >
                       <FaSignOutAlt />
-                      {getTranslation("common.logout")}
+                      {menuLabel("common.logout")}
                     </MobileNavLink>
                   </MobileUserSection>
                 )}
@@ -1027,7 +1024,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                     }}
                   >
                     <FaSignInAlt />
-                    {getTranslation("common.login")}
+                    {menuLabel("common.login")}
                   </AuthButton>
                   <AuthButton
                     $isMobile
@@ -1038,7 +1035,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                     }}
                   >
                     <FaUserPlus />
-                    {getTranslation("common.signUp")}
+                    {menuLabel("common.signUp")}
                   </AuthButton>
                 </MobileAuthSection>
               )}

@@ -227,7 +227,9 @@ const FAQSection = () => {
           transition={{ duration: 0.6 }}
           viewport={{ once: true, amount: 0.2 }}
         >
-          <SectionTitle>{t("faq.title")}</SectionTitle>
+          <SectionTitle>
+            {t("faq.title", { defaultValue: "Frequently Asked Questions" })}
+          </SectionTitle>
           <SectionSubtitle>
             Get the quick answers on installs, ownership, updates, subscriptions,
             and support before you dive deeper into the catalog.

@@ -18,7 +18,11 @@ if (typeof window !== 'undefined' && !i18n.isInitialized) {
     interpolation: { escapeValue: false },
     returnNull: false,
     returnEmptyString: false,
-    react: { useSuspense: false },
+    react: {
+      useSuspense: false,
+      /** Re-render useTranslation consumers when addResourceBundle runs (async API load). */
+      bindI18nStore: "added removed",
+    },
   });
 }
 
@@ -129,6 +133,10 @@ export const loadTranslations = async (locale: string) => {
           },
           returnNull: false, // Don't return null for missing translations
           returnEmptyString: false, // Don't return empty string for missing translations
+          react: {
+            useSuspense: false,
+            bindI18nStore: "added removed",
+          },
         });
     } else {
       // Just change the language and add resources if already initialized
@@ -161,6 +169,10 @@ export const loadTranslations = async (locale: string) => {
             },
             returnNull: false,
             returnEmptyString: false,
+            react: {
+              useSuspense: false,
+              bindI18nStore: "added removed",
+            },
           });
       } catch (initError) {
         console.error(`[loadTranslations] Failed to initialize i18next with fallback:`, initError);
