@@ -1843,7 +1843,11 @@ export async function getRecentSupportTicketMessagesAdmin(
 }
 
 /**
- * Add a message to a support ticket (admin only)
+ * @brief Add a message to a support ticket (admin only).
+ * @param ticketId Target ticket UUID
+ * @param content Message body
+ * @param isAdmin Whether the message is from support (affects notifications)
+ * @returns Success, optional messageId, ticketUpdatedAt after DB trigger bumps parent row, and error
  */
 export async function addSupportTicketMessageAdmin(
   ticketId: string,
@@ -1852,6 +1856,7 @@ export async function addSupportTicketMessageAdmin(
 ): Promise<{
   success: boolean;
   messageId?: string;
+  ticketUpdatedAt?: string;
   error?: string;
 }> {
   try {
@@ -1891,6 +1896,16 @@ export async function addSupportTicketMessageAdmin(
       };
     }
 
+    let ticketUpdatedAt: string | undefined;
+    if (message) {
+      const { data: ticketRow } = await serviceSupabase
+        .from("support_tickets")
+        .select("updated_at")
+        .eq("id", ticketId)
+        .single();
+      ticketUpdatedAt = ticketRow?.updated_at ?? undefined;
+    }
+
     // If this is an admin message, send email notification to the ticket owner
     if (isAdmin && message) {
       try {
@@ -1901,12 +1916,13 @@ export async function addSupportTicketMessageAdmin(
           emailError,
         );
       }
-      // Notify all admins of the new reply so they receive any correspondence
+      // Notify other admins / inbox — exclude the replying admin's own email
       try {
         await sendSupportTicketEmailNotificationToAdmin(
           ticketId,
           message.id,
           true,
+          user.id,
         );
       } catch (adminEmailError) {
         console.error(
@@ -1916,7 +1932,11 @@ export async function addSupportTicketMessageAdmin(
       }
     }
 
-    return { success: true, messageId: message.id };
+    return {
+      success: true,
+      messageId: message.id,
+      ticketUpdatedAt,
+    };
   } catch (error) {
     console.error("Error in addSupportTicketMessageAdmin:", error);
     return {
@@ -2300,13 +2320,17 @@ This is an automated notification from NNAudio Support.
 }
 
 /**
- * Send email notification to admins for support ticket correspondence.
- * @param isAdminReply - when true, copy says a team member replied (used when admin adds a message)
+ * @brief Send email notification to admins for support ticket correspondence.
+ * @param ticketId Support ticket id
+ * @param messageId Message id (for logging / future use)
+ * @param isAdminReply When true, copy reflects a team member reply
+ * @param excludeReplyingAdminUserId If set with isAdminReply, that user's auth email is removed from all recipients (including support inbox when it matches), so the replier is not copied on their own reply.
  */
 async function sendSupportTicketEmailNotificationToAdmin(
   ticketId: string,
   messageId: string,
   isAdminReply: boolean = false,
+  excludeReplyingAdminUserId?: string | null,
 ): Promise<void> {
   try {
     const serviceSupabase = await createSupabaseServiceRole();
@@ -2627,14 +2651,42 @@ ${ticketUrl}
 This is an automated notification from NNAudio Support.
     `;
 
-    // Send email to support inbox and all admins so every admin receives support correspondence
+    // Support inbox + all admins; replying admin is excluded on their own replies
     const adminEmails = await getAdminEmails();
     const supportInbox = "support@nnaud.io";
-    const toAddresses = [supportInbox, ...adminEmails].filter(
+    let toAddresses = [supportInbox, ...adminEmails].filter(
       (e, i, arr) => e && arr.indexOf(e) === i,
     );
     if (toAddresses.length === 0) {
-      toAddresses.push(supportInbox);
+      toAddresses = [supportInbox];
+    }
+
+    if (isAdminReply && excludeReplyingAdminUserId) {
+      try {
+        const {
+          data: { user: replyingUser },
+        } = await serviceSupabase.auth.admin.getUserById(
+          excludeReplyingAdminUserId,
+        );
+        const excludeEmail = replyingUser?.email?.toLowerCase().trim();
+        if (excludeEmail) {
+          toAddresses = toAddresses.filter(
+            (addr) => addr.toLowerCase().trim() !== excludeEmail,
+          );
+        }
+      } catch (excludeErr) {
+        console.error(
+          "[support ticket admin email] Could not resolve replying admin email:",
+          excludeErr,
+        );
+      }
+    }
+
+    if (toAddresses.length === 0) {
+      console.log(
+        `[support ticket admin email] Skipping send for ${ticket.ticket_number}: no recipients after excluding replying admin`,
+      );
+      return;
     }
 
     const { sendEmail } = await import("@/utils/email");

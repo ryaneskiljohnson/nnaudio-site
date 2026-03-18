@@ -1889,6 +1889,8 @@ function SupportTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
   const [loadingTickets, setLoadingTickets] = useState(true);
+  /** After first list fetch, refetches skip the full-table skeleton. */
+  const ticketsTableInitialFetchDone = useRef(false);
   const [ticketDetails, setTicketDetails] = useState<Map<string, Ticket>>(new Map());
   const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
   const [showAIModal, setShowAIModal] = useState(false);
@@ -1988,8 +1990,14 @@ function SupportTicketsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showContent, searchParams]);
 
-  const fetchTickets = async () => {
-    setLoadingTickets(true);
+  /**
+   * @brief Loads all support tickets for the admin table.
+   * @param options.showTableSkeleton When true, shows full-table loading row; when false, silent refresh. Default: skeleton only on first load.
+   */
+  const fetchTickets = async (options?: { showTableSkeleton?: boolean }) => {
+    const showSkeleton =
+      options?.showTableSkeleton ?? !ticketsTableInitialFetchDone.current;
+    if (showSkeleton) setLoadingTickets(true);
     setTicketsError(null);
     try {
       const result = await getSupportTicketsAdmin();
@@ -2002,6 +2010,7 @@ function SupportTicketsPage() {
       console.error("Error fetching tickets:", error);
       setTicketsError("Failed to fetch tickets");
     } finally {
+      ticketsTableInitialFetchDone.current = true;
       setLoadingTickets(false);
     }
   };
@@ -2089,7 +2098,6 @@ function SupportTicketsPage() {
           subject: "",
           description: "",
         });
-        // Refresh tickets
         await fetchTickets();
         // Close modal after 2 seconds
         setTimeout(() => {
@@ -2571,10 +2579,21 @@ function SupportTicketsPage() {
         fileInputRefs.current[ticketId].value = '';
       }
 
-      // Refresh ticket details (force refresh to get new message and attachments)
+      // Refresh conversation; patch list row only (no full-table refetch)
       await fetchTicketDetails(ticketId, true);
-      // Refresh tickets list to update updated_at
-      await fetchTickets();
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId
+            ? {
+                ...t,
+                last_reply_is_admin: true,
+                awaiting_admin_response: false,
+                updated_at:
+                  result.ticketUpdatedAt ?? new Date().toISOString(),
+              }
+            : t,
+        ),
+      );
       emitSupportTicketsUnreadRefresh();
     } catch (error) {
       console.error("Error sending message:", error);
@@ -2613,7 +2632,6 @@ function SupportTicketsPage() {
         ),
       );
 
-      await fetchTickets();
       emitSupportTicketsUnreadRefresh();
     } catch (error) {
       console.error("Error dismissing notification:", error);
