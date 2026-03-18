@@ -15,6 +15,7 @@ import {
   FaHeadset,
 } from "react-icons/fa";
 import FAQSectionSkeleton from "@/components/skeletons/FAQSectionSkeleton";
+import { FAQ_DEFAULT_QUESTIONS } from "@/lib/faq-default-questions";
 
 const FAQContainer = styled.section`
   padding: 100px 20px;
@@ -186,26 +187,53 @@ const FAQSection = () => {
     <FaHeadset key="support" />,     // Get help
   ];
 
-  // Support both formats: faq.questions[] (en, de, es, ...) and legacy faq.question1/answer1, ... (e.g. tr)
-  const faqRaw = t("faq", { returnObjects: true });
-  const faqObj = typeof faqRaw === "object" && faqRaw !== null ? (faqRaw as Record<string, unknown>) : {};
-  let questionsData: FAQItem[] = [];
-
-  if (Array.isArray(faqObj.questions)) {
-    questionsData = (faqObj.questions as FAQItem[]).filter(
-      (q) => typeof q?.question === "string" && typeof q?.answer === "string"
+  /**
+   * @brief Resolves FAQ list from i18n; falls back to bundled defaults if API/i18n omits arrays.
+   * @note t("faq", { returnObjects: true }) often fails (returns key string) before ready or with some bundles;
+   *       t("faq.questions", { returnObjects: true }) targets the array directly.
+   */
+  const normalizeFaqList = (raw: unknown): FAQItem[] => {
+    if (!Array.isArray(raw)) return [];
+    return (raw as unknown[]).filter(
+      (q): q is FAQItem =>
+        q !== null &&
+        typeof q === "object" &&
+        typeof (q as FAQItem).question === "string" &&
+        typeof (q as FAQItem).answer === "string"
     );
-  } else {
-    const legacy: FAQItem[] = [];
-    let i = 1;
-    while (typeof faqObj[`question${i}`] === "string" && typeof faqObj[`answer${i}`] === "string") {
-      legacy.push({
-        question: faqObj[`question${i}`] as string,
-        answer: faqObj[`answer${i}`] as string,
-      });
-      i += 1;
+  };
+
+  let questionsData: FAQItem[] = normalizeFaqList(
+    t("faq.questions", { returnObjects: true })
+  );
+
+  if (questionsData.length === 0) {
+    const faqRaw = t("faq", { returnObjects: true });
+    const faqObj =
+      typeof faqRaw === "object" && faqRaw !== null && !Array.isArray(faqRaw)
+        ? (faqRaw as Record<string, unknown>)
+        : {};
+    if (Array.isArray(faqObj.questions)) {
+      questionsData = normalizeFaqList(faqObj.questions);
+    } else {
+      const legacy: FAQItem[] = [];
+      let i = 1;
+      while (
+        typeof faqObj[`question${i}`] === "string" &&
+        typeof faqObj[`answer${i}`] === "string"
+      ) {
+        legacy.push({
+          question: faqObj[`question${i}`] as string,
+          answer: faqObj[`answer${i}`] as string,
+        });
+        i += 1;
+      }
+      questionsData = legacy;
     }
-    questionsData = legacy;
+  }
+
+  if (questionsData.length === 0) {
+    questionsData = [...FAQ_DEFAULT_QUESTIONS];
   }
 
   const faqItems = questionsData.map((item: FAQItem, index: number) => ({
