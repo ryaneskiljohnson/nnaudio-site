@@ -6,7 +6,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { checkAdmin } from "@/app/actions/user-management";
-import { generateRedeemInstructionsPdf } from "@/utils/redeemInstructionsPdf";
 
 /**
  * @brief GET redeem instructions PDF (admin only)
@@ -36,6 +35,7 @@ export async function GET(request: NextRequest) {
     const serial_code = searchParams.get("serial_code")?.trim() || undefined;
     const product_name = searchParams.get("product_name")?.trim() || undefined;
 
+    const { generateRedeemInstructionsPdf } = await import("@/utils/redeemInstructionsPdf");
     const pdfBytes = generateRedeemInstructionsPdf({
       serial_code,
       product_name,

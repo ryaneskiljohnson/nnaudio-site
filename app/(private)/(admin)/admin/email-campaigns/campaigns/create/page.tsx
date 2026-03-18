@@ -48,7 +48,15 @@ import {
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getCampaign, getAudiences, getTemplates, getTemplate, calculateReach, sendCampaign, previewEmail } from "@/app/actions/email-campaigns";
+import {
+  getCampaign,
+  getAudiences,
+  getTemplates,
+  getTemplate,
+  calculateReach,
+  sendCampaign,
+} from "@/app/actions/email-campaigns";
+import { previewEmail } from "@/app/actions/email-campaigns/media";
 import styled, { keyframes, css } from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import LoadingComponent from "@/components/common/LoadingComponent";

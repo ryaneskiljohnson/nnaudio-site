@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { nnaudioRAG } from '@/lib/rag';
 import { checkRateLimit, getClientIp } from '@/utils/rateLimit';
 import { chatSchema } from '@/utils/apiSchemas';
 
@@ -476,6 +475,8 @@ async function generateAIResponse(message: string, conversationHistory: ChatMess
   }
 
   try {
+    // Dynamic import to avoid bundling Langchain into shared server chunk (Vercel 250 MB limit)
+    const { nnaudioRAG } = await import('@/lib/rag');
     // Layer 1: RAG - Retrieve relevant context from knowledge base
     const context = await nnaudioRAG.retrieveRelevantContext(message);
     

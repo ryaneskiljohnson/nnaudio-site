@@ -9,7 +9,8 @@ export { getAnalytics } from './analytics';
 export { getDeliverability } from './deliverability';
 export { calculateReach, calculateBatchReach } from './reach';
 export { sendCampaign } from './send';
-export { listMedia, uploadImage, uploadMedia, previewEmail } from './media';
+// Do not export media.ts here — it imports sharp (~100MB+ native). Import from
+// @/app/actions/email-campaigns/media only where needed (Vercel 250MB limit).
 
 // Export types
 export type { GetCampaignsParams, Campaign, GetCampaignsResponse, GetCampaignResponse } from './campaigns';
@@ -21,5 +22,4 @@ export type { GetAnalyticsParams, AnalyticsData, GetAnalyticsResponse } from './
 export type { DeliverabilityData } from './deliverability';
 export type { CalculateReachParams, CalculateReachResponse, CalculateBatchReachParams, CalculateBatchReachResponse } from './reach';
 export type { SendCampaignParams, SendCampaignResponse } from './send';
-export type { MediaItem, ListMediaResponse, UploadImageParams, UploadImageResponse, UploadMediaParams, UploadMediaResponse, PreviewResponse } from './media';
 

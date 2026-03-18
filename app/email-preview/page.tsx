@@ -77,7 +77,7 @@ function EmailPreviewContent() {
       console.log('[EmailPreview] Fetching preview for:', campaignId);
       try {
         setLoading(true);
-        const { previewEmail } = await import('@/app/actions/email-campaigns');
+        const { previewEmail } = await import('@/app/actions/email-campaigns/media');
         const data = await previewEmail(campaignId);
 
         console.log('[EmailPreview] Server function success flag:', data?.success, 'HTML length:', (data?.html || '').length);

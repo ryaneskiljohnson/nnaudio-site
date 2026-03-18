@@ -22,6 +22,8 @@ const nextConfig = {
       '**/__tests__/**',
       '**/*.test.{ts,tsx,js,jsx}',
       '**/*.spec.{ts,tsx,js,jsx}',
+      // public/ is served by CDN; exclude so convert-to-webp route doesn't pull 250MB+ into the function
+      './public/**',
     ],
   },
   // Keep serverless function under 250 MB: externalize heavy deps (loaded from node_modules at runtime)
@@ -39,6 +41,7 @@ const nextConfig = {
     'jsdom',
     'jspdf',
     'openai',
+    'sharp',
   ],
   async redirects() {
     return [

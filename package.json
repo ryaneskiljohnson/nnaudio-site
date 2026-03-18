@@ -22,7 +22,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "env:email": "bun run scripts/check-email-env.ts",
-    "check:dead-product-audio": "npx tsx scripts/check-dead-product-audio.ts"
+    "check:dead-product-audio": "npx tsx scripts/check-dead-product-audio.ts",
+    "verify:barrels": "bun run scripts/check-server-barrel-exports.ts"
   },
   "packageManager": "bun@1.2.2",
   "overrides": {
@@ -76,6 +77,7 @@
     "react-tsparticles": "^2.12.2",
     "recharts": "^3.7.0",
     "rehype-sanitize": "^6.0.0",
+    "sharp": "^0.34.5",
     "@sendgrid/eventwebhook": "^8.0.0",
     "@sendgrid/mail": "^8.1.4",
     "stripe": "^20.3.1",
@@ -101,7 +103,6 @@
     "eslint": "^10.0.0",
     "eslint-config-next": "16.1.6",
     "postcss": "^8.5.6",
-    "sharp": "^0.34.5",
     "supabase": "^2.76.10",
     "tailwindcss": "^4.2.0",
     "to-ico": "^1.1.5",

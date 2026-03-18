@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CymasphereQuickstartPDF } from '../../../utils/pdfGenerator';
 
 export async function GET(request: NextRequest) {
   try {
-    // Create PDF generator instance
+    // Dynamic import to avoid bundling canvas/jspdf into shared server chunk (Vercel 250 MB limit)
+    const { CymasphereQuickstartPDF } = await import('../../../utils/pdfGenerator');
     const pdfGenerator = new CymasphereQuickstartPDF();
     
     // Generate the PDF

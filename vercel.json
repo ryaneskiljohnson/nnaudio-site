@@ -10,7 +10,7 @@
       "schedule": "0 * * * *"
     }
   ],
-  "buildCommand": "bun run build",
+  "buildCommand": "bun run verify:barrels && bun run build",
   "installCommand": "bun install --frozen-lockfile",
   "framework": "nextjs"
 }

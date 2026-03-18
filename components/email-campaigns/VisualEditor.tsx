@@ -1386,7 +1386,7 @@ export default function VisualEditor({
       setShowMediaLibrary(true);
       setMediaPage(1);
       computeMediaModalPlacement();
-      const { listMedia } = await import('@/app/actions/email-campaigns');
+      const { listMedia } = await import('@/app/actions/email-campaigns/media');
       const json = await listMedia();
       if (json.success) {
         setMediaLibraryItems(json.items || []);
@@ -1558,7 +1558,7 @@ export default function VisualEditor({
       }
       
       console.log('📤 Uploading image to Supabase storage:', file.name, 'Size:', file.size, 'Type:', file.type);
-      const { uploadMedia } = await import('@/app/actions/email-campaigns');
+      const { uploadMedia } = await import('@/app/actions/email-campaigns/media');
       const result = await uploadMedia({ file });
       console.log('📤 Upload result:', result);
       
@@ -1638,7 +1638,7 @@ export default function VisualEditor({
   // Media upload (image or video)
   const uploadMediaFile = async (file: File): Promise<{ url?: string; type?: 'image' | 'video'; error?: string }> => {
     try {
-      const { uploadMedia } = await import('@/app/actions/email-campaigns');
+      const { uploadMedia } = await import('@/app/actions/email-campaigns/media');
       const result = await uploadMedia({ file });
       if (result.success && result.data?.publicUrl) {
         return { url: result.data.publicUrl, type: file.type.startsWith('image/') ? 'image' : 'video' };
