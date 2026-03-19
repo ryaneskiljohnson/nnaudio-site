@@ -856,6 +856,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <FaShieldAlt /> Admin Dashboard
             </NavItem>
           </Link>
+          <Link href="/dashboard">
+            <NavItem
+              $active={pathname === "/dashboard" ? "true" : "false"}
+              onClick={(e) => handleNavigation(e, "/dashboard")}
+            >
+              <FaTachometerAlt /> User Dashboard
+            </NavItem>
+          </Link>
           <Link href="/admin/users">
             <NavItem
               $active={pathname === "/admin/users" ? "true" : "false"}
