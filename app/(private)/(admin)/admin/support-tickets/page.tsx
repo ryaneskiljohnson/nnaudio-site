@@ -2452,6 +2452,7 @@ function SupportTicketsPage() {
         setTickets(prev => prev.map(t => 
           t.id === ticketId ? { ...t, status: newStatus } : t
         ));
+        emitSupportTicketsUnreadRefresh();
       } else {
         alert(result.error || "Failed to update status");
       }

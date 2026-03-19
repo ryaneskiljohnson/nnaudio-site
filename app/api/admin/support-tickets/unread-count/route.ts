@@ -16,8 +16,9 @@ import {
  * @brief Returns the per-admin unread support ticket count.
  * GET /api/admin/support-tickets/unread-count
  * @returns 200 JSON with count; 401 if not admin; 500 on error
- * @note Tickets count as unread only when the latest message is from the customer and
- * the current admin has not dismissed that exact message.
+ * @note Tickets count as unread only when status is open or in_progress, the latest
+ * message is from the customer, and the current admin has not dismissed that message.
+ * Resolved/closed tickets are excluded so changing status removes the notification.
  * @example
  * ```json
  * { "count": 3 }
@@ -43,6 +44,7 @@ export async function GET() {
     const { data: tickets, error: ticketsError } = await serviceSupabase
       .from("support_tickets")
       .select("id")
+      .in("status", ["open", "in_progress"])
       .order("created_at", { ascending: false });
 
     if (ticketsError || !tickets?.length) {
