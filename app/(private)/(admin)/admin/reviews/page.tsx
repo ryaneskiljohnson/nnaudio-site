@@ -10,6 +10,9 @@ import styled from "styled-components";
 import { FaCheckCircle, FaClock, FaSearch, FaStar, FaTimesCircle } from "react-icons/fa";
 import type { AdminProductReviewRecord } from "@/app/actions/product-reviews";
 
+/** Dispatched after approve/reject/delete so the admin layout can refresh the sidebar pending count. */
+const REVIEWS_PENDING_UPDATED_EVENT = "admin-reviews-pending-updated";
+
 const PageContainer = styled.div`
   width: 100%;
   max-width: 1480px;
@@ -395,6 +398,7 @@ export default function AdminReviewsPage() {
             : "Review rejected successfully.",
       });
       await loadReviews();
+      window.dispatchEvent(new Event(REVIEWS_PENDING_UPDATED_EVENT));
     } catch (error) {
       console.error("Error moderating review:", error);
       setMessage({ type: "error", text: "Moderation failed." });
@@ -424,6 +428,7 @@ export default function AdminReviewsPage() {
 
       setMessage({ type: "success", text: "Review deleted." });
       await loadReviews();
+      window.dispatchEvent(new Event(REVIEWS_PENDING_UPDATED_EVENT));
     } catch (error) {
       console.error("Error deleting review:", error);
       setMessage({ type: "error", text: "Delete failed." });

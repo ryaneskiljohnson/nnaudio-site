@@ -1,6 +1,6 @@
 /**
- * @fileoverview Shared admin layout with sidebar navigation, access guard, and
- * support-ticket unread badge refresh behavior.
+ * @fileoverview Shared admin layout with sidebar navigation, access guard,
+ * support-ticket unread badge, and reviews-pending badge refresh behavior.
  * @module app/(private)/(admin)/layout
  */
 
@@ -48,6 +48,7 @@ import { useRouter, usePathname } from "next/navigation";
 
 const SUPPORT_TICKETS_UNREAD_UPDATED_EVENT =
   "admin-support-tickets-unread-updated";
+const REVIEWS_PENDING_UPDATED_EVENT = "admin-reviews-pending-updated";
 import NNAudioLogo from "@/components/common/NNAudioLogo";
 
 import NextLanguageSelector from "@/components/i18n/NextLanguageSelector";
@@ -617,6 +618,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [emailCampaignsExpanded, setEmailCampaignsExpanded] = useState(false);
   const [adManagerExpanded, setAdManagerExpanded] = useState(false);
   const [supportTicketsUnreadCount, setSupportTicketsUnreadCount] = useState(0);
+  const [reviewsPendingCount, setReviewsPendingCount] = useState(0);
   const { user, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -713,6 +715,30 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
   }, [user?.is_admin]);
 
+  /**
+   * @brief Fetches the count of product reviews pending moderation (not yet approved/rejected).
+   * @returns Promise<void>
+   * @note Used by the sidebar badge; refreshed on route change and when reviews page dispatches REVIEWS_PENDING_UPDATED_EVENT.
+   */
+  const fetchReviewsPendingCount = useCallback(async () => {
+    if (!user?.is_admin) return;
+
+    try {
+      const res = await fetch("/api/admin/reviews/pending-count");
+      if (!res.ok) {
+        setReviewsPendingCount(0);
+        return;
+      }
+
+      const data = await res.json();
+      setReviewsPendingCount(
+        typeof data.count === "number" ? data.count : 0,
+      );
+    } catch {
+      setReviewsPendingCount(0);
+    }
+  }, [user?.is_admin]);
+
   // Auto-expand email campaigns section if any sub-route is active
   useEffect(() => {
     if (isEmailCampaignsActive()) {
@@ -727,11 +753,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
   }, [pathname]);
 
-  // Fetch support tickets unread count for sidebar badge
+  // Fetch support tickets unread count and reviews pending count for sidebar badges
   useEffect(() => {
     if (!user?.is_admin) return;
     void fetchSupportTicketsUnreadCount();
-  }, [fetchSupportTicketsUnreadCount, pathname, user?.is_admin]);
+    void fetchReviewsPendingCount();
+  }, [fetchSupportTicketsUnreadCount, fetchReviewsPendingCount, pathname, user?.is_admin]);
 
   useEffect(() => {
     if (!user?.is_admin) return;
@@ -752,6 +779,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       );
     };
   }, [fetchSupportTicketsUnreadCount, user?.is_admin]);
+
+  useEffect(() => {
+    if (!user?.is_admin) return;
+
+    const handleReviewsPendingRefresh = () => {
+      void fetchReviewsPendingCount();
+    };
+
+    window.addEventListener(REVIEWS_PENDING_UPDATED_EVENT, handleReviewsPendingRefresh);
+
+    return () => {
+      window.removeEventListener(REVIEWS_PENDING_UPDATED_EVENT, handleReviewsPendingRefresh);
+    };
+  }, [fetchReviewsPendingCount, user?.is_admin]);
 
   useEffect(() => {
     const isMobileViewport = window.innerWidth <= 768;
@@ -946,7 +987,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               $active={pathname === "/admin/reviews" ? "true" : "false"}
               onClick={(e) => handleNavigation(e, "/admin/reviews")}
             >
-              <FaStar /> Reviews
+              <FaStar />
+              <NavItemLabel>Reviews</NavItemLabel>
+              {reviewsPendingCount > 0 && (
+                <SupportTicketsBadge title={`${reviewsPendingCount} pending`}>
+                  {reviewsPendingCount > 99 ? "99+" : reviewsPendingCount}
+                </SupportTicketsBadge>
+              )}
             </NavItem>
           </Link>
           <Link href="/admin/notifications">
@@ -1302,6 +1349,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onClick={(e) => handleNavigation(e, "/admin/reviews")}
             >
               <FaStar /> Reviews
+              {reviewsPendingCount > 0 && (
+                <SupportTicketsBadge title={`${reviewsPendingCount} pending`}>
+                  {reviewsPendingCount > 99 ? "99+" : reviewsPendingCount}
+                </SupportTicketsBadge>
+              )}
             </MobileNavItem>
 
             <MobileNavItem
