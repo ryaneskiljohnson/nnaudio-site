@@ -3,7 +3,7 @@
  * @module dashboard/downloads
  */
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import {
   FaDownload,
@@ -24,6 +24,11 @@ const INSTALLER_INFO_API = "/api/nnaudio-access/installer-info";
 /** Public URLs for HEAD fallback when API is unavailable. */
 const NNAUDIO_ACCESS_MACOS_INSTALLER_URL =
   "https://znecvzfogwkzinkduyuq.supabase.co/storage/v1/object/public/builds/nnaudio-access/NNAudioAccess_Installer.pkg";
+
+function windowsInstallerUrl(): string {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") || "";
+  return `${base}/storage/v1/object/public/builds/nnaudio-access/NNAudioAccess_Installer.exe`;
+}
 
 const DownloadsContainer = styled.div`
   width: 100%;
@@ -241,6 +246,42 @@ function Downloads() {
     loading: true,
   });
 
+  const trackInstallerDownload = useCallback(
+    async (platform: "macos" | "windows") => {
+      try {
+        await fetch("/api/nnaudio-access/track-installer-download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ platform }),
+          credentials: "include",
+        });
+      } catch {
+        // Still open installer URL
+      }
+    },
+    [],
+  );
+
+  const openMacInstaller = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (fileInfo.macos.size === "Loading...") return;
+      await trackInstallerDownload("macos");
+      window.location.href = NNAUDIO_ACCESS_MACOS_INSTALLER_URL;
+    },
+    [fileInfo.macos.size, trackInstallerDownload],
+  );
+
+  const openWindowsInstaller = useCallback(
+    async (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (fileInfo.windows.size === "Loading...") return;
+      await trackInstallerDownload("windows");
+      window.location.href = windowsInstallerUrl();
+    },
+    [fileInfo.windows.size, trackInstallerDownload],
+  );
+
   useEffect(() => {
     const formatFileSize = (bytes: number | null | undefined): string =>
       formatProductDownloadFileSize(bytes) || "—";
@@ -439,17 +480,9 @@ function Downloads() {
                 </div>
                 <DownloadButtonContainer>
                   <DownloadButton
-                    href={
-                      fileInfo.macos.size === "Loading..."
-                        ? "#"
-                        : NNAUDIO_ACCESS_MACOS_INSTALLER_URL
-                    }
+                    href="#"
                     disabled={fileInfo.macos.size === "Loading..."}
-                    onClick={(e) => {
-                      if (fileInfo.macos.size === "Loading...") {
-                        e.preventDefault();
-                      }
-                    }}
+                    onClick={openMacInstaller}
                   >
                     <FaDownload />{" "}
                     {fileInfo.macos.size === "Loading..."
@@ -499,17 +532,9 @@ function Downloads() {
                 </div>
                 <DownloadButtonContainer>
                   <DownloadButton
-                    href={
-                      fileInfo.windows.size === "Loading..."
-                        ? "#"
-                        : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/builds/nnaudio-access/NNAudioAccess_Installer.exe`
-                    }
+                    href="#"
                     disabled={fileInfo.windows.size === "Loading..."}
-                    onClick={(e) => {
-                      if (fileInfo.windows.size === "Loading...") {
-                        e.preventDefault();
-                      }
-                    }}
+                    onClick={openWindowsInstaller}
                   >
                     <FaDownload />{" "}
                     {fileInfo.windows.size === "Loading..."

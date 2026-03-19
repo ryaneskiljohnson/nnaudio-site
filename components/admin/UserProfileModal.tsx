@@ -24,6 +24,7 @@ import { getProductGrantsForEmails } from "@/app/actions/product-grants";
 import type { ProductGrant } from "@/app/actions/product-grants";
 import { getCustomerSubscriptions } from "@/utils/stripe/actions";
 import { updateUserProStatus } from "@/utils/subscriptions/check-subscription";
+import { NnaudioAccessInstallerBadges } from "@/components/admin/NnaudioAccessInstallerBadges";
 
 const ModalOverlay = styled(motion.div)`
   position: fixed;
@@ -905,6 +906,15 @@ export default function UserProfileModal({
                   <InfoLabel>Last Active</InfoLabel>
                   <InfoValue>
                     {formatDateTime(user.lastActive || user.createdAt)}
+                  </InfoValue>
+                </InfoItem>
+                <InfoItem>
+                  <InfoLabel>NNAudio Access</InfoLabel>
+                  <InfoValue>
+                    <NnaudioAccessInstallerBadges
+                      macosAt={user.nnaudioAccessInstallerMacosAt}
+                      windowsAt={user.nnaudioAccessInstallerWindowsAt}
+                    />
                   </InfoValue>
                 </InfoItem>
                 <InfoItem>

@@ -62,6 +62,7 @@ import {
 } from "@/app/actions/user-management";
 import type { UserData } from "@/utils/stripe/admin-analytics";
 import UserProfileModal from "@/components/admin/UserProfileModal";
+import { NnaudioAccessInstallerBadges } from "@/components/admin/NnaudioAccessInstallerBadges";
 
 import TableLoadingRow from "@/components/common/TableLoadingRow";
 
@@ -1829,6 +1830,8 @@ interface Ticket {
   user_order_count?: number;
   last_reply_is_admin?: boolean;
   awaiting_admin_response?: boolean;
+  user_nnaudio_installer_macos_at?: string | null;
+  user_nnaudio_installer_windows_at?: string | null;
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
@@ -3052,37 +3055,51 @@ function SupportTicketsPage() {
                     </TicketSubject>
                   </SubjectTableCell>
                   <UserTableCell>
-                    {ticket.user_id ? (
-                      <TicketUser onClick={(e) => handleViewUser(ticket.user_id, e)}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <span>{ticket.user_email || "Unknown"}</span>
-                          {(ticket.user_first_name || ticket.user_last_name) && (
-                            <span style={{ 
-                              color: 'var(--text-secondary)', 
-                              fontSize: '0.9em',
-                              fontWeight: 'normal'
-                            }}>
-                              ({[ticket.user_first_name, ticket.user_last_name].filter(Boolean).join(' ')})
-                            </span>
-                          )}
-                        </div>
-                      </TicketUser>
-                    ) : (
-                      <TicketUser>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <span>{ticket.user_email || "Unknown"}</span>
-                          {(ticket.user_first_name || ticket.user_last_name) && (
-                            <span style={{ 
-                              color: 'var(--text-secondary)', 
-                              fontSize: '0.9em',
-                              fontWeight: 'normal'
-                            }}>
-                              ({[ticket.user_first_name, ticket.user_last_name].filter(Boolean).join(' ')})
-                            </span>
-                          )}
-                        </div>
-                      </TicketUser>
-                    )}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        gap: "0.35rem",
+                      }}
+                    >
+                      {ticket.user_id ? (
+                        <TicketUser onClick={(e) => handleViewUser(ticket.user_id, e)}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span>{ticket.user_email || "Unknown"}</span>
+                            {(ticket.user_first_name || ticket.user_last_name) && (
+                              <span style={{ 
+                                color: 'var(--text-secondary)', 
+                                fontSize: '0.9em',
+                                fontWeight: 'normal'
+                              }}>
+                                ({[ticket.user_first_name, ticket.user_last_name].filter(Boolean).join(' ')})
+                              </span>
+                            )}
+                          </div>
+                        </TicketUser>
+                      ) : (
+                        <TicketUser>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span>{ticket.user_email || "Unknown"}</span>
+                            {(ticket.user_first_name || ticket.user_last_name) && (
+                              <span style={{ 
+                                color: 'var(--text-secondary)', 
+                                fontSize: '0.9em',
+                                fontWeight: 'normal'
+                              }}>
+                                ({[ticket.user_first_name, ticket.user_last_name].filter(Boolean).join(' ')})
+                              </span>
+                            )}
+                          </div>
+                        </TicketUser>
+                      )}
+                      <NnaudioAccessInstallerBadges
+                        macosAt={ticket.user_nnaudio_installer_macos_at}
+                        windowsAt={ticket.user_nnaudio_installer_windows_at}
+                        compact
+                      />
+                    </div>
                   </UserTableCell>
                   <ProductsCell>
                     {ticket.user_id && (ticket.user_product_count ?? 0) > 0 ? (
@@ -3661,6 +3678,13 @@ function SupportTicketsPage() {
                                     {' '}({[ticket.user_first_name, ticket.user_last_name].filter(Boolean).join(' ')})
                                   </span>
                                 )}
+                                <div style={{ marginTop: "0.35rem" }}>
+                                  <NnaudioAccessInstallerBadges
+                                    macosAt={ticket.user_nnaudio_installer_macos_at}
+                                    windowsAt={ticket.user_nnaudio_installer_windows_at}
+                                    compact
+                                  />
+                                </div>
                               </div>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>

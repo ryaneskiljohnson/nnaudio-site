@@ -62,7 +62,7 @@ import { updateUserProStatus } from "@/utils/subscriptions/check-subscription";
 
 const Container = styled.div`
   width: 100%;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 40px 20px;
 
@@ -1317,6 +1317,38 @@ const ConfirmationButton = styled.button<{ variant: "danger" | "secondary" }>`
     font-size: 0.9rem;
   }
 `;
+
+/**
+ * @brief CRM cell label and tooltip for NNAudio Access installer downloads.
+ */
+function nnaudioAccessInstallerCell(user: UserData): {
+  label: string;
+  title: string;
+} {
+  const m = user.nnaudioAccessInstallerMacosAt;
+  const w = user.nnaudioAccessInstallerWindowsAt;
+  let label = "—";
+  if (m && w) label = "Mac + Win";
+  else if (m) label = "Mac";
+  else if (w) label = "Win";
+  const parts: string[] = [];
+  if (m) {
+    parts.push(
+      `macOS: ${new Date(m).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}`,
+    );
+  }
+  if (w) {
+    parts.push(
+      `Windows: ${new Date(w).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}`,
+    );
+  }
+  return {
+    label,
+    title:
+      parts.join(" · ") ||
+      "No NNAudio Access installer download recorded from dashboard",
+  };
+}
 
 export default function AdminCRM() {
   const { user } = useAuth();
@@ -2934,6 +2966,9 @@ export default function AdminCRM() {
                       Support Tickets
                       {getSortIcon("supportTickets" as keyof UserData)}
                     </TableHeaderCell>
+                    <TableHeaderCell $sortable={false}>
+                      NNAudio Access
+                    </TableHeaderCell>
                     <TableHeaderCell
                       $sortable={true}
                       onClick={() => handleSort("totalSpent")}
@@ -2963,6 +2998,7 @@ export default function AdminCRM() {
                               11/15/2025, 02:30 PM
                             </span>
                           </LastActiveTableCell>
+                          <TableCell>&nbsp;</TableCell>
                           <TableCell>&nbsp;</TableCell>
                           <TableCell>&nbsp;</TableCell>
                           <TableCell>&nbsp;</TableCell>
@@ -3059,6 +3095,23 @@ export default function AdminCRM() {
                                 {supportTicketCount.total}
                               </TicketBadge>
                             </SupportTicketsCount>
+                          </TableCell>
+                          <TableCell>
+                            {(() => {
+                              const { label, title } =
+                                nnaudioAccessInstallerCell(userData);
+                              return (
+                                <span
+                                  style={{
+                                    color: "var(--text-secondary)",
+                                    fontSize: "0.9rem",
+                                  }}
+                                  title={title}
+                                >
+                                  {label}
+                                </span>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell>
                             {userData.totalSpent === -1 ? (

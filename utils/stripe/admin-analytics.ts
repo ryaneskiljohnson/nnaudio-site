@@ -47,6 +47,10 @@ export interface UserData {
   /** Number of paid orders (Stripe charges). -1 while loading. */
   orderCount?: number;
   hasNfr?: boolean;
+  /** First dashboard click for NNAudio Access macOS installer (ISO string). */
+  nnaudioAccessInstallerMacosAt?: string | null;
+  /** First dashboard click for NNAudio Access Windows installer (ISO string). */
+  nnaudioAccessInstallerWindowsAt?: string | null;
 }
 
 export interface DetailedUserData extends UserData {
@@ -1564,6 +1568,10 @@ export async function getAllUsersForCRM(
       const normalizedEmail = userEmail.toLowerCase().trim();
       const hasNfr = nfrStatusMap[normalizedEmail] ?? false;
 
+      const p = profile as typeof profile & {
+        nnaudio_access_installer_macos_at?: string | null;
+        nnaudio_access_installer_windows_at?: string | null;
+      };
       users.push({
         id: profile.id,
         email: userEmail,
@@ -1578,6 +1586,9 @@ export async function getAllUsersForCRM(
         totalSpent: -1, // -1 indicates loading, will be updated when data loads
         orderCount: -1, // -1 indicates loading, will be updated when additional data loads
         hasNfr,
+        nnaudioAccessInstallerMacosAt: p.nnaudio_access_installer_macos_at ?? null,
+        nnaudioAccessInstallerWindowsAt:
+          p.nnaudio_access_installer_windows_at ?? null,
       });
     }
 

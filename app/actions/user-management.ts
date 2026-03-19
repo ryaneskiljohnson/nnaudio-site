@@ -704,6 +704,8 @@ export async function getUserByIdAdmin(userId: string): Promise<{
     lastActive?: string;
     totalSpent: number;
     hasNfr?: boolean;
+    nnaudioAccessInstallerMacosAt?: string | null;
+    nnaudioAccessInstallerWindowsAt?: string | null;
   } | null;
   error?: string;
 }> {
@@ -766,6 +768,10 @@ export async function getUserByIdAdmin(userId: string): Promise<{
     // Get total spent (simplified - just get from additional data function)
     const { totalSpent } = await getAdditionalUserDataAdmin([userId]);
 
+    const prof = profile as typeof profile & {
+      nnaudio_access_installer_macos_at?: string | null;
+      nnaudio_access_installer_windows_at?: string | null;
+    };
     const userData = {
       id: userId,
       email: authUser.email || "",
@@ -779,6 +785,10 @@ export async function getUserByIdAdmin(userId: string): Promise<{
       lastActive: lastActive || undefined,
       totalSpent: totalSpent[userId] || 0,
       hasNfr,
+      nnaudioAccessInstallerMacosAt:
+        prof.nnaudio_access_installer_macos_at ?? null,
+      nnaudioAccessInstallerWindowsAt:
+        prof.nnaudio_access_installer_windows_at ?? null,
     };
 
     return { user: userData };
@@ -1178,6 +1188,8 @@ export async function getSupportTicketsAdmin(): Promise<{
     user_order_count?: number;
     last_reply_is_admin?: boolean;
     awaiting_admin_response?: boolean;
+    user_nnaudio_installer_macos_at?: string | null;
+    user_nnaudio_installer_windows_at?: string | null;
     created_at: string;
     updated_at: string;
     resolved_at: string | null;
@@ -1245,6 +1257,8 @@ export async function getSupportTicketsAdmin(): Promise<{
     >();
     const userProductCountMap = new Map<string, number>();
     const userOrderCountMap = new Map<string, number>();
+    const userNnaudioInstallerMacMap = new Map<string, string | null>();
+    const userNnaudioInstallerWinMap = new Map<string, string | null>();
 
     for (const userId of userIds) {
       try {
@@ -1255,11 +1269,31 @@ export async function getSupportTicketsAdmin(): Promise<{
         userEmailsMap.set(userId, email);
 
         // Get subscription, name, and customer_id from profiles table
-        const { data: profile } = await serviceSupabase
+        const { data: profileRow } = await (serviceSupabase as any)
           .from("profiles")
-          .select("subscription, first_name, last_name, customer_id")
+          .select(
+            "subscription, first_name, last_name, customer_id, nnaudio_access_installer_macos_at, nnaudio_access_installer_windows_at",
+          )
           .eq("id", userId)
           .single();
+
+        const profile = profileRow as {
+          subscription?: string | null;
+          first_name?: string | null;
+          last_name?: string | null;
+          customer_id?: string | null;
+          nnaudio_access_installer_macos_at?: string | null;
+          nnaudio_access_installer_windows_at?: string | null;
+        } | null;
+
+        userNnaudioInstallerMacMap.set(
+          userId,
+          profile?.nnaudio_access_installer_macos_at ?? null,
+        );
+        userNnaudioInstallerWinMap.set(
+          userId,
+          profile?.nnaudio_access_installer_windows_at ?? null,
+        );
 
         // Store user name
         userNamesMap.set(userId, {
@@ -1328,6 +1362,8 @@ export async function getSupportTicketsAdmin(): Promise<{
         });
         userProductCountMap.set(userId, 0);
         userOrderCountMap.set(userId, 0);
+        userNnaudioInstallerMacMap.set(userId, null);
+        userNnaudioInstallerWinMap.set(userId, null);
       }
     }
 
@@ -1353,6 +1389,10 @@ export async function getSupportTicketsAdmin(): Promise<{
           replyStateMap.get(ticket.id)?.lastReplyIsAdmin ?? false,
         awaiting_admin_response:
           replyStateMap.get(ticket.id)?.awaitingAdminResponse ?? false,
+        user_nnaudio_installer_macos_at:
+          userNnaudioInstallerMacMap.get(ticket.user_id) ?? null,
+        user_nnaudio_installer_windows_at:
+          userNnaudioInstallerWinMap.get(ticket.user_id) ?? null,
       };
     });
 
