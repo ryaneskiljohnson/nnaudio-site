@@ -1946,7 +1946,8 @@ export async function addSupportTicketMessageAdmin(
       ticketUpdatedAt = ticketRow?.updated_at ?? undefined;
     }
 
-    // If this is an admin message, send email notification to the ticket owner
+    // If this is an admin message, email the ticket owner only (not support/admins;
+    // admin inbox is notified on user replies via addSupportTicketMessage / createSupportTicket).
     if (isAdmin && message) {
       try {
         await sendSupportTicketEmailNotification(ticketId, message.id);
@@ -1954,20 +1955,6 @@ export async function addSupportTicketMessageAdmin(
         console.error(
           "Error sending support ticket email notification:",
           emailError,
-        );
-      }
-      // Notify other admins / inbox — exclude the replying admin's own email
-      try {
-        await sendSupportTicketEmailNotificationToAdmin(
-          ticketId,
-          message.id,
-          true,
-          user.id,
-        );
-      } catch (adminEmailError) {
-        console.error(
-          "Error sending support ticket notification to admins:",
-          adminEmailError,
         );
       }
     }
