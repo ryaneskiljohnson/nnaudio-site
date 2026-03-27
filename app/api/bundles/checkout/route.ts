@@ -9,7 +9,7 @@ import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { stripe } from "@/utils/stripe/client";
-import { buildStripeCheckoutDiscount } from "@/utils/stripe/checkout-discount";
+import { buildStripeCheckoutDiscountFromPromotionRow } from "@/utils/stripe/checkout-discount";
 import {
   ATTRIBUTION_COOKIE_NAME,
   attributionToStripeMetadata,
@@ -245,6 +245,7 @@ export async function POST(request: NextRequest) {
         .order("priority", { ascending: false });
 
       type PromoRow = PromotionPricingRow & {
+        id?: string;
         stripe_coupon_code?: string | null;
         stripe_coupon_id?: string | null;
       };
@@ -267,27 +268,27 @@ export async function POST(request: NextRequest) {
         }
 
         const pr = p as PromoRow;
-        const couponRef =
-          (typeof pr.stripe_coupon_code === "string" &&
-            pr.stripe_coupon_code.trim()) ||
-          (typeof pr.stripe_coupon_id === "string" &&
-            pr.stripe_coupon_id.trim()) ||
-          "";
-        if (!couponRef) continue;
+        if (
+          !pr.stripe_coupon_code?.trim() &&
+          !pr.stripe_coupon_id?.trim()
+        ) {
+          continue;
+        }
 
-        const discount = await buildStripeCheckoutDiscount(couponRef);
+        const discount = await buildStripeCheckoutDiscountFromPromotionRow(pr, {
+          subscriptionMode: mode === "subscription",
+        });
         if (discount) {
           sessionParams.discounts = [discount];
           hasAutoDiscount = true;
           console.log(
-            `🎁 Bundle checkout auto-discount (${discount.coupon ? "coupon" : "promotion_code"}) for ${bundle.slug} ${tier}:`,
-            couponRef
+            `🎁 Bundle checkout auto-discount (${discount.coupon ? "coupon" : "promotion_code"}) for ${bundle.slug} ${tier}`
           );
           break;
         }
         console.warn(
-          "Bundle checkout: promotion matched bundle tier but Stripe discount not resolvable, trying next:",
-          couponRef
+          "Bundle checkout: promotion matched bundle tier but Stripe discount not resolvable (tried code + id), next:",
+          pr.id
         );
       }
 

@@ -9,7 +9,7 @@ import { PlanType } from "@/types/stripe";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { randomUUID } from "crypto";
 import { stripe } from "@/utils/stripe/client";
-import { buildStripeCheckoutDiscount } from "@/utils/stripe/checkout-discount";
+import { buildStripeCheckoutDiscountFromPromotionRow } from "@/utils/stripe/checkout-discount";
 import { getMembershipProductSlug } from "@/utils/products/membership-product";
 import { isPSTDateAfterNow, isPSTDateBeforeNow } from "@/utils/timezoneUtils";
 import {
@@ -621,6 +621,7 @@ async function createCheckoutSession(
         .order("priority", { ascending: false });
 
       type PromoRow = PromotionPricingRow & {
+        id?: string;
         stripe_coupon_code?: string | null;
         stripe_coupon_id?: string | null;
       };
@@ -638,27 +639,27 @@ async function createCheckoutSession(
           continue;
         }
 
-        const couponRef =
-          (typeof p.stripe_coupon_code === "string" &&
-            p.stripe_coupon_code.trim()) ||
-          (typeof p.stripe_coupon_id === "string" &&
-            p.stripe_coupon_id.trim()) ||
-          "";
-        if (!couponRef) continue;
+        if (
+          !p.stripe_coupon_code?.trim() &&
+          !p.stripe_coupon_id?.trim()
+        ) {
+          continue;
+        }
 
-        const discount = await buildStripeCheckoutDiscount(couponRef);
+        const discount = await buildStripeCheckoutDiscountFromPromotionRow(p, {
+          subscriptionMode: mode === "subscription",
+        });
         if (discount) {
           sessionParams.discounts = [discount];
           hasAutoDiscount = true;
           console.log(
-            `🎁 Auto-applying promotion discount (${discount.coupon ? "coupon" : "promotion_code"}) for ${planType}:`,
-            couponRef
+            `🎁 Auto-applying promotion discount (${discount.coupon ? "coupon" : "promotion_code"}) for ${planType}`
           );
           break;
         }
         console.warn(
-          "⚠️ Promotion matched subscription tier but Stripe discount not resolvable, trying next:",
-          couponRef
+          "⚠️ Promotion matched checkout tier but Stripe discount not resolvable (tried code + id), trying next promo:",
+          p.id
         );
       }
 

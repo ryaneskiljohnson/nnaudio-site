@@ -85,3 +85,83 @@ export async function buildStripeCheckoutDiscount(
   }
   return null;
 }
+
+/** @brief Fields on `promotions` used to resolve Stripe Checkout discounts. */
+export type PromotionStripeCouponFields = {
+  stripe_coupon_code?: string | null;
+  stripe_coupon_id?: string | null;
+};
+
+/**
+ * @brief Expands a Checkout `discounts` entry to `{ coupon }` when it used `promotion_code`, for subscription mode reliability.
+ * @param discount Session discount from `buildStripeCheckoutDiscount`.
+ * @returns Same shape or `{ coupon: underlying id }` when resolvable.
+ * @note Uses `expand: ['promotion.coupon']` so the underlying coupon id is always available.
+ */
+export async function preferCouponDiscountForSubscription(
+  discount: Stripe.Checkout.SessionCreateParams.Discount
+): Promise<Stripe.Checkout.SessionCreateParams.Discount> {
+  if (discount.coupon) return discount;
+  const promoId = discount.promotion_code;
+  if (!promoId || typeof promoId !== "string") return discount;
+  try {
+    const pc = await stripe.promotionCodes.retrieve(promoId, {
+      expand: ["promotion.coupon"],
+    });
+    if (!pc.active) return discount;
+    const prom = pc.promotion as
+      | string
+      | { type?: string; coupon?: string | Stripe.Coupon }
+      | null
+      | undefined;
+    if (typeof prom === "string") return discount;
+    const cref = prom?.coupon;
+    const couponId =
+      typeof cref === "string"
+        ? cref
+        : cref && typeof cref === "object" && "id" in cref
+          ? (cref as Stripe.Coupon).id
+          : null;
+    if (!couponId) return discount;
+    const c = await stripe.coupons.retrieve(couponId);
+    if (c.valid) return { coupon: c.id };
+  } catch (e) {
+    console.warn(
+      "[checkout-discount] preferCouponDiscountForSubscription",
+      e
+    );
+  }
+  return discount;
+}
+
+/**
+ * @brief Resolves discount from a promotion row, trying customer-facing code then coupon/promo id.
+ * @param row `stripe_coupon_code` / `stripe_coupon_id` from DB.
+ * @param options When `subscriptionMode`, normalizes `promotion_code` to `{ coupon }` when possible.
+ * @returns First resolvable Checkout discount, or null.
+ * @note If `stripe_coupon_code` is stale but `stripe_coupon_id` is valid, the second ref still runs.
+ */
+export async function buildStripeCheckoutDiscountFromPromotionRow(
+  row: PromotionStripeCouponFields,
+  options?: { subscriptionMode?: boolean }
+): Promise<Stripe.Checkout.SessionCreateParams.Discount | null> {
+  const code =
+    typeof row.stripe_coupon_code === "string"
+      ? row.stripe_coupon_code.trim()
+      : "";
+  const id =
+    typeof row.stripe_coupon_id === "string"
+      ? row.stripe_coupon_id.trim()
+      : "";
+  const refs: string[] = [];
+  if (code) refs.push(code);
+  if (id && id !== code) refs.push(id);
+  for (const stored of refs) {
+    let d = await buildStripeCheckoutDiscount(stored);
+    if (options?.subscriptionMode && d) {
+      d = await preferCouponDiscountForSubscription(d);
+    }
+    if (d) return d;
+  }
+  return null;
+}

@@ -117,7 +117,7 @@ export function parseIncludedTargetsFromDb(raw: unknown): string[] {
 
 function targetsSet(promotion: PromotionPricingRow | null): Set<string> {
   const list = parseIncludedTargetsFromDb(promotion?.included_targets);
-  return new Set(list);
+  return new Set(list.map((k) => k.trim().toLowerCase()));
 }
 
 /**
