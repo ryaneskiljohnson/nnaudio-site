@@ -93,6 +93,32 @@ export type PromotionStripeCouponFields = {
 };
 
 /**
+ * @brief Resolves an active Stripe Promotion Code from DB fields (tries code string, then id).
+ * @param row Promotion row coupon columns.
+ * @returns Active `PromotionCode`, or null.
+ */
+export async function resolvePromotionCodeFromPromotionRow(
+  row: PromotionStripeCouponFields
+): Promise<Stripe.PromotionCode | null> {
+  const code =
+    typeof row.stripe_coupon_code === "string"
+      ? row.stripe_coupon_code.trim()
+      : "";
+  const id =
+    typeof row.stripe_coupon_id === "string"
+      ? row.stripe_coupon_id.trim()
+      : "";
+  const refs: string[] = [];
+  if (code) refs.push(code);
+  if (id && id !== code) refs.push(id);
+  for (const stored of refs) {
+    const pc = await resolveActivePromotionCode(stored);
+    if (pc) return pc;
+  }
+  return null;
+}
+
+/**
  * @brief Expands a Checkout `discounts` entry to `{ coupon }` when it used `promotion_code`, for subscription mode reliability.
  * @param discount Session discount from `buildStripeCheckoutDiscount`.
  * @returns Same shape or `{ coupon: underlying id }` when resolvable.

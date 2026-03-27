@@ -4,7 +4,9 @@
  * @fileoverview Bundle checkout page with embedded payment (Stripe Elements).
  * Same flow as regular cart checkout: billing fields + Card element on-site,
  * no redirect to Stripe. Uses PaymentIntent (lifetime) or Subscription first
- * invoice PI (monthly/annual).
+ * invoice PI (monthly/annual). Active bundle-scoped promos auto-apply via
+ * POST `/api/checkout/auto-promotion` with `bundle_slug` + `tier` (same payload
+ * shape expectation as cart auto-promo response).
  * @module app/checkout/bundle
  */
 
@@ -1268,6 +1270,46 @@ function BundleCheckoutPageInner() {
       cancelled = true;
     };
   }, [bundleSlug, tier]);
+
+  // Auto-apply DB + Stripe promotion for embedded checkout (parity with /checkout cart).
+  useEffect(() => {
+    if (loading || !bundle?.slug || !tier || tier === "lifetime") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/checkout/auto-promotion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bundle_slug: bundle.slug,
+            tier,
+          }),
+        });
+        const data = await res.json();
+        if (
+          cancelled ||
+          !data.success ||
+          !data.applied ||
+          !data.promotionCodeId
+        ) {
+          return;
+        }
+        setAppliedPromo({
+          code: String(data.code || "").trim() || "PROMO",
+          discount: {
+            amount: Number(data.discount?.amount) || 0,
+            percent: Number(data.discount?.percent) || 0,
+          },
+          promotionCodeId: data.promotionCodeId,
+        });
+      } catch {
+        /* non-blocking */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, bundle?.slug, bundle?.id, tier]);
 
   useEffect(() => {
     if (!loading && (!bundleSlug || !tier || !bundle)) {
