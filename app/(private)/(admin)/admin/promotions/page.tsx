@@ -1231,8 +1231,12 @@ export default function PromotionsPage() {
                     type="text"
                     value={formData.stripe_coupon_code ?? ""}
                     onChange={(e) => setFormData({ ...formData, stripe_coupon_code: e.target.value })}
-                    placeholder="BLACKFRIDAY2025"
+                    placeholder="BLACKFRIDAY2025 (optional — leave blank to use internal name)"
                   />
+                  <HelpText>
+                    If empty and sync is on below, the coupon id is derived from the internal name (letters, numbers,
+                    underscores). Customers enter that code at checkout.
+                  </HelpText>
                 </FormGroup>
 
                 <FormGroup>
@@ -1246,25 +1250,25 @@ export default function PromotionsPage() {
                   <HelpText>Higher priority = shown first (if multiple active)</HelpText>
                 </FormGroup>
 
-                {formData.stripe_coupon_code && (
-                  <FormGroup $fullWidth>
-                    <CheckboxLabel>
-                      <input
-                        type="checkbox"
-                        checked={formData.create_stripe_coupon}
-                        onChange={(e) => setFormData({ ...formData, create_stripe_coupon: e.target.checked })}
-                      />
-                      {editingPromotion && editingPromotion.stripe_coupon_created 
-                        ? 'Stripe coupon already created' 
-                        : 'Auto-create Stripe coupon if it doesn\'t exist'}
-                    </CheckboxLabel>
-                    {editingPromotion && !editingPromotion.stripe_coupon_created && formData.stripe_coupon_code && (
+                <FormGroup $fullWidth>
+                  <CheckboxLabel>
+                    <input
+                      type="checkbox"
+                      checked={formData.create_stripe_coupon}
+                      onChange={(e) => setFormData({ ...formData, create_stripe_coupon: e.target.checked })}
+                    />
+                    {editingPromotion && editingPromotion.stripe_coupon_created
+                      ? 'Sync Stripe coupon when saving (discount, dates, title)'
+                      : 'Create / sync Stripe coupon in Stripe'}
+                  </CheckboxLabel>
+                  {editingPromotion &&
+                    !editingPromotion.stripe_coupon_created &&
+                    (formData.stripe_coupon_code || formData.create_stripe_coupon) && (
                       <HelpText style={{ color: '#ffc107', marginTop: '8px' }}>
-                        Stripe coupon is not created yet — saving will sync it unless you turn off auto-create above.
+                        Stripe coupon is not created yet — saving will sync it unless you turn off the option above.
                       </HelpText>
                     )}
-                  </FormGroup>
-                )}
+                </FormGroup>
               </FormGrid>
 
               <div

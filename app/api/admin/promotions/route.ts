@@ -125,6 +125,56 @@ function stripeCouponImmutableFieldsMatch(
   );
 }
 
+/** @brief UUID v1–v8 shape for promotion row ids (insert vs update). */
+const PROMOTION_ID_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * @brief True only for explicit JSON true / 1 / "true" / "1" — never for string `"false"` (non-empty strings are truthy in JS).
+ * @param raw Request body value for `stripe_coupon_created`.
+ * @returns Whether the client reports an existing Stripe coupon for this row.
+ */
+function parseStripeCouponCreatedFlag(raw: unknown): boolean {
+  return raw === true || raw === 1 || raw === "true" || raw === "1";
+}
+
+/**
+ * @brief “Sync coupon to Stripe” checkbox; default on when the key is omitted.
+ * @param raw Request body value for `create_stripe_coupon`.
+ * @returns Whether to create or reconcile the Stripe coupon.
+ */
+function parseCreateStripeCouponFlag(raw: unknown): boolean {
+  return raw !== false && raw !== "false";
+}
+
+/**
+ * @brief Normalizes `body.id` to a valid UUID string or undefined (treats bogus strings as create).
+ * @param raw Request `id` field.
+ * @returns Trimmed UUID or undefined.
+ */
+function parsePromotionUpdateId(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const t = raw.trim();
+  if (!t || !PROMOTION_ID_UUID_RE.test(t)) return undefined;
+  return t;
+}
+
+/**
+ * @brief Stripe coupon id when the admin leaves the code blank but left sync enabled (allowed chars + max length).
+ * @param nameTrim Internal promotion `name` (trimmed).
+ * @returns Non-empty id safe for `^[a-zA-Z0-9_-]+$` (max 40).
+ */
+function deriveStripeCouponCodeFromName(nameTrim: string): string {
+  let s = nameTrim
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+  if (!s) {
+    s = `PROMO_${Date.now().toString(36).toUpperCase()}`;
+  }
+  return s.slice(0, 40);
+}
+
 /**
  * GET - Fetch all promotions
  */
@@ -199,7 +249,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
-      id,
       name,
       title,
       description,
@@ -209,10 +258,14 @@ export async function POST(request: NextRequest) {
       discount_type,
       discount_value,
       stripe_coupon_code,
-      create_stripe_coupon,
       banner_theme,
       priority,
     } = body;
+
+    const id = parsePromotionUpdateId(body.id);
+    const create_stripe_coupon = parseCreateStripeCouponFlag(
+      body.create_stripe_coupon
+    );
 
     const promotion_target_mode: PromotionTargetMode =
       body.promotion_target_mode === "all" ? "all" : "selected";
@@ -252,13 +305,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const codeNorm =
+    let codeNorm =
       typeof stripe_coupon_code === "string"
         ? stripe_coupon_code.trim()
         : "";
 
+    // When sync is on and the code field is empty, derive id from internal name so creates still get a Stripe coupon.
+    if (!codeNorm && create_stripe_coupon) {
+      codeNorm = deriveStripeCouponCodeFromName(nameTrim);
+    }
+
     let stripe_coupon_id = body.stripe_coupon_id as string | null | undefined;
-    let stripe_coupon_created = Boolean(body.stripe_coupon_created);
+    let stripe_coupon_created = parseStripeCouponCreatedFlag(
+      body.stripe_coupon_created
+    );
 
     /**
      * @brief Detect Stripe “not found” on coupon retrieve across SDK versions.
