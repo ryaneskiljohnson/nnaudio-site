@@ -36,6 +36,96 @@ function omitUndefined<T extends Record<string, unknown>>(row: T): T {
 }
 
 /**
+ * @brief Stripe coupon customer-visible name; capped at 40 characters per Stripe API.
+ * @param titleTrim Promotion title (trimmed).
+ * @param codeNorm Coupon / promotion code id.
+ * @returns Value safe to pass as Stripe `Coupon.name`.
+ */
+function stripeCouponDisplayName(titleTrim: string, codeNorm: string): string {
+  return (titleTrim || codeNorm).slice(0, 40);
+}
+
+/**
+ * @brief Unix `redeem_by` for Stripe coupons from admin `end_date` (+1 day, same as create).
+ * @param end_date Raw end date from the request.
+ * @returns Seconds since epoch, or null when open-ended.
+ */
+function desiredStripeRedeemBy(
+  end_date: string | null | undefined
+): number | null {
+  if (!end_date) return null;
+  const endDateObj = new Date(end_date);
+  endDateObj.setDate(endDateObj.getDate() + 1);
+  return Math.floor(endDateObj.getTime() / 1000);
+}
+
+/**
+ * @brief Builds Stripe `CouponCreateParams` from promotion fields.
+ * @param codeNorm Coupon id (customer code).
+ * @param titleTrim Promotion title.
+ * @param end_date Promotion end date input.
+ * @param discount_type Percent or fixed amount.
+ * @param discountNum Parsed positive discount value.
+ * @returns Params for `stripe.coupons.create`.
+ */
+function buildPromotionStripeCouponParams(
+  codeNorm: string,
+  titleTrim: string,
+  end_date: string | null | undefined,
+  discount_type: "percentage" | "amount",
+  discountNum: number
+): Stripe.CouponCreateParams {
+  const params: Stripe.CouponCreateParams = {
+    id: codeNorm,
+    name: stripeCouponDisplayName(titleTrim, codeNorm),
+    duration: "once",
+  };
+  const rb = desiredStripeRedeemBy(end_date);
+  if (rb != null) {
+    params.redeem_by = rb;
+  }
+  if (discount_type === "percentage") {
+    params.percent_off = Math.round(discountNum);
+  } else {
+    params.amount_off = Math.round(discountNum * 100);
+    params.currency = "usd";
+  }
+  return params;
+}
+
+/**
+ * @brief Whether a retrieved Stripe coupon matches immutable promotion fields (Stripe coupons cannot change amount/%/redeem_by in place).
+ * @param coupon Retrieved Stripe coupon.
+ * @param discount_type Expected discount kind.
+ * @param discountNum Parsed promotion discount value.
+ * @param desiredRedeemBy Expected `redeem_by` or null.
+ * @returns True if discount and expiry match the promotion.
+ */
+function stripeCouponImmutableFieldsMatch(
+  coupon: Stripe.Coupon,
+  discount_type: "percentage" | "amount",
+  discountNum: number,
+  desiredRedeemBy: number | null
+): boolean {
+  const redeemOk =
+    desiredRedeemBy == null
+      ? coupon.redeem_by == null
+      : coupon.redeem_by === desiredRedeemBy;
+  if (!redeemOk) return false;
+  if (discount_type === "percentage") {
+    return (
+      coupon.percent_off != null &&
+      Math.round(Number(coupon.percent_off)) === Math.round(discountNum)
+    );
+  }
+  return (
+    coupon.amount_off != null &&
+    coupon.amount_off === Math.round(discountNum * 100) &&
+    (coupon.currency || "").toLowerCase() === "usd"
+  );
+}
+
+/**
  * GET - Fetch all promotions
  */
 export async function GET(request: NextRequest) {
@@ -209,9 +299,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Sync coupon when: user checked auto-create, OR DB says coupon was never created (covers edit flow after adding a code).
+    const isUpdate = Boolean(id);
+    // Sync: auto-create / first-time code, or editing an existing promotion that already has a Stripe coupon (reconcile name, discount, expiry).
     const shouldSyncStripeCoupon = Boolean(
-      codeNorm && (create_stripe_coupon || !stripe_coupon_created)
+      codeNorm &&
+        (create_stripe_coupon ||
+          !stripe_coupon_created ||
+          (isUpdate && stripe_coupon_created))
     );
 
     if (shouldSyncStripeCoupon) {
@@ -237,12 +331,59 @@ export async function POST(request: NextRequest) {
         }
 
         let coupon: Stripe.Coupon;
+        const desiredRedeemBy = desiredStripeRedeemBy(end_date);
+        const desiredDisplayName = stripeCouponDisplayName(titleTrim, codeNorm);
+        const dt = discount_type as "percentage" | "amount";
+
         try {
           coupon = await stripe.coupons.retrieve(codeNorm);
           console.log("✅ Stripe coupon already exists:", codeNorm);
-          stripe_coupon_id = coupon.id;
-          stripe_coupon_created = true;
-          await ensurePromotionCodeForCoupon(coupon.id, codeNorm);
+
+          const immutableOk = stripeCouponImmutableFieldsMatch(
+            coupon,
+            dt,
+            discountNum,
+            desiredRedeemBy
+          );
+          const nameOk = (coupon.name || "") === desiredDisplayName;
+
+          if (immutableOk && nameOk) {
+            stripe_coupon_id = coupon.id;
+            stripe_coupon_created = true;
+            await ensurePromotionCodeForCoupon(coupon.id, codeNorm);
+          } else if (immutableOk && !nameOk) {
+            await stripe.coupons.update(codeNorm, { name: desiredDisplayName });
+            coupon = await stripe.coupons.retrieve(codeNorm);
+            stripe_coupon_id = coupon.id;
+            stripe_coupon_created = true;
+            await ensurePromotionCodeForCoupon(coupon.id, codeNorm);
+          } else {
+            console.log(
+              "🔄 Coupon discount or expiry differs from promotion — recreating Stripe coupon"
+            );
+            try {
+              await stripe.coupons.del(codeNorm);
+            } catch (delErr: unknown) {
+              if (!isStripeCouponMissing(delErr)) throw delErr;
+            }
+            const couponParams = buildPromotionStripeCouponParams(
+              codeNorm,
+              titleTrim,
+              end_date,
+              dt,
+              discountNum
+            );
+            if (desiredRedeemBy != null) {
+              console.log(
+                `📅 Coupon redeem_by: ${new Date(desiredRedeemBy * 1000).toISOString()}`
+              );
+            }
+            coupon = await stripe.coupons.create(couponParams);
+            console.log("✅ Recreated Stripe coupon:", coupon.id);
+            stripe_coupon_id = coupon.id;
+            stripe_coupon_created = true;
+            await ensurePromotionCodeForCoupon(coupon.id, codeNorm);
+          }
         } catch (err: unknown) {
           if (!isStripeCouponMissing(err)) {
             console.error("❌ Unexpected Stripe error on retrieve:", err);
@@ -251,24 +392,17 @@ export async function POST(request: NextRequest) {
 
           console.log("📝 Coupon not found, creating…");
 
-          const couponParams: Stripe.CouponCreateParams = {
-            id: codeNorm,
-            name: titleTrim || codeNorm,
-            duration: "once",
-          };
-
-          if (end_date) {
-            const endDateObj = new Date(end_date);
-            endDateObj.setDate(endDateObj.getDate() + 1);
-            couponParams.redeem_by = Math.floor(endDateObj.getTime() / 1000);
-            console.log(`📅 Coupon redeem_by: ${endDateObj.toISOString()}`);
-          }
-
-          if (discount_type === "percentage") {
-            couponParams.percent_off = Math.round(discountNum);
-          } else {
-            couponParams.amount_off = Math.round(discountNum * 100);
-            couponParams.currency = "usd";
+          const couponParams = buildPromotionStripeCouponParams(
+            codeNorm,
+            titleTrim,
+            end_date,
+            dt,
+            discountNum
+          );
+          if (desiredRedeemBy != null) {
+            console.log(
+              `📅 Coupon redeem_by: ${new Date(desiredRedeemBy * 1000).toISOString()}`
+            );
           }
 
           coupon = await stripe.coupons.create(couponParams);
@@ -292,7 +426,7 @@ export async function POST(request: NextRequest) {
       }
     } else if (codeNorm) {
       console.log(
-        "⏭️ Skipping Stripe sync (coupon already marked created and auto-create unchecked)"
+        "⏭️ Skipping Stripe sync (no reconcile: not an update with an existing coupon, auto-create off, and coupon already marked created)"
       );
     } else {
       console.log("⏭️ No Stripe coupon code — skipping Stripe sync");
