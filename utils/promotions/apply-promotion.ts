@@ -59,12 +59,24 @@ export function normalizeIncludedTargets(input: unknown): string[] {
   return [...out];
 }
 
+/**
+ * @brief True when the promotion applies to every offer (`promotion_target_mode === 'all'`).
+ */
+export function isPromotionAllMode(
+  promotion: PromotionPricingRow | null
+): boolean {
+  if (promotion?.promotion_target_mode == null) return false;
+  return String(promotion.promotion_target_mode).trim().toLowerCase() === "all";
+}
+
 function isAllMode(promotion: PromotionPricingRow | null): boolean {
-  return promotion?.promotion_target_mode === "all";
+  return isPromotionAllMode(promotion);
 }
 
 function targetsSet(promotion: PromotionPricingRow | null): Set<string> {
-  return new Set(promotion?.included_targets ?? []);
+  const raw = promotion?.included_targets;
+  const list = Array.isArray(raw) ? raw : [];
+  return new Set(list);
 }
 
 /**

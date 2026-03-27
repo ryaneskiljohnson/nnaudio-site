@@ -11,6 +11,7 @@ import { randomUUID } from "crypto";
 import { stripe } from "@/utils/stripe/client";
 import { getMembershipProductSlug } from "@/utils/products/membership-product";
 import {
+  isPromotionAllMode,
   promotionIncludesProductTier,
   type PlanTypeKey,
   type PromotionPricingRow,
@@ -92,6 +93,55 @@ async function getMembershipProductCheckoutRow(planType: PlanType): Promise<{
     console.error("[checkout] membership product row", e);
     return { productId: null, priceIdFromDb: null };
   }
+}
+
+/**
+ * @brief Maps a DB `stripe_coupon_code` / id string to a Checkout Session `discounts` item.
+ * @param stored Value from `promotions.stripe_coupon_code` or `stripe_coupon_id` (coupon id, `promo_*`, or customer-facing code).
+ * @returns `{ coupon }` or `{ promotion_code }` for Stripe, or null if nothing valid.
+ */
+async function buildStripeCheckoutDiscount(
+  stored: string
+): Promise<Stripe.Checkout.SessionCreateParams.Discount | null> {
+  const s = stored.trim();
+  if (!s) return null;
+
+  if (s.startsWith("promo_")) {
+    try {
+      const pc = await stripe.promotionCodes.retrieve(s);
+      if (pc.active) {
+        return { promotion_code: pc.id };
+      }
+    } catch (e) {
+      console.warn("[checkout] promotionCodes.retrieve failed for", s, e);
+    }
+    return null;
+  }
+
+  try {
+    const c = await stripe.coupons.retrieve(s);
+    if (c.valid) {
+      return { coupon: c.id };
+    }
+  } catch {
+    /* not a coupon id — try promotion code by code string */
+  }
+
+  try {
+    const { data } = await stripe.promotionCodes.list({
+      code: s,
+      active: true,
+      limit: 5,
+    });
+    const hit = data.find((pc) => pc.active);
+    if (hit) {
+      return { promotion_code: hit.id };
+    }
+  } catch (e) {
+    console.warn("[checkout] promotionCodes.list failed for", s, e);
+  }
+
+  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -573,51 +623,64 @@ async function createCheckoutSession(
         : "if_required";
     }
 
-    // Auto-apply sale discount when DB promotion includes this membership tier
+    // Auto-apply sale discount when DB promotion includes this tier (or global "all" mode)
     let hasAutoDiscount = false;
-    if (membershipProductId) {
-      try {
-        const supabase = await createSupabaseServiceRole();
-        const { data: promoRows } = await (supabase as any)
-          .from("promotions")
-          .select("*")
-          .eq("active", true)
-          .order("priority", { ascending: false });
+    try {
+      const supabase = await createSupabaseServiceRole();
+      const { data: promoRows } = await (supabase as any)
+        .from("promotions")
+        .select("*")
+        .eq("active", true)
+        .order("priority", { ascending: false });
 
-        const now = new Date();
-        const activePromotion = (promoRows || []).find(
-          (p: PromotionPricingRow & { stripe_coupon_code?: string | null }) => {
-            const startOk =
-              !p.start_date || new Date(p.start_date) <= now;
-            const endOk = !p.end_date || new Date(p.end_date) >= now;
-            if (!startOk || !endOk) return false;
-            return promotionIncludesProductTier(
-              p,
-              membershipProductId,
-              planType as PlanTypeKey
-            );
-          }
-        );
-
-        if (activePromotion?.stripe_coupon_code) {
-          try {
-            await stripe.coupons.retrieve(activePromotion.stripe_coupon_code);
-            sessionParams.discounts = [
-              { coupon: activePromotion.stripe_coupon_code },
-            ];
-            hasAutoDiscount = true;
-            console.log(
-              `🎁 Auto-applying promotion coupon: ${activePromotion.stripe_coupon_code} for ${planType}`
-            );
-          } catch {
-            console.warn(
-              `⚠️ Coupon ${activePromotion.stripe_coupon_code} not found in Stripe, skipping auto-apply`
-            );
-          }
+      const now = new Date();
+      const activePromotion = (promoRows || []).find(
+        (p: PromotionPricingRow & {
+          stripe_coupon_code?: string | null;
+          stripe_coupon_id?: string | null;
+        }) => {
+          const startOk = !p.start_date || new Date(p.start_date) <= now;
+          const endOk = !p.end_date || new Date(p.end_date) >= now;
+          if (!startOk || !endOk) return false;
+          if (isPromotionAllMode(p)) return true;
+          if (!membershipProductId) return false;
+          return promotionIncludesProductTier(
+            p,
+            membershipProductId,
+            planType as PlanTypeKey
+          );
         }
-      } catch (error) {
-        console.log("No active promotion for checkout tier:", planType, error);
+      );
+
+      const couponRef =
+        (typeof activePromotion?.stripe_coupon_code === "string" &&
+          activePromotion.stripe_coupon_code.trim()) ||
+        (typeof activePromotion?.stripe_coupon_id === "string" &&
+          activePromotion.stripe_coupon_id.trim()) ||
+        "";
+
+      if (couponRef) {
+        const discount = await buildStripeCheckoutDiscount(couponRef);
+        if (discount) {
+          sessionParams.discounts = [discount];
+          hasAutoDiscount = true;
+          console.log(
+            `🎁 Auto-applying promotion discount (${discount.coupon ? "coupon" : "promotion_code"}) for ${planType}:`,
+            couponRef
+          );
+        } else {
+          console.warn(
+            "⚠️ Promotion matched checkout tier but Stripe coupon/promotion code not usable:",
+            couponRef
+          );
+        }
+      } else if (activePromotion) {
+        console.warn(
+          "⚠️ Active promotion matches tier but stripe_coupon_code / stripe_coupon_id is empty"
+        );
       }
+    } catch (error) {
+      console.log("No active promotion for checkout tier:", planType, error);
     }
 
     // Only enable manual promotion codes if we're NOT auto-applying a discount
