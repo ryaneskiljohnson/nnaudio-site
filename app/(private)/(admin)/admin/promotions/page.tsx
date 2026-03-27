@@ -665,8 +665,7 @@ export default function PromotionsPage() {
     };
     
     // If coupon code exists but coupon wasn't created, allow creating it
-    const shouldAllowCouponCreation = promotion.stripe_coupon_code && !promotion.stripe_coupon_created;
-
+    // Default on: sync to Stripe whenever this promotion is not yet marked created (avoids missing checkbox after adding a code).
     setFormData({
       name: promotion.name,
       title: promotion.title,
@@ -677,7 +676,7 @@ export default function PromotionsPage() {
       discount_type: promotion.discount_type,
       discount_value: promotion.discount_value,
       stripe_coupon_code: promotion.stripe_coupon_code ?? "",
-      create_stripe_coupon: Boolean(shouldAllowCouponCreation),
+      create_stripe_coupon: !promotion.stripe_coupon_created,
       priority: promotion.priority,
       promotion_target_mode:
         promotion.promotion_target_mode === 'all' ? 'all' : 'selected',
@@ -1261,7 +1260,7 @@ export default function PromotionsPage() {
                     </CheckboxLabel>
                     {editingPromotion && !editingPromotion.stripe_coupon_created && formData.stripe_coupon_code && (
                       <HelpText style={{ color: '#ffc107', marginTop: '8px' }}>
-                        ⚠️ Coupon code exists but Stripe coupon hasn't been created yet. Check the box above to create it.
+                        Stripe coupon is not created yet — saving will sync it unless you turn off auto-create above.
                       </HelpText>
                     )}
                   </FormGroup>
