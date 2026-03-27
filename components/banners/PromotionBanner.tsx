@@ -470,18 +470,11 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
   };
 
   const plans = sale.subscription_checkout_tiers || [];
-  const isMultiplePlans = plans.length > 1;
+  /** @brief Only when the promo covers exactly one membership tier do we start that checkout; otherwise send users to the catalog. */
   const singlePlan = plans.length === 1 ? plans[0] : null;
 
   const handleButtonClick = async () => {
-    if (isMultiplePlans) {
-      // Scroll to pricing section
-      const pricingSection = document.getElementById('pricing');
-      if (pricingSection) {
-        pricingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    } else if (singlePlan) {
-      // Handle single plan checkout
+    if (singlePlan) {
       if (!user) {
         setShowEmailModal(true);
         return;
@@ -489,19 +482,20 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
 
       setLoading(true);
       try {
-        const planType = singlePlan as 'monthly' | 'annual' | 'lifetime';
+        const planType = singlePlan as "monthly" | "annual" | "lifetime";
         await initiateCheckout(planType, {
           collectPaymentMethod: false,
           willProvideCard: false,
         });
       } catch (error) {
-        console.error('Checkout error:', error);
+        console.error("Checkout error:", error);
       } finally {
         setLoading(false);
       }
-    } else {
-      router.push('/products');
+      return;
     }
+
+    router.push("/products");
   };
 
   const handleEmailSubmit = async (email: string): Promise<{ success: boolean; error?: string }> => {
@@ -554,10 +548,10 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
   };
 
   const getButtonText = () => {
-    if (loading) return t('common.loading', 'Loading...');
-    if (isMultiplePlans) return t('promotion.viewOffers', 'View Offers');
-    if (singlePlan === 'lifetime') return t('pricing.buyNow', 'Buy Now');
-    return t('pricing.freeTrial.startTrial', 'Start Trial');
+    if (loading) return t("common.loading", "Loading...");
+    if (singlePlan === "lifetime") return t("pricing.buyNow", "Buy Now");
+    if (singlePlan) return t("pricing.freeTrial.startTrial", "Start Trial");
+    return t("promotion.viewOffers", "View Offers");
   };
 
   if (isClosed) return null;
