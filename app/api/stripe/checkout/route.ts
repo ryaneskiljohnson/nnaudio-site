@@ -1,6 +1,5 @@
 /**
- * @fileoverview Stripe checkout API for Cymasphere plan purchases and payment
- * method collection, with attribution metadata persisted for growth reporting.
+ * @fileoverview Stripe checkout for configured membership product tiers (DB `subscription_stripe_prices` + env fallback).
  * @module app/api/stripe/checkout/route
  */
 
@@ -10,6 +9,12 @@ import { PlanType } from "@/types/stripe";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { randomUUID } from "crypto";
 import { stripe } from "@/utils/stripe/client";
+import { getMembershipProductSlug } from "@/utils/products/membership-product";
+import {
+  promotionIncludesProductTier,
+  type PlanTypeKey,
+  type PromotionPricingRow,
+} from "@/utils/promotions/apply-promotion";
 import {
   ATTRIBUTION_COOKIE_NAME,
   attributionToStripeMetadata,
@@ -20,7 +25,10 @@ import {
  * Map price_id to plan name for Meta tracking
  * Returns format: monthly_6, annual_59, lifetime_149
  */
-async function getPlanName(priceId: string, planType: PlanType): Promise<string> {
+async function getPlanName(
+  priceId: string,
+  planType: PlanType
+): Promise<string> {
   try {
     const price = await stripe.prices.retrieve(priceId);
     const amount = (price.unit_amount || 0) / 100; // Convert cents to dollars
@@ -37,6 +45,52 @@ async function getPlanName(priceId: string, planType: PlanType): Promise<string>
   } catch (error) {
     console.error("Error fetching price for plan name:", error);
     return `${planType}_unknown`;
+  }
+}
+
+type SubscriptionStripePrices = Partial<
+  Record<
+    PlanType,
+    { stripe_price_id?: string | null; list_price?: number | null }
+  >
+>;
+
+/**
+ * @brief Loads membership `products` row for Stripe price IDs and promotion matching.
+ * @param planType Checkout tier.
+ * @returns Product id and optional DB Stripe price id for that tier.
+ */
+async function getMembershipProductCheckoutRow(planType: PlanType): Promise<{
+  productId: string | null;
+  priceIdFromDb: string | null;
+}> {
+  try {
+    const supabase = await createSupabaseServiceRole();
+    const slug = getMembershipProductSlug();
+    const { data } = await supabase
+      .from("products")
+      .select("id, subscription_stripe_prices")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (!data?.id) {
+      return { productId: null, priceIdFromDb: null };
+    }
+    const raw = data.subscription_stripe_prices as
+      | SubscriptionStripePrices
+      | null
+      | undefined;
+    const tier = raw?.[planType];
+    const pid =
+      typeof tier?.stripe_price_id === "string"
+        ? tier.stripe_price_id.trim()
+        : null;
+    return {
+      productId: data.id as string,
+      priceIdFromDb: pid || null,
+    };
+  } catch (e) {
+    console.error("[checkout] membership product row", e);
+    return { productId: null, priceIdFromDb: null };
   }
 }
 
@@ -378,14 +432,16 @@ async function createCheckoutSession(
       return { url: null, error: "Customer ID is required for checkout" };
     }
 
-    // Get price IDs from environment variables
-    const priceIds = {
-      monthly: process.env.STRIPE_PRICE_ID_MONTHLY!,
-      annual: process.env.STRIPE_PRICE_ID_ANNUAL!,
-      lifetime: process.env.STRIPE_PRICE_ID_LIFETIME!,
+    const envPriceIds: Record<PlanType, string | undefined> = {
+      monthly: process.env.STRIPE_PRICE_ID_MONTHLY,
+      annual: process.env.STRIPE_PRICE_ID_ANNUAL,
+      lifetime: process.env.STRIPE_PRICE_ID_LIFETIME,
     };
 
-    const priceId = priceIds[planType];
+    const { productId: membershipProductId, priceIdFromDb } =
+      await getMembershipProductCheckoutRow(planType);
+
+    const priceId = priceIdFromDb || envPriceIds[planType];
     if (!priceId) {
       return { url: null, error: `Invalid plan type: ${planType}` };
     }
@@ -517,47 +573,51 @@ async function createCheckoutSession(
         : "if_required";
     }
 
-    // Auto-apply sale discount code if there's an active promotion from database
+    // Auto-apply sale discount when DB promotion includes this membership tier
     let hasAutoDiscount = false;
-    try {
-      const supabase = await createSupabaseServiceRole();
-      const { data: activePromotion } = await (supabase as any)
-        .from('promotions')
-        .select('*')
-        .eq('active', true)
-        .contains('applicable_plans', [planType])
-        .order('priority', { ascending: false })
-        .limit(1)
-        .single();
+    if (membershipProductId) {
+      try {
+        const supabase = await createSupabaseServiceRole();
+        const { data: promoRows } = await (supabase as any)
+          .from("promotions")
+          .select("*")
+          .eq("active", true)
+          .order("priority", { ascending: false });
 
-      if (activePromotion && activePromotion.stripe_coupon_code) {
-        // Check if promotion is within date range
         const now = new Date();
-        const startValid = !activePromotion.start_date || new Date(activePromotion.start_date) <= now;
-        const endValid = !activePromotion.end_date || new Date(activePromotion.end_date) >= now;
+        const activePromotion = (promoRows || []).find(
+          (p: PromotionPricingRow & { stripe_coupon_code?: string | null }) => {
+            const startOk =
+              !p.start_date || new Date(p.start_date) <= now;
+            const endOk = !p.end_date || new Date(p.end_date) >= now;
+            if (!startOk || !endOk) return false;
+            return promotionIncludesProductTier(
+              p,
+              membershipProductId,
+              planType as PlanTypeKey
+            );
+          }
+        );
 
-        if (startValid && endValid) {
-          // Validate that the coupon exists in Stripe before applying
+        if (activePromotion?.stripe_coupon_code) {
           try {
             await stripe.coupons.retrieve(activePromotion.stripe_coupon_code);
-            // Coupon exists, safe to apply
             sessionParams.discounts = [
-              {
-                coupon: activePromotion.stripe_coupon_code,
-              },
+              { coupon: activePromotion.stripe_coupon_code },
             ];
             hasAutoDiscount = true;
-            console.log(`🎁 Auto-applying promotion coupon: ${activePromotion.stripe_coupon_code} for ${planType} plan`);
-          } catch (couponError: any) {
-            // Coupon doesn't exist in Stripe
-            console.warn(`⚠️ Coupon ${activePromotion.stripe_coupon_code} not found in Stripe, skipping auto-apply`);
-            // Continue without discount - user can still enter code manually
+            console.log(
+              `🎁 Auto-applying promotion coupon: ${activePromotion.stripe_coupon_code} for ${planType}`
+            );
+          } catch {
+            console.warn(
+              `⚠️ Coupon ${activePromotion.stripe_coupon_code} not found in Stripe, skipping auto-apply`
+            );
           }
         }
+      } catch (error) {
+        console.log("No active promotion for checkout tier:", planType, error);
       }
-    } catch (error) {
-      console.log('No active promotion found for plan:', planType);
-      // Continue without discount if promotion lookup fails
     }
 
     // Only enable manual promotion codes if we're NOT auto-applying a discount

@@ -1,10 +1,26 @@
+/**
+ * @fileoverview Validates Stripe promotion codes for checkout; respects DB promotion scope and exclusions.
+ * @module app/api/promo-code/validate/route
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from "@/utils/stripe/client";
+import { createClient } from '@/utils/supabase/server';
+import {
+  discountAmountForEligibleSubtotal,
+  eligibleSubtotalForPromotion,
+  type PromotionPricingRow,
+} from '@/utils/promotions/apply-promotion';
 
+/**
+ * @brief POST handler: validates code and returns discount preview.
+ * @param request JSON body: `code`, `amount` (cart total dollars), optional `items` with `id` + `lineTotal`.
+ * @returns 200 with discount breakdown or 4xx/5xx with `error`.
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { code, amount } = body; // amount in dollars
+    const { code, amount } = body;
 
     if (!code) {
       return NextResponse.json(
@@ -13,14 +29,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!amount || amount <= 0) {
+    const rawItems = body.items;
+    const lineItems =
+      Array.isArray(rawItems) &&
+      rawItems.every(
+        (x: unknown) =>
+          x !== null &&
+          typeof x === 'object' &&
+          typeof (x as { id?: unknown }).id === 'string' &&
+          typeof (x as { lineTotal?: unknown }).lineTotal === 'number' &&
+          Number.isFinite((x as { lineTotal: number }).lineTotal)
+      )
+        ? (rawItems as { id: string; lineTotal: number }[]).map((x) => ({
+            id: x.id,
+            lineTotal: x.lineTotal,
+          }))
+        : undefined;
+
+    const baseAmount =
+      lineItems && lineItems.length > 0
+        ? lineItems.reduce((s, i) => s + i.lineTotal, 0)
+        : Number(amount);
+
+    if (!baseAmount || baseAmount <= 0) {
       return NextResponse.json(
         { error: 'Valid amount is required' },
         { status: 400 }
       );
     }
 
-    // List promotion codes to find the one matching the code
     const promotionCodes = await stripe.promotionCodes.list({
       code: code.toUpperCase(),
       active: true,
@@ -51,7 +88,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if coupon is valid
     if (!coupon.valid) {
       return NextResponse.json(
         { error: 'This promo code is no longer valid' },
@@ -59,7 +95,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check redemption limits
     if (coupon.max_redemptions && coupon.times_redeemed >= coupon.max_redemptions) {
       return NextResponse.json(
         { error: 'This promo code has reached its usage limit' },
@@ -67,7 +102,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check expiration
     if (coupon.redeem_by && coupon.redeem_by < Math.floor(Date.now() / 1000)) {
       return NextResponse.json(
         { error: 'This promo code has expired' },
@@ -75,19 +109,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate discount
-    let discountAmount = 0;
-    let discountPercent = 0;
-
-    if (coupon.percent_off) {
-      discountPercent = coupon.percent_off;
-      discountAmount = (amount * discountPercent) / 100;
-    } else if (coupon.amount_off) {
-      discountAmount = coupon.amount_off / 100; // Convert from cents to dollars
-      discountPercent = (discountAmount / amount) * 100;
+    let dbPromotion: PromotionPricingRow | null = null;
+    try {
+      const supabase = await createClient();
+      const { data } = await (supabase as any)
+        .from('promotions')
+        .select('promotion_target_mode, included_targets, discount_type, discount_value')
+        .eq('stripe_coupon_code', coupon.id)
+        .maybeSingle();
+      if (data) {
+        dbPromotion = data as PromotionPricingRow;
+      }
+    } catch (e) {
+      console.warn('[promo-code/validate] promotions lookup failed', e);
     }
 
-    const finalAmount = Math.max(0, amount - discountAmount);
+    const eligibleSubtotal = lineItems?.length
+      ? eligibleSubtotalForPromotion(lineItems, dbPromotion)
+      : baseAmount;
+
+    if (lineItems?.length && eligibleSubtotal <= 0) {
+      return NextResponse.json(
+        {
+          error:
+            'This promotion does not apply to any items in your cart.',
+        },
+        { status: 400 }
+      );
+    }
+
+    const discountAmount = discountAmountForEligibleSubtotal(eligibleSubtotal, coupon);
+    const discountPercent =
+      baseAmount > 0 ? (discountAmount / baseAmount) * 100 : 0;
+
+    const finalAmount = Math.max(0, baseAmount - discountAmount);
 
     return NextResponse.json({
       success: true,
@@ -106,15 +161,15 @@ export async function POST(request: NextRequest) {
         amount: discountAmount,
         percent: discountPercent,
       },
-      originalAmount: amount,
-      finalAmount: finalAmount,
+      originalAmount: baseAmount,
+      finalAmount,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to validate promo code';
     console.error('Error validating promo code:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to validate promo code' },
+      { error: message },
       { status: 500 }
     );
   }
 }
-

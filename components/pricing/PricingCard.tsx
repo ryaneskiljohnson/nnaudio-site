@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import EmailCollectionModal from "../modals/EmailCollectionModal";
 import LoadingSpinner from "../common/LoadingSpinner";
+import { computePromotionalUnitPrice } from "@/utils/promotions/apply-promotion";
 
 // Type definitions for NNAudioLogo component
 interface NNAudioLogoProps {
@@ -488,30 +489,30 @@ export default function PricingCard({
     let originalPrice = undefined;
     let isSale = false;
 
-    // Check if there's an active promotion for this plan from database
-    if (activePromotion && activePromotion.applicable_plans?.includes(billingPeriod)) {
-      // Get sale price for this plan
-      const salePriceField = `sale_price_${billingPeriod}`;
-      const salePrice = activePromotion[salePriceField];
-      
-      if (salePrice !== null && salePrice !== undefined) {
-        discountedAmount = salePrice;
-        // Use retail price for strikethrough to show bigger discount
-        if (billingPeriod === "lifetime") {
-          originalPrice = "$249";
-          const discount = Math.round(((249 - salePrice) / 249) * 100);
-          discountText = `${discount}% OFF`;
-        } else if (billingPeriod === "annual") {
-          originalPrice = `$79${t("pricing.perYear", "/year")}`;
-          const discount = Math.round(((79 - salePrice) / 79) * 100);
-          discountText = `${discount}% OFF`;
-        } else {
-          originalPrice = `$${baseAmount.toFixed(0)}${t("pricing.perMonth", "/month")}`;
-          const discount = Math.round(((baseAmount - salePrice) / baseAmount) * 100);
-          discountText = `${discount}% OFF`;
-        }
-        isSale = true;
+    // Active promotion from API is already filtered to this billing tier
+    if (activePromotion) {
+      const salePrice = computePromotionalUnitPrice(
+        baseAmount,
+        activePromotion.discount_type,
+        Number(activePromotion.discount_value)
+      );
+      discountedAmount = salePrice;
+      if (billingPeriod === "lifetime") {
+        originalPrice = "$249";
+        const discount = Math.round(((249 - salePrice) / 249) * 100);
+        discountText = `${discount}% OFF`;
+      } else if (billingPeriod === "annual") {
+        originalPrice = `$79${t("pricing.perYear", "/year")}`;
+        const discount = Math.round(((79 - salePrice) / 79) * 100);
+        discountText = `${discount}% OFF`;
+      } else {
+        originalPrice = `$${baseAmount.toFixed(0)}${t("pricing.perMonth", "/month")}`;
+        const discount = Math.round(
+          ((baseAmount - salePrice) / baseAmount) * 100
+        );
+        discountText = `${discount}% OFF`;
       }
+      isSale = true;
     } else if (currentPlan.discount) {
       // Stripe discount applied
       if (currentPlan.discount.percent_off) {

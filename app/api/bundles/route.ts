@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/service';
 import { getCanonicalImageKey } from '@/utils/canonicalImageKey';
+import { isPSTDateAfterNow, isPSTDateBeforeNow } from '@/utils/timezoneUtils';
+import {
+  applyPromotionToBundlePricingSnapshot,
+  type BundlePricingSnapshot,
+  type PromotionPricingRow,
+} from '@/utils/promotions/apply-promotion';
 
 /**
  * @fileoverview API route for listing and creating bundles.
@@ -70,14 +76,53 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const { data: promoRows } = await (supabase as any)
+      .from('promotions')
+      .select(
+        'promotion_target_mode, included_targets, discount_type, discount_value, start_date, end_date, priority'
+      )
+      .eq('active', true)
+      .order('priority', { ascending: false });
+
+    const scheduleOk = (promo: Record<string, unknown>) => {
+      if (promo.start_date && isPSTDateAfterNow(promo.start_date as string)) {
+        return false;
+      }
+      if (promo.end_date && isPSTDateBeforeNow(promo.end_date as string)) {
+        return false;
+      }
+      return true;
+    };
+
+    const affectsBundles = (promo: Record<string, unknown>) => {
+      if (promo.promotion_target_mode === 'all') return true;
+      const t = (promo.included_targets as string[]) || [];
+      return t.some((x) => typeof x === 'string' && x.startsWith('bundle:'));
+    };
+
+    const bundlePromo =
+      (promoRows || []).find(
+        (p: Record<string, unknown>) => scheduleOk(p) && affectsBundles(p)
+      ) || null;
+
+    const bundlePromoRow = bundlePromo as PromotionPricingRow | null;
+
     // Transform the data to make it easier to work with
     const transformedBundles = bundles?.map((bundle: any) => {
       const tiers = ((bundle.bundle_subscription_tiers || []) as any[]).filter(t => t.active);
-      const pricing = {
+      let pricing: BundlePricingSnapshot = {
         monthly: tiers.find(t => t.subscription_type === 'monthly'),
         annual: tiers.find(t => t.subscription_type === 'annual'),
         lifetime: tiers.find(t => t.subscription_type === 'lifetime'),
       };
+
+      if (bundlePromoRow) {
+        pricing = applyPromotionToBundlePricingSnapshot(
+          bundle.id,
+          pricing,
+          bundlePromoRow
+        );
+      }
 
       // Check if this is a subscription bundle (has monthly or annual tiers).
       // Bundles with ONLY lifetime tiers are considered regular one-time purchase bundles.

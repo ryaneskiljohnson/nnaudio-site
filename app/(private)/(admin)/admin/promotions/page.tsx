@@ -1,6 +1,11 @@
+/**
+ * @fileoverview Admin Promotions Manager — include-list targets (subscription tiers, shop, bundles), Stripe coupons.
+ * @module app/(private)/(admin)/admin/promotions/page
+ */
+
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -24,8 +29,8 @@ import {
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import LoadingComponent from "@/components/common/LoadingComponent";
-import TableLoadingRow from "@/components/common/TableLoadingRow";
 import { utcToPSTDate, formatPSTDate } from "@/utils/timezoneUtils";
+import { computePromotionalUnitPrice } from "@/utils/promotions/apply-promotion";
 
 // Types
 interface Promotion {
@@ -36,13 +41,9 @@ interface Promotion {
   active: boolean;
   start_date: string | null;
   end_date: string | null;
-  applicable_plans: string[];
   discount_type: 'percentage' | 'amount';
   discount_value: number;
-  sale_price_monthly: number | null;
-  sale_price_annual: number | null;
-  sale_price_lifetime: number | null;
-  stripe_coupon_code: string;
+  stripe_coupon_code: string | null;
   stripe_coupon_id: string | null;
   stripe_coupon_created: boolean;
   banner_theme: {
@@ -51,6 +52,9 @@ interface Promotion {
     accentColor: string;
   };
   priority: number;
+  promotion_target_mode?: 'all' | 'selected';
+  /** @brief Keys: product:<uuid>, product:<uuid>:tier, bundle:<uuid>:tier */
+  included_targets?: string[];
   views: number;
   conversions: number;
   revenue: number;
@@ -70,6 +74,22 @@ const spin = keyframes`
 const SpinningIcon = styled(FaSync)`
   animation: ${spin} 1s linear infinite;
 `;
+
+type PromotionTargetOption = {
+  key: string;
+  label: string;
+  group: string;
+  list_price?: number | null;
+};
+
+/**
+ * @brief Formats a dollar amount for the modal sale preview.
+ * @param n Amount in USD.
+ * @returns String like `$12.00`.
+ */
+function formatPreviewUsd(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
 
 const Container = styled.div`
   width: 100%;
@@ -503,6 +523,11 @@ export default function PromotionsPage() {
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [targetOptions, setTargetOptions] = useState<PromotionTargetOption[]>(
+    []
+  );
+  const [targetsLoading, setTargetsLoading] = useState(false);
+  const [targetFilter, setTargetFilter] = useState('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -512,23 +537,87 @@ export default function PromotionsPage() {
     active: false,
     start_date: '',
     end_date: '',
-    applicable_plans: ['lifetime'] as string[],
     discount_type: 'amount' as 'percentage' | 'amount',
     discount_value: 50,
     stripe_coupon_code: '',
     create_stripe_coupon: true,
     priority: 0,
+    promotion_target_mode: 'selected' as 'all' | 'selected',
+    included_targets: [] as string[],
   });
-
-  const NORMAL_PRICES = {
-    monthly: 6,
-    annual: 59,
-    lifetime: 149,
-  };
 
   useEffect(() => {
     loadPromotions();
   }, []);
+
+  useEffect(() => {
+    if (!showModal) return;
+    let cancelled = false;
+    (async () => {
+      setTargetsLoading(true);
+      try {
+        const res = await fetch('/api/admin/promotion-targets');
+        const data = await res.json();
+        if (!cancelled && data.success && Array.isArray(data.targets)) {
+          setTargetOptions(data.targets);
+        }
+      } catch (e) {
+        console.error('Failed to load promotion targets', e);
+      } finally {
+        if (!cancelled) setTargetsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [showModal]);
+
+  const salePreviewExampleList = useMemo(() => {
+    const found = targetOptions.find(
+      (o) => o.list_price != null && Number.isFinite(o.list_price)
+    );
+    return found?.list_price ?? 59;
+  }, [targetOptions]);
+
+  const salePreviewLines = useMemo(() => {
+    const dVal = Number(formData.discount_value);
+    if (formData.promotion_target_mode === "all") {
+      const sale = computePromotionalUnitPrice(
+        salePreviewExampleList,
+        formData.discount_type,
+        dVal
+      );
+      return {
+        mode: "all" as const,
+        exampleList: salePreviewExampleList,
+        exampleSale: sale,
+      };
+    }
+    if (formData.included_targets.length === 0) {
+      return { mode: "empty" as const };
+    }
+    const rows = formData.included_targets.map((key) => {
+      const opt = targetOptions.find((o) => o.key === key);
+      const label = opt?.label ?? key;
+      const list =
+        opt?.list_price != null && Number.isFinite(opt.list_price)
+          ? opt.list_price
+          : null;
+      const sale =
+        list != null
+          ? computePromotionalUnitPrice(list, formData.discount_type, dVal)
+          : null;
+      return { key, label, list, sale };
+    });
+    return { mode: "selected" as const, rows };
+  }, [
+    formData.discount_type,
+    formData.discount_value,
+    formData.included_targets,
+    formData.promotion_target_mode,
+    salePreviewExampleList,
+    targetOptions,
+  ]);
 
   const loadPromotions = async () => {
     try {
@@ -554,13 +643,15 @@ export default function PromotionsPage() {
       active: false,
       start_date: '',
       end_date: '',
-      applicable_plans: ['lifetime'],
       discount_type: 'amount',
       discount_value: 50,
       stripe_coupon_code: '',
       create_stripe_coupon: true,
       priority: 0,
+      promotion_target_mode: 'selected',
+      included_targets: [],
     });
+    setTargetFilter('');
     setShowModal(true);
   };
 
@@ -583,13 +674,18 @@ export default function PromotionsPage() {
       active: promotion.active,
       start_date: formatDateForInput(promotion.start_date),
       end_date: formatDateForInput(promotion.end_date),
-      applicable_plans: promotion.applicable_plans,
       discount_type: promotion.discount_type,
       discount_value: promotion.discount_value,
-      stripe_coupon_code: promotion.stripe_coupon_code,
+      stripe_coupon_code: promotion.stripe_coupon_code ?? "",
       create_stripe_coupon: Boolean(shouldAllowCouponCreation),
       priority: promotion.priority,
+      promotion_target_mode:
+        promotion.promotion_target_mode === 'all' ? 'all' : 'selected',
+      included_targets: Array.isArray(promotion.included_targets)
+        ? [...promotion.included_targets]
+        : [],
     });
+    setTargetFilter('');
     setShowModal(true);
   };
 
@@ -602,8 +698,17 @@ export default function PromotionsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...(editingPromotion && { id: editingPromotion.id }),
+          ...(editingPromotion && {
+            id: editingPromotion.id,
+            stripe_coupon_id: editingPromotion.stripe_coupon_id,
+            stripe_coupon_created: editingPromotion.stripe_coupon_created,
+            banner_theme: editingPromotion.banner_theme,
+          }),
           ...formData,
+          included_targets:
+            formData.promotion_target_mode === 'all'
+              ? []
+              : formData.included_targets,
         }),
       });
 
@@ -617,9 +722,13 @@ export default function PromotionsPage() {
         setShowModal(false);
         loadPromotions();
       } else {
+        const detail =
+          typeof data.details === 'string' && data.details.trim()
+            ? ` ${data.details}`
+            : '';
         setMessage({
           type: 'error',
-          text: data.error || 'Failed to save promotion',
+          text: `${data.error || 'Failed to save promotion'}${detail}`,
         });
       }
     } catch (error) {
@@ -699,7 +808,6 @@ export default function PromotionsPage() {
           active: !promotion.active, // Toggle the active status
           start_date: formatDateForAPI(promotion.start_date),
           end_date: formatDateForAPI(promotion.end_date),
-          applicable_plans: promotion.applicable_plans,
           discount_type: promotion.discount_type,
           discount_value: promotion.discount_value,
           stripe_coupon_code: promotion.stripe_coupon_code,
@@ -707,6 +815,11 @@ export default function PromotionsPage() {
           stripe_coupon_created: promotion.stripe_coupon_created,
           banner_theme: promotion.banner_theme,
           priority: promotion.priority,
+          promotion_target_mode:
+            promotion.promotion_target_mode === 'all' ? 'all' : 'selected',
+          included_targets: Array.isArray(promotion.included_targets)
+            ? promotion.included_targets
+            : [],
         }),
       });
 
@@ -719,15 +832,6 @@ export default function PromotionsPage() {
       }
     } catch (error) {
       console.error('Error toggling promotion:', error);
-    }
-  };
-
-  const calculateSalePrice = (plan: 'monthly' | 'annual' | 'lifetime') => {
-    const normalPrice = NORMAL_PRICES[plan];
-    if (formData.discount_type === 'percentage') {
-      return Math.round(normalPrice * (1 - formData.discount_value / 100));
-    } else {
-      return normalPrice - formData.discount_value;
     }
   };
 
@@ -789,7 +893,8 @@ export default function PromotionsPage() {
               <Th>Status</Th>
               <Th>Campaign</Th>
               <Th>Discount</Th>
-              <Th>Sale Price</Th>
+              <Th>Scope</Th>
+              <Th>List pricing</Th>
               <Th>Dates</Th>
               <Th>Coupon</Th>
               <Th>Stats</Th>
@@ -820,11 +925,18 @@ export default function PromotionsPage() {
                   }
                 </Td>
                 <Td>
-                  {promotion.applicable_plans.map(plan => (
-                    <PriceBadge key={plan} style={{ marginRight: '0.5rem' }}>
-                      {plan}: ${promotion[`sale_price_${plan}` as keyof Promotion] as number}
-                    </PriceBadge>
-                  ))}
+                  <div style={{ fontSize: '0.8rem' }}>
+                    {promotion.promotion_target_mode === 'all'
+                      ? 'All offers'
+                      : `${promotion.included_targets?.length ?? 0} target(s)`}
+                  </div>
+                </Td>
+                <Td>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    {promotion.promotion_target_mode === 'all'
+                      ? 'Each offer uses its own list price'
+                      : 'Discount applies to selected targets’ list prices'}
+                  </span>
                 </Td>
                 <Td>
                   <div style={{ fontSize: '0.8rem' }}>
@@ -1003,32 +1115,113 @@ export default function PromotionsPage() {
                 </FormGroup>
 
                 <FormGroup $fullWidth>
-                  <Label>Applicable Plans</Label>
-                  <CheckboxGroup>
-                    {['monthly', 'annual', 'lifetime'].map(plan => (
-                      <CheckboxLabel key={plan}>
-                        <input
-                          type="checkbox"
-                          checked={formData.applicable_plans.includes(plan)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setFormData({
-                                ...formData,
-                                applicable_plans: [...formData.applicable_plans, plan],
-                              });
-                            } else {
-                              setFormData({
-                                ...formData,
-                                applicable_plans: formData.applicable_plans.filter(p => p !== plan),
-                              });
-                            }
-                          }}
-                        />
-                        {plan.charAt(0).toUpperCase() + plan.slice(1)}
-                      </CheckboxLabel>
-                    ))}
-                  </CheckboxGroup>
+                  <Label>Applies to</Label>
+                  <Select
+                    value={formData.promotion_target_mode}
+                    onChange={(e) => {
+                      const v = e.target.value as 'all' | 'selected';
+                      setFormData({
+                        ...formData,
+                        promotion_target_mode: v,
+                        included_targets: v === 'all' ? [] : formData.included_targets,
+                      });
+                    }}
+                  >
+                    <option value="all">All offers (Cymasphere, shop, every elite bundle tier)</option>
+                    <option value="selected">Selected offers only (check below)</option>
+                  </Select>
+                  <HelpText>
+                    Elite bundles list each tier separately (e.g. Ultimate — Monthly). Cymasphere uses
+                    the three membership rows.
+                  </HelpText>
                 </FormGroup>
+
+                {formData.promotion_target_mode === 'selected' && (
+                  <FormGroup $fullWidth>
+                    <Label>Include these offers</Label>
+                    <Input
+                      type="search"
+                      placeholder="Filter by name…"
+                      value={targetFilter}
+                      onChange={(e) => setTargetFilter(e.target.value)}
+                    />
+                    {targetsLoading ? (
+                      <HelpText>Loading offer list…</HelpText>
+                    ) : (
+                      <div
+                        style={{
+                          maxHeight: '280px',
+                          overflowY: 'auto',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '8px',
+                          padding: '0.75rem',
+                          marginTop: '0.5rem',
+                        }}
+                      >
+                        {Array.from(new Set(targetOptions.map((t) => t.group))).map((group) => (
+                          <div key={group} style={{ marginBottom: '1rem' }}>
+                            <div
+                              style={{
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                color: 'var(--text-secondary)',
+                                marginBottom: '0.35rem',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em',
+                              }}
+                            >
+                              {group}
+                            </div>
+                            {targetOptions
+                              .filter((t) => t.group === group)
+                              .filter((t) =>
+                                targetFilter.trim()
+                                  ? t.label
+                                      .toLowerCase()
+                                      .includes(targetFilter.trim().toLowerCase())
+                                  : true
+                              )
+                              .map((opt) => (
+                                <CheckboxLabel
+                                  key={opt.key}
+                                  style={{
+                                    display: 'flex',
+                                    width: '100%',
+                                    marginBottom: '0.35rem',
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={formData.included_targets.includes(opt.key)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setFormData({
+                                          ...formData,
+                                          included_targets: [
+                                            ...formData.included_targets,
+                                            opt.key,
+                                          ],
+                                        });
+                                      } else {
+                                        setFormData({
+                                          ...formData,
+                                          included_targets:
+                                            formData.included_targets.filter(
+                                              (k) => k !== opt.key
+                                            ),
+                                        });
+                                      }
+                                    }}
+                                  />
+                                  <span style={{ marginLeft: '0.35rem' }}>{opt.label}</span>
+                                </CheckboxLabel>
+                              ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </FormGroup>
+                )}
 
                 <FormGroup>
                   <Label>
@@ -1037,7 +1230,7 @@ export default function PromotionsPage() {
                   </Label>
                   <Input
                     type="text"
-                    value={formData.stripe_coupon_code}
+                    value={formData.stripe_coupon_code ?? ""}
                     onChange={(e) => setFormData({ ...formData, stripe_coupon_code: e.target.value })}
                     placeholder="BLACKFRIDAY2025"
                   />
@@ -1075,38 +1268,91 @@ export default function PromotionsPage() {
                 )}
               </FormGrid>
 
-              {/* Preview */}
-              {formData.applicable_plans.length > 0 && (
-                <div style={{ 
-                  background: 'rgba(255, 107, 107, 0.05)', 
-                  border: '1px solid rgba(255, 107, 107, 0.3)',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  marginTop: '1rem',
-                }}>
-                  <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text)' }}>
-                    Sale Prices Preview:
-                  </div>
-                  {formData.applicable_plans.map(plan => (
-                    <div key={plan} style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>
-                      <strong>{plan.charAt(0).toUpperCase() + plan.slice(1)}:</strong> $
-                      {NORMAL_PRICES[plan as keyof typeof NORMAL_PRICES]} → <strong style={{ color: '#FF6B6B' }}>
-                        ${calculateSalePrice(plan as 'monthly' | 'annual' | 'lifetime')}
+              <div
+                style={{
+                  background: "rgba(255, 107, 107, 0.05)",
+                  border: "1px solid rgba(255, 107, 107, 0.3)",
+                  borderRadius: "8px",
+                  padding: "1rem",
+                  marginTop: "1rem",
+                  fontSize: "0.9rem",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                <div
+                  style={{
+                    fontWeight: 600,
+                    marginBottom: "0.5rem",
+                    color: "var(--text)",
+                  }}
+                >
+                  Sale preview
+                </div>
+                {targetsLoading ? (
+                  <span>Loading target prices…</span>
+                ) : salePreviewLines.mode === "all" ? (
+                  <>
+                    <p style={{ margin: "0 0 0.5rem" }}>
+                      All offers — each checkout or catalog row uses its own list
+                      price with this discount (nothing stored on the promotion).
+                    </p>
+                    <div>
+                      Example at {formatPreviewUsd(salePreviewLines.exampleList)}{" "}
+                      list:{" "}
+                      <strong style={{ color: "#FF6B6B" }}>
+                        {formatPreviewUsd(salePreviewLines.exampleSale)}
                       </strong>
                     </div>
-                  ))}
-                  <div style={{ fontSize: '0.85rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}>
-                    Stripe coupon will be <strong>${formData.discount_type === 'amount' ? formData.discount_value : Math.round(NORMAL_PRICES.lifetime * (formData.discount_value / 100))}</strong> off
-                  </div>
-                </div>
-              )}
+                  </>
+                ) : salePreviewLines.mode === "empty" ? (
+                  <span>Select targets to see per-offer list → sale amounts.</span>
+                ) : (
+                  <ul
+                    style={{
+                      margin: 0,
+                      paddingLeft: "1.25rem",
+                      color: "var(--text)",
+                    }}
+                  >
+                    {salePreviewLines.rows.map((row) => (
+                      <li key={row.key} style={{ marginBottom: "0.35rem" }}>
+                        <strong>{row.label}</strong>
+                        {row.list != null && row.sale != null ? (
+                          <>
+                            {": "}
+                            {formatPreviewUsd(row.list)} →{" "}
+                            <strong style={{ color: "#FF6B6B" }}>
+                              {formatPreviewUsd(row.sale)}
+                            </strong>
+                          </>
+                        ) : (
+                          <span style={{ color: "var(--text-secondary)" }}>
+                            {" "}
+                            — set a list price on this product or tier to preview
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
 
               <ModalFooter>
                 <Button $variant="secondary" onClick={() => setShowModal(false)}>
                   <FaTimes />
                   Cancel
                 </Button>
-                <Button $variant="primary" onClick={handleSave} disabled={saving || !formData.name || !formData.title}>
+                <Button
+                  $variant="primary"
+                  onClick={handleSave}
+                  disabled={
+                    saving ||
+                    !formData.name ||
+                    !formData.title ||
+                    (formData.promotion_target_mode === 'selected' &&
+                      formData.included_targets.length === 0)
+                  }
+                >
                   <FaSave />
                   {saving ? 'Saving...' : editingPromotion ? 'Update' : 'Create'}
                 </Button>

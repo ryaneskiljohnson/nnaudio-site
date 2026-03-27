@@ -3278,6 +3278,7 @@ export type Database = {
           stripe_price_id: string | null
           stripe_product_id: string | null
           stripe_sale_price_id: string | null
+          subscription_stripe_prices: Json | null
           tagline: string | null
           updated_at: string | null
           view_count: number | null
@@ -3319,6 +3320,7 @@ export type Database = {
           stripe_price_id?: string | null
           stripe_product_id?: string | null
           stripe_sale_price_id?: string | null
+          subscription_stripe_prices?: Json | null
           tagline?: string | null
           updated_at?: string | null
           view_count?: number | null
@@ -3360,6 +3362,7 @@ export type Database = {
           stripe_price_id?: string | null
           stripe_product_id?: string | null
           stripe_sale_price_id?: string | null
+          subscription_stripe_prices?: Json | null
           tagline?: string | null
           updated_at?: string | null
           view_count?: number | null
@@ -3426,7 +3429,6 @@ export type Database = {
       promotions: {
         Row: {
           active: boolean
-          applicable_plans: string[] | null
           banner_theme: Json | null
           conversions: number | null
           created_at: string
@@ -3435,12 +3437,11 @@ export type Database = {
           discount_value: number
           end_date: string | null
           id: string
+          included_targets: string[]
           name: string
           priority: number | null
+          promotion_target_mode: string
           revenue: number | null
-          sale_price_annual: number | null
-          sale_price_lifetime: number | null
-          sale_price_monthly: number | null
           start_date: string | null
           stripe_coupon_code: string | null
           stripe_coupon_created: boolean | null
@@ -3451,7 +3452,6 @@ export type Database = {
         }
         Insert: {
           active?: boolean
-          applicable_plans?: string[] | null
           banner_theme?: Json | null
           conversions?: number | null
           created_at?: string
@@ -3460,12 +3460,11 @@ export type Database = {
           discount_value: number
           end_date?: string | null
           id?: string
+          included_targets?: string[]
           name: string
           priority?: number | null
+          promotion_target_mode?: string
           revenue?: number | null
-          sale_price_annual?: number | null
-          sale_price_lifetime?: number | null
-          sale_price_monthly?: number | null
           start_date?: string | null
           stripe_coupon_code?: string | null
           stripe_coupon_created?: boolean | null
@@ -3476,7 +3475,6 @@ export type Database = {
         }
         Update: {
           active?: boolean
-          applicable_plans?: string[] | null
           banner_theme?: Json | null
           conversions?: number | null
           created_at?: string
@@ -3485,12 +3483,11 @@ export type Database = {
           discount_value?: number
           end_date?: string | null
           id?: string
+          included_targets?: string[]
           name?: string
           priority?: number | null
+          promotion_target_mode?: string
           revenue?: number | null
-          sale_price_annual?: number | null
-          sale_price_lifetime?: number | null
-          sale_price_monthly?: number | null
           start_date?: string | null
           stripe_coupon_code?: string | null
           stripe_coupon_created?: boolean | null
@@ -4620,20 +4617,6 @@ export type Database = {
           expires_date: string
           subscription_type: Database["public"]["Enums"]["subscription_type"]
           transaction_id: string
-        }[]
-      }
-      get_active_promotion: {
-        Args: { plan_type: string }
-        Returns: {
-          banner_theme: Json
-          description: string
-          discount_type: string
-          discount_value: number
-          id: string
-          name: string
-          sale_price: number
-          stripe_coupon_code: string
-          title: string
         }[]
       }
       get_admin_grant_orders_paginated: {

@@ -1,8 +1,18 @@
+/**
+ * @fileoverview Creates PaymentIntents for the storefront cart; applies promo discounts with product eligibility.
+ * @module app/api/payment-intent/route
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { stripe } from "@/utils/stripe/client";
+import {
+  discountAmountForEligibleSubtotal,
+  eligibleSubtotalForPromotion,
+  type PromotionPricingRow,
+} from '@/utils/promotions/apply-promotion';
 import {
   buildOrderConfirmationHtml,
   buildOrderConfirmationText,
@@ -130,15 +140,48 @@ export async function POST(request: NextRequest) {
                 : couponRef;
 
           if (coupon?.valid) {
-            // Calculate discount amount
-            if (coupon.percent_off) {
-              discountAmount = (totalAmount * coupon.percent_off) / 100;
-            } else if (coupon.amount_off) {
-              discountAmount = coupon.amount_off / 100; // Convert from cents to dollars
+            let dbPromotion: PromotionPricingRow | null = null;
+            try {
+              const { data } = await (supabase as any)
+                .from('promotions')
+                .select('promotion_target_mode, included_targets, discount_type, discount_value')
+                .eq('stripe_coupon_code', coupon.id)
+                .maybeSingle();
+              if (data) {
+                dbPromotion = data as PromotionPricingRow;
+              }
+            } catch (lookupErr) {
+              console.warn('[payment-intent] promotions lookup failed', lookupErr);
             }
+
+            const lineItemsForPromo = items.map((item: CartItem) => {
+              const price =
+                item.sale_price !== null && item.sale_price !== undefined
+                  ? item.sale_price
+                  : item.price;
+              return { id: item.id, lineTotal: price * item.quantity };
+            });
+
+            const eligibleSubtotal = eligibleSubtotalForPromotion(
+              lineItemsForPromo,
+              dbPromotion
+            );
+
+            if (eligibleSubtotal <= 0) {
+              return NextResponse.json(
+                {
+                  success: false,
+                  error:
+                    'This promotion does not apply to any items in your cart.',
+                },
+                { status: 400 }
+              );
+            }
+
+            discountAmount = discountAmountForEligibleSubtotal(eligibleSubtotal, coupon);
             totalAmount = Math.max(0, totalAmount - discountAmount);
-            
-            console.log(`✅ Applied discount: $${discountAmount.toFixed(2)} (${coupon.percent_off ? coupon.percent_off + '%' : '$' + discountAmount.toFixed(2)})`);
+
+            console.log(`✅ Applied discount: $${discountAmount.toFixed(2)} (${coupon.percent_off ? coupon.percent_off + '%' : 'fixed'})`);
             console.log(`💰 Original total: $${(totalAmount + discountAmount).toFixed(2)}, Final total: $${totalAmount.toFixed(2)}`);
           } else {
             console.warn('⚠️ Coupon is not valid');

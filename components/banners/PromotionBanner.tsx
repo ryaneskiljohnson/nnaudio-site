@@ -331,7 +331,10 @@ interface Promotion {
   title: string;
   description: string;
   end_date: string | null;
-  applicable_plans: string[];
+  /** @brief Tiers on the configured membership product covered by this promotion (from `/api/promotions/active`). */
+  subscription_checkout_tiers?: string[];
+  promotion_target_mode?: string;
+  included_targets?: string[];
   banner_theme: {
     background: string;
     textColor: string;
@@ -401,7 +404,11 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
             }
           }
 
-          setSale(data.promotion);
+          setSale({
+            ...data.promotion,
+            subscription_checkout_tiers:
+              data.subscription_checkout_tiers ?? [],
+          });
           
           // Track promotion view
           fetch('/api/promotions/track', {
@@ -462,9 +469,9 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
     accentColor: '#FFD700',
   };
 
-  // Determine button behavior based on applicable_plans
-  const isMultiplePlans = sale.applicable_plans && sale.applicable_plans.length > 1;
-  const singlePlan = !isMultiplePlans && sale.applicable_plans?.[0];
+  const plans = sale.subscription_checkout_tiers || [];
+  const isMultiplePlans = plans.length > 1;
+  const singlePlan = plans.length === 1 ? plans[0] : null;
 
   const handleButtonClick = async () => {
     if (isMultiplePlans) {
@@ -492,6 +499,8 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
       } finally {
         setLoading(false);
       }
+    } else {
+      router.push('/products');
     }
   };
 

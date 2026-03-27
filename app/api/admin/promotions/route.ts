@@ -1,8 +1,39 @@
+/**
+ * @fileoverview Admin CRUD for `promotions` including Stripe coupon sync.
+ * @module app/api/admin/promotions/route
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import Stripe from "stripe";
 import { pstDateToUTC } from "@/utils/timezoneUtils";
 import { stripe } from "@/utils/stripe/client";
+import {
+  normalizeIncludedTargets,
+  type PromotionTargetMode,
+} from "@/utils/promotions/apply-promotion";
+
+/** @brief Matches DB default for `promotions.banner_theme` when the client omits it. */
+const DEFAULT_BANNER_THEME = {
+  background: "linear-gradient(135deg, #FF6B6B, #FF0000)",
+  textColor: "#FFFFFF",
+  accentColor: "#FFD700",
+} as const;
+
+/**
+ * @brief Removes `undefined` so PostgREST omits keys and column DEFAULTs apply.
+ * @param row Raw object from route handler.
+ * @returns Shallow clone without undefined values.
+ */
+function omitUndefined<T extends Record<string, unknown>>(row: T): T {
+  const out = { ...row };
+  for (const k of Object.keys(out)) {
+    if (out[k as keyof T] === undefined) {
+      delete out[k as keyof T];
+    }
+  }
+  return out;
+}
 
 /**
  * GET - Fetch all promotions
@@ -85,7 +116,6 @@ export async function POST(request: NextRequest) {
       active,
       start_date,
       end_date,
-      applicable_plans,
       discount_type,
       discount_value,
       stripe_coupon_code,
@@ -94,32 +124,43 @@ export async function POST(request: NextRequest) {
       priority,
     } = body;
 
-    // Calculate sale prices based on discount
-    const NORMAL_PRICES = {
-      monthly: 6,
-      annual: 59,
-      lifetime: 149,
-    };
+    const promotion_target_mode: PromotionTargetMode =
+      body.promotion_target_mode === "all" ? "all" : "selected";
+    const included_targets =
+      promotion_target_mode === "all"
+        ? []
+        : normalizeIncludedTargets(body.included_targets);
 
-    const calculateSalePrice = (normalPrice: number) => {
-      if (discount_type === 'percentage') {
-        return Math.round(normalPrice * (1 - discount_value / 100));
-      } else {
-        return normalPrice - discount_value;
-      }
-    };
+    const discountNum = Number(discount_value);
+    if (!Number.isFinite(discountNum) || discountNum <= 0) {
+      return NextResponse.json(
+        { error: "Discount value must be a number greater than 0" },
+        { status: 400 }
+      );
+    }
 
-    const sale_prices = {
-      sale_price_monthly: applicable_plans.includes('monthly') 
-        ? calculateSalePrice(NORMAL_PRICES.monthly) 
-        : null,
-      sale_price_annual: applicable_plans.includes('annual') 
-        ? calculateSalePrice(NORMAL_PRICES.annual) 
-        : null,
-      sale_price_lifetime: applicable_plans.includes('lifetime') 
-        ? calculateSalePrice(NORMAL_PRICES.lifetime) 
-        : null,
-    };
+    if (discount_type !== "percentage" && discount_type !== "amount") {
+      return NextResponse.json(
+        { error: 'discount_type must be "percentage" or "amount"' },
+        { status: 400 }
+      );
+    }
+
+    if (discount_type === "percentage" && discountNum > 100) {
+      return NextResponse.json(
+        { error: "Percentage discount cannot exceed 100" },
+        { status: 400 }
+      );
+    }
+
+    const nameTrim = typeof name === "string" ? name.trim() : "";
+    const titleTrim = typeof title === "string" ? title.trim() : "";
+    if (!nameTrim || !titleTrim) {
+      return NextResponse.json(
+        { error: "Name and title are required" },
+        { status: 400 }
+      );
+    }
 
     // Create Stripe coupon if requested
     let stripe_coupon_id = body.stripe_coupon_id;
@@ -228,23 +269,27 @@ export async function POST(request: NextRequest) {
     // Convert PST date inputs to UTC timestamps for database storage
     // Dates entered in the admin UI are treated as PST dates
 
-    const promotionData = {
-      name,
-      title,
-      description,
-      active,
-      start_date: pstDateToUTC(start_date, false), // Start of day (00:00:00 PST)
-      end_date: pstDateToUTC(end_date, true), // End of day (23:59:59 PST)
-      applicable_plans,
+    const codeNorm =
+      typeof stripe_coupon_code === "string"
+        ? stripe_coupon_code.trim()
+        : "";
+    const promotionData = omitUndefined({
+      name: nameTrim,
+      title: titleTrim,
+      description: description ?? null,
+      active: Boolean(active),
+      start_date: pstDateToUTC(start_date, false),
+      end_date: pstDateToUTC(end_date, true),
       discount_type,
-      discount_value,
-      ...sale_prices,
-      stripe_coupon_code,
-      stripe_coupon_id,
-      stripe_coupon_created,
-      banner_theme,
-      priority: priority || 0,
-    };
+      discount_value: discountNum,
+      stripe_coupon_code: codeNorm || null,
+      stripe_coupon_id: stripe_coupon_id ?? null,
+      stripe_coupon_created: Boolean(stripe_coupon_created),
+      banner_theme: banner_theme ?? DEFAULT_BANNER_THEME,
+      promotion_target_mode,
+      included_targets,
+      priority: Number(priority) || 0,
+    });
 
     let result;
     if (id) {
@@ -258,7 +303,25 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('Error updating promotion:', error);
-        return NextResponse.json({ error: 'Failed to update promotion' }, { status: 500 });
+        const code = (error as { code?: string }).code;
+        if (code === "23505") {
+          return NextResponse.json(
+            {
+              error: "A promotion with this internal name already exists",
+              details: error.message,
+            },
+            { status: 409 }
+          );
+        }
+        return NextResponse.json(
+          {
+            error: "Failed to update promotion",
+            details: error.message,
+            hint: (error as { hint?: string }).hint,
+            code: (error as { code?: string }).code,
+          },
+          { status: 500 }
+        );
       }
       result = data;
     } else {
@@ -271,7 +334,25 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('Error creating promotion:', error);
-        return NextResponse.json({ error: 'Failed to create promotion' }, { status: 500 });
+        const code = (error as { code?: string }).code;
+        if (code === "23505") {
+          return NextResponse.json(
+            {
+              error: "A promotion with this internal name already exists",
+              details: error.message,
+            },
+            { status: 409 }
+          );
+        }
+        return NextResponse.json(
+          {
+            error: "Failed to create promotion",
+            details: error.message,
+            hint: (error as { hint?: string }).hint,
+            code: (error as { code?: string }).code,
+          },
+          { status: 500 }
+        );
       }
       result = data;
     }

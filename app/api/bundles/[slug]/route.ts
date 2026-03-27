@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/service';
+import { isPSTDateAfterNow, isPSTDateBeforeNow } from '@/utils/timezoneUtils';
+import {
+  applyPromotionToBundlePricingSnapshot,
+  type BundlePricingSnapshot,
+  type PromotionPricingRow,
+} from '@/utils/promotions/apply-promotion';
 
 // GET /api/bundles/[slug] - Get single bundle with products and pricing
 export async function GET(
@@ -100,12 +106,50 @@ export async function GET(
       return sum + ((product.price as number) || 0);
     }, 0);
 
-    // Organize pricing by subscription type
-    const pricing = {
+    let pricing: BundlePricingSnapshot = {
       monthly: tiers?.find((t: any) => t.subscription_type === 'monthly'),
       annual: tiers?.find((t: any) => t.subscription_type === 'annual'),
       lifetime: tiers?.find((t: any) => t.subscription_type === 'lifetime'),
     };
+
+    const { data: promoRows } = await (supabase as any)
+      .from('promotions')
+      .select(
+        'promotion_target_mode, included_targets, discount_type, discount_value, start_date, end_date, priority'
+      )
+      .eq('active', true)
+      .order('priority', { ascending: false });
+
+    const scheduleOk = (promo: Record<string, unknown>) => {
+      if (promo.start_date && isPSTDateAfterNow(promo.start_date as string)) {
+        return false;
+      }
+      if (promo.end_date && isPSTDateBeforeNow(promo.end_date as string)) {
+        return false;
+      }
+      return true;
+    };
+
+    const affectsBundles = (promo: Record<string, unknown>) => {
+      if (promo.promotion_target_mode === 'all') return true;
+      const t = (promo.included_targets as string[]) || [];
+      return t.some((x) => typeof x === 'string' && x.startsWith('bundle:'));
+    };
+
+    const bundlePromo =
+      (promoRows || []).find(
+        (p: Record<string, unknown>) => scheduleOk(p) && affectsBundles(p)
+      ) || null;
+
+    const bundlePromoRow = bundlePromo as PromotionPricingRow | null;
+
+    if (bundlePromoRow) {
+      pricing = applyPromotionToBundlePricingSnapshot(
+        (bundle as { id: string }).id,
+        pricing,
+        bundlePromoRow
+      );
+    }
 
     // Calculate savings
     const calculateSavings = (tier: any, subscriptionType: string) => {
@@ -114,7 +158,9 @@ export async function GET(
       
       // For annual, compare to monthly * 12
       if (subscriptionType === 'annual' && pricing.monthly) {
-        const monthlyPrice = pricing.monthly.sale_price || pricing.monthly.price;
+        const monthlyPrice = Number(
+          pricing.monthly.sale_price ?? pricing.monthly.price ?? 0
+        );
         const annualMonthlyCost = monthlyPrice * 12;
         const savings = annualMonthlyCost - discountPrice;
         const savingsPercent = annualMonthlyCost > 0 ? (savings / annualMonthlyCost) * 100 : 0;

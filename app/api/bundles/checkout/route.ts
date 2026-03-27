@@ -14,6 +14,10 @@ import {
   attributionToStripeMetadata,
   parseAttributionCookie,
 } from "@/utils/marketing/attribution";
+import {
+  promotionIncludesBundleTier,
+  type PlanTypeKey,
+} from "@/utils/promotions/apply-promotion";
 
 type BundleTier = "monthly" | "annual" | "lifetime";
 
@@ -222,8 +226,51 @@ export async function POST(request: NextRequest) {
         checkout_type: "bundle",
         ...attributionToStripeMetadata(attribution),
       },
-      allow_promotion_codes: true,
     };
+
+    let hasAutoDiscount = false;
+    try {
+      const { data: promoRows } = await (supabase as any)
+        .from("promotions")
+        .select("*")
+        .eq("active", true)
+        .order("priority", { ascending: false });
+
+      const now = new Date();
+      const activePromotion = (promoRows || []).find((p: Record<string, unknown>) => {
+        const startValid =
+          !p.start_date || new Date(p.start_date as string) <= now;
+        const endValid = !p.end_date || new Date(p.end_date as string) >= now;
+        if (!startValid || !endValid) return false;
+        const row = {
+          promotion_target_mode: (p.promotion_target_mode as string) || 'selected',
+          included_targets: (p.included_targets as string[]) || [],
+          discount_type: String(p.discount_type || 'amount'),
+          discount_value: Number(p.discount_value) || 0,
+        };
+        return promotionIncludesBundleTier(row, bundle.id, tier as PlanTypeKey);
+      });
+
+      if (activePromotion?.stripe_coupon_code) {
+        try {
+          await stripe.coupons.retrieve(activePromotion.stripe_coupon_code);
+          sessionParams.discounts = [
+            { coupon: activePromotion.stripe_coupon_code },
+          ];
+          hasAutoDiscount = true;
+        } catch {
+          console.warn(
+            `Bundle checkout: coupon ${activePromotion.stripe_coupon_code} missing in Stripe`
+          );
+        }
+      }
+    } catch (e) {
+      console.warn("Bundle checkout: promotion lookup failed", e);
+    }
+
+    if (!hasAutoDiscount) {
+      sessionParams.allow_promotion_codes = true;
+    }
 
     if (mode === "payment" && tier === "lifetime") {
       sessionParams.payment_intent_data = {

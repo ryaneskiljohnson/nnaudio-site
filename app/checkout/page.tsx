@@ -8,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, type CartItem } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { FaHome, FaChevronRight, FaLock, FaCheckCircle, FaExclamationCircle, FaShieldAlt } from "react-icons/fa";
 import { SearchableSelect } from "@/components/common/SearchableSelect";
@@ -1216,11 +1216,13 @@ function PaymentForm({
 
 // Promo Code Component for Sidebar
 function PromoCodeSection({ 
+  items,
   total, 
   appliedPromo, 
   onPromoApplied, 
   onPromoRemoved 
 }: { 
+  items: CartItem[];
   total: number; 
   appliedPromo: { code: string; discount: { amount: number; percent: number }; promotionCodeId: string } | null;
   onPromoApplied: (promo: { code: string; discount: { amount: number; percent: number }; promotionCodeId: string }) => void;
@@ -1248,6 +1250,13 @@ function PromoCodeSection({
         body: JSON.stringify({
           code: promoCode.trim(),
           amount: total,
+          items: items.map((i) => {
+            const unit =
+              i.sale_price !== null && i.sale_price !== undefined
+                ? Number(i.sale_price)
+                : Number(i.price);
+            return { id: i.id, lineTotal: unit * i.quantity };
+          }),
         }),
       });
 
@@ -1444,6 +1453,7 @@ export default function CheckoutPage() {
             <SectionTitle>Order Summary</SectionTitle>
             
             <PromoCodeSection
+              items={items}
               total={total}
               appliedPromo={appliedPromo}
               onPromoApplied={(promo) => {
