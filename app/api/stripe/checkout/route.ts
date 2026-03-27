@@ -13,9 +13,7 @@ import { buildStripeCheckoutDiscount } from "@/utils/stripe/checkout-discount";
 import { getMembershipProductSlug } from "@/utils/products/membership-product";
 import { isPSTDateAfterNow, isPSTDateBeforeNow } from "@/utils/timezoneUtils";
 import {
-  isPromotionAllMode,
-  promotionHasApplicableTargets,
-  promotionIncludesProductTier,
+  promotionAppliesToMembershipStripeCheckout,
   type PlanTypeKey,
   type PromotionPricingRow,
 } from "@/utils/promotions/apply-promotion";
@@ -587,32 +585,32 @@ async function createCheckoutSession(
         .eq("active", true)
         .order("priority", { ascending: false });
 
-      const activePromotion = (promoRows || []).find(
-        (p: PromotionPricingRow & {
-          stripe_coupon_code?: string | null;
-          stripe_coupon_id?: string | null;
-        }) => {
-          if (p.start_date && isPSTDateAfterNow(p.start_date)) return false;
-          if (p.end_date && isPSTDateBeforeNow(p.end_date)) return false;
-          if (!promotionHasApplicableTargets(p)) return false;
-          if (isPromotionAllMode(p)) return true;
-          if (!membershipProductId) return false;
-          return promotionIncludesProductTier(
+      type PromoRow = PromotionPricingRow & {
+        stripe_coupon_code?: string | null;
+        stripe_coupon_id?: string | null;
+      };
+
+      for (const p of (promoRows || []) as PromoRow[]) {
+        if (p.start_date && isPSTDateAfterNow(p.start_date)) continue;
+        if (p.end_date && isPSTDateBeforeNow(p.end_date)) continue;
+        if (
+          !promotionAppliesToMembershipStripeCheckout(
             p,
             membershipProductId,
             planType as PlanTypeKey
-          );
+          )
+        ) {
+          continue;
         }
-      );
 
-      const couponRef =
-        (typeof activePromotion?.stripe_coupon_code === "string" &&
-          activePromotion.stripe_coupon_code.trim()) ||
-        (typeof activePromotion?.stripe_coupon_id === "string" &&
-          activePromotion.stripe_coupon_id.trim()) ||
-        "";
+        const couponRef =
+          (typeof p.stripe_coupon_code === "string" &&
+            p.stripe_coupon_code.trim()) ||
+          (typeof p.stripe_coupon_id === "string" &&
+            p.stripe_coupon_id.trim()) ||
+          "";
+        if (!couponRef) continue;
 
-      if (couponRef) {
         const discount = await buildStripeCheckoutDiscount(couponRef);
         if (discount) {
           sessionParams.discounts = [discount];
@@ -621,15 +619,11 @@ async function createCheckoutSession(
             `🎁 Auto-applying promotion discount (${discount.coupon ? "coupon" : "promotion_code"}) for ${planType}:`,
             couponRef
           );
-        } else {
-          console.warn(
-            "⚠️ Promotion matched checkout tier but Stripe coupon/promotion code not usable:",
-            couponRef
-          );
+          break;
         }
-      } else if (activePromotion) {
         console.warn(
-          "⚠️ Active promotion matches tier but stripe_coupon_code / stripe_coupon_id is empty"
+          "⚠️ Promotion matched subscription tier but Stripe discount not resolvable, trying next:",
+          couponRef
         );
       }
     } catch (error) {

@@ -110,6 +110,78 @@ export function promotionIncludesProductTier(
 }
 
 /**
+ * @brief Whether a promotion auto-applies on membership Stripe Checkout for a plan tier.
+ * @param promotion Active promotion row.
+ * @param membershipProductId `products.id` for `NEXT_PUBLIC_MEMBERSHIP_PRODUCT_SLUG`, or null if missing.
+ * @param tier Checkout plan (`monthly`, `annual`, `lifetime`).
+ * @returns True when the tier is in scope; if product id is unknown, matches `product:<uuid>` or `product:<uuid>:<tier>` keys only.
+ */
+export function promotionAppliesToMembershipStripeCheckout(
+  promotion: PromotionPricingRow | null,
+  membershipProductId: string | null | undefined,
+  tier: PlanTypeKey
+): boolean {
+  if (!promotion) return false;
+  if (!promotionHasApplicableTargets(promotion)) return false;
+  if (isPromotionAllMode(promotion)) return true;
+  if (membershipProductId) {
+    return promotionIncludesProductTier(
+      promotion,
+      membershipProductId,
+      tier
+    );
+  }
+  const ts = targetsSet(promotion);
+  for (const k of ts) {
+    const lower = k.toLowerCase();
+    if (!lower.startsWith("product:")) continue;
+    const rest = lower.slice("product:".length);
+    const colon = rest.indexOf(":");
+    const pid = colon === -1 ? rest : rest.slice(0, colon);
+    const tierPart = colon === -1 ? null : rest.slice(colon + 1);
+    if (!PRODUCT_UUID_RE.test(pid)) continue;
+    if (tierPart == null || tierPart === "") {
+      return true;
+    }
+    if (PLAN_TYPES.includes(tierPart as PlanTypeKey) && tierPart === tier) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief Tiers for membership CTA when `products.id` is unknown (same key rules as `promotionAppliesToMembershipStripeCheckout`).
+ * @param promotion Promotion row or null.
+ * @returns Tiers that would match Stripe membership checkout for that promotion.
+ */
+export function subscriptionCheckoutTiersWithoutProductId(
+  promotion: PromotionPricingRow | null
+): PlanTypeKey[] {
+  if (!promotion) return [];
+  if (isPromotionAllMode(promotion)) return [...PLAN_TYPES];
+  if (!promotionHasApplicableTargets(promotion)) return [];
+  const ts = targetsSet(promotion);
+  const out = new Set<PlanTypeKey>();
+  for (const k of ts) {
+    const lower = k.toLowerCase();
+    if (!lower.startsWith("product:")) continue;
+    const rest = lower.slice("product:".length);
+    const colon = rest.indexOf(":");
+    const pid = colon === -1 ? rest : rest.slice(0, colon);
+    const tierPart = colon === -1 ? null : rest.slice(colon + 1);
+    if (!PRODUCT_UUID_RE.test(pid)) continue;
+    if (tierPart == null || tierPart === "") {
+      return [...PLAN_TYPES];
+    }
+    if (PLAN_TYPES.includes(tierPart as PlanTypeKey)) {
+      out.add(tierPart as PlanTypeKey);
+    }
+  }
+  return PLAN_TYPES.filter((t) => out.has(t));
+}
+
+/**
  * @brief Subscription tiers under `product:<id>` targets (for checkout CTA / banner).
  * @param promotion Promotion row or null.
  * @param productId Catalog product UUID.

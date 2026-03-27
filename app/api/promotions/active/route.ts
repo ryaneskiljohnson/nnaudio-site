@@ -9,7 +9,8 @@ import { isPSTDateAfterNow, isPSTDateBeforeNow } from "@/utils/timezoneUtils";
 import { getMembershipProductSlug } from "@/utils/products/membership-product";
 import {
   PLAN_TYPES,
-  promotionIncludesProductTier,
+  promotionAppliesToMembershipStripeCheckout,
+  subscriptionCheckoutTiersWithoutProductId,
   subscriptionTiersForProduct,
   type PlanTypeKey,
   type PromotionPricingRow,
@@ -72,9 +73,9 @@ export async function GET(request: NextRequest) {
           return false;
         }
 
-        if (tierRaw && TIERS.has(tierRaw) && subscriptionProductId) {
+        if (tierRaw && TIERS.has(tierRaw)) {
           if (
-            !promotionIncludesProductTier(
+            !promotionAppliesToMembershipStripeCheckout(
               promo,
               subscriptionProductId,
               tierRaw as PlanTypeKey
@@ -98,6 +99,10 @@ export async function GET(request: NextRequest) {
         subscription_checkout_tiers = subscriptionTiersForProduct(
           activePromotion,
           subscriptionProductId
+        );
+      } else {
+        subscription_checkout_tiers = subscriptionCheckoutTiersWithoutProductId(
+          activePromotion
         );
       }
     }
