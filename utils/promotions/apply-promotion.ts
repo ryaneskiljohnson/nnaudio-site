@@ -69,6 +69,20 @@ export function isPromotionAllMode(
   return String(promotion.promotion_target_mode).trim().toLowerCase() === "all";
 }
 
+/**
+ * @brief False for “selected” mode with no targets (cannot apply to any line item or membership tier).
+ * @param promotion Row from `promotions`.
+ * @returns Whether the promotion has a non-empty scope.
+ */
+export function promotionHasApplicableTargets(
+  promotion: PromotionPricingRow | null
+): boolean {
+  if (!promotion) return false;
+  if (isPromotionAllMode(promotion)) return true;
+  const raw = promotion.included_targets;
+  return Array.isArray(raw) && raw.length > 0;
+}
+
 function isAllMode(promotion: PromotionPricingRow | null): boolean {
   return isPromotionAllMode(promotion);
 }

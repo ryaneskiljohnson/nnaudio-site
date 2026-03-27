@@ -9,14 +9,18 @@ import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { stripe } from "@/utils/stripe/client";
+import { buildStripeCheckoutDiscount } from "@/utils/stripe/checkout-discount";
 import {
   ATTRIBUTION_COOKIE_NAME,
   attributionToStripeMetadata,
   parseAttributionCookie,
 } from "@/utils/marketing/attribution";
+import { isPSTDateAfterNow, isPSTDateBeforeNow } from "@/utils/timezoneUtils";
 import {
+  promotionHasApplicableTargets,
   promotionIncludesBundleTier,
   type PlanTypeKey,
+  type PromotionPricingRow,
 } from "@/utils/promotions/apply-promotion";
 
 type BundleTier = "monthly" | "annual" | "lifetime";
@@ -236,31 +240,44 @@ export async function POST(request: NextRequest) {
         .eq("active", true)
         .order("priority", { ascending: false });
 
-      const now = new Date();
       const activePromotion = (promoRows || []).find((p: Record<string, unknown>) => {
-        const startValid =
-          !p.start_date || new Date(p.start_date as string) <= now;
-        const endValid = !p.end_date || new Date(p.end_date as string) >= now;
-        if (!startValid || !endValid) return false;
-        const row = {
-          promotion_target_mode: (p.promotion_target_mode as string) || 'selected',
-          included_targets: (p.included_targets as string[]) || [],
-          discount_type: String(p.discount_type || 'amount'),
+        const sd = p.start_date as string | null | undefined;
+        const ed = p.end_date as string | null | undefined;
+        if (sd && isPSTDateAfterNow(sd)) return false;
+        if (ed && isPSTDateBeforeNow(ed)) return false;
+        const row: PromotionPricingRow = {
+          promotion_target_mode: (p.promotion_target_mode as string) || "selected",
+          included_targets: Array.isArray(p.included_targets)
+            ? (p.included_targets as string[])
+            : [],
+          discount_type: String(p.discount_type || "amount"),
           discount_value: Number(p.discount_value) || 0,
         };
+        if (!promotionHasApplicableTargets(row)) return false;
         return promotionIncludesBundleTier(row, bundle.id, tier as PlanTypeKey);
       });
 
-      if (activePromotion?.stripe_coupon_code) {
-        try {
-          await stripe.coupons.retrieve(activePromotion.stripe_coupon_code);
-          sessionParams.discounts = [
-            { coupon: activePromotion.stripe_coupon_code },
-          ];
+      const ap = activePromotion as
+        | {
+            stripe_coupon_code?: string | null;
+            stripe_coupon_id?: string | null;
+          }
+        | undefined;
+      const couponRef =
+        (typeof ap?.stripe_coupon_code === "string" &&
+          ap.stripe_coupon_code.trim()) ||
+        (typeof ap?.stripe_coupon_id === "string" &&
+          ap.stripe_coupon_id.trim()) ||
+        "";
+      if (couponRef) {
+        const discount = await buildStripeCheckoutDiscount(couponRef);
+        if (discount) {
+          sessionParams.discounts = [discount];
           hasAutoDiscount = true;
-        } catch {
+        } else {
           console.warn(
-            `Bundle checkout: coupon ${activePromotion.stripe_coupon_code} missing in Stripe`
+            "Bundle checkout: promotion matched but Stripe discount not resolvable:",
+            couponRef
           );
         }
       }

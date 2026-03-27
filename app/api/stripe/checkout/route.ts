@@ -9,9 +9,12 @@ import { PlanType } from "@/types/stripe";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { randomUUID } from "crypto";
 import { stripe } from "@/utils/stripe/client";
+import { buildStripeCheckoutDiscount } from "@/utils/stripe/checkout-discount";
 import { getMembershipProductSlug } from "@/utils/products/membership-product";
+import { isPSTDateAfterNow, isPSTDateBeforeNow } from "@/utils/timezoneUtils";
 import {
   isPromotionAllMode,
+  promotionHasApplicableTargets,
   promotionIncludesProductTier,
   type PlanTypeKey,
   type PromotionPricingRow,
@@ -93,55 +96,6 @@ async function getMembershipProductCheckoutRow(planType: PlanType): Promise<{
     console.error("[checkout] membership product row", e);
     return { productId: null, priceIdFromDb: null };
   }
-}
-
-/**
- * @brief Maps a DB `stripe_coupon_code` / id string to a Checkout Session `discounts` item.
- * @param stored Value from `promotions.stripe_coupon_code` or `stripe_coupon_id` (coupon id, `promo_*`, or customer-facing code).
- * @returns `{ coupon }` or `{ promotion_code }` for Stripe, or null if nothing valid.
- */
-async function buildStripeCheckoutDiscount(
-  stored: string
-): Promise<Stripe.Checkout.SessionCreateParams.Discount | null> {
-  const s = stored.trim();
-  if (!s) return null;
-
-  if (s.startsWith("promo_")) {
-    try {
-      const pc = await stripe.promotionCodes.retrieve(s);
-      if (pc.active) {
-        return { promotion_code: pc.id };
-      }
-    } catch (e) {
-      console.warn("[checkout] promotionCodes.retrieve failed for", s, e);
-    }
-    return null;
-  }
-
-  try {
-    const c = await stripe.coupons.retrieve(s);
-    if (c.valid) {
-      return { coupon: c.id };
-    }
-  } catch {
-    /* not a coupon id — try promotion code by code string */
-  }
-
-  try {
-    const { data } = await stripe.promotionCodes.list({
-      code: s,
-      active: true,
-      limit: 5,
-    });
-    const hit = data.find((pc) => pc.active);
-    if (hit) {
-      return { promotion_code: hit.id };
-    }
-  } catch (e) {
-    console.warn("[checkout] promotionCodes.list failed for", s, e);
-  }
-
-  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -633,15 +587,14 @@ async function createCheckoutSession(
         .eq("active", true)
         .order("priority", { ascending: false });
 
-      const now = new Date();
       const activePromotion = (promoRows || []).find(
         (p: PromotionPricingRow & {
           stripe_coupon_code?: string | null;
           stripe_coupon_id?: string | null;
         }) => {
-          const startOk = !p.start_date || new Date(p.start_date) <= now;
-          const endOk = !p.end_date || new Date(p.end_date) >= now;
-          if (!startOk || !endOk) return false;
+          if (p.start_date && isPSTDateAfterNow(p.start_date)) return false;
+          if (p.end_date && isPSTDateBeforeNow(p.end_date)) return false;
+          if (!promotionHasApplicableTargets(p)) return false;
           if (isPromotionAllMode(p)) return true;
           if (!membershipProductId) return false;
           return promotionIncludesProductTier(

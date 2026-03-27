@@ -1026,9 +1026,11 @@ export default function PromotionsPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="black_friday_2025"
-                    disabled={!!editingPromotion}
                   />
-                  <HelpText>Unique identifier (lowercase, underscores only)</HelpText>
+                  <HelpText>
+                    Unique in the database. You can change it when editing; saving fails if another promotion already
+                    uses that name. This is separate from the Stripe coupon code.
+                  </HelpText>
                 </FormGroup>
 
                 <FormGroup $fullWidth>

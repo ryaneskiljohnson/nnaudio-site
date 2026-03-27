@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
 import { motion } from "framer-motion";
@@ -1332,6 +1332,18 @@ export default function CheckoutPage() {
   const total = getTotal();
   const [appliedDiscount, setAppliedDiscount] = useState<{ amount: number; percent: number; code: string } | null>(null);
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: { amount: number; percent: number }; promotionCodeId: string } | null>(null);
+  const skipAutoPromoAfterRemove = useRef(false);
+  const itemsKey = useMemo(
+    () =>
+      items
+        .map(
+          (i) =>
+            `${i.id}:${i.quantity}:${i.sale_price ?? ""}:${i.price}`
+        )
+        .sort()
+        .join("|"),
+    [items]
+  );
   const [orderComplete, setOrderComplete] = useState(false);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(true);
@@ -1401,6 +1413,58 @@ export default function CheckoutPage() {
     });
   }, [cartLoaded, items, getTotal]);
 
+  useEffect(() => {
+    skipAutoPromoAfterRemove.current = false;
+  }, [itemsKey]);
+
+  useEffect(() => {
+    if (!cartLoaded || items.length === 0) return;
+    if (skipAutoPromoAfterRemove.current) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/checkout/auto-promotion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: items.map((i) => ({
+              id: i.id,
+              price: i.price,
+              sale_price: i.sale_price,
+              quantity: i.quantity,
+            })),
+          }),
+        });
+        const data = await res.json();
+        if (cancelled || !data.success || !data.applied) return;
+        setAppliedPromo((prev) => {
+          if (prev !== null) return prev;
+          return {
+            code: data.code,
+            promotionCodeId: data.promotionCodeId,
+            discount: data.discount,
+          };
+        });
+        setAppliedDiscount((prev) => {
+          if (prev !== null) return prev;
+          return {
+            amount: data.discount.amount,
+            percent: data.discount.percent,
+            code: data.code,
+          };
+        });
+      } catch {
+        /* ignore */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- itemsKey captures cart contents
+  }, [cartLoaded, itemsKey]);
+
   // Skeleton until cart loaded, auth loaded, and we have items. (Subscription waits for bundle fetch; we wait for cart + auth so we know if user has customer_id before rendering form.)
   if (!cartLoaded || authLoading || (cartLoaded && items.length === 0 && !orderComplete)) {
     return <CheckoutPageSkeleton />;
@@ -1465,6 +1529,7 @@ export default function CheckoutPage() {
                 });
               }}
               onPromoRemoved={() => {
+                skipAutoPromoAfterRemove.current = true;
                 setAppliedPromo(null);
                 setAppliedDiscount(null);
               }}
