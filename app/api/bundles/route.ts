@@ -5,6 +5,7 @@ import { getCanonicalImageKey } from '@/utils/canonicalImageKey';
 import { isPSTDateAfterNow, isPSTDateBeforeNow } from '@/utils/timezoneUtils';
 import {
   applyPromotionToBundlePricingSnapshot,
+  parseIncludedTargetsFromDb,
   type BundlePricingSnapshot,
   type PromotionPricingRow,
 } from '@/utils/promotions/apply-promotion';
@@ -29,7 +30,8 @@ export async function GET(request: NextRequest) {
     const featured = searchParams.get('featured');
 
     const supabase = await createClient();
-    
+    const adminSupabase = await createAdminClient();
+
     let query = (supabase as any)
       .from('bundles')
       .select(`
@@ -76,7 +78,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { data: promoRows } = await (supabase as any)
+    const { data: promoRows } = await (adminSupabase as any)
       .from('promotions')
       .select(
         'promotion_target_mode, included_targets, discount_type, discount_value, start_date, end_date, priority'
@@ -96,16 +98,26 @@ export async function GET(request: NextRequest) {
 
     const affectsBundles = (promo: Record<string, unknown>) => {
       if (promo.promotion_target_mode === 'all') return true;
-      const t = (promo.included_targets as string[]) || [];
-      return t.some((x) => typeof x === 'string' && x.startsWith('bundle:'));
+      const t = parseIncludedTargetsFromDb(promo.included_targets);
+      return t.some((x) => x.startsWith('bundle:'));
     };
 
-    const bundlePromo =
+    const bundlePromoRaw =
       (promoRows || []).find(
         (p: Record<string, unknown>) => scheduleOk(p) && affectsBundles(p)
       ) || null;
 
-    const bundlePromoRow = bundlePromo as PromotionPricingRow | null;
+    const bundlePromoRow: PromotionPricingRow | null = bundlePromoRaw
+      ? {
+          promotion_target_mode:
+            (bundlePromoRaw.promotion_target_mode as string) || 'selected',
+          included_targets: parseIncludedTargetsFromDb(
+            bundlePromoRaw.included_targets
+          ),
+          discount_type: String(bundlePromoRaw.discount_type || 'amount'),
+          discount_value: Number(bundlePromoRaw.discount_value) || 0,
+        }
+      : null;
 
     // Transform the data to make it easier to work with
     const transformedBundles = bundles?.map((bundle: any) => {

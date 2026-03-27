@@ -13,7 +13,7 @@ import { buildStripeCheckoutDiscount } from "@/utils/stripe/checkout-discount";
 import { getMembershipProductSlug } from "@/utils/products/membership-product";
 import { isPSTDateAfterNow, isPSTDateBeforeNow } from "@/utils/timezoneUtils";
 import {
-  promotionAppliesToMembershipStripeCheckout,
+  promotionMatchesMembershipSubscriptionCheckout,
   type PlanTypeKey,
   type PromotionPricingRow,
 } from "@/utils/promotions/apply-promotion";
@@ -575,10 +575,45 @@ async function createCheckoutSession(
         : "if_required";
     }
 
-    // Auto-apply sale discount when DB promotion includes this tier (or global "all" mode)
+    // Auto-apply sale discount when DB promotion includes this tier (or global "all" mode).
+    // Resolve every catalog `products.id` that shares the Stripe product used by this checkout price so
+    // promotions still match when env price IDs point at a row different from NEXT_PUBLIC_MEMBERSHIP_PRODUCT_SLUG.
     let hasAutoDiscount = false;
     try {
       const supabase = await createSupabaseServiceRole();
+      const candidateCatalogProductIds = new Set<string>();
+      if (membershipProductId) {
+        candidateCatalogProductIds.add(membershipProductId);
+      }
+      if (priceId) {
+        try {
+          const price = await stripe.prices.retrieve(priceId);
+          const prod = price.product;
+          const stripeProductId =
+            typeof prod === "string"
+              ? prod
+              : prod &&
+                  typeof prod === "object" &&
+                  "deleted" in prod &&
+                  prod.deleted
+                ? null
+                : typeof prod === "object" && prod && "id" in prod
+                  ? (prod as Stripe.Product).id
+                  : null;
+          if (stripeProductId) {
+            const { data: rows } = await (supabase as any)
+              .from("products")
+              .select("id")
+              .eq("stripe_product_id", stripeProductId);
+            for (const r of rows || []) {
+              if (r?.id) candidateCatalogProductIds.add(r.id as string);
+            }
+          }
+        } catch (e) {
+          console.warn("[checkout] resolve catalog product ids from price", e);
+        }
+      }
+
       const { data: promoRows } = await (supabase as any)
         .from("promotions")
         .select("*")
@@ -594,9 +629,9 @@ async function createCheckoutSession(
         if (p.start_date && isPSTDateAfterNow(p.start_date)) continue;
         if (p.end_date && isPSTDateBeforeNow(p.end_date)) continue;
         if (
-          !promotionAppliesToMembershipStripeCheckout(
+          !promotionMatchesMembershipSubscriptionCheckout(
             p,
-            membershipProductId,
+            candidateCatalogProductIds,
             planType as PlanTypeKey
           )
         ) {
@@ -624,6 +659,18 @@ async function createCheckoutSession(
         console.warn(
           "⚠️ Promotion matched subscription tier but Stripe discount not resolvable, trying next:",
           couponRef
+        );
+      }
+
+      if (!hasAutoDiscount && (promoRows || []).length > 0) {
+        console.warn(
+          "[checkout] Active promotions in DB but none applied to this session",
+          {
+            planType,
+            priceId,
+            candidateCatalogProductIds: [...candidateCatalogProductIds],
+            promotionCount: (promoRows || []).length,
+          }
         );
       }
     } catch (error) {

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/utils/supabase/service';
 import { isPSTDateAfterNow, isPSTDateBeforeNow } from '@/utils/timezoneUtils';
 import {
   applyPromotionToBundlePricingSnapshot,
+  parseIncludedTargetsFromDb,
   type BundlePricingSnapshot,
   type PromotionPricingRow,
 } from '@/utils/promotions/apply-promotion';
@@ -112,7 +113,8 @@ export async function GET(
       lifetime: tiers?.find((t: any) => t.subscription_type === 'lifetime'),
     };
 
-    const { data: promoRows } = await (supabase as any)
+    // Service role: promotions SELECT policy is TO authenticated only; guests are anon and would get no rows.
+    const { data: promoRows } = await (adminSupabase as any)
       .from('promotions')
       .select(
         'promotion_target_mode, included_targets, discount_type, discount_value, start_date, end_date, priority'
@@ -132,16 +134,26 @@ export async function GET(
 
     const affectsBundles = (promo: Record<string, unknown>) => {
       if (promo.promotion_target_mode === 'all') return true;
-      const t = (promo.included_targets as string[]) || [];
-      return t.some((x) => typeof x === 'string' && x.startsWith('bundle:'));
+      const t = parseIncludedTargetsFromDb(promo.included_targets);
+      return t.some((x) => x.startsWith('bundle:'));
     };
 
-    const bundlePromo =
+    const bundlePromoRaw =
       (promoRows || []).find(
         (p: Record<string, unknown>) => scheduleOk(p) && affectsBundles(p)
       ) || null;
 
-    const bundlePromoRow = bundlePromo as PromotionPricingRow | null;
+    const bundlePromoRow: PromotionPricingRow | null = bundlePromoRaw
+      ? {
+          promotion_target_mode:
+            (bundlePromoRaw.promotion_target_mode as string) || 'selected',
+          included_targets: parseIncludedTargetsFromDb(
+            bundlePromoRaw.included_targets
+          ),
+          discount_type: String(bundlePromoRaw.discount_type || 'amount'),
+          discount_value: Number(bundlePromoRaw.discount_value) || 0,
+        }
+      : null;
 
     if (bundlePromoRow) {
       pricing = applyPromotionToBundlePricingSnapshot(

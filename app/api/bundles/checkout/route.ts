@@ -17,6 +17,7 @@ import {
 } from "@/utils/marketing/attribution";
 import { isPSTDateAfterNow, isPSTDateBeforeNow } from "@/utils/timezoneUtils";
 import {
+  parseIncludedTargetsFromDb,
   promotionHasApplicableTargets,
   promotionIncludesBundleTier,
   type PlanTypeKey,
@@ -232,54 +233,74 @@ export async function POST(request: NextRequest) {
       },
     };
 
+    // Promotions RLS is TO authenticated only; guests use anon Supabase and would get zero rows.
+    // Match /api/stripe/checkout: service role for promotion reads so elite bundle checkout auto-applies for everyone.
     let hasAutoDiscount = false;
     try {
-      const { data: promoRows } = await (supabase as any)
+      const promoSupabase = await createSupabaseServiceRole();
+      const { data: promoRows } = await (promoSupabase as any)
         .from("promotions")
         .select("*")
         .eq("active", true)
         .order("priority", { ascending: false });
 
-      const activePromotion = (promoRows || []).find((p: Record<string, unknown>) => {
+      type PromoRow = PromotionPricingRow & {
+        stripe_coupon_code?: string | null;
+        stripe_coupon_id?: string | null;
+      };
+
+      for (const p of (promoRows || []) as Record<string, unknown>[]) {
         const sd = p.start_date as string | null | undefined;
         const ed = p.end_date as string | null | undefined;
-        if (sd && isPSTDateAfterNow(sd)) return false;
-        if (ed && isPSTDateBeforeNow(ed)) return false;
+        if (sd && isPSTDateAfterNow(sd)) continue;
+        if (ed && isPSTDateBeforeNow(ed)) continue;
+
         const row: PromotionPricingRow = {
           promotion_target_mode: (p.promotion_target_mode as string) || "selected",
-          included_targets: Array.isArray(p.included_targets)
-            ? (p.included_targets as string[])
-            : [],
+          included_targets: parseIncludedTargetsFromDb(p.included_targets),
           discount_type: String(p.discount_type || "amount"),
           discount_value: Number(p.discount_value) || 0,
         };
-        if (!promotionHasApplicableTargets(row)) return false;
-        return promotionIncludesBundleTier(row, bundle.id, tier as PlanTypeKey);
-      });
+        if (!promotionHasApplicableTargets(row)) continue;
+        if (!promotionIncludesBundleTier(row, bundle.id, tier as PlanTypeKey)) {
+          continue;
+        }
 
-      const ap = activePromotion as
-        | {
-            stripe_coupon_code?: string | null;
-            stripe_coupon_id?: string | null;
-          }
-        | undefined;
-      const couponRef =
-        (typeof ap?.stripe_coupon_code === "string" &&
-          ap.stripe_coupon_code.trim()) ||
-        (typeof ap?.stripe_coupon_id === "string" &&
-          ap.stripe_coupon_id.trim()) ||
-        "";
-      if (couponRef) {
+        const pr = p as PromoRow;
+        const couponRef =
+          (typeof pr.stripe_coupon_code === "string" &&
+            pr.stripe_coupon_code.trim()) ||
+          (typeof pr.stripe_coupon_id === "string" &&
+            pr.stripe_coupon_id.trim()) ||
+          "";
+        if (!couponRef) continue;
+
         const discount = await buildStripeCheckoutDiscount(couponRef);
         if (discount) {
           sessionParams.discounts = [discount];
           hasAutoDiscount = true;
-        } else {
-          console.warn(
-            "Bundle checkout: promotion matched but Stripe discount not resolvable:",
+          console.log(
+            `🎁 Bundle checkout auto-discount (${discount.coupon ? "coupon" : "promotion_code"}) for ${bundle.slug} ${tier}:`,
             couponRef
           );
+          break;
         }
+        console.warn(
+          "Bundle checkout: promotion matched bundle tier but Stripe discount not resolvable, trying next:",
+          couponRef
+        );
+      }
+
+      if (!hasAutoDiscount && (promoRows || []).length > 0) {
+        console.warn(
+          "[bundle/checkout] Active promotions exist but none applied to this bundle session",
+          {
+            bundle_slug,
+            tier,
+            bundleId: bundle.id,
+            promotionCount: (promoRows || []).length,
+          }
+        );
       }
     } catch (e) {
       console.warn("Bundle checkout: promotion lookup failed", e);

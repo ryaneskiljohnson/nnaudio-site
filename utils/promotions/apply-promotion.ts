@@ -79,17 +79,44 @@ export function promotionHasApplicableTargets(
 ): boolean {
   if (!promotion) return false;
   if (isPromotionAllMode(promotion)) return true;
-  const raw = promotion.included_targets;
-  return Array.isArray(raw) && raw.length > 0;
+  return parseIncludedTargetsFromDb(promotion.included_targets).length > 0;
 }
 
 function isAllMode(promotion: PromotionPricingRow | null): boolean {
   return isPromotionAllMode(promotion);
 }
 
+/**
+ * @brief Normalizes `included_targets` from PostgREST (array, JSON string, or empty).
+ * @param raw Column value from `promotions.included_targets`.
+ * @returns Non-empty target strings.
+ */
+export function parseIncludedTargetsFromDb(raw: unknown): string[] {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) {
+    return raw.filter(
+      (x): x is string => typeof x === "string" && x.trim().length > 0
+    );
+  }
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    if (!t) return [];
+    try {
+      const p = JSON.parse(t);
+      if (Array.isArray(p)) {
+        return p.filter(
+          (x): x is string => typeof x === "string" && x.trim().length > 0
+        );
+      }
+    } catch {
+      /* not JSON */
+    }
+  }
+  return [];
+}
+
 function targetsSet(promotion: PromotionPricingRow | null): Set<string> {
-  const raw = promotion?.included_targets;
-  const list = Array.isArray(raw) ? raw : [];
+  const list = parseIncludedTargetsFromDb(promotion?.included_targets);
   return new Set(list);
 }
 
@@ -146,6 +173,39 @@ export function promotionAppliesToMembershipStripeCheckout(
     if (PLAN_TYPES.includes(tierPart as PlanTypeKey) && tierPart === tier) {
       return true;
     }
+  }
+  return false;
+}
+
+/**
+ * @brief Matches membership Stripe Checkout when catalog UUID may come from slug row or from `products.stripe_product_id` on the price’s Stripe product.
+ * @param promotion Active promotion row.
+ * @param catalogProductIds Candidate `products.id` values (slug membership row + rows sharing the checkout price’s Stripe product).
+ * @param tier Checkout plan.
+ * @returns True if the promotion applies to this subscription checkout.
+ */
+export function promotionMatchesMembershipSubscriptionCheckout(
+  promotion: PromotionPricingRow | null,
+  catalogProductIds: Iterable<string>,
+  tier: PlanTypeKey
+): boolean {
+  if (!promotion) return false;
+  if (!promotionHasApplicableTargets(promotion)) return false;
+  if (isPromotionAllMode(promotion)) return true;
+  const ids = [
+    ...new Set(
+      [...catalogProductIds]
+        .map((id) => id.trim().toLowerCase())
+        .filter(Boolean)
+    ),
+  ];
+  for (const catalogId of ids) {
+    if (promotionIncludesProductTier(promotion, catalogId, tier)) {
+      return true;
+    }
+  }
+  if (ids.length === 0) {
+    return promotionAppliesToMembershipStripeCheckout(promotion, null, tier);
   }
   return false;
 }
