@@ -154,7 +154,9 @@ export async function POST(request: NextRequest) {
         coupon
       );
       const discountPercent =
-        baseAmount > 0 ? (discountAmount / baseAmount) * 100 : 0;
+        baseAmount > 0
+          ? Math.round((discountAmount / baseAmount) * 100)
+          : 0;
 
       return NextResponse.json({
         success: true,

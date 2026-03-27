@@ -627,7 +627,7 @@ function BundlePromoCodeSection({
           <span>
             ✓ {appliedPromo.code} (
             {appliedPromo.discount.percent > 0
-              ? `${appliedPromo.discount.percent}% off`
+              ? `${Math.round(appliedPromo.discount.percent)}% off`
               : `$${appliedPromo.discount.amount.toFixed(2)} off`}
             )
           </span>

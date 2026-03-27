@@ -929,7 +929,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
           </ValueAmount>
           {selectedSavings && selectedSavings.amount > 0 && (
             <SavingsText>
-              Save up to {formatPrice(selectedSavings.amount)} ({selectedSavings.percent}% off)
+              Save up to {formatPrice(selectedSavings.amount)} ({Math.round(selectedSavings.percent)}% off)
             </SavingsText>
           )}
           {(bundle.pricing.monthly || bundle.pricing.annual) && (

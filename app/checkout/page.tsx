@@ -1285,8 +1285,8 @@ function PromoCodeSection({
       {appliedPromo ? (
         <PromoCodeSuccess>
           <span>
-            ✓ {appliedPromo.code} ({appliedPromo.discount.percent > 0 
-              ? `${appliedPromo.discount.percent}% off` 
+            ✓ {appliedPromo.code} ({appliedPromo.discount.percent > 0
+              ? `${Math.round(appliedPromo.discount.percent)}% off`
               : `$${appliedPromo.discount.amount.toFixed(2)} off`})
           </span>
           <RemovePromoButton type="button" onClick={onPromoRemoved}>
