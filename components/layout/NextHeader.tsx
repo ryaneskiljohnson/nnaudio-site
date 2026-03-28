@@ -809,6 +809,14 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
             <FaUserCircle />
           </UserButton>
           <UserDropdown $isOpen={userMenuOpen}>
+            {user.is_admin && (
+              <Link href="/admin">
+                <UserMenuItem onClick={() => setUserMenuOpen(false)}>
+                  <FaShieldAlt />
+                  {menuLabel("common.adminConsole")}
+                </UserMenuItem>
+              </Link>
+            )}
             <Link href="/dashboard">
               <UserMenuItem onClick={() => setUserMenuOpen(false)}>
                 <FaUser />
@@ -821,14 +829,6 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                 Redeem Products
               </UserMenuItem>
             </Link>
-            {user.is_admin && (
-              <Link href="/admin">
-                <UserMenuItem onClick={() => setUserMenuOpen(false)}>
-                  <FaShieldAlt />
-                  {menuLabel("common.adminConsole")}
-                </UserMenuItem>
-              </Link>
-            )}
             <UserMenuLogout onClick={handleLogout}>
               <FaSignOutAlt />
               {menuLabel("common.logout")}
@@ -960,22 +960,6 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
 
                 {user && (
                   <MobileUserSection>
-                    <Link href="/dashboard">
-                      <MobileNavLink
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setMenuOpen(false);
-                          router.push("/dashboard");
-                        }}
-                        variants={menuItemVariants}
-                        custom={navItems.length}
-                        initial="hidden"
-                        animate="visible"
-                      >
-                        <FaUser />
-                        {menuLabel("common.myAccount")}
-                      </MobileNavLink>
-                    </Link>
                     {user.is_admin && (
                       <Link href="/admin">
                         <MobileNavLink
@@ -985,7 +969,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                             router.push("/admin");
                           }}
                           variants={menuItemVariants}
-                          custom={navItems.length + 1}
+                          custom={navItems.length}
                           initial="hidden"
                           animate="visible"
                         >
@@ -994,6 +978,24 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                         </MobileNavLink>
                       </Link>
                     )}
+                    <Link href="/dashboard">
+                      <MobileNavLink
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setMenuOpen(false);
+                          router.push("/dashboard");
+                        }}
+                        variants={menuItemVariants}
+                        custom={
+                          user.is_admin ? navItems.length + 1 : navItems.length
+                        }
+                        initial="hidden"
+                        animate="visible"
+                      >
+                        <FaUser />
+                        {menuLabel("common.myAccount")}
+                      </MobileNavLink>
+                    </Link>
                     <MobileNavLink
                       onClick={(e) => {
                         e.preventDefault();
@@ -1001,7 +1003,9 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                         setMenuOpen(false);
                       }}
                       variants={menuItemVariants}
-                      custom={navItems.length + 2}
+                      custom={
+                        user.is_admin ? navItems.length + 2 : navItems.length + 1
+                      }
                       initial="hidden"
                       animate="visible"
                     >
