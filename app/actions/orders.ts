@@ -531,6 +531,9 @@ export async function getOrders(): Promise<{
           }));
           const grantIds = group.map((g) => g.grant.id);
           const allRedemptions = group.every((g) => g.isRedemption);
+          const notesNorm = first.grant.notes?.trim().toLowerCase() ?? "";
+          const isFreeProductCheckout =
+            !allRedemptions && notesNorm === "free checkout";
 
           orders.push({
             id: group.length > 1 ? `batch_${first.grant.id}` : (allRedemptions ? `redemption_${first.grant.id}` : `grant_${first.grant.id}`),
@@ -543,7 +546,11 @@ export async function getOrders(): Promise<{
             metadata: {
               grant_id: grantIds.length === 1 ? grantIds[0] : undefined,
               grant_ids: grantIds.length > 1 ? grantIds : undefined,
-              grant_type: allRedemptions ? "redemption" : "free_license",
+              grant_type: allRedemptions
+                ? "redemption"
+                : isFreeProductCheckout
+                  ? "free_checkout"
+                  : "free_license",
               redemption_code: allRedemptions ? first.serialCode : undefined,
               reseller_name: allRedemptions ? first.resellerName : undefined,
               notes: first.grant.notes,
@@ -570,6 +577,8 @@ export async function getOrders(): Promise<{
     orders.forEach((order) => {
       if (order.metadata?.grant_type === "redemption") {
         productRedemptions.push(order);
+      } else if (order.metadata?.grant_type === "free_checkout") {
+        regularOrders.push(order);
       } else if (order.metadata?.grant_type === "free_license") {
         productGrants.push(order);
       } else {

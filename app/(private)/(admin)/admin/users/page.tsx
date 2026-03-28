@@ -30,6 +30,7 @@ import {
   FaExclamationTriangle,
   FaSyncAlt,
   FaCreditCard,
+  FaShoppingBag,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import styled from "styled-components";
@@ -40,6 +41,7 @@ import {
   getAllUsersForCRMAdmin,
   getUsersForCRMCountAdmin,
   getAdditionalUserDataAdmin,
+  getEliteBundleRecurringTiersForCRMAdmin,
   getUserSupportTicketsAdmin,
   getUserSupportTicketCountsAdmin,
   getCustomerPurchasesAdmin,
@@ -59,6 +61,15 @@ import {
 import { deleteUserAccount } from "@/utils/stripe/supabase-stripe";
 import { updateUserProfileFromStripe } from "@/app/actions/user-management";
 import { updateUserProStatus } from "@/utils/subscriptions/check-subscription";
+
+/** Row shape from GET /api/admin/user-orders */
+type AdminUserOrderRow = {
+  id: string;
+  type: "stripe" | "grant";
+  amountCents: number;
+  created: string | null;
+  productName?: string | null;
+};
 
 const Container = styled.div`
   width: 100%;
@@ -542,11 +553,19 @@ const NfrBadge = styled.span`
   margin-left: 0.5rem;
 `;
 
+/** Ultimate bundle column: keep `td` as table-cell so row vertical-align works; flex lives inside. */
 const SubscriptionCell = styled(TableCell)`
-  display: flex;
+  vertical-align: middle;
+`;
+
+/**
+ * @brief Flex row for badge, loading spinner, and payment-method icon inside the Ultimate bundle cell.
+ */
+const SubscriptionCellInner = styled.div`
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
   flex-wrap: wrap;
+  gap: 0.5rem;
 `;
 
 const SupportTicketsCount = styled.div`
@@ -1408,6 +1427,8 @@ export default function AdminCRM() {
     }>
   >([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [userOrders, setUserOrders] = useState<AdminUserOrderRow[]>([]);
+  const [loadingUserOrders, setLoadingUserOrders] = useState(false);
   const [supportTicketCounts, setSupportTicketCounts] = useState<
     Record<string, { open: number; closed: number; total: number }>
   >({});
@@ -1416,6 +1437,12 @@ export default function AdminCRM() {
   >({});
   const [selectedUserHasPaymentMethod, setSelectedUserHasPaymentMethod] =
     useState<boolean | null>(null);
+
+  /** Elite bundle monthly/annual only (Stripe price matched to bundle_subscription_tiers). */
+  const [eliteBundleRecurringTierByUserId, setEliteBundleRecurringTierByUserId] =
+    useState<Record<string, "monthly" | "annual" | null>>({});
+  const [eliteBundleRecurringTierFetched, setEliteBundleRecurringTierFetched] =
+    useState(false);
 
   // More menu state
   const [openMoreMenu, setOpenMoreMenu] = useState<string | null>(null);
@@ -1544,6 +1571,8 @@ export default function AdminCRM() {
       setSupportTicketCounts({});
       // Clear payment method status when users change (will be repopulated)
       setHasPaymentMethod({});
+      setEliteBundleRecurringTierByUserId({});
+      setEliteBundleRecurringTierFetched(false);
 
       // Fetch additional data (lastActive, totalSpent) separately
       // This allows users to be displayed immediately while additional data loads
@@ -1554,6 +1583,36 @@ export default function AdminCRM() {
         const usersWithCustomerIds = result.users
           .filter((u) => u.customerId)
           .map((u) => ({ userId: u.id, customerId: u.customerId! }));
+
+        const buildEliteTierMap = (
+          apiResult: Record<string, "monthly" | "annual" | null>
+        ) => {
+          const map: Record<string, "monthly" | "annual" | null> = {};
+          for (const u of result.users) {
+            map[u.id] = u.customerId ? (apiResult[u.id] ?? null) : null;
+          }
+          return map;
+        };
+
+        if (usersWithCustomerIds.length === 0) {
+          setEliteBundleRecurringTierByUserId(buildEliteTierMap({}));
+          setEliteBundleRecurringTierFetched(true);
+        } else {
+          getEliteBundleRecurringTiersForCRMAdmin(usersWithCustomerIds).then(
+            (tierRes) => {
+              if (tierRes.error) {
+                console.error(
+                  "Error fetching elite bundle subscription tiers:",
+                  tierRes.error
+                );
+              }
+              setEliteBundleRecurringTierByUserId(
+                buildEliteTierMap(tierRes.tiersByUserId ?? {})
+              );
+              setEliteBundleRecurringTierFetched(true);
+            }
+          );
+        }
 
         if (usersWithCustomerIds.length > 0) {
           // Check payment methods for all customers in parallel
@@ -1686,6 +1745,9 @@ export default function AdminCRM() {
           .catch((err) => {
             console.error("Error fetching support ticket counts:", err);
           });
+      } else {
+        setEliteBundleRecurringTierByUserId({});
+        setEliteBundleRecurringTierFetched(true);
       }
     } catch (err) {
       console.error("Error fetching users:", err);
@@ -2104,8 +2166,11 @@ export default function AdminCRM() {
       setSelectedUserHasPaymentMethod(false);
     }
 
-    // Fetch support tickets for the user
-    await fetchUserSupportTickets(user.id);
+    // Support tickets + unified orders (Stripe + grants, includes free checkouts)
+    await Promise.all([
+      fetchUserSupportTickets(user.id),
+      fetchUserOrders(user.id),
+    ]);
 
     // Recalculate totalSpent using server-side API endpoint
     // This ensures Stripe secret key is only used on the server
@@ -2287,6 +2352,37 @@ export default function AdminCRM() {
     }
   };
 
+  /**
+   * @brief Loads unified order rows (Stripe PIs + product grants) for the user profile modal.
+   */
+  const fetchUserOrders = async (userId: string) => {
+    try {
+      setLoadingUserOrders(true);
+      setUserOrders([]);
+      const res = await fetch(
+        `/api/admin/user-orders?user_id=${encodeURIComponent(userId)}`
+      );
+      const data = (await res.json()) as {
+        orders?: AdminUserOrderRow[];
+        error?: string;
+      };
+      if (!res.ok) {
+        console.error(
+          "Error fetching user orders:",
+          data.error ?? res.statusText
+        );
+        setUserOrders([]);
+        return;
+      }
+      setUserOrders(Array.isArray(data.orders) ? data.orders : []);
+    } catch (err) {
+      console.error("Error fetching user orders:", err);
+      setUserOrders([]);
+    } finally {
+      setLoadingUserOrders(false);
+    }
+  };
+
   const closeModal = () => {
     setShowUserModal(false);
     setSelectedUser(null);
@@ -2296,6 +2392,8 @@ export default function AdminCRM() {
     setSupportTickets([]);
     setUserPurchases([]);
     setUserInvoices([]);
+    setUserOrders([]);
+    setLoadingUserOrders(false);
   };
 
   // Mock detailed data for demonstration
@@ -2931,8 +3029,8 @@ export default function AdminCRM() {
                       onClick={() => handleSort("subscription")}
                     >
                       {t(
-                        "admin.crmPage.userTable.subscription",
-                        "Subscription"
+                        "admin.crmPage.userTable.ultimateBundleSubscription",
+                        "Ultimate bundle"
                       )}
                       {getSortIcon("subscription")}
                     </TableHeaderCell>
@@ -3028,7 +3126,24 @@ export default function AdminCRM() {
                                 {getInitials(userData)}
                               </UserAvatar>
                               <UserDetails>
-                                <UserName>{getDisplayName(userData)}</UserName>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    flexWrap: "wrap",
+                                    gap: "0.35rem",
+                                  }}
+                                >
+                                  <UserName>
+                                    {getDisplayName(userData)}
+                                  </UserName>
+                                  {userData.hasNfrEliteBundle && (
+                                    <NfrBadge title="NFR includes a product from an ultimate bundle">
+                                      <FaCrown />
+                                      NFR
+                                    </NfrBadge>
+                                  )}
+                                </div>
                               </UserDetails>
                             </UserInfo>
                           </TableCell>
@@ -3036,35 +3151,67 @@ export default function AdminCRM() {
                             <UserEmail>{userData.email}</UserEmail>
                           </TableCell>
                           <SubscriptionCell>
-                            <SubscriptionBadge
-                              $color={getSubscriptionBadgeColor(
-                                userData.hasNfr ? "nfr" : userData.subscription
-                              )}
-                              $variant={
-                                userData.hasNfr ||
-                                isSubscriptionPremium(userData.subscription)
-                                  ? "premium"
-                                  : "default"
-                              }
-                            >
-                              {userData.hasNfr ? (
-                                <FaCrown />
-                              ) : (
-                                getSubscriptionIcon(userData.subscription)
-                              )}
-                              {userData.hasNfr ? "NFR" : userData.subscription}
-                            </SubscriptionBadge>
-                            {userData.customerId &&
-                              hasPaymentMethod[userData.id] && (
-                                <FaCreditCard
-                                  style={{
-                                    fontSize: "0.9rem",
-                                    color: "var(--text-secondary)",
-                                    marginLeft: "0.25rem",
-                                  }}
-                                  title="Credit card on file"
+                            <SubscriptionCellInner>
+                              {userData.subscription === "admin" ? (
+                                <SubscriptionBadge
+                                  $color={getSubscriptionBadgeColor("admin")}
+                                  $variant="premium"
+                                >
+                                  {getSubscriptionIcon("admin")}
+                                  admin
+                                </SubscriptionBadge>
+                              ) : userData.customerId &&
+                                !eliteBundleRecurringTierFetched ? (
+                                <LoadingSpinner
+                                  style={{ display: "inline-block" }}
                                 />
-                              )}
+                              ) : (() => {
+                                  const eliteTier =
+                                    eliteBundleRecurringTierByUserId[
+                                      userData.id
+                                    ];
+                                  if (
+                                    eliteTier === "monthly" ||
+                                    eliteTier === "annual"
+                                  ) {
+                                    return (
+                                      <SubscriptionBadge
+                                        $color={getSubscriptionBadgeColor(
+                                          eliteTier
+                                        )}
+                                        $variant={
+                                          isSubscriptionPremium(eliteTier)
+                                            ? "premium"
+                                            : "default"
+                                        }
+                                      >
+                                        {getSubscriptionIcon(eliteTier)}
+                                        {eliteTier}
+                                      </SubscriptionBadge>
+                                    );
+                                  }
+                                  return (
+                                    <span
+                                      style={{
+                                        color: "var(--text-secondary)",
+                                        fontSize: "0.95rem",
+                                      }}
+                                    >
+                                      —
+                                    </span>
+                                  );
+                                })()}
+                              {userData.customerId &&
+                                hasPaymentMethod[userData.id] && (
+                                  <FaCreditCard
+                                    style={{
+                                      fontSize: "0.9rem",
+                                      color: "var(--text-secondary)",
+                                    }}
+                                    title="Credit card on file"
+                                  />
+                                )}
+                            </SubscriptionCellInner>
                           </SubscriptionCell>
                           <TableCell>
                             {userData.orderCount === undefined ||
@@ -3301,8 +3448,36 @@ export default function AdminCRM() {
                     <InfoLabel>Email</InfoLabel>
                     <InfoValue>{selectedUser.email}</InfoValue>
                   </InfoItem>
+                  {selectedUser.hasNfrEliteBundle && (
+                    <InfoItem>
+                      <InfoLabel>NFR (ultimate bundle products)</InfoLabel>
+                      <InfoValue>
+                        <SubscriptionBadge
+                          $color={getSubscriptionBadgeColor("nfr")}
+                          $variant="premium"
+                        >
+                          <FaCrown />
+                          NFR
+                        </SubscriptionBadge>
+                      </InfoValue>
+                    </InfoItem>
+                  )}
+                  {selectedUser.subscription === "admin" && (
+                    <InfoItem>
+                      <InfoLabel>Admin account</InfoLabel>
+                      <InfoValue>
+                        <SubscriptionBadge
+                          $color={getSubscriptionBadgeColor("admin")}
+                          $variant="premium"
+                        >
+                          {getSubscriptionIcon("admin")}
+                          admin
+                        </SubscriptionBadge>
+                      </InfoValue>
+                    </InfoItem>
+                  )}
                   <InfoItem>
-                    <InfoLabel>Subscription</InfoLabel>
+                    <InfoLabel>Ultimate bundle subscription</InfoLabel>
                     <InfoValue>
                       <div
                         style={{
@@ -3313,28 +3488,47 @@ export default function AdminCRM() {
                           width: "100%",
                         }}
                       >
-                        <SubscriptionBadge
-                          $color={getSubscriptionBadgeColor(
-                            selectedUser.hasNfr
-                              ? "nfr"
-                              : selectedUser.subscription
-                          )}
-                          $variant={
-                            selectedUser.hasNfr ||
-                            isSubscriptionPremium(selectedUser.subscription)
-                              ? "premium"
-                              : "default"
-                          }
-                        >
-                          {selectedUser.hasNfr ? (
-                            <FaCrown />
-                          ) : (
-                            getSubscriptionIcon(selectedUser.subscription)
-                          )}
-                          {selectedUser.hasNfr
-                            ? "NFR"
-                            : selectedUser.subscription}
-                        </SubscriptionBadge>
+                        {selectedUser.customerId &&
+                        !eliteBundleRecurringTierFetched ? (
+                          <LoadingSpinner
+                            style={{ display: "inline-block" }}
+                          />
+                        ) : (() => {
+                            const eliteTier =
+                              eliteBundleRecurringTierByUserId[
+                                selectedUser.id
+                              ];
+                            if (
+                              eliteTier === "monthly" ||
+                              eliteTier === "annual"
+                            ) {
+                              return (
+                                <SubscriptionBadge
+                                  $color={getSubscriptionBadgeColor(
+                                    eliteTier
+                                  )}
+                                  $variant={
+                                    isSubscriptionPremium(eliteTier)
+                                      ? "premium"
+                                      : "default"
+                                  }
+                                >
+                                  {getSubscriptionIcon(eliteTier)}
+                                  {eliteTier}
+                                </SubscriptionBadge>
+                              );
+                            }
+                            return (
+                              <span
+                                style={{
+                                  color: "var(--text-secondary)",
+                                  fontSize: "0.95rem",
+                                }}
+                              >
+                                —
+                              </span>
+                            );
+                          })()}
                         <RefreshButton
                           onClick={handleRefreshSubscription}
                           disabled={refreshingSubscription}
@@ -3694,6 +3888,68 @@ export default function AdminCRM() {
                   </>
                 ) : (
                   <EmptyState>No support tickets found</EmptyState>
+                )}
+              </ModalSection>
+
+              {/* Orders (Stripe + grants; aligns with admin /api/admin/user-orders) */}
+              <ModalSection>
+                <SectionTitle>
+                  <FaShoppingBag />
+                  Orders
+                </SectionTitle>
+                {loadingUserOrders ? (
+                  <EmptyState>Loading orders...</EmptyState>
+                ) : userOrders.length > 0 ? (
+                  <DataTable>
+                    <DataTableHeader>
+                      <tr>
+                        <DataTableHeaderCell>Date</DataTableHeaderCell>
+                        <DataTableHeaderCell>Type</DataTableHeaderCell>
+                        <DataTableHeaderCell>Amount</DataTableHeaderCell>
+                        <DataTableHeaderCell>Reference</DataTableHeaderCell>
+                      </tr>
+                    </DataTableHeader>
+                    <DataTableBody>
+                      {userOrders.map((row) => (
+                        <DataTableRow key={`${row.type}-${row.id}`}>
+                          <DataTableCell>
+                            {row.created
+                              ? formatDate(row.created)
+                              : "—"}
+                          </DataTableCell>
+                          <DataTableCell>
+                            <StatusBadge
+                              $status={
+                                row.type === "stripe" ? "succeeded" : "active"
+                              }
+                            >
+                              {row.type === "stripe" ? "Payment" : "Grant"}
+                            </StatusBadge>
+                          </DataTableCell>
+                          <DataTableCell>
+                            {formatCurrency(row.amountCents / 100)}
+                          </DataTableCell>
+                          <DataTableCell>
+                            {row.type === "stripe" ? (
+                              <StripeLink
+                                href={`https://dashboard.stripe.com/payments/${row.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {row.id}
+                              </StripeLink>
+                            ) : (
+                              <span style={{ color: "var(--text-secondary)" }}>
+                                {row.productName ?? row.id}
+                              </span>
+                            )}
+                          </DataTableCell>
+                        </DataTableRow>
+                      ))}
+                    </DataTableBody>
+                  </DataTable>
+                ) : (
+                  <EmptyState>No orders found</EmptyState>
                 )}
               </ModalSection>
 

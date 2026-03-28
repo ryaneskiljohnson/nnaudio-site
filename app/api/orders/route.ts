@@ -364,6 +364,8 @@ export async function GET(request: NextRequest) {
             product_slug: g.product.slug || null,
           }));
           const grantIds = group.map((g) => g.grant.id);
+          const notesNorm = first.grant.notes?.trim().toLowerCase() ?? "";
+          const isFreeProductCheckout = notesNorm === "free checkout";
 
           const grantOrder = {
             id: group.length > 1 ? `batch_${first.grant.id}` : `grant_${first.grant.id}`,
@@ -376,7 +378,7 @@ export async function GET(request: NextRequest) {
             metadata: {
               grant_id: grantIds.length === 1 ? grantIds[0] : undefined,
               grant_ids: grantIds.length > 1 ? grantIds : undefined,
-              grant_type: "free_license",
+              grant_type: isFreeProductCheckout ? "free_checkout" : "free_license",
               notes: first.grant.notes,
               original_total: undefined,
               discount_amount: undefined,

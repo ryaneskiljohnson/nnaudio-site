@@ -11,6 +11,7 @@ import {
   FaBan,
   FaUndo,
   FaSyncAlt,
+  FaShoppingBag,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import styled from "styled-components";
@@ -25,6 +26,15 @@ import type { ProductGrant } from "@/app/actions/product-grants";
 import { getCustomerSubscriptions } from "@/utils/stripe/actions";
 import { updateUserProStatus } from "@/utils/subscriptions/check-subscription";
 import { NnaudioAccessInstallerBadges } from "@/components/admin/NnaudioAccessInstallerBadges";
+
+/** @brief Row from GET /api/admin/user-orders */
+type AdminUserOrderRow = {
+  id: string;
+  type: "stripe" | "grant";
+  amountCents: number;
+  created: string | null;
+  productName?: string | null;
+};
 
 const ModalOverlay = styled(motion.div)`
   position: fixed;
@@ -565,6 +575,8 @@ export default function UserProfileModal({
   );
   const [userProductGrants, setUserProductGrants] = useState<ProductGrant[]>([]);
   const [loadingProductGrants, setLoadingProductGrants] = useState(false);
+  const [userOrders, setUserOrders] = useState<AdminUserOrderRow[]>([]);
+  const [loadingUserOrders, setLoadingUserOrders] = useState(false);
 
   const fetchUserProductGrants = useCallback(async (userEmail: string) => {
     if (!userEmail?.trim()) {
@@ -666,6 +678,37 @@ export default function UserProfileModal({
     }
   }, []);
 
+  /**
+   * @brief Fetches Stripe + grant order rows for the profile modal (admin API).
+   */
+  const fetchUserOrders = useCallback(async (userId: string) => {
+    try {
+      setLoadingUserOrders(true);
+      setUserOrders([]);
+      const res = await fetch(
+        `/api/admin/user-orders?user_id=${encodeURIComponent(userId)}`
+      );
+      const data = (await res.json()) as {
+        orders?: AdminUserOrderRow[];
+        error?: string;
+      };
+      if (!res.ok) {
+        console.error(
+          "Error fetching user orders:",
+          data.error ?? res.statusText
+        );
+        setUserOrders([]);
+        return;
+      }
+      setUserOrders(Array.isArray(data.orders) ? data.orders : []);
+    } catch (error) {
+      console.error("Error fetching user orders:", error);
+      setUserOrders([]);
+    } finally {
+      setLoadingUserOrders(false);
+    }
+  }, []);
+
   const handleRefreshSubscription = useCallback(async () => {
     if (!user?.id) return;
 
@@ -709,6 +752,7 @@ export default function UserProfileModal({
       setUserInvoices([]);
       setSupportTickets([]);
       setUserProductGrants([]);
+      setUserOrders([]);
       setHasPaymentMethod(null);
 
       if (user.email) {
@@ -739,6 +783,7 @@ export default function UserProfileModal({
         setHasPaymentMethod(false);
       }
       fetchUserSupportTickets(user.id);
+      fetchUserOrders(user.id);
     } else if (!isOpen) {
       // Clear data when modal closes
       setUserSubscriptions([]);
@@ -746,6 +791,7 @@ export default function UserProfileModal({
       setUserInvoices([]);
       setSupportTickets([]);
       setUserProductGrants([]);
+      setUserOrders([]);
       setHasPaymentMethod(null);
     }
   }, [
@@ -758,6 +804,7 @@ export default function UserProfileModal({
     fetchUserInvoices,
     fetchUserSupportTickets,
     fetchUserProductGrants,
+    fetchUserOrders,
   ]);
 
   if (!user) return null;
@@ -812,21 +859,21 @@ export default function UserProfileModal({
                     >
                       <SubscriptionBadge
                         $color={getSubscriptionBadgeColor(
-                          user.hasNfr ? "nfr" : user.subscription
+                          user.hasNfrEliteBundle ? "nfr" : user.subscription
                         )}
                         $variant={
-                          user.hasNfr ||
+                          user.hasNfrEliteBundle ||
                           isSubscriptionPremium(user.subscription)
                             ? "premium"
                             : "default"
                         }
                       >
-                        {user.hasNfr ? (
+                        {user.hasNfrEliteBundle ? (
                           <FaCrown />
                         ) : (
                           getSubscriptionIcon(user.subscription)
                         )}
-                        {user.hasNfr ? "NFR" : user.subscription}
+                        {user.hasNfrEliteBundle ? "NFR" : user.subscription}
                       </SubscriptionBadge>
                       <RefreshButton
                         onClick={handleRefreshSubscription}
@@ -1286,6 +1333,66 @@ export default function UserProfileModal({
                 </DataTable>
               ) : (
                 <EmptyState>No invoices found</EmptyState>
+              )}
+            </ModalSection>
+
+            {/* Orders: Stripe payments + product grants (incl. free checkout) */}
+            <ModalSection>
+              <SectionTitle>
+                <FaShoppingBag />
+                Orders
+              </SectionTitle>
+              {loadingUserOrders ? (
+                <EmptyState>Loading orders...</EmptyState>
+              ) : userOrders.length > 0 ? (
+                <DataTable>
+                  <DataTableHeader>
+                    <tr>
+                      <DataTableHeaderCell>Date</DataTableHeaderCell>
+                      <DataTableHeaderCell>Type</DataTableHeaderCell>
+                      <DataTableHeaderCell>Amount</DataTableHeaderCell>
+                      <DataTableHeaderCell>Reference</DataTableHeaderCell>
+                    </tr>
+                  </DataTableHeader>
+                  <DataTableBody>
+                    {userOrders.map((row) => (
+                      <DataTableRow key={`${row.type}-${row.id}`}>
+                        <DataTableCell>
+                          {row.created ? formatDate(row.created) : "—"}
+                        </DataTableCell>
+                        <DataTableCell>
+                          <StatusBadge
+                            $status={
+                              row.type === "stripe" ? "succeeded" : "active"
+                            }
+                          >
+                            {row.type === "stripe" ? "Payment" : "Grant"}
+                          </StatusBadge>
+                        </DataTableCell>
+                        <DataTableCell>
+                          {formatCurrency(row.amountCents)}
+                        </DataTableCell>
+                        <DataTableCell>
+                          {row.type === "stripe" ? (
+                            <StripeLink
+                              href={`https://dashboard.stripe.com/payments/${row.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {row.id}
+                            </StripeLink>
+                          ) : (
+                            <span style={{ color: "var(--text-secondary)" }}>
+                              {row.productName ?? row.id}
+                            </span>
+                          )}
+                        </DataTableCell>
+                      </DataTableRow>
+                    ))}
+                  </DataTableBody>
+                </DataTable>
+              ) : (
+                <EmptyState>No orders found</EmptyState>
               )}
             </ModalSection>
 

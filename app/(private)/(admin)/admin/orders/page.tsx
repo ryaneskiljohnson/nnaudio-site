@@ -41,6 +41,17 @@ import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
 
+/**
+ * @brief $0 shop checkout recorded as product_grants with notes "Free checkout" (RPC orderType grant).
+ */
+function isFreeProductCheckoutGrantOrder(order: AdminOrder): boolean {
+  return (
+    order.orderType === "grant" &&
+    typeof order.metadata?.notes === "string" &&
+    order.metadata.notes.trim().toLowerCase() === "free checkout"
+  );
+}
+
 const Container = styled.div`
   width: 100%;
   max-width: 1400px;
@@ -1022,7 +1033,13 @@ export default function AdminOrdersPage() {
   const filteredOrders = useMemo(
     () =>
       orders.filter((order) => {
-        if (filter === "purchase" && order.orderType !== "purchase") return false;
+        if (
+          filter === "purchase" &&
+          order.orderType !== "purchase" &&
+          !isFreeProductCheckoutGrantOrder(order)
+        ) {
+          return false;
+        }
         if (filter === "grant" && order.orderType !== "grant") return false;
         if (filter === "redemption" && order.orderType !== "redemption") return false;
 

@@ -585,9 +585,19 @@ export default function MyOrdersPage() {
                     }}
                   >
                     <OrderAmount>
-                      {order.amount === 0 && order.metadata?.grant_type ? (
-                        <span style={{ fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.6)', fontWeight: 400 }}>
-                          {t("dashboard.orders.freeLicense", "Free License")}
+                      {order.amount === 0 &&
+                      order.metadata?.grant_type === "free_checkout" ? (
+                        <span
+                          style={{
+                            fontSize: "0.9rem",
+                            color: "rgba(255, 255, 255, 0.6)",
+                            fontWeight: 400,
+                          }}
+                        >
+                          {t(
+                            "dashboard.orders.freeProductOrder",
+                            "Free order"
+                          )}
                         </span>
                       ) : (
                         <>${order.amount.toFixed(2)} {order.currency}</>
@@ -688,7 +698,9 @@ export default function MyOrdersPage() {
                             <span>{order.metadata.promotion_code}</span>
                           </SummaryRow>
                         )}
-                        {order.metadata?.grant_type && order.metadata?.notes && (
+                        {(order.metadata?.grant_type === "free_checkout" ||
+                          order.metadata?.grant_type === "free_license") &&
+                          order.metadata?.notes && (
                           <SummaryRow style={{ fontSize: '0.85rem', color: 'rgba(255, 255, 255, 0.6)', fontStyle: 'italic' }}>
                             <span>{t("dashboard.orders.notes", "Notes")}:</span>
                             <span>{order.metadata.notes}</span>
@@ -699,7 +711,8 @@ export default function MyOrdersPage() {
                             {t("dashboard.orders.total", "Total")}:
                           </span>
                           <span>
-                            {order.amount === 0 && order.metadata?.grant_type ? (
+                            {order.amount === 0 &&
+                            order.metadata?.grant_type === "free_checkout" ? (
                               <span style={{ color: 'var(--success)' }}>
                                 {t("dashboard.orders.free", "Free")}
                               </span>

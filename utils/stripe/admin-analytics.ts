@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { getNormalizedEmailsWithUltimateBundleProductGrants } from "@/lib/ultimate-elite-bundles";
 import { SubscriptionType } from "@/utils/supabase/types";
 import Stripe from "stripe";
 import { stripe } from "@/utils/stripe/client";
@@ -47,6 +48,8 @@ export interface UserData {
   /** Number of paid orders (Stripe charges). -1 while loading. */
   orderCount?: number;
   hasNfr?: boolean;
+  /** True when user_management NFR applies and they have a grant for a product in an ultimate bundle. */
+  hasNfrEliteBundle?: boolean;
   /** First dashboard click for NNAudio Access macOS installer (ISO string). */
   nnaudioAccessInstallerMacosAt?: string | null;
   /** First dashboard click for NNAudio Access Windows installer (ISO string). */
@@ -1558,6 +1561,28 @@ export async function getAllUsersForCRM(
       }
     }
 
+    const nfrEmailsNeedingEliteGrantCheck = profiles
+      .map((p) => {
+        const em = (p as typeof p & { email?: string }).email || "";
+        const norm = em.toLowerCase().trim();
+        return { norm, hasNfr: norm ? (nfrStatusMap[norm] ?? false) : false };
+      })
+      .filter((x) => x.hasNfr && x.norm)
+      .map((x) => x.norm);
+
+    let eliteNfrEmailSet = new Set<string>();
+    if (nfrEmailsNeedingEliteGrantCheck.length > 0) {
+      try {
+        eliteNfrEmailSet =
+          await getNormalizedEmailsWithUltimateBundleProductGrants(
+            supabase,
+            nfrEmailsNeedingEliteGrantCheck,
+          );
+      } catch (eliteNfrErr) {
+        console.error("Error resolving elite-bundle NFR grants:", eliteNfrErr);
+      }
+    }
+
     // Build users array immediately with basic data from profiles
     // This allows the UI to show users right away while additional data loads
     const users: UserData[] = [];
@@ -1586,6 +1611,8 @@ export async function getAllUsersForCRM(
         totalSpent: -1, // -1 indicates loading, will be updated when data loads
         orderCount: -1, // -1 indicates loading, will be updated when additional data loads
         hasNfr,
+        hasNfrEliteBundle:
+          hasNfr && eliteNfrEmailSet.has(normalizedEmail),
         nnaudioAccessInstallerMacosAt: p.nnaudio_access_installer_macos_at ?? null,
         nnaudioAccessInstallerWindowsAt:
           p.nnaudio_access_installer_windows_at ?? null,
@@ -1606,8 +1633,9 @@ export async function getAllUsersForCRM(
 }
 
 /**
- * Fetches additional user data (lastActive, totalSpent) for given user IDs
+ * Fetches additional user data (lastActive, totalSpent, orderCount) for given user IDs
  * This is called separately after users are displayed to improve perceived performance
+ * @note orderCount includes paid Stripe charges plus $0 shop checkouts recorded as product_grants (notes "Free checkout"), grouped per email/minute like my-orders.
  */
 export async function getAdditionalUserData(userIds: string[]): Promise<{
   lastActive: Record<string, string>;
@@ -1673,10 +1701,10 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
       console.error("Error batch fetching user sessions:", sessionsErr);
     }
 
-    // Fetch customer IDs from profiles
+    // Fetch customer IDs and emails from profiles (email matches product_grants.user_email)
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, customer_id")
+      .select("id, customer_id, email")
       .in("id", userIds);
 
     if (profilesError) {
@@ -1688,13 +1716,12 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
       profiles?.map((p) => p.customer_id).filter((id): id is string => !!id) ||
       [];
 
-    // Fetch Stripe data for totalSpent and orderCount using Charges API
+    const chargesMap = new Map<string, number>();
+    const stripeOrderCountByCustomerId = new Map<string, number>();
+
+    // Fetch Stripe data for totalSpent and paid order count using Charges API
     if (customerIds.length > 0) {
       try {
-        const chargesMap = new Map<string, number>();
-        const ordersCountMap = new Map<string, number>();
-
-        // Fetch charges directly from Stripe API for each customer
         const chargePromises = customerIds.map(async (customerId) => {
           try {
             const charges = await stripe.charges.list({
@@ -1702,7 +1729,6 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
               limit: 100,
             });
 
-            // Use a Set to track charge IDs to prevent double counting
             const seenChargeIds = new Set<string>();
 
             const paidCharges = charges.data.filter((charge) => {
@@ -1720,7 +1746,10 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
               chargesMap.set(customerId, totalSpentCents);
             }
             if (paidCharges.length > 0) {
-              ordersCountMap.set(customerId, paidCharges.length);
+              stripeOrderCountByCustomerId.set(
+                customerId,
+                paidCharges.length,
+              );
             }
           } catch (err) {
             console.error(
@@ -1731,23 +1760,81 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
         });
 
         await Promise.allSettled(chargePromises);
-
-        // Map customer IDs to user IDs for totalSpent and orderCount
-        profiles?.forEach((profile) => {
-          if (profile.customer_id) {
-            const totalCents = chargesMap.get(profile.customer_id) || 0;
-            const total = totalCents / 100;
-            if (total > 0) {
-              totalSpentMap[profile.id] = total;
-            }
-            const count = ordersCountMap.get(profile.customer_id) ?? 0;
-            orderCountMap[profile.id] = count;
-          }
-        });
       } catch (stripeErr) {
         console.error("Error batch fetching Stripe charges:", stripeErr);
       }
     }
+
+    // $0 cart checkouts: no Stripe charge; rows in product_grants with notes from /api/payment-intent
+    const freeOrderCountByEmail = new Map<string, number>();
+    const profileEmails = [
+      ...new Set(
+        (profiles || [])
+          .map((p) => {
+            const em = (p as { email?: string | null }).email;
+            return typeof em === "string" ? em.toLowerCase().trim() : "";
+          })
+          .filter((e): e is string => e.length > 0),
+      ),
+    ];
+
+    if (profileEmails.length > 0) {
+      try {
+        const { data: grantRows, error: grantsError } = await supabase
+          .from("product_grants")
+          .select("user_email, granted_at, notes")
+          .in("user_email", profileEmails);
+
+        if (!grantsError && grantRows?.length) {
+          const MINUTE_MS = 60 * 1000;
+          const bucketsByEmail = new Map<string, Set<number>>();
+          for (const row of grantRows as {
+            user_email: string;
+            granted_at: string;
+            notes: string | null;
+          }[]) {
+            if (row.notes?.trim().toLowerCase() !== "free checkout") {
+              continue;
+            }
+            const em = row.user_email.toLowerCase().trim();
+            const bucket = Math.floor(
+              new Date(row.granted_at).getTime() / MINUTE_MS,
+            );
+            if (!bucketsByEmail.has(em)) {
+              bucketsByEmail.set(em, new Set());
+            }
+            bucketsByEmail.get(em)!.add(bucket);
+          }
+          bucketsByEmail.forEach((set, em) => {
+            freeOrderCountByEmail.set(em, set.size);
+          });
+        }
+      } catch (freeOrdErr) {
+        console.error("Error batch counting free checkout orders:", freeOrdErr);
+      }
+    }
+
+    profiles?.forEach((profile) => {
+      const p = profile as {
+        id: string;
+        customer_id?: string | null;
+        email?: string | null;
+      };
+      if (p.customer_id) {
+        const totalCents = chargesMap.get(p.customer_id) || 0;
+        const total = totalCents / 100;
+        if (total > 0) {
+          totalSpentMap[p.id] = total;
+        }
+      }
+      const stripeOrd = p.customer_id
+        ? (stripeOrderCountByCustomerId.get(p.customer_id) ?? 0)
+        : 0;
+      const em =
+        typeof p.email === "string" ? p.email.toLowerCase().trim() : "";
+      const freeOrd = em ? (freeOrderCountByEmail.get(em) ?? 0) : 0;
+      orderCountMap[p.id] = stripeOrd + freeOrd;
+    });
 
     return { lastActive: lastActiveMap, totalSpent: totalSpentMap, orderCount: orderCountMap };
   } catch (error) {

@@ -7,6 +7,10 @@
 "use server";
 
 import { getAdminEmails } from "@/lib/admin-order-email-copy";
+import {
+  ULTIMATE_ELITE_BUNDLE_SLUGS,
+  getNormalizedEmailsWithUltimateBundleProductGrants,
+} from "@/lib/ultimate-elite-bundles";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { getAccessibleProductIds } from "@/utils/nnaudio-access/access";
@@ -655,6 +659,7 @@ export async function getUserByEmailAdmin(userEmail: string): Promise<{
     lastActive?: string;
     totalSpent: number;
     hasNfr?: boolean;
+    hasNfrEliteBundle?: boolean;
   } | null;
   error?: string;
 }> {
@@ -704,6 +709,7 @@ export async function getUserByIdAdmin(userId: string): Promise<{
     lastActive?: string;
     totalSpent: number;
     hasNfr?: boolean;
+    hasNfrEliteBundle?: boolean;
     nnaudioAccessInstallerMacosAt?: string | null;
     nnaudioAccessInstallerWindowsAt?: string | null;
   } | null;
@@ -738,8 +744,9 @@ export async function getUserByIdAdmin(userId: string): Promise<{
       return { user: null, error: "Profile not found" };
     }
 
-    // Check for NFR
+    // Check for NFR (user_management) and elite-bundle product grants
     let hasNfr = false;
+    let hasNfrEliteBundle = false;
     if (authUser.email) {
       const normalizedEmail = authUser.email.toLowerCase().trim();
       const { data: nfrRecord } = await serviceSupabase
@@ -748,6 +755,13 @@ export async function getUserByIdAdmin(userId: string): Promise<{
         .eq("user_email", normalizedEmail)
         .maybeSingle();
       hasNfr = nfrRecord?.pro ?? false;
+      if (hasNfr) {
+        const eliteSet = await getNormalizedEmailsWithUltimateBundleProductGrants(
+          serviceSupabase,
+          [normalizedEmail],
+        );
+        hasNfrEliteBundle = eliteSet.has(normalizedEmail);
+      }
     }
 
     // Get last active from user_sessions
@@ -785,6 +799,7 @@ export async function getUserByIdAdmin(userId: string): Promise<{
       lastActive: lastActive || undefined,
       totalSpent: totalSpent[userId] || 0,
       hasNfr,
+      hasNfrEliteBundle,
       nnaudioAccessInstallerMacosAt:
         prof.nnaudio_access_installer_macos_at ?? null,
       nnaudioAccessInstallerWindowsAt:
@@ -944,6 +959,138 @@ export async function getAdditionalUserDataAdmin(userIds: string[]): Promise<{
         error instanceof Error
           ? error.message
           : "Failed to fetch additional data",
+    };
+  }
+}
+
+/** Stripe subscription statuses treated as current for elite bundle tier matching. */
+const ELITE_BUNDLE_SUBSCRIPTION_STATUSES = new Set([
+  "active",
+  "trialing",
+  "past_due",
+]);
+
+/**
+ * @brief Maps CRM users to ultimate-bundle recurring tier (monthly/annual) using Stripe + bundle_subscription_tiers.
+ * @param entries Pairs of profile user id and Stripe customer id (omit users without customer_id).
+ * @returns tiersByUserId Each requested userId → monthly, annual, or null when no matching subscription item.
+ * @note Only Stripe prices tied to the three ultimate bundle slugs count; other bundles and NFR are excluded.
+ */
+export async function getEliteBundleRecurringTiersForCRMAdmin(
+  entries: Array<{ userId: string; customerId: string }>,
+): Promise<{
+  tiersByUserId: Record<string, "monthly" | "annual" | null>;
+  error?: string;
+}> {
+  const emptyResult = (): Record<string, "monthly" | "annual" | null> => {
+    const out: Record<string, "monthly" | "annual" | null> = {};
+    for (const e of entries) {
+      out[e.userId] = null;
+    }
+    return out;
+  };
+
+  try {
+    const supabase = await createClient();
+
+    if (!(await checkAdmin(supabase))) {
+      return { tiersByUserId: emptyResult(), error: "Unauthorized" };
+    }
+
+    if (entries.length === 0) {
+      return { tiersByUserId: {} };
+    }
+
+    const result = emptyResult();
+
+    const serviceSupabase = await createSupabaseServiceRole();
+    const { data: bundles, error: bundlesError } = await (serviceSupabase as any)
+      .from("bundles")
+      .select(
+        `
+        id,
+        slug,
+        bundle_subscription_tiers!inner(
+          stripe_price_id,
+          subscription_type,
+          active
+        )
+      `,
+      )
+      .eq("status", "active")
+      .in("slug", [...ULTIMATE_ELITE_BUNDLE_SLUGS])
+      .eq("bundle_subscription_tiers.active", true);
+
+    if (bundlesError) {
+      console.error(
+        "[getEliteBundleRecurringTiersForCRMAdmin] bundles:",
+        bundlesError,
+      );
+      return { tiersByUserId: result, error: bundlesError.message };
+    }
+
+    const priceToTier = new Map<string, "monthly" | "annual">();
+    for (const b of bundles || []) {
+      const tiers = (b as { bundle_subscription_tiers?: Array<{
+        stripe_price_id?: string | null;
+        subscription_type?: string;
+      }> }).bundle_subscription_tiers;
+      for (const tier of tiers || []) {
+        const pid = tier.stripe_price_id;
+        if (!pid) continue;
+        if (tier.subscription_type === "monthly" || tier.subscription_type === "annual") {
+          if (!priceToTier.has(pid)) {
+            priceToTier.set(pid, tier.subscription_type);
+          }
+        }
+      }
+    }
+
+    if (priceToTier.size === 0) {
+      return { tiersByUserId: result };
+    }
+
+    const { getCustomerSubscriptions } = await import("@/utils/stripe/actions");
+
+    await Promise.all(
+      entries.map(async ({ userId, customerId }) => {
+        try {
+          const subResult = await getCustomerSubscriptions(customerId);
+          if (!subResult.success || !subResult.subscriptions?.length) {
+            return;
+          }
+          for (const sub of subResult.subscriptions) {
+            if (!ELITE_BUNDLE_SUBSCRIPTION_STATUSES.has(sub.status)) {
+              continue;
+            }
+            for (const item of sub.items || []) {
+              const priceId = item.price?.id;
+              if (!priceId) continue;
+              const tier = priceToTier.get(priceId);
+              if (tier) {
+                result[userId] = tier;
+                return;
+              }
+            }
+          }
+        } catch (err) {
+          console.error(
+            `[getEliteBundleRecurringTiersForCRMAdmin] customer ${customerId}:`,
+            err,
+          );
+        }
+      }),
+    );
+
+    return { tiersByUserId: result };
+  } catch (error) {
+    console.error("Error in getEliteBundleRecurringTiersForCRMAdmin:", error);
+    return {
+      tiersByUserId: emptyResult(),
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch elite bundle subscription tiers",
     };
   }
 }
