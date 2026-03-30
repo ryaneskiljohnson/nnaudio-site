@@ -25,6 +25,7 @@ import { scrollToHash } from "@/utils/scrollToHash";
 import BillingToggle from "../pricing/BillingToggle";
 import PricingCard from "../pricing/PricingCard";
 import PromotionBanner from "../banners/PromotionBanner";
+import { isPromotionBannerDismissed } from "@/utils/promotions/promotion-banner-dismissal";
 
 // Type definitions for NNAudioLogo component
 interface NNAudioLogoProps {
@@ -240,23 +241,9 @@ const PricingSection = () => {
         const data = await response.json();
         
         if (data.success && data.promotion) {
-          // Check if the promotion banner has been dismissed
-          const closedBanners = localStorage.getItem('closedPromotionBanners');
-          if (closedBanners) {
-            try {
-              const closedIds = JSON.parse(closedBanners);
-              if (closedIds.includes(data.promotion.id)) {
-                setIsBannerDismissed(true);
-              } else {
-                setIsBannerDismissed(false);
-              }
-            } catch (e) {
-              setIsBannerDismissed(false);
-            }
-          } else {
-            setIsBannerDismissed(false);
-          }
-          
+          setIsBannerDismissed(
+            isPromotionBannerDismissed(data.promotion.id)
+          );
           setHasActiveSale(true);
         } else {
           setHasActiveSale(false);
@@ -284,26 +271,12 @@ const PricingSection = () => {
     
     // Listen for custom event when banner is dismissed in same window
     const handleBannerDismissed = () => {
-      // Don't check if user has lifetime
       if (user?.profile?.subscription === "lifetime") {
         setHasActiveSale(false);
         setIsBannerDismissed(false);
         return;
       }
-      // Immediately check localStorage to update state
-      const closedBanners = localStorage.getItem('closedPromotionBanners');
-      if (closedBanners) {
-        try {
-          const closedIds = JSON.parse(closedBanners);
-          // Re-check active sale to get current promotion ID and update state
-          checkActiveSale();
-        } catch (e) {
-          // Fallback to full check
-          checkActiveSale();
-        }
-      } else {
-        setIsBannerDismissed(false);
-      }
+      checkActiveSale();
     };
     
     window.addEventListener('storage', handleStorageChange);

@@ -9,6 +9,10 @@ import { useCheckout } from '@/hooks/useCheckout';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import EmailCollectionModal from '../modals/EmailCollectionModal';
+import {
+  isPromotionBannerDismissed,
+  recordPromotionBannerDismissal,
+} from '@/utils/promotions/promotion-banner-dismissal';
 
 const BannerContainer = styled(motion.div)<{ $background: string; $variant: 'sticky' | 'card' }>`
   background: ${props => props.$background};
@@ -359,21 +363,6 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
   const { initiateCheckout } = useCheckout();
   const router = useRouter();
 
-  // Check if banner was previously closed (only if dismissible)
-  React.useEffect(() => {
-    if (!dismissible) return;
-    
-    const closedBanners = localStorage.getItem('closedPromotionBanners');
-    if (closedBanners) {
-      try {
-        const closedIds = JSON.parse(closedBanners);
-        // Will check against sale.id once we have it
-      } catch (e) {
-        // Ignore parsing errors
-      }
-    }
-  }, [dismissible]);
-
   // Fetch active promotion - Skip for lifetime users
   React.useEffect(() => {
     // Don't fetch promotions for lifetime users
@@ -389,19 +378,9 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
         
         if (data.success && data.promotion) {
           // Check if this promotion was previously closed (only if dismissible)
-          if (dismissible) {
-            const closedBanners = localStorage.getItem('closedPromotionBanners');
-            if (closedBanners) {
-              try {
-                const closedIds = JSON.parse(closedBanners);
-                if (closedIds.includes(data.promotion.id)) {
-                  setIsClosed(true);
-                  return;
-                }
-              } catch (e) {
-                // Ignore parsing errors
-              }
-            }
+          if (dismissible && isPromotionBannerDismissed(data.promotion.id)) {
+            setIsClosed(true);
+            return;
           }
 
           setSale({
@@ -521,24 +500,8 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
 
   const handleClose = () => {
     if (!sale) return;
-    
-    // Save to localStorage
-    const closedBanners = localStorage.getItem('closedPromotionBanners');
-    let closedIds: string[] = [];
-    
-    if (closedBanners) {
-      try {
-        closedIds = JSON.parse(closedBanners);
-      } catch (e) {
-        closedIds = [];
-      }
-    }
-    
-    if (!closedIds.includes(sale.id)) {
-      closedIds.push(sale.id);
-      localStorage.setItem('closedPromotionBanners', JSON.stringify(closedIds));
-    }
-    
+
+    recordPromotionBannerDismissal(sale.id);
     setIsClosed(true);
     
     // Dispatch custom event to notify other components
