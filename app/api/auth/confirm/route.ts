@@ -2,9 +2,13 @@
  * @fileoverview Email verification and OTP confirmation API endpoint.
  * @module app/api/auth/confirm
  *
- * Handles email verification and password recovery OTP confirmation. Users are
- * redirected here from email verification links. After verifying the OTP token,
- * users are redirected to the appropriate page (dashboard or reset-password).
+ * Handles email verification, password recovery OTP confirmation, and email-change
+ * confirmation (Supabase `email_change` OTP from `verifyOtp`). Users are redirected
+ * here from email verification links. After verifying the OTP token, users are
+ * redirected to the appropriate page (dashboard or reset-password).
+ *
+ * On successful `email_change` verification, the response is a 302 redirect to
+ * `/dashboard` (same as signup/email verification flows handled by this route).
  */
 
 "use server";
@@ -26,7 +30,7 @@ import { redirect } from "next/navigation";
  *
  * Redirects (302):
  * - Success (recovery or invite): /reset-password
- * - Success (other types): /dashboard
+ * - Success (other types, including email_change): /dashboard
  * - Missing params or verify failure: /error
  *
  * @note Requires Supabase "Confirm signup" email template to link to this URL with token_hash and type in the query.

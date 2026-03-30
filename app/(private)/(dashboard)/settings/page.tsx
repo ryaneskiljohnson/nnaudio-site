@@ -1,3 +1,7 @@
+/**
+ * @fileoverview Dashboard settings: personal name, email change (Supabase Auth), password reset, account deletion.
+ * @module app/(private)/(dashboard)/settings/page
+ */
 "use client";
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
@@ -14,6 +18,7 @@ import {
   FaLock,
   FaSave,
   FaTimesCircle,
+  FaEnvelope,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import AnimatedCard from "@/components/settings/CardComponent";
@@ -223,7 +228,13 @@ interface ProfileState {
 
 function Settings() {
   const { t } = useTranslation();
-  const { user, session, signOut, refreshUser, updateProfile, resetPassword } = useAuth();
+  const {
+    user,
+    refreshUser,
+    updateProfile,
+    resetPassword,
+    requestEmailChange,
+  } = useAuth();
   
   const [settings, setSettings] = useState<SettingsState>({
     // Remove the language: "en" entry
@@ -263,6 +274,10 @@ function Settings() {
   const [confirmationIcon, setConfirmationIcon] = useState<
     "success" | "warning" | "info"
   >("success");
+
+  const [newEmailInput, setNewEmailInput] = useState("");
+  const [emailChangeError, setEmailChangeError] = useState<string | null>(null);
+  const [isEmailChangeSubmitting, setIsEmailChangeSubmitting] = useState(false);
 
   const handleSelectChange = (
     e: React.ChangeEvent<HTMLSelectElement>,
@@ -331,6 +346,39 @@ function Settings() {
     setTimeout(() => {
       setProfileMessage({ text: "", type: "" });
     }, 3000);
+  };
+
+  /**
+   * @brief Submits a Supabase Auth email change request and shows success modal or inline error.
+   */
+  const handleEmailChangeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailChangeError(null);
+    setIsEmailChangeSubmitting(true);
+    try {
+      const { error } = await requestEmailChange(newEmailInput);
+      if (error) {
+        setEmailChangeError(error.message);
+        return;
+      }
+      setNewEmailInput("");
+      setConfirmationTitle(
+        t(
+          "dashboard.settings.emailChangeCheckInboxTitle",
+          "Check your email"
+        )
+      );
+      setConfirmationMessage(
+        t(
+          "dashboard.settings.emailChangeCheckInboxMessage",
+          "We sent a confirmation link. Open it to complete the change. If secure email change is enabled in your project, check both your current and new inboxes."
+        )
+      );
+      setConfirmationIcon("info");
+      setShowConfirmationModal(true);
+    } finally {
+      setIsEmailChangeSubmitting(false);
+    }
   };
 
   const handleResetPassword = async () => {
@@ -550,16 +598,6 @@ function Settings() {
               </FormGroup>
             </TwoColumnGrid>
 
-            <FormGroup>
-              <Label>{t("dashboard.profile.email", "Email Address")}</Label>
-              <ReadOnlyInput
-                type="email"
-                value={user?.email || ""}
-                readOnly
-                disabled
-              />
-            </FormGroup>
-
             <Button
               type="submit"
               as={motion.button}
@@ -576,6 +614,69 @@ function Settings() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
+      >
+        <CardTitle>
+          <FaEnvelope />{" "}
+          {t("dashboard.settings.emailAddressSection", "Email address")}
+        </CardTitle>
+        <CardContent>
+          {user?.new_email ? (
+            <PendingEmailBanner>
+              <FaInfoCircle aria-hidden />
+              {t(
+                "dashboard.settings.emailChangePending",
+                "Confirmation pending for {{email}}. Check that inbox and use the link we sent.",
+                { email: user.new_email }
+              )}
+            </PendingEmailBanner>
+          ) : null}
+          <FormGroup>
+            <HelperLabel>
+              {t("dashboard.settings.currentEmailLabel", "Current email")}
+            </HelperLabel>
+            <CurrentEmailBox>{user?.email ?? "—"}</CurrentEmailBox>
+          </FormGroup>
+          <Form onSubmit={handleEmailChangeSubmit}>
+            <FormGroup style={{ marginBottom: emailChangeError ? "0.5rem" : undefined }}>
+              <Label htmlFor="settingsNewEmail">
+                {t("dashboard.settings.newEmailLabel", "New email address")}
+              </Label>
+              <Input
+                id="settingsNewEmail"
+                type="email"
+                autoComplete="email"
+                value={newEmailInput}
+                onChange={(e) => {
+                  setNewEmailInput(e.target.value);
+                  if (emailChangeError) setEmailChangeError(null);
+                }}
+                disabled={isEmailChangeSubmitting}
+              />
+            </FormGroup>
+            {emailChangeError ? (
+              <EmailInlineError role="alert">{emailChangeError}</EmailInlineError>
+            ) : null}
+            <EmailChangeSubmitButton
+              type="submit"
+              disabled={isEmailChangeSubmitting}
+              as={motion.button}
+              whileHover={isEmailChangeSubmitting ? undefined : { scale: 1.03 }}
+              whileTap={isEmailChangeSubmitting ? undefined : { scale: 0.98 }}
+            >
+              <FaEnvelope style={{ marginRight: "0.5rem" }} />
+              {t(
+                "dashboard.settings.sendEmailConfirmation",
+                "Send confirmation email"
+              )}
+            </EmailChangeSubmitButton>
+          </Form>
+        </CardContent>
+      </AnimatedCard>
+
+      <AnimatedCard
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.15 }}
       >
         <CardTitle>
           <FaLock /> {t("dashboard.profile.passwordSection", "Change Password")}
@@ -780,13 +881,52 @@ const Input = styled.input`
   }
 `;
 
-const ReadOnlyInput = styled(Input)`
-  background-color: rgba(30, 30, 46, 0.3);
+const HelperLabel = styled.div`
+  font-size: 0.85rem;
   color: var(--text-secondary);
-  cursor: not-allowed;
+  margin-bottom: 0.35rem;
+`;
 
-  &:focus {
-    border-color: rgba(255, 255, 255, 0.1);
+const CurrentEmailBox = styled.div`
+  padding: 0.75rem 1rem;
+  background-color: rgba(30, 30, 46, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  font-size: 0.95rem;
+`;
+
+const PendingEmailBanner = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background-color: rgba(108, 99, 255, 0.12);
+  border: 1px solid rgba(108, 99, 255, 0.35);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--text);
+
+  svg {
+    flex-shrink: 0;
+    margin-top: 0.15rem;
+    color: var(--primary);
+  }
+`;
+
+const EmailInlineError = styled.div`
+  color: var(--error);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+`;
+
+const EmailChangeSubmitButton = styled(Button)`
+  margin-top: 0;
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
   }
 `;
 

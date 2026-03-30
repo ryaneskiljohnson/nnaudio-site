@@ -817,7 +817,14 @@
       "processingDeletion": "Elaborazione richiesta eliminazione",
       "processingMessage": "Attendi mentre elaboriamo la tua richiesta di eliminazione account...",
       "accountDeleted": "Account eliminato",
-      "accountDeletedMessage": "Il tuo account è stato eliminato con successo. Sarai reindirizzato alla homepage."
+      "accountDeletedMessage": "Il tuo account è stato eliminato con successo. Sarai reindirizzato alla homepage.",
+      "emailAddressSection": "Email address",
+      "emailChangePending": "Confirmation pending for {{email}}. Check that inbox and use the link we sent.",
+      "currentEmailLabel": "Current email",
+      "newEmailLabel": "New email address",
+      "sendEmailConfirmation": "Send confirmation email",
+      "emailChangeCheckInboxTitle": "Check your email",
+      "emailChangeCheckInboxMessage": "We sent a confirmation link. Open it to complete the change. If secure email change is enabled in your project, check both your current and new inboxes."
     }
   },
   "billing": {

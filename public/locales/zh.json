@@ -732,7 +732,14 @@
       "processingDeletion": "处理删除请求",
       "processingMessage": "请等待我们处理您的账户删除请求...",
       "accountDeleted": "账户已删除",
-      "accountDeletedMessage": "您的账户已成功删除。您将被重定向到首页。"
+      "accountDeletedMessage": "您的账户已成功删除。您将被重定向到首页。",
+      "emailAddressSection": "Email address",
+      "emailChangePending": "Confirmation pending for {{email}}. Check that inbox and use the link we sent.",
+      "currentEmailLabel": "Current email",
+      "newEmailLabel": "New email address",
+      "sendEmailConfirmation": "Send confirmation email",
+      "emailChangeCheckInboxTitle": "Check your email",
+      "emailChangeCheckInboxMessage": "We sent a confirmation link. Open it to complete the change. If secure email change is enabled in your project, check both your current and new inboxes."
     }
   },
   "billing": {

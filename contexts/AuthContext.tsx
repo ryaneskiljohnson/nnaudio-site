@@ -24,6 +24,11 @@ import { createClient } from "@/utils/supabase/client";
 import { logEnvironmentStatus } from "@/utils/env-check";
 // import { updateSubscriberTimezone } from "@/utils/supabase/timezone-tracker";
 
+/**
+ * @fileoverview React auth provider: session, profile, sign-in/up, password reset, email change request.
+ * @module contexts/AuthContext
+ */
+
 type AuthContextType = {
   user: UserProfile | null;
   session: Session | null;
@@ -47,6 +52,12 @@ type AuthContextType = {
     data: object | null;
   }>;
   updateProfile: (profile: Profile) => Promise<{ error: string | null }>;
+  /**
+   * Requests an email change; Supabase sends confirmation link(s). Redirect target: `/api/auth/confirm`.
+   */
+  requestEmailChange: (
+    newEmail: string
+  ) => Promise<{ error: AuthError | null }>;
   refreshUser: () => Promise<void>;
 };
 
@@ -64,56 +75,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logEnvironmentStatus();
   }, []);
 
+  /**
+   * @brief Reloads profile and subscription fields from the server using the latest `getUser()` result.
+   * @returns Resolves when state is updated or on recoverable error (logs on failure).
+   * @note Uses `getUser()` instead of React `session` so auth fields like `new_email` stay in sync after `updateUser`.
+   */
   const refreshUser = useCallback(async () => {
-    if (session?.user) {
-      try {
-        const { profile, error } = await fetchProfile(session.user.id);
-        if (error) {
-          console.log("[refreshUser] Error fetching profile:", error);
-          return;
-        }
-
-        const { is_admin, error: adminError } = await fetchIsAdmin(
-          session.user.id
-        );
-        if (adminError) {
-          console.log("[refreshUser] Error fetching admin status:", adminError);
-          return;
-        }
-
-        if (profile) {
-          // Update pro status using centralized function (handles NFR and Stripe)
-          try {
-            const { updateUserProStatus } = await import(
-              "@/utils/subscriptions/check-subscription"
-            );
-            const result = await updateUserProStatus(session.user.id);
-
-            // Update profile with the determined subscription status
-            const updatedProfile = {
-              ...profile,
-              subscription: result.subscription,
-              subscription_expiration:
-                result.subscriptionExpiration?.toISOString() || null,
-              subscription_source: result.source,
-            };
-
-            setUser({
-              ...session.user,
-              profile: updatedProfile,
-              is_admin,
-            });
-          } catch (error) {
-            console.error("[refreshUser] Error updating pro status:", error);
-            // Fall back to original profile if update fails
-            setUser({ ...session.user, profile, is_admin });
-          }
-        }
-      } catch (error) {
-        console.error("[refreshUser] Error refreshing user:", error);
-      }
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    if (!authUser) {
+      return;
     }
-  }, [session]);
+    try {
+      const { profile, error } = await fetchProfile(authUser.id);
+      if (error) {
+        console.log("[refreshUser] Error fetching profile:", error);
+        return;
+      }
+
+      const { is_admin, error: adminError } = await fetchIsAdmin(authUser.id);
+      if (adminError) {
+        console.log("[refreshUser] Error fetching admin status:", adminError);
+        return;
+      }
+
+      if (profile) {
+        try {
+          const { updateUserProStatus } = await import(
+            "@/utils/subscriptions/check-subscription"
+          );
+          const result = await updateUserProStatus(authUser.id);
+
+          const updatedProfile = {
+            ...profile,
+            subscription: result.subscription,
+            subscription_expiration:
+              result.subscriptionExpiration?.toISOString() || null,
+            subscription_source: result.source,
+          };
+
+          setUser({
+            ...authUser,
+            profile: updatedProfile,
+            is_admin,
+          });
+        } catch (error) {
+          console.error("[refreshUser] Error updating pro status:", error);
+          setUser({ ...authUser, profile, is_admin });
+        }
+      }
+    } catch (error) {
+      console.error("[refreshUser] Error refreshing user:", error);
+    }
+  }, []);
 
   // Simple session update effect - based on working project
   useEffect(() => {
@@ -294,6 +309,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  /**
+   * @brief Requests a change of the authenticated user's email via Supabase Auth.
+   * @param newEmail New email address (trimmed and lowercased before sending).
+   * @returns Supabase error if the request fails or client validation fails; null on success.
+   * @note Sends confirmation email(s) per project settings; user must complete the link to `/api/auth/confirm`.
+   */
+  const requestEmailChange = async (newEmail: string) => {
+    if (!user) {
+      return {
+        error: new AuthError(
+          "You must be signed in to change your email",
+          401
+        ),
+      };
+    }
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+    if (!siteUrl) {
+      return {
+        error: new AuthError("NEXT_PUBLIC_SITE_URL is not configured", 500),
+      };
+    }
+    const trimmed = newEmail.trim().toLowerCase();
+    if (!trimmed) {
+      return {
+        error: new AuthError("Enter a valid email address", 400),
+      };
+    }
+    const current = user.email?.trim().toLowerCase() ?? "";
+    if (trimmed === current) {
+      return {
+        error: new AuthError(
+          "New email must be different from your current email",
+          400
+        ),
+      };
+    }
+    const { error } = await supabase.auth.updateUser(
+      { email: trimmed },
+      {
+        emailRedirectTo: `${siteUrl}/api/auth/confirm`,
+      }
+    );
+    if (!error) {
+      await refreshUser();
+    }
+    return { error };
+  };
+
   const updateProfile = async (profile: Profile) => {
     if (user) {
       const { error } = await supabase
@@ -320,6 +383,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signOut,
     resetPassword,
+    requestEmailChange,
     updateProfile,
     refreshUser,
   };

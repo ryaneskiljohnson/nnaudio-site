@@ -788,7 +788,14 @@
       "processingDeletion": "Processing Deletion Request",
       "processingMessage": "Please wait while we process your account deletion request...",
       "accountDeleted": "Account Deleted",
-      "accountDeletedMessage": "Your account has been successfully deleted. You will be redirected to the homepage."
+      "accountDeletedMessage": "Your account has been successfully deleted. You will be redirected to the homepage.",
+      "emailAddressSection": "Email address",
+      "emailChangePending": "Confirmation pending for {{email}}. Check that inbox and use the link we sent.",
+      "currentEmailLabel": "Current email",
+      "newEmailLabel": "New email address",
+      "sendEmailConfirmation": "Send confirmation email",
+      "emailChangeCheckInboxTitle": "Check your email",
+      "emailChangeCheckInboxMessage": "We sent a confirmation link. Open it to complete the change. If secure email change is enabled in your project, check both your current and new inboxes."
     }
   },
   "freeTrial": {

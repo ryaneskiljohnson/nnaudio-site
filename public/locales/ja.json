@@ -817,7 +817,14 @@
       "processingDeletion": "削除リクエストを処理中",
       "processingMessage": "アカウント削除リクエストを処理している間お待ちください...",
       "accountDeleted": "アカウントが削除されました",
-      "accountDeletedMessage": "アカウントは正常に削除されました。ホームページにリダイレクトされます。"
+      "accountDeletedMessage": "アカウントは正常に削除されました。ホームページにリダイレクトされます。",
+      "emailAddressSection": "Email address",
+      "emailChangePending": "Confirmation pending for {{email}}. Check that inbox and use the link we sent.",
+      "currentEmailLabel": "Current email",
+      "newEmailLabel": "New email address",
+      "sendEmailConfirmation": "Send confirmation email",
+      "emailChangeCheckInboxTitle": "Check your email",
+      "emailChangeCheckInboxMessage": "We sent a confirmation link. Open it to complete the change. If secure email change is enabled in your project, check both your current and new inboxes."
     }
   },
   "billing": {
