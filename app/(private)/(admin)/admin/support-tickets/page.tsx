@@ -1,6 +1,6 @@
 /**
  * @fileoverview Admin support tickets page with ticket list, conversation view,
- * AI drafting, attachments, and per-ticket awaiting-response indicators.
+ * AI drafting, attachments, per-ticket awaiting-response indicators, and NFR admin deep link.
  * @module app/(private)/(admin)/admin/support-tickets/page
  */
 
@@ -43,7 +43,8 @@ import {
   FaChartLine,
   FaTrash,
   FaMagic,
-  FaBell
+  FaBell,
+  FaGift
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import styled from "styled-components";
@@ -526,6 +527,33 @@ const CountLink = styled.button`
 
 const ProductsCountLink = styled(CountLink)``;
 const OrdersCountLink = styled(CountLink)``;
+
+/** @note Purple accent aligned with NFR subscription badge elsewhere in admin. */
+const NfrManageButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid rgba(155, 89, 182, 0.45);
+  background: rgba(155, 89, 182, 0.12);
+  color: #c39bd3;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background: rgba(155, 89, 182, 0.22);
+    border-color: rgba(155, 89, 182, 0.65);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+`;
 
 const CountPlaceholder = styled.span`
   color: rgba(255, 255, 255, 0.45);
@@ -2813,6 +2841,19 @@ function SupportTicketsPage() {
     setUserOrdersList([]);
   }, []);
 
+  /**
+   * @brief Navigates to NFR admin with `email` query so grants or create-user flow opens for the ticket contact.
+   * @param email Support ticket user email (trimmed before navigation)
+   */
+  const openNfrForTicketEmail = useCallback(
+    (email: string) => {
+      const trimmed = email.trim();
+      if (!trimmed) return;
+      router.push(`/admin/nfr?email=${encodeURIComponent(trimmed)}`);
+    },
+    [router]
+  );
+
   const handleViewUser = async (userId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
@@ -3607,9 +3648,28 @@ function SupportTicketsPage() {
                       <FaTicketAlt />
                       {ticket.subject}
                     </ModalTitle>
-                    <CloseButton onClick={closeTicketModal}>
-                      <FaTimes />
-                    </CloseButton>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {ticket.user_email?.trim() ? (
+                        <NfrManageButton
+                          type="button"
+                          style={{ marginTop: 0 }}
+                          onClick={() => openNfrForTicketEmail(ticket.user_email!)}
+                        >
+                          <FaGift />
+                          Manage NFR&apos;s
+                        </NfrManageButton>
+                      ) : null}
+                      <CloseButton onClick={closeTicketModal}>
+                        <FaTimes />
+                      </CloseButton>
+                    </div>
                   </ModalHeader>
 
                   <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>

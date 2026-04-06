@@ -1,5 +1,12 @@
+/**
+ * @fileoverview Admin NFR (user_management) licenses: list records, create users, and product grants.
+ * Optional query `?email=` prefill from support tickets opens grants or the create-user flow for that address.
+ * @module app/(private)/(admin)/admin/nfr/page
+ */
+
 "use client";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import NextSEO from "@/components/NextSEO";
 import {
   FaUsers,
@@ -534,6 +541,10 @@ const Notification = styled(motion.div)<{ type: 'success' | 'error' }>`
 
 export default function UserManagementPage() {
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  /** @note Cleared when `email` is absent so the same link can be used again after navigation. */
+  const lastProcessedEmailQueryRef = useRef<string | null>(null);
   const [records, setRecords] = useState<UserManagementRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -730,6 +741,40 @@ export default function UserManagementPage() {
       fetchProducts();
     }
   }, [user]);
+
+  /**
+   * @brief Applies `?email=` from the URL: opens product grants for existing NFR rows or the create modal otherwise.
+   * @note Uses a ref keyed by normalized email to avoid duplicate modals under React Strict Mode; strips the query after apply.
+   */
+  useEffect(() => {
+    const raw = searchParams.get("email");
+    if (!raw?.trim()) {
+      lastProcessedEmailQueryRef.current = null;
+      return;
+    }
+    if (!user || loading) return;
+
+    const normalized = raw.trim().toLowerCase();
+    const queryKey = `email=${normalized}`;
+    if (lastProcessedEmailQueryRef.current === queryKey) return;
+    lastProcessedEmailQueryRef.current = queryKey;
+
+    const record = records.find(
+      (r) => r.user_email.toLowerCase() === normalized
+    );
+    if (record) {
+      setSearchQuery(record.user_email);
+      setShowGrantModal(record.user_email);
+      setShowGrantForm(true);
+      void refreshGrantsForEmail(record.user_email);
+    } else {
+      setShowCreateModal(true);
+      setFormEmail(raw.trim());
+      void checkExactEmailMatch(raw.trim());
+    }
+
+    router.replace("/admin/nfr", { scroll: false });
+  }, [user, loading, records, searchParams, router]);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
