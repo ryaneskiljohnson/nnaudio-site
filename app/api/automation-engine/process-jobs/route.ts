@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getPublicSiteUrlForEmail } from '@/utils/public-site-url';
 
 // Initialize Supabase with service role for automation processing
 const supabase = createClient(
@@ -537,7 +538,7 @@ function personalizeEmailContent(content: any, subscriber: any): any {
     '{{subscription}}': metadata.subscription || 'none',
     '{{lifetimePurchase}}': metadata.lifetime_purchase || metadata.lifetimePurchase || 'false',
     '{{companyName}}': metadata.company_name || metadata.companyName || '',
-    '{{unsubscribeUrl}}': `${process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io'}/unsubscribe?email=${encodeURIComponent(subscriber.email)}`,
+    '{{unsubscribeUrl}}': `${getPublicSiteUrlForEmail()}/unsubscribe?email=${encodeURIComponent(subscriber.email)}`,
     '{{currentDate}}': new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
   };
   

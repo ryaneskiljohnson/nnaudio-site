@@ -3,14 +3,11 @@
  * @module utils/reviews/review-emails
  */
 
+import { getPublicSiteUrlForEmail } from "@/utils/public-site-url";
+
 /** Public logo URL for email clients (Supabase storage). */
 const LOGO_URL =
   "https://znecvzfogwkzinkduyuq.supabase.co/storage/v1/object/public/images/NNAudio-logo-white.png";
-
-/** Base URL for links used in review emails. */
-const SITE_BASE_URL =
-  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_SITE_URL) ||
-  "https://nnaud.io";
 
 const EMAIL_BASE_STYLES = `
 body, html { margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f7f7f7; color: #333333; line-height: 1.6; }
@@ -97,6 +94,7 @@ function buildGreeting(customerName: string | null): string {
 export function buildReviewInviteEmailHtml(
   data: ReviewInviteEmailData
 ): string {
+  const siteBaseUrl = getPublicSiteUrlForEmail();
   const productItems = data.products
     .map(
       (product) =>
@@ -144,7 +142,7 @@ export function buildReviewInviteEmailHtml(
           </p>
         </div>
         <div class="footer" style="padding: 15px; text-align: center; font-size: 12px; background-color: #0a0a0a; color: #666666; border-top: 1px solid rgba(255, 255, 255, 0.05);">
-          <div class="footer-link" style="margin-bottom: 10px;"><a href="${SITE_BASE_URL}" style="color: #6c63ff; text-decoration: none;">NNAud.io</a> — Resources for Modern Music Producers</div>
+          <div class="footer-link" style="margin-bottom: 10px;"><a href="${escapeHtml(siteBaseUrl)}" style="color: #6c63ff; text-decoration: none;">NNAud.io</a> — Resources for Modern Music Producers</div>
           <p class="copyright" style="margin: 0; color: #666666;">© ${new Date().getFullYear()} NNAud.io. All rights reserved.</p>
         </div>
       </div>
@@ -191,6 +189,7 @@ export function buildReviewInviteEmailText(
 export function buildReviewRewardEmailHtml(
   data: ReviewRewardEmailData
 ): string {
+  const siteBaseUrl = getPublicSiteUrlForEmail();
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -231,7 +230,7 @@ export function buildReviewRewardEmailHtml(
           </p>
         </div>
         <div class="footer" style="padding: 15px; text-align: center; font-size: 12px; background-color: #0a0a0a; color: #666666; border-top: 1px solid rgba(255, 255, 255, 0.05);">
-          <div class="footer-link" style="margin-bottom: 10px;"><a href="${SITE_BASE_URL}" style="color: #6c63ff; text-decoration: none;">NNAud.io</a> — Resources for Modern Music Producers</div>
+          <div class="footer-link" style="margin-bottom: 10px;"><a href="${escapeHtml(siteBaseUrl)}" style="color: #6c63ff; text-decoration: none;">NNAud.io</a> — Resources for Modern Music Producers</div>
           <p class="copyright" style="margin: 0; color: #666666;">© ${new Date().getFullYear()} NNAud.io. All rights reserved.</p>
         </div>
       </div>

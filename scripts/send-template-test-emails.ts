@@ -16,7 +16,7 @@ import {
   buildRefundEmailText,
 } from "../utils/refund-email";
 
-const TO = "ryaneskiljohnson@gmail.com";
+const TO = process.env.TEST_EMAIL_TO?.trim() || "support@newnationllc.com";
 
 const orderConfirmationData = {
   customerEmail: TO,

@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { getPublicSiteUrlForEmail } from '@/utils/public-site-url';
 
 /**
  * Secret key for signing unsubscribe tokens
@@ -89,7 +90,7 @@ export function verifyUnsubscribeToken(token: string, maxAgeDays: number = 30): 
  */
 export function generateUnsubscribeUrl(email: string, baseUrl?: string): string {
   const token = generateUnsubscribeToken(email);
-  const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || 'https://nnaud.io';
-  return `${siteUrl}/unsubscribe?email=${encodeURIComponent(email)}&token=${token}`;
+  const siteUrl = baseUrl?.trim() || getPublicSiteUrlForEmail();
+  return `${siteUrl.replace(/\/$/, '')}/unsubscribe?email=${encodeURIComponent(email)}&token=${token}`;
 }
 

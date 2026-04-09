@@ -15,12 +15,13 @@ import {
   buildReviewRewardEmailHtml,
   buildReviewRewardEmailText,
 } from "../utils/reviews/review-emails";
+import { getPublicSiteUrlForEmail } from "../utils/public-site-url";
 
 const TO = "support@newnationllc.com";
 
 const reviewInviteData = {
   customerName: "Test Customer",
-  reviewUrl: (process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io") + "/my-products",
+  reviewUrl: `${getPublicSiteUrlForEmail()}/my-products`,
   products: [
     { name: "Prodigious – Orchestral Plugin", slug: "prodigious" },
     { name: "Curves EQ", slug: "curves-eq" },
@@ -32,7 +33,7 @@ const reviewRewardData = {
   promotionCode: "TEST-REVIEW-10",
   amountOffLabel: "$10 off",
   expiresLabel: "April 15, 2026",
-  shopUrl: (process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io") + "/products",
+  shopUrl: `${getPublicSiteUrlForEmail()}/products`,
 };
 
 async function main() {

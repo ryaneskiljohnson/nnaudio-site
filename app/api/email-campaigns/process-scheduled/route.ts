@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { sendEmail, sendBatchEmail } from "@/utils/email";
 import { injectEmailTracking, createSendRecord } from "@/utils/email-tracking";
 import { personalizeContent } from "@/utils/email-campaigns/email-generation";
+import { getPublicSiteUrlForEmail } from "@/utils/public-site-url";
 
 // Feature flag: Enable parallel batch sending (sends multiple personalized emails concurrently)
 // Set ENABLE_BATCH_EMAIL_SENDING=true to enable (much faster for large campaigns)
@@ -36,6 +37,7 @@ function generateProperEmailTemplate(
   contentHtml: string,
   subject: string
 ): string {
+  const siteBase = getPublicSiteUrlForEmail();
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -126,7 +128,7 @@ function generateProperEmailTemplate(
                             
                             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e9ecef; text-align: center; font-size: 12px; color: #666666;">
                                 <p>You're receiving this email because you're subscribed to NNAudio updates.</p>
-                                <p><a href="${(process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io").replace(/\/$/, "")}/unsubscribe" style="color: #ffffff; text-decoration: none;">Unsubscribe</a> | <a href="${process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io"}" style="color: #ffffff; text-decoration: none;">Visit our website</a></p>
+                                <p><a href="${siteBase}/unsubscribe" style="color: #ffffff; text-decoration: none;">Unsubscribe</a> | <a href="${siteBase}" style="color: #ffffff; text-decoration: none;">Visit our website</a></p>
                                 <p>© ${new Date().getFullYear()} NNAud.io. All rights reserved.</p>
                             </div>
                         </td>

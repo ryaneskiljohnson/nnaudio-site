@@ -5,15 +5,11 @@
  * Dark theme, #6c63ff / #4ecdc4, NNAud.io logo, NNAudio footer.
  */
 
+import { getPublicSiteUrlForEmail } from "@/utils/public-site-url";
+
 /** Public logo URL for email clients (Supabase storage). */
 const LOGO_URL =
   "https://znecvzfogwkzinkduyuq.supabase.co/storage/v1/object/public/images/NNAudio-logo-white.png";
-
-/** Base URL for links (my-products page, etc.). */
-const SITE_BASE_URL =
-  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_SITE_URL) ||
-  "https://nnaud.io";
-const MY_PRODUCTS_URL = `${SITE_BASE_URL.replace(/\/$/, "")}/my-products`;
 
 export interface OrderLineItem {
   name: string;
@@ -80,6 +76,8 @@ export function buildOrderConfirmationHtml(data: OrderConfirmationData): string 
     date,
     isFreeOrder,
   } = data;
+  const siteBaseUrl = getPublicSiteUrlForEmail();
+  const myProductsUrl = `${siteBaseUrl}/my-products`;
   const messageParagraph = isFreeOrder
     ? "Your order was successfully completed (no payment was made). Here's a summary of your purchase."
     : "Your payment was successful. Here's a summary of your purchase.";
@@ -149,13 +147,13 @@ export function buildOrderConfirmationHtml(data: OrderConfirmationData): string 
             </table>
           </div>
           <p style="margin-top: 20px; text-align: center;">
-            <a href="${escapeHtml(MY_PRODUCTS_URL)}" class="btn" style="display: inline-block; padding: 12px 24px; background: linear-gradient(90deg, #6c63ff, #5a52e0); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold;">View products</a>
+            <a href="${escapeHtml(myProductsUrl)}" class="btn" style="display: inline-block; padding: 12px 24px; background: linear-gradient(90deg, #6c63ff, #5a52e0); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold;">View products</a>
             ${receiptUrl ? ` <a href="${escapeHtml(receiptUrl)}" class="btn" style="display: inline-block; padding: 12px 24px; background: linear-gradient(90deg, #6c63ff, #5a52e0); color: #ffffff !important; text-decoration: none; border-radius: 8px; font-weight: bold; margin-left: 10px;">View receipt</a>` : ""}
           </p>
           <div class="timestamp" style="color: #666666; font-size: 12px; margin-top: 25px; text-align: right;">${date}</div>
         </div>
         <div class="footer" style="padding: 15px; text-align: center; font-size: 12px; background-color: #0a0a0a; color: #666666; border-top: 1px solid rgba(255, 255, 255, 0.05);">
-          <div class="footer-link" style="margin-bottom: 10px;"><a href="https://nnaud.io" style="color: #6c63ff; text-decoration: none;">NNAud.io</a> — Resources for Modern Music Producers</div>
+          <div class="footer-link" style="margin-bottom: 10px;"><a href="${escapeHtml(siteBaseUrl)}" style="color: #6c63ff; text-decoration: none;">NNAud.io</a> — Resources for Modern Music Producers</div>
           <p class="copyright" style="margin: 0; color: #666666;">© ${new Date().getFullYear()} NNAud.io. All rights reserved.</p>
         </div>
       </div>
@@ -181,6 +179,8 @@ export function buildOrderConfirmationText(data: OrderConfirmationData): string 
     date,
     isFreeOrder,
   } = data;
+  const siteBaseUrl = getPublicSiteUrlForEmail();
+  const myProductsUrl = `${siteBaseUrl}/my-products`;
   const intro = isFreeOrder
     ? "Your order was successfully completed (no payment was made)."
     : "Thank you for your order.";
@@ -197,7 +197,7 @@ export function buildOrderConfirmationText(data: OrderConfirmationData): string 
       `Discount${promotionCode ? ` (${promotionCode})` : ""}: -${discount}`
     );
   }
-  lines.push(`Total: ${total}`, "", `View products: ${MY_PRODUCTS_URL}`);
+  lines.push(`Total: ${total}`, "", `View products: ${myProductsUrl}`);
   if (customerName) lines.unshift(`Name: ${customerName}`, "");
   if (orderNumber) lines.splice(2, 0, `Order: ${orderNumber}`, "");
   if (promotionCode) lines.splice(4, 0, `Promo code: ${promotionCode}`, "");

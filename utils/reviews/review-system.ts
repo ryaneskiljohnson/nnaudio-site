@@ -16,6 +16,7 @@ import {
   buildReviewRewardEmailText,
   type ReviewEmailProduct,
 } from "@/utils/reviews/review-emails";
+import { getPublicSiteUrlForEmail } from "@/utils/public-site-url";
 
 const REVIEW_REWARD_AMOUNT_CENTS = 1000;
 const REVIEW_REWARD_AMOUNT_LABEL = "$10 off";
@@ -662,7 +663,7 @@ export async function sendDueReviewFollowups(limit: number = 25): Promise<number
     }
 
     const customerName = await getProfileDisplayName(followup.user_id);
-    const reviewUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io"}/my-products`;
+    const reviewUrl = `${getPublicSiteUrlForEmail()}/my-products`;
     const emailResult = await sendEmail({
       to: followup.customer_email,
       subject: "Review your purchase and get $10 off",
@@ -788,7 +789,7 @@ export async function issueReviewReward(params: {
     month: "long",
     day: "numeric",
   });
-  const shopUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io"}/products`;
+  const shopUrl = `${getPublicSiteUrlForEmail()}/products`;
   const rewardEmailResult = await sendEmail({
     to: params.customerEmail,
     subject: "Your $10 review reward code",

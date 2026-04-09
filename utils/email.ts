@@ -10,6 +10,8 @@
  * conditions, or retries.
  */
 
+import { getPublicSiteUrlForEmail } from "@/utils/public-site-url";
+
 /** Time window in ms during which the same logical email is not sent twice. */
 const DEDUPE_WINDOW_MS = 90_000; // 90 seconds
 
@@ -174,8 +176,7 @@ export async function sendEmail({
   const fromEmail = from.match(/<(.+)>/)?.[1] || from;
   const fromName = from.match(/^(.+?)\s*</)?.[1] || "NNAudio Support";
 
-  const defaultUnsubscribe =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io";
+  const defaultUnsubscribe = getPublicSiteUrlForEmail();
   const unsubscribeUrl = listUnsubscribe || `${defaultUnsubscribe}/dashboard/support`;
 
   const headers: Record<string, string> = {
@@ -289,8 +290,7 @@ export async function sendBatchEmail({
     : [from.match(/<(.+)>/)?.[1] || from];
   const fromEmail = from.match(/<(.+)>/)?.[1] || from;
   const fromName = from.match(/^(.+?)\s*</)?.[1] || "NNAudio Support";
-  const defaultUnsubscribe =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://nnaud.io";
+  const defaultUnsubscribe = getPublicSiteUrlForEmail();
   const unsubscribeUrl = listUnsubscribe || `${defaultUnsubscribe}/dashboard/support`;
 
   const headers: Record<string, string> = {
