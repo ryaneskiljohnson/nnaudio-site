@@ -125,7 +125,7 @@ export async function getMyProducts(): Promise<{
 
     const { data: followupRows, error: followupError } = await (adminSupabase as any)
       .from("review_followups")
-      .select("purchased_product_ids, reward_claimed_at, reward_review_id, send_at")
+      .select("purchased_product_ids, reward_claimed_at, reward_review_id")
       .eq("user_id", user.id)
       .eq("is_refunded", false);
 
@@ -148,21 +148,17 @@ export async function getMyProducts(): Promise<{
 
     const rewardClaimedByReviewId = new Map<string, string | null>();
     const rewardEligibleByProductId = new Map<string, boolean>();
-    const nowMs = Date.now();
-
     for (const followup of ((followupRows as Array<{
       purchased_product_ids: string[];
       reward_claimed_at: string | null;
       reward_review_id: string | null;
-      send_at: string;
     }>) || [])) {
       if (followup.reward_review_id) {
         rewardClaimedByReviewId.set(followup.reward_review_id, followup.reward_claimed_at);
       }
 
-      const eligible =
-        !followup.reward_claimed_at &&
-        new Date(followup.send_at).getTime() <= nowMs;
+      /** Reward CTA is not delayed to send_at; coupon issues on submit (see issueReviewReward). */
+      const eligible = !followup.reward_claimed_at;
 
       if (eligible) {
         for (const productId of followup.purchased_product_ids || []) {

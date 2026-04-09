@@ -355,11 +355,13 @@ async function ensureSubscriber(
  * @param paymentIntent Successful Stripe PaymentIntent.
  * @returns Whether a follow-up row was created or updated.
  * @note Only authenticated orders with a stored `metadata.user_id` are queued because the review UI lives in My Products.
+ * @param options.sendAt Optional scheduled send time (defaults to purchase + delay days).
  * @example
  * await queueReviewFollowupForPaymentIntent(paymentIntent);
  */
 export async function queueReviewFollowupForPaymentIntent(
-  paymentIntent: Stripe.PaymentIntent
+  paymentIntent: Stripe.PaymentIntent,
+  options?: { sendAt?: Date }
 ): Promise<{ queued: boolean; reason?: string }> {
   if (paymentIntent.status !== "succeeded") {
     return { queued: false, reason: "payment_not_succeeded" };
@@ -385,10 +387,22 @@ export async function queueReviewFollowupForPaymentIntent(
 
   const subscriberId = await ensureSubscriber(customer.email, userId);
   const adminSupabase = await createSupabaseServiceRole();
+  const { data: existingRow } = await (adminSupabase as any)
+    .from("review_followups")
+    .select("invite_sent_at")
+    .eq("payment_intent_id", paymentIntent.id)
+    .maybeSingle();
+  if (existingRow?.invite_sent_at) {
+    return { queued: false, reason: "already_sent" };
+  }
+
   const purchaseDate = new Date(paymentIntent.created * 1000);
-  const sendAt = new Date(
-    purchaseDate.getTime() + REVIEW_REWARD_DELAY_DAYS * 24 * 60 * 60 * 1000
-  );
+  const sendAt =
+    options?.sendAt ??
+    new Date(
+      purchaseDate.getTime() +
+        REVIEW_REWARD_DELAY_DAYS * 24 * 60 * 60 * 1000
+    );
 
   const payload = {
     payment_intent_id: paymentIntent.id,
@@ -436,6 +450,78 @@ export async function queueReviewFollowupForCheckoutSession(
       : session.payment_intent.id;
   const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
   return queueReviewFollowupForPaymentIntent(paymentIntent);
+}
+
+/**
+ * @brief Queues a review follow-up for free / NFR product grants (no Stripe PaymentIntent).
+ * @param params.userId Supabase auth user id (My Products / reviews require login).
+ * @param params.customerEmail Normalized customer email.
+ * @param params.productIds Product UUIDs granted in the backfill window.
+ * @param params.purchaseDate Representative purchase timestamp (e.g. earliest grant time).
+ * @param params.syntheticPaymentIntentId Stable id for upsert (e.g. `grant_backfill_<userId>`).
+ * @param params.sendAt When the invite email may be sent (cron processes when send_at is due).
+ * @returns Whether a row was upserted.
+ * @note The unique $10 promo code is created when the customer submits a review (`issueReviewReward`), not here.
+ * @example
+ * await queueReviewFollowupForProductGrants({ userId, customerEmail, productIds, purchaseDate, syntheticPaymentIntentId: `grant_backfill_${userId}`, sendAt: new Date() });
+ */
+export async function queueReviewFollowupForProductGrants(params: {
+  userId: string;
+  customerEmail: string;
+  productIds: string[];
+  purchaseDate: Date;
+  syntheticPaymentIntentId: string;
+  sendAt: Date;
+}): Promise<{ queued: boolean; reason?: string }> {
+  if (params.productIds.length === 0) {
+    return { queued: false, reason: "no_products" };
+  }
+
+  const purchasedProductIds = await expandBundleProductsFromProductIds(
+    params.productIds
+  );
+  if (purchasedProductIds.length === 0) {
+    return { queued: false, reason: "no_products_after_expand" };
+  }
+
+  const adminSupabase = await createSupabaseServiceRole();
+  const { data: existingRow } = await (adminSupabase as any)
+    .from("review_followups")
+    .select("invite_sent_at")
+    .eq("payment_intent_id", params.syntheticPaymentIntentId)
+    .maybeSingle();
+  if (existingRow?.invite_sent_at) {
+    return { queued: false, reason: "already_sent" };
+  }
+
+  const subscriberId = await ensureSubscriber(
+    params.customerEmail,
+    params.userId
+  );
+
+  const payload = {
+    payment_intent_id: params.syntheticPaymentIntentId,
+    checkout_session_id: null,
+    stripe_customer_id: null,
+    user_id: params.userId,
+    subscriber_id: subscriberId,
+    customer_email: normalizeEmail(params.customerEmail),
+    purchased_product_ids: purchasedProductIds,
+    purchase_source: "product_grant",
+    purchase_date: params.purchaseDate.toISOString(),
+    send_at: params.sendAt.toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await (adminSupabase as any)
+    .from("review_followups")
+    .upsert(payload, { onConflict: "payment_intent_id" });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return { queued: true };
 }
 
 /**
@@ -628,6 +714,7 @@ async function getRewardEligibleFollowup(
   productId: string
 ): Promise<ReviewFollowupRow | null> {
   const adminSupabase = await createSupabaseServiceRole();
+  /** Do not require send_at: rewards issue on submit; moderation only affects on-site display. */
   const { data: followup } = await (adminSupabase as any)
     .from("review_followups")
     .select("id, customer_email, invite_sent_at, is_refunded, payment_intent_id, purchased_product_ids, reward_claimed_at, send_at, stripe_customer_id, user_id")
@@ -635,7 +722,6 @@ async function getRewardEligibleFollowup(
     .eq("is_refunded", false)
     .is("reward_claimed_at", null)
     .contains("purchased_product_ids", [productId])
-    .lte("send_at", new Date().toISOString())
     .order("purchase_date", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -652,6 +738,7 @@ async function getRewardEligibleFollowup(
  * @param customerName Optional display name for the reward email.
  * @returns Reward issuance result with the promo code when granted.
  * @note Only the first eligible review from a queued order can claim the reward.
+ * @note Reward is not gated on moderation_status (pending/approved); admin approval only affects public display.
  * @example
  * await issueReviewReward({ reviewId: "review-uuid", userId: "user-uuid", productId: "product-uuid", customerEmail: "alex@example.com", customerName: "Alex" });
  */
