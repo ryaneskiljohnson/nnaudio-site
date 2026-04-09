@@ -9,6 +9,7 @@
  * **Request:** `{ bundle_slug: string, tier: "monthly" | "annual" | "lifetime" }`
  *
  * **200 applied:** `{ success: true, applied: true, promotionCodeId, code, discount: { amount, percent } }`
+ * (`percent` = Stripe `percent_off`, or `0` for fixed-amount coupons — not “% of cart”)
  * **200 skip:** `{ success: true, applied: false }`
  * **503:** Stripe not configured
  * **500:** Server error
@@ -157,8 +158,8 @@ export async function POST(request: NextRequest) {
           coupon
         );
         const discountPercent =
-          baseAmount > 0
-            ? Math.round((discountAmount / baseAmount) * 100)
+          coupon.percent_off != null && coupon.percent_off > 0
+            ? coupon.percent_off
             : 0;
 
         return NextResponse.json({
@@ -280,8 +281,8 @@ export async function POST(request: NextRequest) {
         coupon
       );
       const discountPercent =
-        baseAmount > 0
-          ? Math.round((discountAmount / baseAmount) * 100)
+        coupon.percent_off != null && coupon.percent_off > 0
+          ? coupon.percent_off
           : 0;
 
       return NextResponse.json({

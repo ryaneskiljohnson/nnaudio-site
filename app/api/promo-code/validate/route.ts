@@ -15,7 +15,8 @@ import {
 /**
  * @brief POST handler: validates code and returns discount preview.
  * @param request JSON body: `code`, `amount` (cart total dollars), optional `items` with `id` + `lineTotal`.
- * @returns 200 with discount breakdown or 4xx/5xx with `error`.
+ * @returns 200 with discount breakdown or 4xx/5xx with `error`. `discount.percent` is Stripe
+ * `percent_off` when the coupon is percent-based; otherwise `0` (fixed-amount coupons use `discount.amount` only).
  */
 export async function POST(request: NextRequest) {
   try {
@@ -139,9 +140,14 @@ export async function POST(request: NextRequest) {
     }
 
     const discountAmount = discountAmountForEligibleSubtotal(eligibleSubtotal, coupon);
+    /**
+     * Stripe percent discount for display only. Must not be derived from cart ratio:
+     * a fixed $10 off on a $100 cart would otherwise read as 10 and the checkout UI
+     * would show "10% off" instead of "$10.00 off".
+     */
     const discountPercent =
-      baseAmount > 0
-        ? Math.round((discountAmount / baseAmount) * 100)
+      coupon.percent_off != null && coupon.percent_off > 0
+        ? coupon.percent_off
         : 0;
 
     const finalAmount = Math.max(0, baseAmount - discountAmount);
