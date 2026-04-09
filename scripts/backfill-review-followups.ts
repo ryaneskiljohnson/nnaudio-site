@@ -15,6 +15,9 @@
  *
  * Full audience (after you confirm):
  *   bun --env-file=.env.local run scripts/backfill-review-followups.ts --days=30 --send-now
+ *
+ * **Duplicate orders:** `sendDueReviewFollowups` sends at most **one** review invite per user; extra
+ * `review_followups` rows from additional purchases are marked `skipped-duplicate-user-invite` (no email).
  */
 
 import type Stripe from "stripe";

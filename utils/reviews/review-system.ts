@@ -44,8 +44,18 @@ interface ReviewFollowupRow {
   purchased_product_ids: string[];
   reward_claimed_at: string | null;
   send_at: string;
+  purchase_date: string;
   stripe_customer_id: string | null;
   user_id: string | null;
+}
+
+/**
+ * @brief Whether `invite_email_message_id` denotes a real SendGrid send (vs a no-email skip).
+ * @param messageId Stored message id from a prior processing pass.
+ */
+function isRealReviewInviteSend(messageId: string | null | undefined): boolean {
+  if (messageId == null || messageId === "") return true;
+  return !String(messageId).startsWith("skipped-");
 }
 
 /**
@@ -608,19 +618,40 @@ async function getProfileDisplayName(userId: string | null): Promise<string | nu
  * @param limit Maximum number of queued rows to process.
  * @returns Count of successfully processed follow-up rows.
  * @note Orders with no remaining eligible products are marked processed without sending.
+ * @note At most one review invite email per `user_id` per lifetime: extra due rows (multiple orders)
+ * are marked `skipped-duplicate-user-invite` so repeat customers do not get duplicate invites.
  * @example
  * await sendDueReviewFollowups(25);
  */
 export async function sendDueReviewFollowups(limit: number = 25): Promise<number> {
   const adminSupabase = await createSupabaseServiceRole();
   const now = new Date().toISOString();
+
+  const { data: priorInviteRows } = await (adminSupabase as any)
+    .from("review_followups")
+    .select("user_id, invite_email_message_id")
+    .not("invite_sent_at", "is", null)
+    .not("user_id", "is", null);
+
+  const usersCoveredForInvite = new Set<string>();
+  for (const row of priorInviteRows || []) {
+    const uid = row.user_id as string | undefined;
+    if (!uid) continue;
+    if (isRealReviewInviteSend(row.invite_email_message_id)) {
+      usersCoveredForInvite.add(uid);
+    }
+  }
+
   const { data: followups } = await (adminSupabase as any)
     .from("review_followups")
-    .select("id, customer_email, invite_sent_at, is_refunded, payment_intent_id, purchased_product_ids, reward_claimed_at, send_at, stripe_customer_id, user_id")
+    .select(
+      "id, customer_email, invite_sent_at, is_refunded, payment_intent_id, purchased_product_ids, reward_claimed_at, send_at, purchase_date, stripe_customer_id, user_id"
+    )
     .is("invite_sent_at", null)
     .eq("is_refunded", false)
     .lte("send_at", now)
     .order("send_at", { ascending: true })
+    .order("purchase_date", { ascending: true })
     .limit(limit);
 
   let processed = 0;
@@ -650,6 +681,19 @@ export async function sendDueReviewFollowups(limit: number = 25): Promise<number
         .update({
           invite_sent_at: new Date().toISOString(),
           invite_email_message_id: remainingProductIds.length === 0 ? "skipped-no-eligible-products" : "skipped-missing-user",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", followup.id);
+      processed += 1;
+      continue;
+    }
+
+    if (usersCoveredForInvite.has(followup.user_id)) {
+      await (adminSupabase as any)
+        .from("review_followups")
+        .update({
+          invite_sent_at: new Date().toISOString(),
+          invite_email_message_id: "skipped-duplicate-user-invite",
           updated_at: new Date().toISOString(),
         })
         .eq("id", followup.id);
@@ -696,6 +740,7 @@ export async function sendDueReviewFollowups(limit: number = 25): Promise<number
       })
       .eq("id", followup.id);
 
+    usersCoveredForInvite.add(followup.user_id);
     processed += 1;
   }
 
