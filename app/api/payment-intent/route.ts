@@ -105,6 +105,8 @@ export async function POST(request: NextRequest) {
     // Apply promotion code discount if provided
     // promotionCodeId can be either a Stripe promotion code ID (promo_xxxxx) or a code string
     let discountAmount = 0;
+    let appliedPromotionCodeDisplay: string | null = null;
+    let appliedPromotionCodeMetadata: string | null = null;
     if (promotionCodeId) {
       try {
         let promotionCode: Stripe.PromotionCode | null = null;
@@ -135,6 +137,10 @@ export async function POST(request: NextRequest) {
         }
 
         if (promotionCode) {
+          appliedPromotionCodeDisplay = (
+            promotionCode.code || String(promotionCodeId)
+          ).toUpperCase();
+          appliedPromotionCodeMetadata = promotionCode.id;
           const promotion = promotionCode.promotion;
           const couponRef = promotion?.type === "coupon" ? promotion.coupon : null;
           const coupon =
@@ -257,6 +263,8 @@ export async function POST(request: NextRequest) {
         customerEmail: email,
         customerName: null as string | null,
         orderNumber,
+        promotionCode: appliedPromotionCodeDisplay,
+        discount: discountAmount > 0 ? `$${discountAmount.toFixed(2)}` : null,
         lineItems,
         subtotal: '$0.00',
         total: '$0.00',
@@ -364,7 +372,13 @@ export async function POST(request: NextRequest) {
         discount_amount: discountAmount.toFixed(2),
         total_amount: totalAmount.toFixed(2),
         user_id: user?.id || 'anonymous',
-        ...(promotionCodeId && { promotion_code: promotionCodeId }),
+        ...(appliedPromotionCodeMetadata && {
+          promotion_code: appliedPromotionCodeMetadata,
+        }),
+        ...(!appliedPromotionCodeMetadata &&
+          promotionCodeId && {
+            promotion_code: String(promotionCodeId).toUpperCase(),
+          }),
         ...(savePaymentMethod && { save_payment_method: 'true' }),
       },
       automatic_payment_methods: {

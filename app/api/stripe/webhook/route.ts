@@ -130,6 +130,7 @@ async function sendOrderConfirmationEmail(
 
   const amountTotal = fullSession.amount_total ?? 0;
   const subtotal = fullSession.amount_subtotal ?? amountTotal;
+  const discountCents = fullSession.total_details?.amount_discount ?? 0;
   const totalStr = formatCurrency(amountTotal, fullSession.currency ?? "usd");
   const subtotalStr = formatCurrency(subtotal, fullSession.currency ?? "usd");
 
@@ -151,12 +152,30 @@ async function sendOrderConfirmationEmail(
   const customerName =
     fullSession.customer_details?.name?.trim() ||
     null;
+  const sessionDiscounts = (
+    fullSession as {
+      discounts?: Array<{
+        promotion_code?: string | { code?: string | null } | null;
+      }>;
+    }
+  ).discounts;
+  const firstPromotionCodeValue =
+    fullSession.metadata?.promotion_code ??
+    (typeof sessionDiscounts?.[0]?.promotion_code === "string"
+      ? sessionDiscounts[0].promotion_code
+      : sessionDiscounts?.[0]?.promotion_code?.code ?? null);
+  const promotionCode = await resolvePromotionCodeLabel(firstPromotionCodeValue);
 
   const { sendEmail } = await import("@/utils/email");
   const data = {
     customerEmail: email,
     customerName: customerName,
     orderNumber: fullSession.id.slice(-12).toUpperCase(),
+    promotionCode,
+    discount:
+      discountCents > 0
+        ? formatCurrency(discountCents, fullSession.currency ?? "usd")
+        : null,
     lineItems,
     subtotal: subtotalStr,
     total: totalStr,
@@ -205,6 +224,230 @@ async function sendOrderConfirmationEmail(
       console.log("Order confirmation copy sent to admin", adminEmail);
     } else {
       console.error("Failed to send order copy to admin:", adminResult.error);
+    }
+  }
+}
+
+interface PaymentIntentCartItem {
+  id?: string;
+  name?: string;
+  quantity?: number;
+  price?: number;
+}
+
+/**
+ * @brief Resolves customer identity + Stripe receipt URL from a PaymentIntent.
+ * @param paymentIntent Successful Stripe PaymentIntent.
+ * @returns Email, display name, and receipt URL (when available).
+ * @note Cart checkout uses PaymentIntents, so we must source customer details from PI/charge/customer.
+ * @example
+ * await resolvePaymentIntentCustomer(paymentIntent);
+ */
+async function resolvePaymentIntentCustomer(paymentIntent: Stripe.PaymentIntent): Promise<{
+  email: string | null;
+  name: string | null;
+  receiptUrl: string | null;
+}> {
+  let email = paymentIntent.receipt_email ?? null;
+  let name: string | null = null;
+  let receiptUrl: string | null = null;
+
+  if (paymentIntent.latest_charge) {
+    try {
+      const chargeId =
+        typeof paymentIntent.latest_charge === "string"
+          ? paymentIntent.latest_charge
+          : paymentIntent.latest_charge.id;
+      const charge = await stripe.charges.retrieve(chargeId);
+      email = charge.billing_details?.email ?? charge.receipt_email ?? email;
+      name = charge.billing_details?.name ?? name;
+      receiptUrl = charge.receipt_url ?? null;
+    } catch {
+      // ignore charge lookup failures; we'll fall back to customer lookup
+    }
+  }
+
+  if ((!email || !name) && paymentIntent.customer) {
+    try {
+      const customerId =
+        typeof paymentIntent.customer === "string"
+          ? paymentIntent.customer
+          : paymentIntent.customer.id;
+      const customer = await stripe.customers.retrieve(customerId);
+      if (typeof customer === "object" && !customer.deleted) {
+        email = customer.email ?? email;
+        name = customer.name ?? name;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return { email, name, receiptUrl };
+}
+
+/**
+ * @brief Resolves a human-readable promo code value from Stripe metadata.
+ * @param rawPromotionCode Raw metadata value (usually `promo_*` id or code string).
+ * @returns Promo code string suitable for customer email display.
+ * @example
+ * await resolvePromotionCodeLabel(paymentIntent.metadata?.promotion_code);
+ */
+async function resolvePromotionCodeLabel(
+  rawPromotionCode: string | null | undefined
+): Promise<string | null> {
+  if (!rawPromotionCode) return null;
+  const trimmed = rawPromotionCode.trim();
+  if (!trimmed) return null;
+  if (!trimmed.startsWith("promo_")) {
+    return trimmed.toUpperCase();
+  }
+  try {
+    const promo = await stripe.promotionCodes.retrieve(trimmed);
+    return (promo.code || trimmed).toUpperCase();
+  } catch {
+    return trimmed;
+  }
+}
+
+/**
+ * @brief Sends branded order confirmation email for successful cart PaymentIntents.
+ * @param paymentIntent Successful Stripe PaymentIntent.
+ * @returns Promise resolved after customer/admin sends attempt.
+ * @note We only send when `metadata.cart_items` exists, which distinguishes cart orders from other PI flows.
+ * @example
+ * await sendPaymentIntentOrderConfirmationEmail(paymentIntent);
+ */
+async function sendPaymentIntentOrderConfirmationEmail(
+  paymentIntent: Stripe.PaymentIntent
+): Promise<void> {
+  if (paymentIntent.status !== "succeeded") return;
+
+  const cartItemsStr = paymentIntent.metadata?.cart_items;
+  if (!cartItemsStr) return;
+
+  let parsedItems: PaymentIntentCartItem[] = [];
+  try {
+    const parsed = JSON.parse(cartItemsStr) as unknown;
+    if (Array.isArray(parsed)) {
+      parsedItems = parsed as PaymentIntentCartItem[];
+    }
+  } catch {
+    console.warn(
+      "[webhook] Skipping PaymentIntent confirmation email: invalid cart_items JSON",
+      paymentIntent.id
+    );
+    return;
+  }
+
+  const { email, name, receiptUrl } = await resolvePaymentIntentCustomer(
+    paymentIntent
+  );
+  if (!email) {
+    console.warn(
+      "[webhook] Skipping PaymentIntent confirmation email: missing customer email",
+      paymentIntent.id
+    );
+    return;
+  }
+
+  const currency = paymentIntent.currency ?? "usd";
+  const lineItems = parsedItems
+    .map((item): OrderLineItem | null => {
+      const quantity = Number(item.quantity ?? 1);
+      const unitPrice = Number(item.price ?? 0);
+      const safeQuantity = Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+      const safeUnitPrice = Number.isFinite(unitPrice) && unitPrice >= 0 ? unitPrice : 0;
+      return {
+        name: item.name || "Item",
+        quantity: safeQuantity,
+        amount: formatCurrency(
+          Math.round(safeUnitPrice * safeQuantity * 100),
+          currency
+        ),
+      };
+    })
+    .filter((item): item is OrderLineItem => Boolean(item));
+
+  const paidTotalCents = paymentIntent.amount_received || paymentIntent.amount || 0;
+  const originalTotalRaw = Number(paymentIntent.metadata?.original_total);
+  const originalTotalCents = Number.isFinite(originalTotalRaw)
+    ? Math.round(originalTotalRaw * 100)
+    : paidTotalCents;
+  const discountRaw = Number(paymentIntent.metadata?.discount_amount);
+  const discountCents = Number.isFinite(discountRaw)
+    ? Math.max(0, Math.round(discountRaw * 100))
+    : Math.max(0, originalTotalCents - paidTotalCents);
+  const subtotalCents = Math.max(paidTotalCents, originalTotalCents);
+  const promotionCode = await resolvePromotionCodeLabel(
+    paymentIntent.metadata?.promotion_code
+  );
+
+  const data = {
+    customerEmail: email,
+    customerName: name?.trim() || null,
+    orderNumber: paymentIntent.id.slice(-12).toUpperCase(),
+    promotionCode,
+    discount: discountCents > 0 ? formatCurrency(discountCents, currency) : null,
+    lineItems,
+    subtotal: formatCurrency(subtotalCents, currency),
+    total: formatCurrency(paidTotalCents, currency),
+    receiptUrl,
+    date: new Date(paymentIntent.created * 1000).toLocaleString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
+
+  const { sendEmail } = await import("@/utils/email");
+  const subject = "Your order confirmation – NNAud.io";
+  const html = buildOrderConfirmationHtml(data);
+  const text = buildOrderConfirmationText(data);
+
+  const result = await sendEmail({
+    to: email,
+    subject,
+    html,
+    text,
+    from: "NNAudio Support <support@nnaud.io>",
+    replyTo: "support@nnaud.io",
+    idempotencyKey: `order-confirmation:payment-intent:${paymentIntent.id}:customer`,
+  });
+
+  if (result.success) {
+    console.log("[webhook] PaymentIntent order confirmation email sent to", email);
+  } else {
+    console.error(
+      "[webhook] Failed to send PaymentIntent order confirmation email:",
+      result.error
+    );
+  }
+
+  const adminEmails = await getAdminEmailsForOrderCopy(true, false);
+  for (const adminEmail of adminEmails) {
+    const adminResult = await sendEmail({
+      to: adminEmail,
+      subject,
+      html,
+      text,
+      from: "NNAudio Support <support@nnaud.io>",
+      replyTo: "support@nnaud.io",
+      idempotencyKey: `order-confirmation:payment-intent:${paymentIntent.id}:admin:${adminEmail}`,
+    });
+    if (adminResult.success) {
+      console.log(
+        "[webhook] PaymentIntent order confirmation copy sent to admin",
+        adminEmail
+      );
+    } else {
+      console.error(
+        "[webhook] Failed to send PaymentIntent order copy to admin:",
+        adminResult.error
+      );
     }
   }
 }
@@ -338,6 +581,11 @@ export async function POST(request: NextRequest) {
 
     if (event.type === "payment_intent.succeeded") {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      try {
+        await sendPaymentIntentOrderConfirmationEmail(paymentIntent);
+      } catch (emailError) {
+        console.error("PaymentIntent order confirmation email error:", emailError);
+      }
       try {
         await queueReviewFollowupForPaymentIntent(paymentIntent);
       } catch (queueError) {

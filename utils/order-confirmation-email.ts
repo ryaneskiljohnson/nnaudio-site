@@ -25,6 +25,8 @@ export interface OrderConfirmationData {
   customerEmail: string;
   customerName?: string | null;
   orderNumber?: string | null;
+  promotionCode?: string | null;
+  discount?: string | null;
   lineItems: OrderLineItem[];
   subtotal: string;
   total: string;
@@ -69,6 +71,8 @@ export function buildOrderConfirmationHtml(data: OrderConfirmationData): string 
   const {
     customerName,
     orderNumber,
+    promotionCode,
+    discount,
     lineItems,
     subtotal,
     total,
@@ -115,6 +119,7 @@ export function buildOrderConfirmationHtml(data: OrderConfirmationData): string 
           <p class="message" style="margin-bottom: 20px; font-size: 16px; color: #b3b3b3;">${escapeHtml(messageParagraph)}</p>
           ${customerName ? `<div class="field" style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);"><span class="label" style="font-weight: bold; color: #6c63ff;">Name</span><span style="color: #ffffff;">${escapeHtml(customerName)}</span></div>` : ""}
           ${orderNumber ? `<div class="field" style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);"><span class="label" style="font-weight: bold; color: #6c63ff;">Order</span><span style="color: #ffffff;">${escapeHtml(orderNumber)}</span></div>` : ""}
+          ${promotionCode ? `<div class="field" style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);"><span class="label" style="font-weight: bold; color: #6c63ff;">Promo code</span><span style="color: #ffffff;">${escapeHtml(promotionCode)}</span></div>` : ""}
           <div class="message-box" style="margin-top: 25px; padding: 15px; background-color: rgba(255, 255, 255, 0.05); border-radius: 8px; border-left: 3px solid #6c63ff;">
             <span class="label" style="font-weight: bold; color: #6c63ff; display: block; margin-bottom: 10px;">Order details</span>
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse: collapse; margin-top: 8px;">
@@ -131,6 +136,11 @@ export function buildOrderConfirmationHtml(data: OrderConfirmationData): string 
                   <td colspan="2" style="padding: 12px 12px 4px; color: #b3b3b3; font-size: 14px;">Subtotal</td>
                   <td style="padding: 12px 12px 4px; color: #b3b3b3; font-size: 14px; text-align: right;">${subtotal}</td>
                 </tr>
+                ${discount ? `
+                <tr>
+                  <td colspan="2" style="padding: 4px 12px 12px; color: #4ecdc4; font-size: 14px;">Discount${promotionCode ? ` (${escapeHtml(promotionCode)})` : ""}</td>
+                  <td style="padding: 4px 12px 12px; color: #4ecdc4; font-size: 14px; text-align: right;">-${escapeHtml(discount)}</td>
+                </tr>` : ""}
                 <tr>
                   <td colspan="2" style="padding: 12px 12px 10px; font-size: 18px; font-weight: bold; color: #6c63ff; border-top: 1px solid rgba(108, 99, 255, 0.3);">Total</td>
                   <td style="padding: 12px 12px 10px; font-size: 18px; font-weight: bold; color: #6c63ff; text-align: right; border-top: 1px solid rgba(108, 99, 255, 0.3);">${total}</td>
@@ -159,13 +169,38 @@ export function buildOrderConfirmationHtml(data: OrderConfirmationData): string 
  * Builds plain-text version of order confirmation.
  */
 export function buildOrderConfirmationText(data: OrderConfirmationData): string {
-  const { customerName, orderNumber, lineItems, subtotal, total, receiptUrl, date, isFreeOrder } = data;
+  const {
+    customerName,
+    orderNumber,
+    promotionCode,
+    discount,
+    lineItems,
+    subtotal,
+    total,
+    receiptUrl,
+    date,
+    isFreeOrder,
+  } = data;
   const intro = isFreeOrder
     ? "Your order was successfully completed (no payment was made)."
     : "Thank you for your order.";
-  const lines: string[] = [intro, "", "Order details:", ...lineItems.map((i) => `  ${i.name} × ${i.quantity} - ${i.amount}`), "", `Subtotal: ${subtotal}`, `Total: ${total}`, "", `View products: ${MY_PRODUCTS_URL}`];
+  const lines: string[] = [
+    intro,
+    "",
+    "Order details:",
+    ...lineItems.map((i) => `  ${i.name} × ${i.quantity} - ${i.amount}`),
+    "",
+    `Subtotal: ${subtotal}`,
+  ];
+  if (discount) {
+    lines.push(
+      `Discount${promotionCode ? ` (${promotionCode})` : ""}: -${discount}`
+    );
+  }
+  lines.push(`Total: ${total}`, "", `View products: ${MY_PRODUCTS_URL}`);
   if (customerName) lines.unshift(`Name: ${customerName}`, "");
   if (orderNumber) lines.splice(2, 0, `Order: ${orderNumber}`, "");
+  if (promotionCode) lines.splice(4, 0, `Promo code: ${promotionCode}`, "");
   if (receiptUrl) lines.push(`View receipt: ${receiptUrl}`);
   lines.push("", date);
   return lines.join("\n");
