@@ -293,6 +293,67 @@ function CheckoutSuccessContent() {
       }
     };
 
+    /**
+     * Send a Purchase conversion to both browser pixel and server CAPI with one shared event ID.
+     */
+    const trackPurchaseConversion = (
+      value: number,
+      currency: string,
+      options?: {
+        itemId?: string;
+        itemName?: string;
+      }
+    ) => {
+      const purchaseEventId = sessionId || createMetaEventId("purchase");
+      const purchaseItems = [
+        {
+          item_id: options?.itemId || "order",
+          item_name: options?.itemName || "Order",
+          category: "software",
+          quantity: 1,
+          price: value,
+        },
+      ];
+
+      trackEventWithUserData("purchase", {
+        value,
+        currency,
+        transaction_id: sessionId,
+        items: purchaseItems,
+      });
+
+      if (typeof window !== "undefined" && window.fbq) {
+        window.fbq(
+          "track",
+          "Purchase",
+          {
+            value,
+            currency,
+            content_ids: purchaseItems.map((item) => item.item_id),
+            contents: purchaseItems.map((item) => ({
+              id: item.item_id,
+              quantity: item.quantity || 1,
+              item_price: item.price,
+            })),
+          },
+          {
+            eventID: purchaseEventId,
+          }
+        );
+      }
+
+      const userEmail = user?.email || user?.profile?.email;
+      trackMetaConversion("Purchase", {
+        email: userEmail ?? undefined,
+        value,
+        currency,
+        contentIds: purchaseItems.map((item) => item.item_id),
+        numItems: 1,
+        transactionId: sessionId || undefined,
+        eventId: purchaseEventId,
+      });
+    };
+
     if (isTrial) {
       // Track free trial as subscription_success with value 0
       trackEventWithUserData("subscription_success", {
@@ -302,65 +363,21 @@ function CheckoutSuccessContent() {
         },
       });
     } else if (isLifetime && subscriptionValue !== null) {
-      // Track lifetime purchase with Purchase event
-      const purchaseEventId = sessionId || createMetaEventId("purchase");
-      const purchaseItems = [
-        {
-          item_id: "lifetime",
-          item_name: "Cymasphere Lifetime",
-          category: "software",
-          quantity: 1,
-          price: subscriptionValue,
-        },
-      ];
-
-      // Push to dataLayer (for GTM/GA) with user data
-      trackEventWithUserData("purchase", {
-        value: subscriptionValue,
-        currency: subscriptionCurrency,
-        transaction_id: sessionId,
-        items: purchaseItems,
-      });
-
-      // Also fire Meta Pixel directly to ensure parameters are sent
-      // (trackPurchase would duplicate dataLayer push, so we fire fbq directly)
-      if (typeof window !== "undefined" && window.fbq) {
-        window.fbq(
-          "track",
-          "Purchase",
-          {
-            value: subscriptionValue,
-            currency: subscriptionCurrency,
-            content_ids: purchaseItems.map((item) => item.item_id),
-            contents: purchaseItems.map((item) => ({
-              id: item.item_id,
-              quantity: item.quantity || 1,
-              item_price: item.price,
-            })),
-          },
-          {
-            eventID: purchaseEventId, // For deduplication with server events
-          }
-        );
-      }
-      // Send Purchase to Conversions API (server-side) for better attribution
-      const userEmail = user?.email || user?.profile?.email;
-      trackMetaConversion("Purchase", {
-        email: userEmail ?? undefined,
-        value: subscriptionValue,
-        currency: subscriptionCurrency || "USD",
-        contentIds: purchaseItems.map((item) => item.item_id),
-        numItems: 1,
-        transactionId: sessionId || undefined,
-        eventId: purchaseEventId,
+      trackPurchaseConversion(subscriptionValue, subscriptionCurrency || "USD", {
+        itemId: "lifetime",
+        itemName: "Cymasphere Lifetime",
       });
     } else if (subscriptionValue !== null) {
-      // Track paid subscription with value and currency
+      // Track paid subscription plus purchase for ROAS optimization.
       trackEventWithUserData("subscription_success", {
         subscription: {
           value: subscriptionValue,
           currency: subscriptionCurrency,
         },
+      });
+      trackPurchaseConversion(subscriptionValue, subscriptionCurrency || "USD", {
+        itemId: "subscription",
+        itemName: "Subscription",
       });
     } else if (sessionId && !isTrial) {
       // If we have session_id but no value, fetch it from API
@@ -371,68 +388,25 @@ function CheckoutSuccessContent() {
             setSubscriptionValue(data.value);
             setSubscriptionCurrency(data.currency || "USD");
 
-            // Check if it's a lifetime purchase based on mode
             if (data.mode === "payment") {
-              // Track as Purchase event for lifetime
-              const purchaseEventId = sessionId || createMetaEventId("purchase");
-              const purchaseItems = [
-                {
-                  item_id: "lifetime",
-                  item_name: "Cymasphere Lifetime",
-                  category: "software",
-                  quantity: 1,
-                  price: data.value,
-                },
-              ];
-
-              // Push to dataLayer (for GTM/GA) with user data
-              trackEventWithUserData("purchase", {
-                value: data.value,
-                currency: data.currency || "USD",
-                transaction_id: sessionId,
-                items: purchaseItems,
-              });
-
-              // Also fire Meta Pixel directly to ensure parameters are sent
-              // (trackPurchase would duplicate dataLayer push, so we fire fbq directly)
-              if (typeof window !== "undefined" && window.fbq) {
-                window.fbq(
-                  "track",
-                  "Purchase",
-                  {
-                    value: data.value,
-                    currency: data.currency || "USD",
-                    content_ids: purchaseItems.map((item) => item.item_id),
-                    contents: purchaseItems.map((item) => ({
-                      id: item.item_id,
-                      quantity: item.quantity || 1,
-                      item_price: item.price,
-                    })),
-                  },
-                  {
-                    eventID: purchaseEventId, // For deduplication with server events
-                  }
-                );
-              }
-              // Send Purchase to Conversions API (server-side)
-              const userEmail = user?.email || user?.profile?.email;
-              trackMetaConversion("Purchase", {
-                email: userEmail ?? undefined,
-                value: data.value,
-                currency: data.currency || "USD",
-                contentIds: purchaseItems.map((item) => item.item_id),
-                numItems: 1,
-                transactionId: sessionId || undefined,
-                eventId: purchaseEventId,
+              trackPurchaseConversion(data.value, data.currency || "USD", {
+                itemId: data.contentId || "order",
+                itemName: data.contentName || "Order",
               });
             } else {
-              // Track as subscription_success for recurring
+              // Track recurring success and purchase for paid signups.
               trackEventWithUserData("subscription_success", {
                 subscription: {
                   value: data.value,
                   currency: data.currency || "USD",
                 },
               });
+              if (!data.isTrial && data.value > 0) {
+                trackPurchaseConversion(data.value, data.currency || "USD", {
+                  itemId: data.contentId || "subscription",
+                  itemName: data.contentName || "Subscription",
+                });
+              }
             }
           } else {
             // Fallback: track without value (assume subscription)
