@@ -14,7 +14,10 @@ import { FaHome, FaChevronRight, FaLock, FaCheckCircle, FaExclamationCircle, FaS
 import { SearchableSelect } from "@/components/common/SearchableSelect";
 import { COUNTRIES, getStateOptions } from "@/lib/countries-states";
 import CheckoutPageSkeleton from "@/components/skeletons/CheckoutPageSkeleton";
-import { trackInitiateCheckout } from "@/utils/analytics";
+import {
+  consumePendingInitiateCheckoutEventId,
+  trackInitiateCheckout,
+} from "@/utils/analytics";
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -1403,6 +1406,12 @@ export default function CheckoutPage() {
   const initiateCheckoutFired = useRef(false);
   useEffect(() => {
     if (!cartLoaded || items.length === 0 || initiateCheckoutFired.current) return;
+    const carriedEventId = consumePendingInitiateCheckoutEventId();
+    if (carriedEventId) {
+      // Cart already fired InitiateCheckout right before navigating here.
+      initiateCheckoutFired.current = true;
+      return;
+    }
     initiateCheckoutFired.current = true;
     const cartTotal = getTotal();
     trackInitiateCheckout({

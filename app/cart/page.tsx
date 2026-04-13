@@ -325,6 +325,7 @@ export default function CartPage() {
       currency: "USD",
       content_ids: items.map((i) => i.id),
       num_items: itemCount,
+      persist_for_next_page: true,
     });
     router.push('/checkout');
   };

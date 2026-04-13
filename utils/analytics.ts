@@ -19,6 +19,11 @@ declare global {
   }
 }
 
+const INITIATE_CHECKOUT_EVENT_STORAGE_KEY = "meta_initiate_checkout_event_id";
+const INITIATE_CHECKOUT_EVENT_TS_STORAGE_KEY =
+  "meta_initiate_checkout_event_ts";
+const INITIATE_CHECKOUT_EVENT_MAX_AGE_MS = 10 * 60 * 1000;
+
 /**
  * Hash email with SHA-256 (client-side)
  * Normalizes email: lowercase, trim whitespace, then hash
@@ -49,6 +54,49 @@ export async function hashEmail(email: string): Promise<string> {
  */
 export function createMetaEventId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * @brief Persist checkout event ID between cart and checkout page transitions.
+ * @param eventId Unique Meta InitiateCheckout event ID.
+ * @returns {void}
+ * @note Uses sessionStorage and a short TTL so stale IDs are ignored automatically.
+ * @example setPendingInitiateCheckoutEventId("initiate_checkout_123");
+ */
+export function setPendingInitiateCheckoutEventId(eventId: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(INITIATE_CHECKOUT_EVENT_STORAGE_KEY, eventId);
+    sessionStorage.setItem(
+      INITIATE_CHECKOUT_EVENT_TS_STORAGE_KEY,
+      String(Date.now())
+    );
+  } catch {
+    // Non-fatal (private mode/storage restrictions).
+  }
+}
+
+/**
+ * @brief Read and clear pending checkout event ID when arriving on checkout.
+ * @returns {string | null} Event ID when present and fresh, otherwise null.
+ * @note This prevents double-firing InitiateCheckout for cart -> checkout navigation.
+ * @example const eventId = consumePendingInitiateCheckoutEventId();
+ */
+export function consumePendingInitiateCheckoutEventId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const eventId = sessionStorage.getItem(INITIATE_CHECKOUT_EVENT_STORAGE_KEY);
+    const tsRaw = sessionStorage.getItem(INITIATE_CHECKOUT_EVENT_TS_STORAGE_KEY);
+    sessionStorage.removeItem(INITIATE_CHECKOUT_EVENT_STORAGE_KEY);
+    sessionStorage.removeItem(INITIATE_CHECKOUT_EVENT_TS_STORAGE_KEY);
+    if (!eventId || !tsRaw) return null;
+    const ts = Number(tsRaw);
+    if (!Number.isFinite(ts)) return null;
+    if (Date.now() - ts > INITIATE_CHECKOUT_EVENT_MAX_AGE_MS) return null;
+    return eventId;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -332,11 +380,22 @@ export function trackInitiateCheckout(params: {
   content_ids?: string[];
   num_items?: number;
   event_id?: string;
+  persist_for_next_page?: boolean;
 }): void {
   if (typeof window === 'undefined') return;
 
-  const { value, currency = 'USD', content_ids, num_items, event_id } = params;
+  const {
+    value,
+    currency = "USD",
+    content_ids,
+    num_items,
+    event_id,
+    persist_for_next_page = false,
+  } = params;
   const eventId = event_id || createMetaEventId("initiate_checkout");
+  if (persist_for_next_page) {
+    setPendingInitiateCheckoutEventId(eventId);
+  }
 
   if (window.dataLayer) {
     window.dataLayer.push({
