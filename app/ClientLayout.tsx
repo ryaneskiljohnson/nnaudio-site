@@ -82,6 +82,8 @@ interface ClientLayoutProps {
 export default function ClientLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
   const [hasActivePromotion, setHasActivePromotion] = useState(false);
+  /** When false, top-banner choice is deferred so access/promotion do not swap as async data arrives. */
+  const [promotionLoaded, setPromotionLoaded] = useState(false);
 
   // Check if there's an active promotion
   useEffect(() => {
@@ -92,6 +94,8 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
         setHasActivePromotion(data.success && !!data.promotion);
       } catch (error) {
         setHasActivePromotion(false);
+      } finally {
+        setPromotionLoaded(true);
       }
     };
 
@@ -196,6 +200,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
               shouldHideHeaderFooter={shouldHideHeaderFooter}
               shouldHideChat={shouldHideChat}
               hasActivePromotion={hasActivePromotion}
+              promotionLoaded={promotionLoaded}
               pathname={pathname}
             >
               {children}
@@ -213,23 +218,32 @@ function LayoutContent({
   shouldHideHeaderFooter,
   shouldHideChat,
   hasActivePromotion,
+  promotionLoaded,
   pathname,
 }: {
   children: React.ReactNode;
   shouldHideHeaderFooter: boolean;
   shouldHideChat: boolean;
   hasActivePromotion: boolean;
+  promotionLoaded: boolean;
   pathname: string | null;
 }) {
-  const { user } = useAuth();
-  const isPricingRoute = pathname?.includes("/pricing") || pathname === "/";
+  const { user, loading: authLoading } = useAuth();
   const shouldHideChatFinal = shouldHideChat;
 
-  // Hide promotion banner for lifetime users
-  const shouldShowPromotion =
-    hasActivePromotion && user?.profile?.subscription !== "lifetime";
+  /**
+   * Single decision point: do not mount access or promotion until promotion API and auth
+   * have settled. Otherwise the strip flickers (e.g. access → promotion when the fetch
+   * completes, or promotion → access when subscription resolves to lifetime).
+   */
+  const bannersReady = promotionLoaded && !authLoading;
   const isLandingPage = pathname === "/";
-  const showAccessBanner = !isLandingPage && !shouldShowPromotion;
+  const shouldShowPromotion =
+    bannersReady &&
+    hasActivePromotion &&
+    user?.profile?.subscription !== "lifetime";
+  const showAccessBanner =
+    bannersReady && !isLandingPage && !shouldShowPromotion;
   const hasAnyBanner = showAccessBanner || shouldShowPromotion;
 
   return (

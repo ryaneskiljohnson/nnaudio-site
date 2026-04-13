@@ -4,7 +4,7 @@
  */
 "use client";
 
-import React, { useState } from "react";
+import React, { useLayoutEffect, useState } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -301,10 +301,14 @@ const CloseButton = styled.button`
 
 const STORAGE_KEY = "closedNNAudioAccessBanner";
 
+/**
+ * @brief Renders the fixed NNAudio Access promo strip and spacer; respects prior dismiss via localStorage.
+ * @note localStorage is read in useLayoutEffect so dismissed users avoid a post-paint flash of the banner.
+ */
 export default function NNAudioAccessBanner() {
   const [closed, setClosed] = useState(false);
 
-  React.useEffect(() => {
+  useLayoutEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored === "true") setClosed(true);
