@@ -557,6 +557,21 @@ function personalizeEmailContent(content: any, subscriber: any): any {
 
 async function sendAutomationEmail(subscriber: any, content: any, automationId: string): Promise<any> {
   try {
+    const status = String(subscriber?.status || "").toLowerCase();
+    if (status !== "active") {
+      const suppressReason = `Suppressed: subscriber status is ${subscriber?.status || "unknown"}`;
+      console.log(
+        `🚫 Skipping automation email to ${subscriber?.email}: ${suppressReason}`
+      );
+      return {
+        success: false,
+        error: suppressReason,
+        suppressed: true,
+        recipient: subscriber?.email || null,
+        subject: content?.subject || null,
+      };
+    }
+
     // Import the email utility
     const { sendEmail } = await import('../../../../utils/email');
     

@@ -31,6 +31,28 @@ type SendGridEvent = {
 };
 
 /**
+ * Maps SendGrid deliverability events to subscriber suppression statuses.
+ * We only use statuses supported by our DB enum.
+ */
+function getSuppressionStatusForEvent(
+  eventType: string
+): "bounced" | "complained" | "unsubscribed" | null {
+  switch (eventType) {
+    case "bounce":
+    case "blocked":
+    case "dropped":
+      return "bounced";
+    case "spamreport":
+      return "complained";
+    case "unsubscribe":
+    case "group_unsubscribe":
+      return "unsubscribed";
+    default:
+      return null;
+  }
+}
+
+/**
  * Resolve message IDs for lookup. SendGrid uses sg_message_id; we may have stored X-Message-Id from send response.
  * Include sg_message_id, smtp-id (stripped), and prefix parts of sg_message_id in case we stored a shorter form.
  */
@@ -161,7 +183,7 @@ export async function POST(request: NextRequest) {
               campaign_id: emailSend.campaign_id,
             });
           }
-          if (evt.type === "bounce" && emailSend.subscriber_id) {
+          if (emailSend.subscriber_id) {
             await supabase
               .from("subscribers")
               .update({
@@ -182,6 +204,16 @@ export async function POST(request: NextRequest) {
               bounce_reason: String(reason),
             })
             .eq("id", emailSend.id);
+          if (emailSend.subscriber_id) {
+            await supabase
+              .from("subscribers")
+              .update({
+                status: "bounced",
+                bounce_reason: String(reason),
+                bounced_at: ts,
+              })
+              .eq("id", emailSend.subscriber_id);
+          }
           break;
         }
         case "spamreport":
@@ -197,8 +229,29 @@ export async function POST(request: NextRequest) {
             });
           }
           break;
+        case "unsubscribe":
+        case "group_unsubscribe":
+          if (emailSend.subscriber_id) {
+            await supabase
+              .from("subscribers")
+              .update({
+                status: "unsubscribed",
+              })
+              .eq("id", emailSend.subscriber_id);
+          }
+          break;
         default:
           console.log(`ℹ️ Unhandled SendGrid event type: ${eventType}`);
+      }
+
+      // Defensive fallback to ensure suppression is applied even if a new SendGrid event
+      // type path is added without explicit subscriber status handling in the switch.
+      const suppressionStatus = getSuppressionStatusForEvent(eventType);
+      if (suppressionStatus && emailSend?.subscriber_id) {
+        await supabase
+          .from("subscribers")
+          .update({ status: suppressionStatus })
+          .eq("id", emailSend.subscriber_id);
       }
     }
 

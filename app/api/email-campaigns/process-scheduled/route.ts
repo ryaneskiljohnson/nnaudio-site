@@ -29,6 +29,13 @@ function hasPersonalizationVariables(content: string): boolean {
   return personalizationPatterns.some(pattern => pattern.test(content));
 }
 
+/**
+ * Deliverability suppression: only active subscribers should receive sends.
+ */
+function isSendableSubscriberStatus(status: string | null | undefined): boolean {
+  return (status || "").toLowerCase() === "active";
+}
+
 // Store the last execution time in memory
 let lastCronExecution: string | null = null;
 
@@ -785,10 +792,10 @@ async function getSubscribersForAudiences(
           }
 
           audienceSubscribers?.forEach((rel: any) => {
-            if (rel.subscribers && 
-                rel.subscribers.status === "active" && 
-                rel.subscribers.status !== "INACTIVE" && 
-                rel.subscribers.status !== "unsubscribed") {
+            if (
+              rel.subscribers &&
+              isSendableSubscriberStatus(rel.subscribers.status)
+            ) {
               subscriberMap.set(rel.subscribers.id, rel.subscribers);
             }
           });
@@ -838,9 +845,7 @@ async function getSubscribersForAudiences(
             }
 
             dynamicSubscribers?.forEach((sub: any) => {
-              if (sub.status === "active" && 
-                  sub.status !== "INACTIVE" && 
-                  sub.status !== "unsubscribed") {
+              if (isSendableSubscriberStatus(sub.status)) {
                 subscriberMap.set(sub.id, sub);
               }
             });
@@ -964,14 +969,14 @@ async function getSubscribersForAudiences(
       finalCount: finalSubscribers.length,
     });
     
-    // Log unsubscribe filtering summary
-    const activeSubscribers = finalSubscribers.filter(s => s?.status === 'active');
-    const inactiveSubscribers = finalSubscribers.filter(s => s?.status === 'INACTIVE' || s?.status === 'unsubscribed');
-    console.log(`🚫 Unsubscribe filtering summary:`, {
+    // Log suppression filtering summary for deliverability controls.
+    const activeSubscribers = finalSubscribers.filter(s => isSendableSubscriberStatus(s?.status));
+    const suppressedSubscribers = finalSubscribers.filter(s => !isSendableSubscriberStatus(s?.status));
+    console.log(`🚫 Deliverability suppression summary:`, {
       total: finalSubscribers.length,
       active: activeSubscribers.length,
-      inactive: inactiveSubscribers.length,
-      inactiveEmails: inactiveSubscribers.map(s => s?.email)
+      suppressed: suppressedSubscribers.length,
+      suppressedEmails: suppressedSubscribers.map(s => s?.email)
     });
 
     return finalSubscribers;

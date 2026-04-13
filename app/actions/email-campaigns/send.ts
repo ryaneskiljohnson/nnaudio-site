@@ -23,6 +23,14 @@ const TEST_AUDIENCE_NAMES = [
   "Safe Test Audience",
 ];
 
+/**
+ * SendGrid suppressions (bounce/spam/unsubscribe) are persisted on subscribers.status.
+ * Only active subscribers are eligible for campaign sends.
+ */
+function isSendableSubscriberStatus(status: string | null | undefined): boolean {
+  return (status || "").toLowerCase() === "active";
+}
+
 export interface SendCampaignParams {
   campaignId?: string;
   name: string;
@@ -294,10 +302,11 @@ async function getSubscribersForAudiences(
         );
 
         subscribers.forEach((sub: any) => {
-          // 🚫 UNSUBSCRIBE FILTER: Skip INACTIVE (unsubscribed) subscribers
-          if (sub.status === 'INACTIVE' || sub.status === 'unsubscribed') {
+          // 🚫 DELIVERABILITY SUPPRESSION: skip all non-active subscribers
+          // (unsubscribed, bounced, complained, pending, etc.).
+          if (!isSendableSubscriberStatus(sub.status)) {
             console.log(
-              `🚫 UNSUBSCRIBE: Skipping unsubscribed email: ${sub.email} (status: ${sub.status})`
+              `🚫 SUPPRESSED: Skipping non-sendable email: ${sub.email} (status: ${sub.status})`
             );
             return;
           }
@@ -496,14 +505,14 @@ async function getSubscribersForAudiences(
       }))
     );
     
-    // Log unsubscribe filtering summary
-    const activeSubscribers = finalSubscribers.filter(s => s?.status === 'active');
-    const inactiveSubscribers = finalSubscribers.filter(s => s?.status === 'INACTIVE' || s?.status === 'unsubscribed');
-    console.log(`🚫 Unsubscribe filtering summary:`, {
+    // Log suppression summary for deliverability controls.
+    const activeSubscribers = finalSubscribers.filter(s => isSendableSubscriberStatus(s?.status));
+    const suppressedSubscribers = finalSubscribers.filter(s => !isSendableSubscriberStatus(s?.status));
+    console.log(`🚫 Deliverability suppression summary:`, {
       total: finalSubscribers.length,
       active: activeSubscribers.length,
-      inactive: inactiveSubscribers.length,
-      inactiveEmails: inactiveSubscribers.map(s => s?.email)
+      suppressed: suppressedSubscribers.length,
+      suppressedEmails: suppressedSubscribers.map(s => s?.email)
     });
     console.log(`🎯 All subscriber IDs:`, Array.from(allSubscribers));
     console.log(
