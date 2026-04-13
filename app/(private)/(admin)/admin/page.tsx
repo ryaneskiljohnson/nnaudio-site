@@ -14,6 +14,7 @@ import {
   FaExternalLinkAlt,
   FaDollarSign,
   FaClock,
+  FaStar,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -37,6 +38,10 @@ import {
 } from "@/utils/stripe/admin-analytics";
 import StatLoadingSpinner from "@/components/common/StatLoadingSpinner";
 import { getRecentSupportTicketMessagesAdmin } from "@/app/actions/user-management";
+import {
+  getRecentPendingProductReviewsForNotificationsAdmin,
+  type PendingReviewNotification,
+} from "@/app/actions/product-reviews";
 import Link from "next/link";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from "recharts";
 
@@ -534,6 +539,8 @@ const NotificationBadge = styled.span<{ $status: string }>`
         return 'background-color: rgba(32, 201, 151, 0.2); color: #20c997;';
       case 'closed':
         return 'background-color: rgba(108, 117, 125, 0.2); color: #6c757d;';
+      case 'pending':
+        return 'background-color: rgba(108, 99, 255, 0.22); color: #a89fff;';
       default:
         return 'background-color: rgba(108, 117, 125, 0.2); color: #6c757d;';
     }
@@ -574,6 +581,9 @@ export default function AdminDashboard() {
     created_at: string;
     message_count: number;
   }>>([]);
+  const [reviewNotifications, setReviewNotifications] = useState<
+    PendingReviewNotification[]
+  >([]);
   const [revenueSummaries, setRevenueSummaries] = useState<RevenueSummaries | null>(null);
   const [loadingRevenueSummaries, setLoadingRevenueSummaries] = useState(true);
 
@@ -591,6 +601,7 @@ export default function AdminDashboard() {
   const [loadingAverageSubscriptionLifespan, setLoadingAverageSubscriptionLifespan] = useState(true);
   const [loadingRecentActivity, setLoadingRecentActivity] = useState(true);
   const [loadingSupportNotifications, setLoadingSupportNotifications] = useState(true);
+  const [loadingReviewNotifications, setLoadingReviewNotifications] = useState(true);
   
   const [activityFilter, setActivityFilter] = useState<AdminActivity['type'] | 'all'>('all');
 
@@ -742,9 +753,9 @@ export default function AdminDashboard() {
       }
     };
 
-    const fetchSupportNotifications = async () => {
+    const fetchSupportNotifications = async (opts?: { silent?: boolean }) => {
       try {
-        setLoadingSupportNotifications(true);
+        if (!opts?.silent) setLoadingSupportNotifications(true);
         const result = await getRecentSupportTicketMessagesAdmin(5);
         if (result.messages) {
           setSupportNotifications(result.messages);
@@ -752,7 +763,22 @@ export default function AdminDashboard() {
       } catch (err) {
         console.error("Error fetching support notifications:", err);
       } finally {
-        setLoadingSupportNotifications(false);
+        if (!opts?.silent) setLoadingSupportNotifications(false);
+      }
+    };
+
+    const fetchReviewNotifications = async (opts?: { silent?: boolean }) => {
+      try {
+        if (!opts?.silent) setLoadingReviewNotifications(true);
+        const result =
+          await getRecentPendingProductReviewsForNotificationsAdmin(5);
+        if (result.reviews) {
+          setReviewNotifications(result.reviews);
+        }
+      } catch (err) {
+        console.error("Error fetching review notifications:", err);
+      } finally {
+        if (!opts?.silent) setLoadingReviewNotifications(false);
       }
     };
 
@@ -782,11 +808,13 @@ export default function AdminDashboard() {
     fetchAverageSubscriptionLifespan();
     fetchRecentActivity();
     fetchSupportNotifications();
+    fetchReviewNotifications();
     fetchRevenueSummaries();
 
-    // Poll for new support notifications every 30 seconds
+    // Poll for new support + review notifications every 30 seconds (same cadence)
     const notificationInterval = setInterval(() => {
-      fetchSupportNotifications();
+      void fetchSupportNotifications({ silent: true });
+      void fetchReviewNotifications({ silent: true });
     }, 30000);
 
     return () => clearInterval(notificationInterval);
@@ -1002,6 +1030,8 @@ export default function AdminDashboard() {
           <NotificationsTab
             supportNotifications={supportNotifications}
             loadingSupportNotifications={loadingSupportNotifications}
+            reviewNotifications={reviewNotifications}
+            loadingReviewNotifications={loadingReviewNotifications}
             recentActivity={recentActivity}
             loadingRecentActivity={loadingRecentActivity}
             activityFilter={activityFilter}
@@ -1756,6 +1786,8 @@ interface NotificationsTabProps {
     message_count: number;
   }>;
   loadingSupportNotifications: boolean;
+  reviewNotifications: PendingReviewNotification[];
+  loadingReviewNotifications: boolean;
   recentActivity: AdminActivity[];
   loadingRecentActivity: boolean;
   activityFilter: AdminActivity['type'] | 'all';
@@ -1772,6 +1804,8 @@ interface NotificationsTabProps {
 function NotificationsTab({
   supportNotifications,
   loadingSupportNotifications,
+  reviewNotifications,
+  loadingReviewNotifications,
   recentActivity,
   loadingRecentActivity,
   activityFilter,
@@ -1791,7 +1825,7 @@ function NotificationsTab({
           <FaBell />
           Notifications
         </Title>
-        <Subtitle>Support tickets and recent activity</Subtitle>
+        <Subtitle>Support tickets, pending reviews, and recent activity</Subtitle>
       </Header>
 
       <NotificationsSection variants={fadeIn}>
@@ -1853,6 +1887,75 @@ function NotificationsTab({
                       <NotificationBadge $status={notification.ticket_status}>
                         {notification.ticket_status.replace('_', ' ')}
                       </NotificationBadge>
+                    </NotificationMeta>
+                  </NotificationContent>
+                </NotificationItem>
+              ))
+            )}
+          </>
+        )}
+      </NotificationsSection>
+
+      <NotificationsSection variants={fadeIn}>
+        <SectionTitle>
+          <FaStar />
+          Pending Review Submissions
+        </SectionTitle>
+        {loadingReviewNotifications ? (
+          <EmptyState>
+            <StatLoadingSpinner size={20} />
+          </EmptyState>
+        ) : (
+          <>
+            {reviewNotifications.length === 0 ? (
+              <EmptyState>No pending reviews to moderate</EmptyState>
+            ) : (
+              reviewNotifications.map((notification, index) => (
+                <NotificationItem
+                  key={notification.id}
+                  variants={fadeIn}
+                  custom={index}
+                  onClick={() => {
+                    window.location.href = "/admin/reviews";
+                  }}
+                >
+                  <NotificationIcon>
+                    <FaStar />
+                  </NotificationIcon>
+                  <NotificationContent>
+                    <NotificationHeader>
+                      <NotificationTitle>
+                        {notification.product_name}
+                        <span
+                          style={{
+                            fontSize: "0.85em",
+                            marginLeft: "0.5rem",
+                            color: "var(--primary)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {notification.rating}/5 stars
+                        </span>
+                      </NotificationTitle>
+                      <NotificationLink
+                        href="/admin/reviews"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Moderate
+                        <FaExternalLinkAlt />
+                      </NotificationLink>
+                    </NotificationHeader>
+                    <NotificationText>{notification.preview}</NotificationText>
+                    <NotificationMeta>
+                      <span>
+                        From:{" "}
+                        {notification.customer_name ||
+                          notification.customer_email ||
+                          "Unknown"}
+                      </span>
+                      <span>•</span>
+                      <span>{formatDate(notification.created_at)}</span>
+                      <NotificationBadge $status="pending">pending</NotificationBadge>
                     </NotificationMeta>
                   </NotificationContent>
                 </NotificationItem>

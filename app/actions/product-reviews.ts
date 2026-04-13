@@ -452,6 +452,83 @@ export async function getAdminProductReviews(): Promise<{
   }
 }
 
+/** @brief One pending review row for the admin dashboard notifications panel. */
+export type PendingReviewNotification = {
+  id: string;
+  product_name: string;
+  rating: number;
+  preview: string;
+  customer_name: string | null;
+  customer_email: string | null;
+  created_at: string;
+};
+
+/**
+ * @brief Recent pending reviews for the admin dashboard (mirrors support ticket notification feed).
+ * @param limit Max rows (default 5).
+ * @returns Pending reviews ordered by `created_at` descending.
+ * @note Same moderation queue as `/admin/reviews`; polled on the dashboard like support messages.
+ * @example
+ * await getRecentPendingProductReviewsForNotificationsAdmin(5);
+ */
+export async function getRecentPendingProductReviewsForNotificationsAdmin(
+  limit: number = 5,
+): Promise<{ reviews: PendingReviewNotification[]; error?: string }> {
+  try {
+    const supabase = await createClient();
+    if (!(await checkAdmin(supabase))) {
+      return { reviews: [], error: "Unauthorized" };
+    }
+
+    const adminSupabase = await createSupabaseServiceRole();
+    const { data: rows, error } = await (adminSupabase as any)
+      .from("product_reviews")
+      .select(
+        `
+        id,
+        rating,
+        review_text,
+        customer_name,
+        customer_email,
+        created_at,
+        products(name)
+      `,
+      )
+      .eq("moderation_status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(Math.min(Math.max(1, limit), 25));
+
+    if (error) {
+      console.error("[ProductReviews] pending notifications query:", error);
+      return { reviews: [], error: error.message };
+    }
+
+    const reviews: PendingReviewNotification[] = (rows || []).map((row: any) => {
+      const text = (row.review_text as string | null)?.trim() || "";
+      const preview =
+        text.length > 160 ? `${text.slice(0, 157)}…` : text || "(No review text)";
+      return {
+        id: row.id,
+        product_name: row.products?.name ?? "Unknown product",
+        rating: Number(row.rating) || 0,
+        preview,
+        customer_name: row.customer_name ?? null,
+        customer_email: row.customer_email ?? null,
+        created_at: row.created_at,
+      };
+    });
+
+    return { reviews };
+  } catch (error) {
+    console.error("[ProductReviews] getRecentPendingProductReviewsForNotificationsAdmin:", error);
+    return {
+      reviews: [],
+      error:
+        error instanceof Error ? error.message : "Failed to load pending reviews",
+    };
+  }
+}
+
 /**
  * @brief Approves or rejects a product review as an admin.
  * @param reviewId Review row ID to moderate.
