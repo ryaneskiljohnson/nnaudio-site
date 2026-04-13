@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   trackUserData,
   hashEmail,
-  trackEventOnce,
+  createMetaEventId,
   shouldFireEvent,
   trackMetaConversion,
 } from "@/utils/analytics";
@@ -303,6 +303,7 @@ function CheckoutSuccessContent() {
       });
     } else if (isLifetime && subscriptionValue !== null) {
       // Track lifetime purchase with Purchase event
+      const purchaseEventId = sessionId || createMetaEventId("purchase");
       const purchaseItems = [
         {
           item_id: "lifetime",
@@ -338,7 +339,7 @@ function CheckoutSuccessContent() {
             })),
           },
           {
-            eventID: sessionId || `purchase_${Date.now()}`, // For deduplication with server events
+            eventID: purchaseEventId, // For deduplication with server events
           }
         );
       }
@@ -351,6 +352,7 @@ function CheckoutSuccessContent() {
         contentIds: purchaseItems.map((item) => item.item_id),
         numItems: 1,
         transactionId: sessionId || undefined,
+        eventId: purchaseEventId,
       });
     } else if (subscriptionValue !== null) {
       // Track paid subscription with value and currency
@@ -372,6 +374,7 @@ function CheckoutSuccessContent() {
             // Check if it's a lifetime purchase based on mode
             if (data.mode === "payment") {
               // Track as Purchase event for lifetime
+              const purchaseEventId = sessionId || createMetaEventId("purchase");
               const purchaseItems = [
                 {
                   item_id: "lifetime",
@@ -407,7 +410,7 @@ function CheckoutSuccessContent() {
                     })),
                   },
                   {
-                    eventID: sessionId || `purchase_${Date.now()}`, // For deduplication with server events
+                    eventID: purchaseEventId, // For deduplication with server events
                   }
                 );
               }
@@ -420,6 +423,7 @@ function CheckoutSuccessContent() {
                 contentIds: purchaseItems.map((item) => item.item_id),
                 numItems: 1,
                 transactionId: sessionId || undefined,
+                eventId: purchaseEventId,
               });
             } else {
               // Track as subscription_success for recurring

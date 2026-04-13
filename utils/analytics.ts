@@ -42,6 +42,31 @@ export async function hashEmail(email: string): Promise<string> {
 }
 
 /**
+ * Generate a deterministic-style event ID for Meta deduplication.
+ *
+ * @param prefix Prefix for event family.
+ * @returns Unique event ID string safe for browser/server sharing.
+ */
+export function createMetaEventId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Read first-party Meta cookie value by key.
+ *
+ * @param key Cookie key such as `_fbp` or `_fbc`.
+ * @returns Cookie value when available.
+ */
+function getMetaCookie(key: "_fbp" | "_fbc"): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = document.cookie.match(
+    new RegExp(`(?:^|;\\s*)${escapedKey}=([^;]+)`)
+  );
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
+
+/**
  * Track a custom event to Google Analytics/GTM
  */
 export function trackEvent(
@@ -94,6 +119,7 @@ export function trackPurchase(params: {
   value: number;
   currency?: string;
   transaction_id?: string;
+  event_id?: string;
   items?: Array<{
     item_id?: string;
     item_name?: string;
@@ -104,7 +130,8 @@ export function trackPurchase(params: {
 }): void {
   if (typeof window === 'undefined') return;
 
-  const { value, currency = 'USD', transaction_id, items } = params;
+  const { value, currency = 'USD', transaction_id, items, event_id } = params;
+  const eventId = event_id || transaction_id || createMetaEventId("purchase");
 
   // Track to GA/GTM
   if (window.dataLayer) {
@@ -128,7 +155,7 @@ export function trackPurchase(params: {
         quantity: item.quantity || 1,
         item_price: item.price,
       })),
-    });
+    }, { eventID: eventId });
   }
 }
 
@@ -138,6 +165,7 @@ export function trackPurchase(params: {
 export function trackAddToCart(params: {
   value: number;
   currency?: string;
+  event_id?: string;
   items: Array<{
     item_id?: string;
     item_name?: string;
@@ -148,7 +176,8 @@ export function trackAddToCart(params: {
 }): void {
   if (typeof window === 'undefined') return;
 
-  const { value, currency = 'USD', items } = params;
+  const { value, currency = 'USD', items, event_id } = params;
+  const eventId = event_id || createMetaEventId("add_to_cart");
 
   // Track to GA/GTM
   if (window.dataLayer) {
@@ -171,8 +200,17 @@ export function trackAddToCart(params: {
         quantity: item.quantity || 1,
         item_price: item.price,
       })),
-    });
+    }, { eventID: eventId });
   }
+
+  // Send server-side companion event with the same event_id for Meta deduplication.
+  void trackMetaConversion("AddToCart", {
+    value,
+    currency,
+    contentIds: items.map((item) => item.item_id).filter(Boolean) as string[],
+    numItems: items.reduce((sum, item) => sum + (item.quantity || 1), 0),
+    eventId,
+  });
 }
 
 /**
@@ -235,7 +273,9 @@ export function trackViewContent(params: {
   content_name?: string;
   value?: number;
   currency?: string;
+  event_id?: string;
 }): void {
+  const eventId = params.event_id || createMetaEventId("view_content");
   if (typeof window === 'undefined') return;
 
   // Track to GA/GTM
@@ -254,7 +294,7 @@ export function trackViewContent(params: {
       content_name: params.content_name,
       value: params.value,
       currency: params.currency || 'USD',
-    });
+    }, { eventID: eventId });
   }
 }
 
@@ -291,10 +331,12 @@ export function trackInitiateCheckout(params: {
   currency?: string;
   content_ids?: string[];
   num_items?: number;
+  event_id?: string;
 }): void {
   if (typeof window === 'undefined') return;
 
-  const { value, currency = 'USD', content_ids, num_items } = params;
+  const { value, currency = 'USD', content_ids, num_items, event_id } = params;
+  const eventId = event_id || createMetaEventId("initiate_checkout");
 
   if (window.dataLayer) {
     window.dataLayer.push({
@@ -312,8 +354,17 @@ export function trackInitiateCheckout(params: {
       currency,
       content_ids,
       num_items,
-    });
+    }, { eventID: eventId });
   }
+
+  // Send server-side companion event with the same event_id for Meta deduplication.
+  void trackMetaConversion("InitiateCheckout", {
+    value,
+    currency,
+    contentIds: content_ids,
+    numItems: num_items,
+    eventId,
+  });
 }
 
 /**
@@ -396,6 +447,7 @@ export async function trackMetaConversion(
     contentIds?: string[];
     numItems?: number;
     transactionId?: string;
+    eventId?: string;
     customData?: Record<string, any>;
     testEventCode?: string;
   }
@@ -409,12 +461,9 @@ export async function trackMetaConversion(
     // Get client IP and user agent (server will overwrite with real values)
     const userAgent = navigator.userAgent;
 
-    // Get FBP cookie if available
-    let fbpId: string | undefined;
-    if (typeof document !== 'undefined') {
-      const fbpMatch = document.cookie.match(/(_fbp=fb\.\d+\.\d+)/);
-      fbpId = fbpMatch ? fbpMatch[1] : undefined;
-    }
+    // Capture Meta first-party cookies for stronger event matching.
+    const fbpId = getMetaCookie("_fbp");
+    const fbcId = getMetaCookie("_fbc");
 
     const payload = {
       eventName,
@@ -430,6 +479,7 @@ export async function trackMetaConversion(
         userId: data.userId,
         clientUserAgent: userAgent,
         fbpId,
+        fbcId,
       },
       customData: {
         ...(data.value && { value: data.value }),
@@ -438,7 +488,8 @@ export async function trackMetaConversion(
         ...(data.numItems && { num_items: data.numItems }),
         ...data.customData,
       },
-      ...(data.transactionId && { eventId: data.transactionId }),
+      ...(data.eventId && { eventId: data.eventId }),
+      ...(!data.eventId && data.transactionId && { eventId: data.transactionId }),
       ...(data.testEventCode && { testEventCode: data.testEventCode }),
       url: window.location.href,
     };
