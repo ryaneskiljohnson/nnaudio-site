@@ -13,8 +13,11 @@
  * Queue + send invites now (test inbox only):
  *   bun --env-file=.env.local run scripts/backfill-review-followups.ts --days=30 --test-email=support@newnationllc.com --send-now
  *
- * Full audience (after you confirm):
- *   bun --env-file=.env.local run scripts/backfill-review-followups.ts --days=30 --send-now
+ * Full audience (all-time cart PIs + grants, drain send queue in batches):
+ *   bun --env-file=.env.local run scripts/backfill-review-followups.ts --days=0 --send-now
+ *
+ * Last N days only:
+ *   bun --env-file=.env.local run scripts/backfill-review-followups.ts --days=90 --send-now
  *
  * **Duplicate orders:** `sendDueReviewFollowups` sends at most **one** review invite per user; extra
  * `review_followups` rows from additional purchases are marked `skipped-duplicate-user-invite` (no email).
@@ -41,7 +44,8 @@ function parseArgs(argv: string[]): {
   let sendNow = false;
   for (const a of argv) {
     if (a.startsWith("--days=")) {
-      days = Math.max(1, parseInt(a.slice("--days=".length), 10) || 30);
+      const n = parseInt(a.slice("--days=".length), 10);
+      days = Number.isFinite(n) && n >= 0 ? n : 30;
     } else if (a.startsWith("--test-email=")) {
       testEmail = a.slice("--test-email=".length).trim().toLowerCase() || null;
     } else if (a === "--dry-run") {
@@ -73,9 +77,16 @@ async function listRecentPaymentIntents(
   return out;
 }
 
+/** Max drain iterations (--send-now); each step processes up to `SEND_BATCH` followups. */
+const MAX_SEND_DRAIN_ITERATIONS = 500;
+const SEND_BATCH = 500;
+
 async function main(): Promise<void> {
   const { days, testEmail, dryRun, sendNow } = parseArgs(process.argv.slice(2));
-  const createdGte = Math.floor((Date.now() - days * 86400000) / 1000);
+  const createdGte =
+    days === 0
+      ? 0
+      : Math.floor((Date.now() - days * 86400000) / 1000);
   const sendAt = sendNow ? SEND_AT_IMMEDIATE() : undefined;
 
   console.log(
@@ -203,8 +214,24 @@ async function main(): Promise<void> {
   }
 
   if (!dryRun && sendNow) {
-    const processed = await sendDueReviewFollowups(200);
-    console.log("sendDueReviewFollowups processed:", processed);
+    let totalProcessed = 0;
+    let hitDrainCap = false;
+    for (let i = 0; i < MAX_SEND_DRAIN_ITERATIONS; i++) {
+      const processed = await sendDueReviewFollowups(SEND_BATCH);
+      totalProcessed += processed;
+      console.log(
+        `sendDueReviewFollowups batch ${i + 1}: ${processed} processed (running total ${totalProcessed})`
+      );
+      if (processed === 0) break;
+      if (i === MAX_SEND_DRAIN_ITERATIONS - 1) {
+        hitDrainCap = true;
+      }
+    }
+    if (hitDrainCap) {
+      console.warn(
+        "[backfill] Stopped after max drain iterations; re-run: bun ... --days=0 --send-now (queue step is idempotent) to send any remaining invites."
+      );
+    }
   }
 
   console.log(
