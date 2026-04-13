@@ -770,6 +770,178 @@ const firstAdCopySets = [
   },
 ];
 
+const week1CampaignPlan = [
+  {
+    name: "Campaign A — Prospecting (Purchase objective)",
+    setup:
+      "1 broad ad set (US/CA/UK/AU, 18-44), Advantage+ placements, optimize for Purchase.",
+    budget:
+      "Primary spend lane: start between $50-$150/day depending cashflow tolerance, then scale winners by +15-20% every 48h.",
+    goal: "Find winning hooks and establish baseline purchase CAC/ROAS.",
+  },
+  {
+    name: "Campaign B — Retargeting (Purchase objective)",
+    setup:
+      "Ad set 1: 7-day high intent (ViewContent/AddToCart/InitiateCheckout). Ad set 2: 30-day visitors + trial users not paid. Exclude buyers.",
+    budget: "Allocate roughly 20-30% of total spend to retargeting.",
+    goal: "Convert warm users at lower CPA than prospecting.",
+  },
+  {
+    name: "Campaign C — Free lead capture (optional lane)",
+    setup:
+      "Optimize for free claim / trial start and route into lifecycle email + retargeting.",
+    budget:
+      "Keep capped until activation-to-paid conversion proves profitable.",
+    goal: "Grow owned audience without sacrificing paid conversion quality.",
+  },
+];
+
+const week1CreativeOutput = [
+  "8 ads total: 3 short demo videos, 2 before/after outcomes, 2 UGC-style creator clips, 1 static problem/solution ad.",
+  "Hook angles to test this week: progression block, in-session speed, pro sound without theory overwhelm, blank-session-to-idea.",
+  "Creative discipline: test one variable per iteration (hook, offer framing, or format) and replace weakest 20-30% weekly.",
+];
+
+const week1LandingWork = [
+  {
+    page: "LP-1 Producer Speed",
+    focus: "Fast idea generation and immediate workflow payoff.",
+    cta: "Start free tools or trial",
+  },
+  {
+    page: "LP-2 Beginner Confidence",
+    focus: "No-theory-overwhelm positioning with guided first steps.",
+    cta: "Get free starter tools",
+  },
+  {
+    page: "LP-3 Trial / Download",
+    focus: "Single-CTA page for clean signup and activation flow.",
+    cta: "Download and activate",
+  },
+];
+
+const week1DailyChecks = [
+  "Tracking sanity: Purchase/AddToCart/InitiateCheckout dedup and value accuracy remain clean.",
+  "Budget control: pause ads spending 1.5x-2x target CPA without conversion signal.",
+  "Scale rule: increase only stable winners (+15-20% every 48h, no big jumps).",
+  "Creative throughput: keep pipeline full (new concepts every week, not monthly).",
+  "Funnel quality: trial/free starts grow without collapsing paid conversion rate quality.",
+];
+
+const operatingObjectives2026 = [
+  "Grow qualified site traffic while preserving conversion quality (no vanity traffic scaling).",
+  "Increase free-to-activated user flow (free claim/trial -> first product success moment).",
+  "Raise activation-to-paid conversion by tightening offer ladder and objection handling.",
+  "Improve unit economics (CAC payback, blended MER, and offer-level contribution margin).",
+  "Turn retention into a growth channel via lifecycle messaging, upgrades, and referrals.",
+];
+
+const strategicBets2026 = [
+  {
+    bet: "Creator-led short-form distribution",
+    why: "Creative velocity and authentic product proof beat static brand creatives in crowded 2026 feeds.",
+    kpi: "Top-funnel CTR, LPV rate, and first-touch free claims.",
+  },
+  {
+    bet: "Free-first acquisition with paid intent routing",
+    why: "Free tools lower cold-friction while preserving a clean route into bundles and premium offers.",
+    kpi: "Free claim -> activation -> paid conversion chain quality.",
+  },
+  {
+    bet: "Signal-quality optimization (Meta + first-party)",
+    why: "Attribution quality directly determines algorithm efficiency and ROAS stability.",
+    kpi: "Event integrity, match quality, and Purchase value consistency.",
+  },
+  {
+    bet: "Offer-ladder merchandising",
+    why: "Most buyers need progressive commitment, not immediate flagship asks.",
+    kpi: "First purchase rate, AOV, bundle attach, and premium upsell rate.",
+  },
+];
+
+const executionWorkstreams = [
+  {
+    stream: "Workstream 1 — Data & Measurement Integrity",
+    owner: "Growth + Engineering",
+    weeklyDeliverables: [
+      "Daily event QA for ViewContent/AddToCart/InitiateCheckout/Purchase (dedup + value checks).",
+      "Weekly attribution audit: UTM persistence through signup, checkout, and first purchase.",
+      "Weekly reporting pack: CAC, ROAS, MER, activation rate, and offer conversion by source.",
+    ],
+    doneDefinition:
+      "No material tracking breaks for 14 days and purchase reporting variance stays within acceptable tolerance.",
+  },
+  {
+    stream: "Workstream 2 — Positioning & Message-Market Fit",
+    owner: "CMO + Creative",
+    weeklyDeliverables: [
+      "Ship and test 3-5 new hooks weekly against clear persona pain points.",
+      "Keep one canonical value proposition per audience segment and update from win data.",
+      "Refresh landing above-the-fold copy based on top-performing ad narrative.",
+    ],
+    doneDefinition:
+      "Two repeatable winning message angles per key persona with stable downstream conversion.",
+  },
+  {
+    stream: "Workstream 3 — Paid Acquisition System",
+    owner: "Performance Marketing",
+    weeklyDeliverables: [
+      "Operate 3-lane account structure (Prospecting, Retargeting, Optional Free Lead lane).",
+      "Apply strict pause/scale rules (1.5x-2x CPA pause threshold; +15-20% scaling cadence).",
+      "Replace bottom 20-30% creatives weekly and reallocate budget to proven winners.",
+    ],
+    doneDefinition:
+      "Retargeting CPA remains lower than prospecting and blended paid efficiency trends improve week over week.",
+  },
+  {
+    stream: "Workstream 4 — Funnel & CRO",
+    owner: "Growth Product",
+    weeklyDeliverables: [
+      "Maintain 3 intent-specific landing paths (Producer Speed, Beginner Confidence, Trial/Download).",
+      "Run one structured page test weekly (hook, proof element, CTA, or offer framing).",
+      "Audit checkout friction and objection points with session replay + funnel drop-off review.",
+    ],
+    doneDefinition:
+      "Visitor -> free action and warm -> paid conversion rates both improve without quality degradation.",
+  },
+  {
+    stream: "Workstream 5 — Lifecycle Monetization",
+    owner: "Email + CRM",
+    weeklyDeliverables: [
+      "Run relaunch and lifecycle automations (free claim, activation nudge, cart recovery, upsell).",
+      "Segment audience by recency, value tier, and product intent to avoid generic blasts.",
+      "Publish weekly lifecycle scorecard (open/click/reply/revenue and reactivation outcomes).",
+    ],
+    doneDefinition:
+      "Lifecycle channel drives a growing share of monthly revenue and repeat purchase volume.",
+  },
+  {
+    stream: "Workstream 6 — Offer & Monetization Architecture",
+    owner: "CMO + Product Marketing",
+    weeklyDeliverables: [
+      "Keep free -> low-friction paid -> bundle -> flagship progression explicit across site and ads.",
+      "Refresh bundle/value communication and objection handling monthly.",
+      "Run one pricing/packaging test per month tied to margin and conversion goals.",
+    ],
+    doneDefinition:
+      "Higher AOV and stronger first-to-second purchase movement without CAC inflation.",
+  },
+];
+
+const weeklyOperatingCadence = [
+  "Monday: KPI readout + decision meeting (pause/scale/ship priorities).",
+  "Tuesday-Wednesday: creative production + landing/CRO implementation.",
+  "Thursday: campaign optimization and audience/budget reallocation.",
+  "Friday: funnel QA, attribution validation, and next-week brief finalized.",
+];
+
+const executionGuardrails = [
+  "Never scale spend when tracking quality is suspect.",
+  "Never change offer, audience, and creative all at once (protect learnings).",
+  "Protect contribution margin when running discounts; no top-line-only decisions.",
+  "Treat free acquisition as a monetization system, not a vanity lead engine.",
+];
+
 /**
  * @brief Formats currency values for dashboard cards.
  * @param value - Numeric value to format.
@@ -860,6 +1032,83 @@ export default function GrowthStrategyPage() {
         design, measurement, owned-audience activation, paid ladders, and a
         90-day roadmap.
       </PageSubtitle>
+
+      <Card>
+        <CardTitle>
+          <FaBullseye /> Unified 2026 execution plan (single operating model)
+        </CardTitle>
+        <CardDescription>
+          This is the integrated plan across positioning, acquisition, funnel
+          conversion, lifecycle monetization, and analytics integrity. All
+          teams execute from this model and use the same KPI language.
+        </CardDescription>
+        <List>
+          <li>
+            <Strong>North Star:</Strong> turn qualified creators into paying,
+            retained customers by proving product value fast and converting
+            through a disciplined free-to-paid ladder.
+          </li>
+          <li>
+            <Strong>Primary 2026 business outcome:</Strong> sustainably grow
+            revenue and MER while improving activation quality and repeat
+            purchase behavior.
+          </li>
+        </List>
+        <CardDescription>
+          <Strong>Company-level objectives</Strong>
+        </CardDescription>
+        <Checklist style={{ marginBottom: "1rem" }}>
+          {operatingObjectives2026.map((objective) => (
+            <li key={objective}>
+              <FaCheckCircle />
+              <span>{objective}</span>
+            </li>
+          ))}
+        </Checklist>
+        <CardDescription>
+          <Strong>Strategic bets (what we believe will win in 2026)</Strong>
+        </CardDescription>
+        <Table>
+          <thead>
+            <tr>
+              <th>Bet</th>
+              <th>Why this matters</th>
+              <th>Success KPI</th>
+            </tr>
+          </thead>
+          <tbody>
+            {strategicBets2026.map((row) => (
+              <tr key={row.bet}>
+                <td>{row.bet}</td>
+                <td>{row.why}</td>
+                <td>{row.kpi}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+        <CardDescription>
+          <Strong>Weekly operating cadence</Strong>
+        </CardDescription>
+        <Checklist style={{ marginBottom: "1rem" }}>
+          {weeklyOperatingCadence.map((item) => (
+            <li key={item}>
+              <FaCheckCircle />
+              <span>{item}</span>
+            </li>
+          ))}
+        </Checklist>
+        <CardDescription>
+          <Strong>Execution guardrails</Strong>
+        </CardDescription>
+        <Checklist>
+          {executionGuardrails.map((item) => (
+            <li key={item}>
+              <FaCheckCircle />
+              <span>{item}</span>
+            </li>
+          ))}
+        </Checklist>
+      </Card>
 
       <Card>
         <CardTitle>
@@ -986,6 +1235,112 @@ export default function GrowthStrategyPage() {
             <FaGift /> Review free-tools landing page
           </ActionLink>
         </ActionLinkRow>
+      </Card>
+
+      <Card>
+        <CardTitle>
+          <FaRocket /> Week 1 execution board (operator view)
+        </CardTitle>
+        <CardDescription>
+          This converts strategy into immediate shipping tasks. Run this board
+          daily for the next 7 days before adding new channels.
+        </CardDescription>
+        {week1CampaignPlan.map((campaign) => (
+          <CampaignBlock key={campaign.name}>
+            <h4>{campaign.name}</h4>
+            <List>
+              <li>
+                <Strong>Setup:</Strong> {campaign.setup}
+              </li>
+              <li>
+                <Strong>Budget:</Strong> {campaign.budget}
+              </li>
+              <li>
+                <Strong>Goal:</Strong> {campaign.goal}
+              </li>
+            </List>
+          </CampaignBlock>
+        ))}
+        <CardDescription>
+          <Strong>Creative output this week</Strong>
+        </CardDescription>
+        <Checklist style={{ marginBottom: "1rem" }}>
+          {week1CreativeOutput.map((item) => (
+            <li key={item}>
+              <FaCheckCircle />
+              <span>{item}</span>
+            </li>
+          ))}
+        </Checklist>
+        <CardDescription>
+          <Strong>Landing pages to ship / tighten this week</Strong>
+        </CardDescription>
+        <Table>
+          <thead>
+            <tr>
+              <th>Page</th>
+              <th>Focus</th>
+              <th>Primary CTA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {week1LandingWork.map((row) => (
+              <tr key={row.page}>
+                <td>{row.page}</td>
+                <td>{row.focus}</td>
+                <td>{row.cta}</td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+        <CardDescription>
+          <Strong>Daily 10-minute scoreboard</Strong>
+        </CardDescription>
+        <Checklist>
+          {week1DailyChecks.map((item) => (
+            <li key={item}>
+              <FaCheckCircle />
+              <span>{item}</span>
+            </li>
+          ))}
+        </Checklist>
+        <ActionLinkRow>
+          <ActionLink href="/admin/ad-manager/campaigns/create">
+            <FaExternalLinkAlt /> Launch / edit campaigns
+          </ActionLink>
+          <ActionLink href="/admin/ad-manager/analytics">
+            <FaChartLine /> Check paid performance
+          </ActionLink>
+          <ActionLink href="/free-tools">
+            <FaGift /> Validate free-tools funnel entry
+          </ActionLink>
+        </ActionLinkRow>
+      </Card>
+
+      <Card>
+        <CardTitle>
+          <FaTools /> Workstream operating plan (owners + done definitions)
+        </CardTitle>
+        <CardDescription>
+          Use this as the execution contract. Each stream has a clear owner,
+          weekly deliverables, and an objective definition of done.
+        </CardDescription>
+        {executionWorkstreams.map((stream) => (
+          <CampaignBlock key={stream.stream}>
+            <h4>{stream.stream}</h4>
+            <p style={{ marginBottom: "0.55rem" }}>
+              <Strong>Owner:</Strong> {stream.owner}
+            </p>
+            <List>
+              {stream.weeklyDeliverables.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </List>
+            <p>
+              <Strong>Done definition:</Strong> {stream.doneDefinition}
+            </p>
+          </CampaignBlock>
+        ))}
       </Card>
 
       <Card>
