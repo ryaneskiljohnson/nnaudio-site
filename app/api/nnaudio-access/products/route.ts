@@ -6,51 +6,14 @@ import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import Stripe from "stripe";
 import { requireUuid } from "@/utils/validation";
 import { stripe } from "@/utils/stripe/client";
+import {
+  resolveGrantEmail,
+  validateToken,
+} from "@/utils/nnaudio-access/access";
 
 // Format error response
 function formatError(message: string): string {
   return JSON.stringify({ success: false, message });
-}
-
-// Validate Supabase token
-async function validateToken(token: string): Promise<{ valid: boolean; userId?: string }> {
-  try {
-    if (!token) return { valid: false };
-
-    // Create a client with the token in Authorization header
-    const { createServerClient } = await import("@supabase/ssr");
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return [];
-          },
-          setAll(_cookiesToSet) {},
-        },
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      }
-    );
-
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-
-    if (error || !user) {
-      return { valid: false };
-    }
-
-    return { valid: true, userId: user.id };
-  } catch (error) {
-    console.error("[Token Validation] Error:", error);
-    return { valid: false };
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -73,22 +36,30 @@ export async function POST(request: NextRequest) {
       .eq("id", userId)
       .single();
 
+    const adminSupabase = await createSupabaseServiceRole();
+    const grantEmail = await resolveGrantEmail(
+      adminSupabase,
+      userId,
+      profile?.email
+    );
+
     console.log(`[NNAudio Access Products] User ${userId} profile:`, {
       customer_id: profile?.customer_id,
       email: profile?.email,
+      grantEmail,
     });
 
     let productIds = new Set<string>();
 
     // Check individual product grants
-    if (profile?.email) {
-      console.log(`[NNAudio Access Products] Checking product grants for email: ${profile.email.toLowerCase()}`);
-      // Use service role client to bypass RLS for product_grants query
-      const adminSupabase = await createSupabaseServiceRole();
+    if (grantEmail) {
+      console.log(
+        `[NNAudio Access Products] Checking product grants for email: ${grantEmail}`
+      );
       const { data: productGrants, error: grantsError } = await (adminSupabase as any)
         .from("product_grants")
         .select("product_id")
-        .eq("user_email", profile.email.toLowerCase());
+        .eq("user_email", grantEmail);
 
       if (grantsError) {
         console.error(`[NNAudio Access Products] Error fetching product grants:`, grantsError);
@@ -103,7 +74,7 @@ export async function POST(request: NextRequest) {
           }
         });
       } else {
-        console.log(`[NNAudio Access Products] No product grants found for ${profile.email.toLowerCase()}`);
+        console.log(`[NNAudio Access Products] No product grants found for ${grantEmail}`);
       }
     }
 
@@ -165,11 +136,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Method 3: Search by email (5 second timeout)
-    if (profile?.email) {
+    if (grantEmail) {
       stripePromises.push(
         withTimeout(
           stripe.customers.list({
-            email: profile.email,
+            email: grantEmail,
             limit: 10,
           }),
           5000
@@ -267,9 +238,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Use service role client for products query as well
-    const adminSupabase = await createSupabaseServiceRole();
-    
     // First, fetch all products to check which ones are bundles (category: 'bundle')
     const { data: allProductsCheck, error: productsCheckError } = await (adminSupabase as any)
       .from("products")

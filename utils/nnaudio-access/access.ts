@@ -7,6 +7,8 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- product_grants, products, bundles, bundle_products not in database.types.ts */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/database.types";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import Stripe from "stripe";
 import { stripe } from "@/utils/stripe/client";
@@ -40,8 +42,10 @@ function pushTiming(
 
 /**
  * @brief Validates Supabase auth token and returns user ID
- * @param token - JWT from Authorization header or form body
- * @returns { valid, userId } or { valid: false }
+ * @param token - JWT access token from the desktop app or plugin
+ * @returns `{ valid, userId }` or `{ valid: false }`
+ * @note Passes the JWT into `getUser(jwt)` so validation does not depend on a custom
+ *   Authorization header + session (SSR clients may not treat that as a session).
  */
 export async function validateToken(
   token: string
@@ -58,16 +62,13 @@ export async function validateToken(
           getAll: () => [],
           setAll: () => {},
         },
-        global: {
-          headers: { Authorization: `Bearer ${token}` },
-        },
       }
     );
 
     const {
       data: { user },
       error,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getUser(token);
 
     if (error || !user) return { valid: false };
     return { valid: true, userId: user.id };
@@ -75,6 +76,27 @@ export async function validateToken(
     console.error("[NNAudio Access] Token validation error:", error);
     return { valid: false };
   }
+}
+
+/**
+ * @brief Resolves lowercase email for `product_grants.user_email` when `profiles.email` is empty.
+ * @param adminSupabase Service-role client (for `auth.admin.getUserById`)
+ * @param userId Supabase auth user id
+ * @param profileEmail `profiles.email` when already loaded
+ * @returns Normalized email or null
+ */
+export async function resolveGrantEmail(
+  adminSupabase: SupabaseClient<Database>,
+  userId: string,
+  profileEmail: string | null | undefined
+): Promise<string | null> {
+  const fromProfile = profileEmail?.trim().toLowerCase();
+  if (fromProfile) return fromProfile;
+
+  const { data, error } = await adminSupabase.auth.admin.getUserById(userId);
+  if (error || !data.user?.email) return null;
+  const e = data.user.email.trim().toLowerCase();
+  return e.length > 0 ? e : null;
 }
 
 /**
@@ -98,6 +120,12 @@ export async function getAccessibleProductIds(
   const adminSupabase = await createSupabaseServiceRole();
   pushTiming(timings, "createSupabaseServiceRole", t0);
 
+  const grantEmail = await resolveGrantEmail(
+    adminSupabase,
+    userId,
+    profile?.email
+  );
+
   const withTimeout = <T>(
     promise: Promise<T>,
     timeoutMs: number
@@ -114,11 +142,11 @@ export async function getAccessibleProductIds(
 
   // Run product_grants and Stripe in parallel (they don't depend on each other)
   const productGrantsPromise =
-    profile?.email
+    grantEmail !== null
       ? (adminSupabase as any)
           .from("product_grants")
           .select("product_id")
-          .eq("user_email", profile.email.toLowerCase())
+          .eq("user_email", grantEmail)
       : Promise.resolve({ data: [] });
 
   // Single Stripe call: search by user_id in metadata (filters succeeded server-side)
