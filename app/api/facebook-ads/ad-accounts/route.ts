@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { createFacebookAPITokenOnly, FACEBOOK_TOKEN_COOKIE_NAME } from '@/utils/facebook/api';
 
 /**
  * GET /api/facebook-ads/ad-accounts
@@ -12,9 +12,8 @@ import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOK
  */
 export async function GET(request: NextRequest) {
   try {
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '0';
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const facebookAPI = createFacebookAPITokenOnly(getToken);
 
     if (!facebookAPI) {
       return NextResponse.json({

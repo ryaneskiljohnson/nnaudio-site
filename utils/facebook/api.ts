@@ -899,14 +899,33 @@ export function removeFacebookToken(): void {
  * @param getToken - Optional. Server-side: pass () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null
  */
 export function createFacebookAPI(
-  adAccountId: string,
+  adAccountId: string | null | undefined,
   getToken?: () => string | null
 ): FacebookAdsAPI | null {
   const token = getToken ? getToken() : getStoredFacebookToken();
   if (!token) {
     return null;
   }
-  return new FacebookAdsAPI(token, normalizeAdAccountId(adAccountId));
+  const raw = String(adAccountId ?? "").trim();
+  if (!raw) {
+    return null;
+  }
+  return new FacebookAdsAPI(token, normalizeAdAccountId(raw));
+}
+
+/**
+ * @brief Builds a client with only a user token — for Graph `me/*` calls (e.g. list ad accounts).
+ * @param getToken Returns the Meta user access token.
+ * @returns API instance or null if no token. Ad account id is a placeholder and must not be used for `act_*` calls.
+ */
+export function createFacebookAPITokenOnly(
+  getToken: () => string | null
+): FacebookAdsAPI | null {
+  const token = getToken();
+  if (!token?.trim()) {
+    return null;
+  }
+  return new FacebookAdsAPI(token, "0");
 }
 
 /**

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "supabase-gen-types": "bun x supabase gen types typescript --project-id \"jibirpbauzqhdiwjlrmf\" --schema public,stripe_tables > database.types.ts",
+    "supabase-gen-types": "bun x supabase gen types typescript --project-id \"znecvzfogwkzinkduyuq\" --schema public,stripe_tables > database.types.ts",
     "supabase-migrate": "bun x supabase db push",
     "migrate:admin-support-ticket-state": "bash scripts/run-admin-support-ticket-state-migration.sh",
     "images:convert-to-webp": "bun run scripts/convert-png-jpeg-to-webp-and-update-refs.ts",
@@ -22,6 +22,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "env:email": "bun run scripts/check-email-env.ts",
+    "env:growth": "bun run scripts/check-growth-readiness-env.ts",
+    "test:growth-smoke": "bun run scripts/smoke-test-growth-ops.ts",
     "check:dead-product-audio": "npx tsx scripts/check-dead-product-audio.ts",
     "verify:barrels": "bun run scripts/check-server-barrel-exports.ts"
   },

@@ -3,6 +3,10 @@
     {
       "path": "/api/email-campaigns/process-scheduled",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/admin/growth-ops/process-actions",
+      "schedule": "* * * * *"
     }
   ],
   "functions": {
@@ -13,6 +17,9 @@
       "maxDuration": 60
     },
     "app/api/email-campaigns/campaigns/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/admin/growth-ops/process-actions/route.ts": {
       "maxDuration": 30
     }
   }

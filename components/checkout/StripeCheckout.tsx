@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 // import { loadStripe } from "@stripe/stripe-js";
 import styled from "styled-components";
-import { useRouter } from "next/navigation";
 
 // Use environment variable for Stripe publishable key with a fallback
 // This ensures we at least have a valid string for Stripe initialization in all environments
@@ -76,40 +75,15 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
   // trialDays is defined but not used, so we'll comment it out
   // trialDays,
 }) => {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-
-  // Check if we're in development mode
-  // In production, this would be set to 'production'
-  const isDevelopment = process.env.NODE_ENV !== "production";
 
   const handleCheckout = async () => {
     try {
       setIsLoading(true);
       setErrorMessage("");
 
-      // For development environment, always use mock checkout to avoid 404 errors
-      if (isDevelopment) {
-        console.log("Development mode: Redirecting to mock checkout");
-        console.log("Checkout initiated with:", {
-          priceId,
-          billingPeriod,
-          price,
-        });
-
-        // Give some time for the loading state to show
-        setTimeout(() => {
-          // Redirect to mock checkout page with plan details and force a refresh
-          router.push(
-            `/mock-checkout?plan=NNAudio Pro&billing=${billingPeriod}&price=${price}`
-          );
-          setIsLoading(false);
-        }, 800);
-        return;
-      }
-
-      // For production, proceed with actual Stripe checkout
+      // Proceed with Stripe checkout (same path in all environments; no mock redirect)
       // const stripe = await stripePromise;
 
       try {

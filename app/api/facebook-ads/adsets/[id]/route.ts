@@ -5,11 +5,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME, type UpdateAdSetParams } from '@/utils/facebook/api';
+import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
+import { applyDailyBudgetGuardrails, getGrowthGuardrailsFromEnv } from '@/utils/growth/guardrails';
 
 /** Optimization goals that require bid constraints (Meta error 2490487). We do not support them in the UI. */
 const OPTIMIZATION_GOALS_REQUIRING_BID_CONSTRAINTS = ['VALUE', 'LOWEST_COST_WITH_MIN_ROAS'] as const;
 
-/** Mock ad set for development when FACEBOOK_MOCK_CONNECTION=true. */
+/** Demo ad set payload when `isFacebookAdsMockEnabled()` (non-production only). */
 function mockAdSet(id: string, overrides: Record<string, unknown> = {}) {
   return {
     id,
@@ -44,15 +46,15 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Ad set ID required' }, { status: 400 });
     }
 
-    const isDev = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-
-    if (isDev && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const adSet = mockAdSet(adSetId, { name: `Ad Set ${adSetId}` });
       return NextResponse.json({ success: true, adSet, isDevelopmentMode: true });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? _request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '';
+    const adAccountId =
+      process.env.FACEBOOK_AD_ACCOUNT_ID ??
+      _request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
+      null;
     const getToken = () => _request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
     const facebookAPI = createFacebookAPI(adAccountId, getToken);
     if (!facebookAPI) {
@@ -87,10 +89,7 @@ export async function PUT(
       return NextResponse.json({ success: false, error: 'Ad set ID required' }, { status: 400 });
     }
 
-    const isDev = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-
-    if (isDev && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const body = await request.json();
       const adSet = mockAdSet(adSetId, {
         name: body.name ?? 'Updated Ad Set',
@@ -101,7 +100,10 @@ export async function PUT(
       return NextResponse.json({ success: true, adSet, isDevelopmentMode: true });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '';
+    const adAccountId =
+      process.env.FACEBOOK_AD_ACCOUNT_ID ??
+      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
+      null;
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
     const facebookAPI = createFacebookAPI(adAccountId, getToken);
     if (!facebookAPI) {
@@ -112,7 +114,26 @@ export async function PUT(
     const params: UpdateAdSetParams = {};
     if (body.name != null) params.name = body.name;
     if (body.status != null) params.status = body.status.toUpperCase();
-    if (body.dailyBudget != null) params.daily_budget = body.dailyBudget;
+    let dailyBudgetGuardrail:
+      | ReturnType<typeof applyDailyBudgetGuardrails>
+      | null = null;
+    if (body.dailyBudget != null) {
+      const existingAdSet = await facebookAPI.getAdSet(adSetId);
+      const previousDailyBudgetUsd =
+        existingAdSet?.daily_budget != null
+          ? parseInt(String(existingAdSet.daily_budget), 10) / 100
+          : null;
+      const guardrails = getGrowthGuardrailsFromEnv();
+      dailyBudgetGuardrail = applyDailyBudgetGuardrails(
+        Number(body.dailyBudget),
+        guardrails,
+        {
+          mode: 'update',
+          previousDailyBudgetUsd,
+        }
+      );
+      params.daily_budget = dailyBudgetGuardrail.appliedUsd;
+    }
     if (body.lifetimeBudget != null) params.lifetime_budget = body.lifetimeBudget;
     if (body.startTime != null) params.start_time = body.startTime;
     if (body.noEndDate === true) params.end_time = '0';
@@ -140,6 +161,13 @@ export async function PUT(
         status: (adSet.status ?? '').toLowerCase(),
         createdAt: adSet.created_time,
       },
+      guardrailAdjustments:
+        dailyBudgetGuardrail != null
+          ? {
+              changed: dailyBudgetGuardrail.changed,
+              dailyBudget: dailyBudgetGuardrail,
+            }
+          : null,
     });
   } catch (error) {
     console.error('Error updating ad set:', error);
@@ -157,14 +185,14 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Ad set ID required' }, { status: 400 });
     }
 
-    const isDev = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-
-    if (isDev && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       return NextResponse.json({ success: true, message: 'Ad set deleted (Development Mode)', isDevelopmentMode: true });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? _request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '';
+    const adAccountId =
+      process.env.FACEBOOK_AD_ACCOUNT_ID ??
+      _request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
+      null;
     const getToken = () => _request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
     const facebookAPI = createFacebookAPI(adAccountId, getToken);
     if (!facebookAPI) {

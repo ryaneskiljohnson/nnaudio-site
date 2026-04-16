@@ -28,5 +28,5 @@ fi
 
 echo "Applying admin_support_ticket_state migration..."
 # Try direct DB host first; if your network blocks it, use Dashboard SQL Editor with the migration file.
-PGPASSWORD="$SUPABASE_DB_PASSWORD" psql -h db.jibirpbauzqhdiwjlrmf.supabase.co -p 5432 -d postgres -U postgres -f "$MIGRATION_FILE"
+PGPASSWORD="$SUPABASE_DB_PASSWORD" psql -h db.znecvzfogwkzinkduyuq.supabase.co -p 5432 -d postgres -U postgres -f "$MIGRATION_FILE"
 echo "Done."

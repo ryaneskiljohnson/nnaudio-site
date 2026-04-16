@@ -27,6 +27,7 @@ import {
   FaLayerGroup,
   FaSpinner,
   FaTools,
+  FaRobot,
 } from "react-icons/fa";
 
 const PageContainer = styled.div`
@@ -308,6 +309,127 @@ const QueueCard = styled.div`
   }
 `;
 
+const DecisionToolbar = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+`;
+
+const DecisionToolbarSpacer = styled.div`
+  flex: 1;
+  min-width: 0.5rem;
+`;
+
+const DecisionActionButton = styled.button`
+  border: 1px solid rgba(108, 99, 255, 0.55);
+  background: rgba(108, 99, 255, 0.14);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(108, 99, 255, 0.22);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const DecisionFilterButton = styled.button<{ $active: boolean }>`
+  border: 1px solid
+    ${(props) => (props.$active ? "rgba(108, 99, 255, 0.65)" : "rgba(255, 255, 255, 0.15)")};
+  background: ${(props) => (props.$active ? "rgba(108, 99, 255, 0.2)" : "rgba(255, 255, 255, 0.03)")};
+  color: ${(props) => (props.$active ? "var(--text)" : "var(--text-secondary)")};
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.84rem;
+  cursor: pointer;
+
+  &:hover {
+    border-color: rgba(108, 99, 255, 0.65);
+    color: var(--text);
+  }
+`;
+
+const DecisionSummaryRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+`;
+
+const DecisionSummaryBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+`;
+
+const DecisionFeed = styled.div`
+  display: grid;
+  gap: 0.75rem;
+`;
+
+const DecisionItem = styled.div`
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+`;
+
+const DecisionItemHeader = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+`;
+
+const DecisionTitle = styled.div`
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 600;
+`;
+
+const DecisionMeta = styled.div`
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+`;
+
+const DecisionReason = styled.p`
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  line-height: 1.5;
+`;
+
+const DecisionKindBadge = styled.span<{ $kind: "pause" | "hold" | "scale" }>`
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: ${(props) =>
+    props.$kind === "pause"
+      ? "rgba(255, 95, 95, 0.12)"
+      : props.$kind === "scale"
+        ? "rgba(0, 201, 167, 0.14)"
+        : "rgba(255, 206, 86, 0.16)"};
+  color: ${(props) =>
+    props.$kind === "pause" ? "#ff8d8d" : props.$kind === "scale" ? "var(--accent)" : "#ffd67f"};
+`;
+
 const PersonaGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -461,6 +583,40 @@ interface GrowthDashboardResponse {
     adManagerConfigured: boolean;
     emailConfigured: boolean;
   };
+}
+
+interface GrowthDecisionItem {
+  sweep_action_id: string;
+  sweep_completed_at: string | null;
+  campaignId: string;
+  campaignName?: string;
+  decision: "pause" | "hold" | "scale";
+  reason?: string;
+  enqueued?: boolean;
+}
+
+interface GrowthDecisionsResponse {
+  success: boolean;
+  summary: {
+    total: number;
+    pause: number;
+    hold: number;
+    scale: number;
+  };
+  decisions: GrowthDecisionItem[];
+}
+
+interface GrowthProcessorRunResponse {
+  success: boolean;
+  processed: number;
+  baseline_enqueued: number;
+  outcomes?: Array<{
+    id: string;
+    action_type: string;
+    status: "succeeded" | "failed" | "dead_letter" | "skipped";
+    error?: string;
+  }>;
+  error?: string;
 }
 
 const relaunchSequence = [
@@ -959,6 +1115,15 @@ export default function GrowthStrategyPage() {
   const [dashboard, setDashboard] = useState<GrowthDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [decisionFilter, setDecisionFilter] = useState<"all" | "pause" | "hold" | "scale">("all");
+  const [decisionsLoading, setDecisionsLoading] = useState(true);
+  const [decisionsError, setDecisionsError] = useState<string | null>(null);
+  const [decisionsSummary, setDecisionsSummary] = useState<GrowthDecisionsResponse["summary"] | null>(
+    null
+  );
+  const [decisions, setDecisions] = useState<GrowthDecisionItem[]>([]);
+  const [runningProcessor, setRunningProcessor] = useState(false);
+  const [processorMessage, setProcessorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -986,6 +1151,74 @@ export default function GrowthStrategyPage() {
 
     void loadDashboard();
   }, []);
+
+  /**
+   * @brief Fetches latest autonomous growth decisions from admin API.
+   * @param filter - Decision filter (`all`, `pause`, `hold`, `scale`).
+   * @returns Promise<void>
+   */
+  const loadDecisions = async (filter: "all" | "pause" | "hold" | "scale") => {
+    try {
+      setDecisionsLoading(true);
+      setDecisionsError(null);
+      const params = new URLSearchParams({ limit: "25" });
+      if (filter !== "all") {
+        params.set("decision", filter);
+      }
+      const response = await fetch(`/api/admin/growth-ops/decisions?${params.toString()}`);
+      const data = (await response.json()) as GrowthDecisionsResponse | { error: string };
+      if (!response.ok || "error" in data) {
+        throw new Error("error" in data ? data.error : "Failed to load growth decisions");
+      }
+      setDecisionsSummary(data.summary);
+      setDecisions(data.decisions ?? []);
+    } catch (decisionsLoadError) {
+      setDecisionsError(
+        decisionsLoadError instanceof Error
+          ? decisionsLoadError.message
+          : "Failed to load growth decisions"
+      );
+    } finally {
+      setDecisionsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadDecisions(decisionFilter);
+  }, [decisionFilter]);
+
+  /**
+   * @brief Triggers immediate queue processing for operator testing/validation.
+   * @returns Promise<void>
+   */
+  const runProcessorNow = async (): Promise<void> => {
+    try {
+      setRunningProcessor(true);
+      setProcessorMessage(null);
+      const response = await fetch("/api/admin/growth-ops/process-actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          batch_size: 25,
+          seed_baseline: false,
+        }),
+      });
+      const data = (await response.json()) as GrowthProcessorRunResponse;
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to run processor");
+      }
+      setProcessorMessage(
+        `Processor ran: processed ${data.processed} action(s), seeded ${data.baseline_enqueued}.`
+      );
+      await loadDecisions(decisionFilter);
+    } catch (runError) {
+      setProcessorMessage(
+        runError instanceof Error ? runError.message : "Failed to run processor"
+      );
+    } finally {
+      setRunningProcessor(false);
+    }
+  };
 
   const readinessCards = useMemo(() => {
     if (!dashboard) {
@@ -1020,6 +1253,22 @@ export default function GrowthStrategyPage() {
       },
     ];
   }, [dashboard]);
+
+  /**
+   * @brief Formats ISO timestamps for decision feed cards.
+   * @param value - Timestamp value.
+   * @returns Compact local date/time or fallback text.
+   */
+  const formatDecisionTime = (value: string | null): string => {
+    if (!value) {
+      return "Unknown time";
+    }
+    const timestamp = new Date(value);
+    if (Number.isNaN(timestamp.getTime())) {
+      return "Unknown time";
+    }
+    return timestamp.toLocaleString();
+  };
 
   return (
     <PageContainer>
@@ -1235,6 +1484,66 @@ export default function GrowthStrategyPage() {
             <FaGift /> Review free-tools landing page
           </ActionLink>
         </ActionLinkRow>
+      </Card>
+
+      <Card>
+        <CardTitle>
+          <FaRobot /> Autonomous decisions feed
+        </CardTitle>
+        <CardDescription>
+          Live output from guardrail sweeps showing whether AI is holding, pausing, or scaling
+          campaigns. Use this as the quick operator audit trail before touching spend settings.
+        </CardDescription>
+        <DecisionToolbar>
+          {(["all", "pause", "hold", "scale"] as const).map((filter) => (
+            <DecisionFilterButton
+              key={filter}
+              $active={decisionFilter === filter}
+              onClick={() => setDecisionFilter(filter)}
+            >
+              {filter.toUpperCase()}
+            </DecisionFilterButton>
+          ))}
+          <DecisionToolbarSpacer />
+          <DecisionActionButton onClick={() => void runProcessorNow()} disabled={runningProcessor}>
+            {runningProcessor ? "Running..." : "Run Processor Now"}
+          </DecisionActionButton>
+        </DecisionToolbar>
+        {processorMessage ? <CardDescription>{processorMessage}</CardDescription> : null}
+        {decisionsSummary ? (
+          <DecisionSummaryRow>
+            <DecisionSummaryBadge>Total: {decisionsSummary.total}</DecisionSummaryBadge>
+            <DecisionSummaryBadge>Pause: {decisionsSummary.pause}</DecisionSummaryBadge>
+            <DecisionSummaryBadge>Hold: {decisionsSummary.hold}</DecisionSummaryBadge>
+            <DecisionSummaryBadge>Scale: {decisionsSummary.scale}</DecisionSummaryBadge>
+          </DecisionSummaryRow>
+        ) : null}
+        {decisionsLoading ? (
+          <CardDescription style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <FaSpinner style={{ animation: "spin 1s linear infinite" }} /> Loading autonomous
+            decisions...
+          </CardDescription>
+        ) : decisionsError ? (
+          <CardDescription>{decisionsError}</CardDescription>
+        ) : decisions.length === 0 ? (
+          <CardDescription>No decisions found for this filter yet.</CardDescription>
+        ) : (
+          <DecisionFeed>
+            {decisions.map((item) => (
+              <DecisionItem key={`${item.sweep_action_id}-${item.campaignId}-${item.decision}`}>
+                <DecisionItemHeader>
+                  <DecisionTitle>
+                    {item.campaignName || item.campaignId}
+                    {" "}
+                    <DecisionKindBadge $kind={item.decision}>{item.decision}</DecisionKindBadge>
+                  </DecisionTitle>
+                  <DecisionMeta>{formatDecisionTime(item.sweep_completed_at)}</DecisionMeta>
+                </DecisionItemHeader>
+                <DecisionReason>{item.reason || "No reason supplied."}</DecisionReason>
+              </DecisionItem>
+            ))}
+          </DecisionFeed>
+        )}
       </Card>
 
       <Card>

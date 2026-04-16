@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, CAMPAIGN_OBJECTIVES, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
+import { applyDailyBudgetGuardrails, getGrowthGuardrailsFromEnv } from '@/utils/growth/guardrails';
 
 export async function GET(request: NextRequest) {
   try {
-    // Development mode: return enhanced mock data
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const mockCampaigns = [
         {
           id: "1",
@@ -72,7 +70,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
+    const adAccountId =
+      process.env.FACEBOOK_AD_ACCOUNT_ID ??
+      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
+      null;
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
     const facebookAPI = createFacebookAPI(adAccountId, getToken);
     
@@ -128,11 +129,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Development mode: simulate campaign creation
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const body = await request.json();
       
       // Simulate campaign creation delay
@@ -165,7 +162,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
+    const adAccountId =
+      process.env.FACEBOOK_AD_ACCOUNT_ID ??
+      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
+      null;
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
     const facebookAPI = createFacebookAPI(adAccountId, getToken);
     
@@ -178,6 +178,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { name, objective, status, dailyBudget, lifetimeBudget, startTime, endTime, description, platforms, special_ad_categories, buying_type: buyingType } = body;
+    const guardrails = getGrowthGuardrailsFromEnv();
 
     // Validate required fields
     if (!name || !objective || !status) {
@@ -199,14 +200,43 @@ export async function POST(request: NextRequest) {
       ? special_ad_categories.filter((s: string) => s && s !== 'NONE')
       : [];
 
+    const dailyBudgetNum = typeof dailyBudget === 'number'
+      ? dailyBudget
+      : typeof dailyBudget === 'string'
+        ? parseFloat(dailyBudget)
+        : NaN;
+    const launchDailyBudget = applyDailyBudgetGuardrails(
+      Number.isFinite(dailyBudgetNum) && dailyBudgetNum > 0
+        ? dailyBudgetNum
+        : guardrails.launchDailyBudgetUsd,
+      guardrails,
+      { mode: 'launch' }
+    );
+    const lifetimeBudgetNum = typeof lifetimeBudget === 'number'
+      ? lifetimeBudget
+      : typeof lifetimeBudget === 'string'
+        ? parseFloat(lifetimeBudget)
+        : NaN;
+    const maxLaunchLifetimeBudget = guardrails.launchDailyBudgetUsd * 30;
+    const safeLifetimeBudget = Number.isFinite(lifetimeBudgetNum) && lifetimeBudgetNum > 0
+      ? Math.min(lifetimeBudgetNum, maxLaunchLifetimeBudget)
+      : undefined;
+    const lifetimeBudgetGuardrailChanged =
+      safeLifetimeBudget != null &&
+      Number.isFinite(lifetimeBudgetNum) &&
+      lifetimeBudgetNum > safeLifetimeBudget;
+    const lifetimeBudgetGuardrailReason = lifetimeBudgetGuardrailChanged
+      ? `Launch mode caps lifetime budget at ${maxLaunchLifetimeBudget} USD (30 days at launch daily budget).`
+      : null;
+
     const campaign = await facebookAPI.createCampaign({
       name,
       objective,
       status: status.toUpperCase(),
       special_ad_categories: specialCategories,
       buying_type: buyingType == null ? undefined : String(buyingType),
-      ...(dailyBudget != null ? { daily_budget: Number(dailyBudget) } : {}),
-      ...(lifetimeBudget != null ? { lifetime_budget: Number(lifetimeBudget) } : {}),
+      ...(dailyBudget != null ? { daily_budget: launchDailyBudget.appliedUsd } : {}),
+      ...(safeLifetimeBudget != null ? { lifetime_budget: safeLifetimeBudget } : {}),
       ...(startTime != null ? { start_time: startTime } : {}),
       ...(endTime != null ? { end_time: endTime } : {}),
     });
@@ -234,7 +264,20 @@ export async function POST(request: NextRequest) {
         status: (campaign.status ?? status ?? 'PAUSED').toString().toLowerCase(),
         objective: campaign.objective,
         createdAt: campaign.created_time
-      }
+      },
+      guardrailAdjustments: {
+        changed: launchDailyBudget.changed || lifetimeBudgetGuardrailChanged,
+        dailyBudget: launchDailyBudget,
+        lifetimeBudget:
+          safeLifetimeBudget != null
+            ? {
+                requestedUsd: Number.isFinite(lifetimeBudgetNum) ? lifetimeBudgetNum : null,
+                appliedUsd: safeLifetimeBudget,
+                changed: lifetimeBudgetGuardrailChanged,
+                reasons: lifetimeBudgetGuardrailReason ? [lifetimeBudgetGuardrailReason] : [],
+              }
+            : null,
+      },
     });
   } catch (error) {
     console.error('Error creating campaign:', error);

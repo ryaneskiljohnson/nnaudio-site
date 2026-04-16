@@ -143,11 +143,19 @@ function CheckoutSuccessContent() {
   const sessionId = searchParams.get("session_id");
   const valueParam = searchParams.get("value");
   const currencyParam = searchParams.get("currency");
+  const promotionIdParam = searchParams.get("promotion_id");
+  const planTypeParam = searchParams.get("plan_type");
   const [subscriptionValue, setSubscriptionValue] = useState<number | null>(
     valueParam ? parseFloat(valueParam) : null
   );
   const [subscriptionCurrency, setSubscriptionCurrency] = useState<string>(
     currencyParam || "USD"
+  );
+  const [checkoutPromotionId, setCheckoutPromotionId] = useState<string | null>(
+    () => promotionIdParam?.trim() || null
+  );
+  const [checkoutPlanTier, setCheckoutPlanTier] = useState<string | null>(() =>
+    planTypeParam?.trim() || null
   );
 
   // Ref to track if we've already fired the analytics event
@@ -204,36 +212,65 @@ function CheckoutSuccessContent() {
     refreshByCustomerId();
   }, [sessionId, isLoggedIn, refreshUser]);
 
-  // Track promotion conversion
+  /**
+   * @brief Increments `promotions.conversions` / `revenue` once per Stripe session (sessionStorage).
+   * @note Prefers `promotion_id` from Checkout metadata; otherwise resolves via `/api/promotions/active` and `plan_type` / lifetime.
+   */
   useEffect(() => {
-    const trackPromotionConversion = async () => {
-      // Only track for paid subscriptions and lifetime (not free trials)
-      if (!isTrial && subscriptionValue && subscriptionValue > 0) {
-        try {
-          // Get active promotion
-          const response = await fetch("/api/promotions/active?plan=lifetime");
-          const data = await response.json();
+    if (!sessionId || sessionId === "free-order") return;
+    if (isTrial || !subscriptionValue || subscriptionValue <= 0) return;
 
-          if (data.success && data.promotion) {
-            // Track conversion
-            await fetch("/api/promotions/track", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                promotion_id: data.promotion.id,
-                type: "conversion",
-                value: subscriptionValue,
-              }),
-            });
-          }
-        } catch (error) {
-          console.error("Error tracking promotion conversion:", error);
+    const storageKey = `nnaudio_promo_conversion_tracked:${sessionId}`;
+    if (
+      typeof window !== "undefined" &&
+      window.sessionStorage.getItem(storageKey)
+    ) {
+      return;
+    }
+
+    const run = async () => {
+      try {
+        let promotionId = checkoutPromotionId?.trim() || null;
+
+        if (!promotionId) {
+          const tier =
+            checkoutPlanTier?.trim() || (isLifetime ? "lifetime" : null);
+          const url = tier
+            ? `/api/promotions/active?plan=${encodeURIComponent(tier)}`
+            : "/api/promotions/active";
+          const response = await fetch(url);
+          const data = await response.json();
+          if (!data.success || !data.promotion?.id) return;
+          promotionId = data.promotion.id as string;
         }
+
+        const res = await fetch("/api/promotions/track", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            promotion_id: promotionId,
+            type: "conversion",
+            value: subscriptionValue,
+          }),
+        });
+
+        if (res.ok && typeof window !== "undefined") {
+          window.sessionStorage.setItem(storageKey, "1");
+        }
+      } catch (error) {
+        console.error("Error tracking promotion conversion:", error);
       }
     };
 
-    trackPromotionConversion();
-  }, [isTrial, subscriptionValue]);
+    void run();
+  }, [
+    isTrial,
+    subscriptionValue,
+    sessionId,
+    checkoutPromotionId,
+    checkoutPlanTier,
+    isLifetime,
+  ]);
 
   // Track dataLayer events with user data (with deduplication)
   useEffect(() => {
@@ -387,6 +424,12 @@ function CheckoutSuccessContent() {
           if (data.success && data.value !== null) {
             setSubscriptionValue(data.value);
             setSubscriptionCurrency(data.currency || "USD");
+            if (data.promotion_id) {
+              setCheckoutPromotionId(String(data.promotion_id).trim());
+            }
+            if (data.tier) {
+              setCheckoutPlanTier(String(data.tier).trim());
+            }
 
             if (data.mode === "payment") {
               trackPurchaseConversion(data.value, data.currency || "USD", {

@@ -7,6 +7,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from '../stats/route';
 
+function setNodeEnv(value: string) {
+  (process.env as Record<string, string | undefined>).NODE_ENV = value;
+}
+
 describe('GET /api/facebook-ads/stats', () => {
   const originalEnv = process.env;
 
@@ -18,7 +22,8 @@ describe('GET /api/facebook-ads/stats', () => {
     process.env = originalEnv;
   });
 
-  it('returns 200 and mock stats when FACEBOOK_MOCK_CONNECTION is true', async () => {
+  it('returns 200 and mock stats when mock mode enabled (non-production)', async () => {
+    setNodeEnv('test');
     process.env.FACEBOOK_MOCK_CONNECTION = 'true';
     const request = new NextRequest('http://localhost:3000/api/facebook-ads/stats');
     const response = await GET(request);
@@ -32,7 +37,16 @@ describe('GET /api/facebook-ads/stats', () => {
     expect(data.stats.isDevelopmentMode).toBe(true);
   });
 
+  it('returns 401 in production even if FACEBOOK_MOCK_CONNECTION is true', async () => {
+    setNodeEnv('production');
+    process.env.FACEBOOK_MOCK_CONNECTION = 'true';
+    const request = new NextRequest('http://localhost:3000/api/facebook-ads/stats');
+    const response = await GET(request);
+    expect(response.status).toBe(401);
+  });
+
   it('returns 401 when not mock and no token', async () => {
+    setNodeEnv('test');
     process.env.FACEBOOK_MOCK_CONNECTION = 'false';
     const request = new NextRequest('http://localhost:3000/api/facebook-ads/stats');
     const response = await GET(request);

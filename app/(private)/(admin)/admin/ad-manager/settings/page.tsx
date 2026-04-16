@@ -384,7 +384,6 @@ export default function AdManagerSettingsPage() {
           ...prev.facebook,
           appId: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '',
           adAccountId: process.env.FACEBOOK_AD_ACCOUNT_ID || '',
-          developmentMode: process.env.FACEBOOK_MOCK_CONNECTION === 'true'
         }
       }));
     } catch (error) {

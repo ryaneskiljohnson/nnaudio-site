@@ -483,42 +483,15 @@ interface AdManagerStats {
   averageCPC: number;
 }
 
-const mockCampaigns: Campaign[] = [
-  {
-    id: "1",
-    name: "Cymasphere Launch Campaign",
-    status: "active",
-    platform: "facebook",
-    budget: 1000,
-    spent: 245.50,
-    impressions: 12450,
-    clicks: 312,
-    conversions: 24,
-    createdAt: "2024-01-20"
-  },
-  {
-    id: "2", 
-    name: "Instagram Promotion",
-    status: "paused",
-    platform: "instagram",
-    budget: 500,
-    spent: 89.25,
-    impressions: 5680,
-    clicks: 156,
-    conversions: 8,
-    createdAt: "2024-01-18"
-  }
-];
-
-const mockStats: AdManagerStats = {
-  totalCampaigns: 2,
-  activeCampaigns: 1,
-  totalSpent: 334.75,
-  totalImpressions: 18130,
-  totalClicks: 468,
-  totalConversions: 32,
-  averageCTR: 2.58,
-  averageCPC: 0.72
+const emptyStats: AdManagerStats = {
+  totalCampaigns: 0,
+  activeCampaigns: 0,
+  totalSpent: 0,
+  totalImpressions: 0,
+  totalClicks: 0,
+  totalConversions: 0,
+  averageCTR: 0,
+  averageCPC: 0,
 };
 
 export default function AdManagerPage() {
@@ -530,8 +503,8 @@ export default function AdManagerPage() {
   const [isDevelopmentMode, setIsDevelopmentMode] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
-  const [stats, setStats] = useState<AdManagerStats>(mockStats);
-  const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns);
+  const [stats, setStats] = useState<AdManagerStats>(emptyStats);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 
   useEffect(() => {
     checkFacebookConnection();

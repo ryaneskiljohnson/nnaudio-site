@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,11 +8,7 @@ export async function GET(request: NextRequest) {
     const adSetId = url.searchParams.get('adSetId');
     const campaignId = url.searchParams.get('campaignId');
     
-    // Development mode: return mock ads
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const mockAds = [
         {
           id: "ad_1",
@@ -92,7 +89,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
+    const adAccountId =
+      process.env.FACEBOOK_AD_ACCOUNT_ID ??
+      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
+      null;
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
     const facebookAPI = createFacebookAPI(adAccountId, getToken);
     
@@ -120,11 +120,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Development mode: simulate ad creation
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const body = await request.json();
       
       // Simulate ad creation delay
@@ -155,7 +151,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
+    const adAccountId =
+      process.env.FACEBOOK_AD_ACCOUNT_ID ??
+      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
+      null;
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
     const facebookAPI = createFacebookAPI(adAccountId, getToken);
     

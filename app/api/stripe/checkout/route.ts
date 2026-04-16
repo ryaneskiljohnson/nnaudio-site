@@ -579,6 +579,7 @@ async function createCheckoutSession(
     // Resolve every catalog `products.id` that shares the Stripe product used by this checkout price so
     // promotions still match when env price IDs point at a row different from NEXT_PUBLIC_MEMBERSHIP_PRODUCT_SLUG.
     let hasAutoDiscount = false;
+    let appliedPromotionId: string | undefined;
     try {
       const supabase = await createSupabaseServiceRole();
       const candidateCatalogProductIds = new Set<string>();
@@ -652,6 +653,9 @@ async function createCheckoutSession(
         if (discount) {
           sessionParams.discounts = [discount];
           hasAutoDiscount = true;
+          if (typeof p.id === "string" && p.id) {
+            appliedPromotionId = p.id;
+          }
           console.log(
             `🎁 Auto-applying promotion discount (${discount.coupon ? "coupon" : "promotion_code"}) for ${planType}`
           );
@@ -676,6 +680,13 @@ async function createCheckoutSession(
       }
     } catch (error) {
       console.log("No active promotion for checkout tier:", planType, error);
+    }
+
+    if (appliedPromotionId) {
+      sessionParams.metadata = {
+        ...sessionParams.metadata,
+        promotion_id: appliedPromotionId,
+      };
     }
 
     // Only enable manual promotion codes if we're NOT auto-applying a discount

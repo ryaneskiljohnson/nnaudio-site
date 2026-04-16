@@ -8,8 +8,17 @@
     {
       "path": "/api/review-followups/process",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/admin/growth-ops/process-actions",
+      "schedule": "* * * * *"
     }
   ],
+  "functions": {
+    "app/api/admin/growth-ops/process-actions/route.ts": {
+      "maxDuration": 60
+    }
+  },
   "buildCommand": "bun run verify:barrels && bun run build",
   "installCommand": "bun install --frozen-lockfile",
   "framework": "nextjs"

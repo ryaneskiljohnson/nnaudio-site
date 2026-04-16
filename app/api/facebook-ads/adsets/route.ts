@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
+import { applyDailyBudgetGuardrails, getGrowthGuardrailsFromEnv } from '@/utils/growth/guardrails';
 
 /** Optimization goals that require bid constraints (e.g. roas_average_floor) or bid_amount. Meta returns error 2490487 if sent without them. We do not support these in the UI. */
 const OPTIMIZATION_GOALS_REQUIRING_BID_CONSTRAINTS = ['VALUE', 'LOWEST_COST_WITH_MIN_ROAS'] as const;
 
 /**
- * In development, when Meta createAdSet fails we can return a fallback mock ad set so the UI flow
- * can continue (e.g. create an ad). GET merges these into the list for the campaign.
+ * When `isFacebookAdsMockEnabled()`, GET/POST return demo ad sets (local/tests only; never in production).
  */
 const devFallbackAdSets: Array<{ id: string; name: string; campaignId: string; status: string; budget: number }> = [];
 
@@ -50,11 +51,7 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const campaignId = url.searchParams.get('campaignId');
     
-    // Development mode: return mock ad sets
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const mockAdSets = [
         {
           id: "adset_1",
@@ -118,15 +115,7 @@ export async function GET(request: NextRequest) {
     const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? null;
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
     const token = getToken();
-    if (!token?.trim() || !adAccountId?.trim() || adAccountId === '123456789') {
-      if (isDevelopment && !token) {
-        const mockAdSets = [
-          { id: 'adset_1', name: 'Desktop Users 25-45', campaignId: campaignId || '1', status: 'active', budget: 500, spent: 123.45, impressions: 6225, clicks: 156, conversions: 12, ctr: 2.51, cpc: 0.79, cpm: 19.85, targeting: {}, placements: [], createdAt: '2024-01-20' },
-          { id: 'adset_2', name: 'Mobile Users 18-35', campaignId: campaignId || '1', status: 'active', budget: 300, spent: 67.89, impressions: 3420, clicks: 89, conversions: 7, ctr: 2.60, cpc: 0.76, cpm: 19.85, targeting: {}, placements: [], createdAt: '2024-01-20' },
-        ];
-        const filtered = campaignId ? mockAdSets.filter((a: { campaignId: string }) => a.campaignId === campaignId) : mockAdSets;
-        return NextResponse.json({ success: true, adSets: filtered, isDevelopmentMode: true });
-      }
+    if (!token?.trim() || !adAccountId?.trim()) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads. Connect in Ad Manager → Settings.' }, { status: 401 });
     }
     const facebookAPI = createFacebookAPI(adAccountId, getToken);
@@ -175,11 +164,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Development mode: simulate ad set creation
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const body = await request.json();
       
       // Simulate ad set creation delay
@@ -244,7 +229,15 @@ export async function POST(request: NextRequest) {
     const dailyBudgetNum = typeof rawDailyBudget === 'number' && rawDailyBudget > 0
       ? rawDailyBudget
       : typeof rawDailyBudget === 'string' ? parseFloat(rawDailyBudget) : NaN;
-    const dailyBudget = Number.isFinite(dailyBudgetNum) && dailyBudgetNum > 0 ? dailyBudgetNum : 10;
+    const guardrails = getGrowthGuardrailsFromEnv();
+    const dailyBudgetGuardrail = applyDailyBudgetGuardrails(
+      Number.isFinite(dailyBudgetNum) && dailyBudgetNum > 0
+        ? dailyBudgetNum
+        : guardrails.launchDailyBudgetUsd,
+      guardrails,
+      { mode: 'launch' }
+    );
+    const dailyBudget = dailyBudgetGuardrail.appliedUsd;
     const lifetimeBudgetNum = typeof rawLifetimeBudget === 'number' && rawLifetimeBudget > 0
       ? rawLifetimeBudget
       : typeof rawLifetimeBudget === 'string' ? parseFloat(rawLifetimeBudget) : NaN;
@@ -256,7 +249,7 @@ export async function POST(request: NextRequest) {
     if (!token?.trim()) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads. Connect your account in Ad Manager → Settings.' }, { status: 401 });
     }
-    if (!adAccountId?.trim() || adAccountId === '123456789') {
+    if (!adAccountId?.trim()) {
       return NextResponse.json({ success: false, error: 'No ad account selected. Connect Facebook in Ad Manager → Settings and ensure an ad account is available.' }, { status: 401 });
     }
     const facebookAPI = createFacebookAPI(adAccountId, getToken);
@@ -384,7 +377,11 @@ export async function POST(request: NextRequest) {
         campaignId: adSet.campaign_id,
         status: String(statusStr).toLowerCase(),
         createdAt: adSet.created_time
-      }
+      },
+      guardrailAdjustments: {
+        changed: dailyBudgetGuardrail.changed,
+        dailyBudget: dailyBudgetGuardrail,
+      },
     });
   } catch (error) {
     console.error('Error creating ad set:', error);

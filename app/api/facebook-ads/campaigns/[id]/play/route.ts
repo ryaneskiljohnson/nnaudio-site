@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 
 export async function POST(
   request: NextRequest,
@@ -7,12 +8,8 @@ export async function POST(
 ) {
   try {
     const { id: campaignId } = await params;
-    
-    // Development mode: simulate campaign resume
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+
+    if (isFacebookAdsMockEnabled()) {
       // Simulate resume delay
       await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -25,7 +22,10 @@ export async function POST(
       });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
+    const adAccountId =
+      process.env.FACEBOOK_AD_ACCOUNT_ID ??
+      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
+      null;
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
     const facebookAPI = createFacebookAPI(adAccountId, getToken);
     
