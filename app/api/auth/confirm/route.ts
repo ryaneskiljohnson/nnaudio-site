@@ -9,6 +9,10 @@
  *
  * On successful `email_change` verification, the response is a 302 redirect to
  * `/dashboard` (same as signup/email verification flows handled by this route).
+ *
+ * On failure, redirects to `/login` with `auth_error` so the login page can show
+ * a contextual message (and so unauthenticated users are not sent to a dead-end
+ * error page that drops query params through private-layout redirects).
  */
 
 "use server";
@@ -22,7 +26,7 @@ import { redirect } from "next/navigation";
 /**
  * @brief GET endpoint to confirm email verification or password recovery OTP
  * @param request - Next.js request object containing query parameters
- * @returns Redirect response to dashboard, reset-password, or error page
+ * @returns Redirect response to dashboard, reset-password, or login with auth_error
  *
  * Query parameters:
  * - token_hash: OTP token hash from the email link (required)
@@ -31,7 +35,8 @@ import { redirect } from "next/navigation";
  * Redirects (302):
  * - Success (recovery or invite): /reset-password
  * - Success (other types, including email_change): /dashboard
- * - Missing params or verify failure: /error
+ * - Missing params or verify failure: /login?auth_error=verification_failed
+ * - Verify failure (type email_change): /login?auth_error=email_change_failed
  *
  * @note Requires Supabase "Confirm signup" email template to link to this URL with token_hash and type in the query.
  * @note 100ms delay after verification to ensure session is established before redirect.
@@ -52,7 +57,11 @@ export async function GET(request: NextRequest) {
       }
       redirect("/dashboard");
     }
+
+    if (type === "email_change") {
+      redirect("/login?auth_error=email_change_failed");
+    }
   }
 
-  redirect("/error");
+  redirect("/login?auth_error=verification_failed");
 }

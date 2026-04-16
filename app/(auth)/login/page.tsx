@@ -250,6 +250,37 @@ function Login() {
     }
   }, [languageLoading]);
 
+  /**
+   * @brief Surfaces an inline error when the user arrives via a failed auth redirect
+   * (e.g. expired signup confirmation or email-change link). Cleans the param so the message
+   * does not re-appear. Email-change failures use `/login` so the message survives the private
+   * layout (which only preserves pathname on unauthenticated redirect).
+   */
+  useEffect(() => {
+    const authError = searchParams.get("auth_error");
+    if (authError === "verification_failed") {
+      setError(
+        t(
+          "login.errors.verificationFailed",
+          "The verification link is invalid or has expired. Please try again.",
+        ),
+      );
+    } else if (authError === "email_change_failed") {
+      setError(
+        t(
+          "login.errors.emailChangeFailed",
+          "The email change confirmation link is invalid or has expired. Please log in and try again from Settings.",
+        ),
+      );
+    } else {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("auth_error");
+    window.history.replaceState({}, "", url.toString());
+  }, [searchParams, t]);
+
   // Check if user is already authenticated and redirect them
   useEffect(() => {
     if (auth.user && !auth.loading) {
