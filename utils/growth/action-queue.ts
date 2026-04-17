@@ -67,11 +67,13 @@ export interface GrowthActionExecutionResult {
 }
 
 /**
- * @brief Optional execution-time overrides for Facebook auth/account context.
+ * @brief Optional execution-time overrides for Facebook auth and internal cron fan-out.
  */
 export interface GrowthActionExecutionOptions {
   facebookTokenOverride?: string | null;
   facebookAdAccountIdOverride?: string | null;
+  /** When the growth processor was invoked by Vercel Cron, forward this so nested email cron authorizes. */
+  vercelCronSignature?: string | null;
 }
 
 /**
@@ -110,7 +112,7 @@ export async function executeGrowthAction(
   try {
     switch (action.action_type) {
       case "email_process_scheduled":
-        return executeEmailProcessScheduled(siteBaseUrl);
+        return executeEmailProcessScheduled(siteBaseUrl, options);
       case "facebook_pause_campaign":
         return executeFacebookCampaignStateChange(action, "pause", options);
       case "facebook_resume_campaign":
@@ -136,12 +138,14 @@ export async function executeGrowthAction(
 /**
  * @brief Executes scheduled email processing via existing endpoint.
  * @param siteBaseUrl - Site base URL for internal request.
+ * @param options - Optional `vercelCronSignature` when parent request was Vercel Cron.
  * @returns Execution result with processed count when successful.
  */
 async function executeEmailProcessScheduled(
-  siteBaseUrl: string
+  siteBaseUrl: string,
+  options?: GrowthActionExecutionOptions
 ): Promise<GrowthActionExecutionResult> {
-  const cronSecret = process.env.CRON_SECRET;
+  const cronSecret = process.env.CRON_SECRET?.trim();
   if (!cronSecret) {
     return {
       success: false,
@@ -149,13 +153,19 @@ async function executeEmailProcessScheduled(
     };
   }
 
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${cronSecret}`,
+    "Content-Type": "application/json",
+    "User-Agent": "GrowthActionQueueRunner/1.0",
+  };
+  const sig = options?.vercelCronSignature?.trim();
+  if (sig) {
+    headers["x-vercel-cron-signature"] = sig;
+  }
+
   const response = await fetch(`${siteBaseUrl}/api/email-campaigns/process-scheduled`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${cronSecret}`,
-      "Content-Type": "application/json",
-      "User-Agent": "GrowthActionQueueRunner/1.0",
-    },
+    headers,
   });
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
 

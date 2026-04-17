@@ -62,15 +62,21 @@ async function authorizeProcessor(request: NextRequest) {
 }
 
 /**
- * @brief Resolves site URL for internal queue-triggered API calls.
- * @returns Absolute base URL.
+ * @brief Resolves site URL for internal queue-triggered API calls (e.g. email cron).
+ * @returns Absolute base URL without trailing slash.
+ * @note On Vercel production, prefers `NEXT_PUBLIC_SITE_URL` so nested `fetch` hits the same
+ *   canonical host as operators (custom domain), avoiding deployment-host-only edge cases.
  */
 function resolveSiteBaseUrl(): string {
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "") ?? "";
+  if (process.env.VERCEL_ENV === "production" && site) {
+    return site;
+  }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL;
+  if (site) {
+    return site;
   }
   return "http://localhost:3000";
 }
@@ -328,6 +334,7 @@ export async function POST(request: NextRequest) {
     const seedBaseline = body.seed_baseline !== false;
     const siteBaseUrl = resolveSiteBaseUrl();
     const baselineEnqueued = seedBaseline ? await enqueueBaselineActionsIfEnabled() : 0;
+    const vercelCronSignature = request.headers.get("x-vercel-cron-signature");
     const facebookTokenOverride =
       auth.mode === "admin"
         ? request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null
@@ -338,6 +345,12 @@ export async function POST(request: NextRequest) {
           process.env.FACEBOOK_AD_ACCOUNT_ID ??
           null
         : null;
+
+    const growthExecutionOptions = {
+      facebookTokenOverride,
+      facebookAdAccountIdOverride,
+      vercelCronSignature,
+    };
 
     const readyActions = await fetchReadyActions(batchSize);
     if (readyActions.length === 0) {
@@ -370,10 +383,11 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const execution = await executeGrowthAction(action, siteBaseUrl, {
-        facebookTokenOverride,
-        facebookAdAccountIdOverride,
-      });
+      const execution = await executeGrowthAction(
+        action,
+        siteBaseUrl,
+        growthExecutionOptions
+      );
       if (execution.success) {
         await markActionSucceeded(action.id, execution.output);
         outcomes.push({

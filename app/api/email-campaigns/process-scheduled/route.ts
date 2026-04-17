@@ -158,13 +158,18 @@ export async function POST(request: NextRequest) {
 
   try {
     // Verify the request is authorized (Vercel cron, AWS cron, or manual with secret)
-    const authHeader = request.headers.get("authorization");
-    const vercelSecret = request.headers.get("x-vercel-cron-signature");
-    const cronSecret = process.env.CRON_SECRET || "your-secret-key";
+    const authHeader = request.headers.get("authorization")?.trim() ?? null;
+    const vercelSecret = request.headers.get("x-vercel-cron-signature")?.trim() ?? null;
+    const envCron = (process.env.CRON_SECRET ?? "").trim();
+    const cronSecret =
+      envCron ||
+      (process.env.NODE_ENV === "production" ? "" : "your-secret-key");
 
     // Allow Vercel cron jobs, AWS cron jobs with API key, or manual calls with API key
-    const isVercelCron = !!vercelSecret;
-    const isApiKeyCron = authHeader === `Bearer ${cronSecret}`;
+    const isVercelCron = Boolean(vercelSecret);
+    const isApiKeyCron =
+      Boolean(cronSecret) &&
+      authHeader === `Bearer ${cronSecret}`;
     const isAuthorized = isVercelCron || isApiKeyCron;
 
     if (!isAuthorized) {
@@ -173,7 +178,7 @@ export async function POST(request: NextRequest) {
       );
       console.log(
         "❌ Expected Authorization header:",
-        `Bearer ${cronSecret.slice(0, 8)}...`
+        cronSecret ? `Bearer ${cronSecret.slice(0, 8)}...` : "(none — set CRON_SECRET in production)"
       );
       console.log("❌ Received Authorization header:", authHeader || "none");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
