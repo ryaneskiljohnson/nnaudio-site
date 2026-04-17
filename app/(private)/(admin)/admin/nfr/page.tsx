@@ -33,7 +33,7 @@ import {
   type UserManagementRecord,
 } from "@/app/actions/user-management";
 import {
-  getProductGrantsForEmails,
+  getProductGrantsForUsers,
   getUserProductGrants,
   grantProduct,
   revokeProductGrant,
@@ -41,9 +41,28 @@ import {
 } from "@/app/actions/product-grants";
 
 /**
- * @brief Key for `productGrants` map (normalized email); empty when pre-invite has no email yet.
+ * @brief Whether a grant row belongs to a user_management row (by user_id or email).
+ */
+function grantMatchesRecord(
+  grant: ProductGrant,
+  record: UserManagementRecord
+): boolean {
+  const re = record.user_email?.trim().toLowerCase() ?? "";
+  const ge = grant.user_email?.trim().toLowerCase() ?? "";
+  const rid = record.user_id?.trim();
+  const gid = grant.user_id?.trim() ?? "";
+
+  if (rid && gid && rid === gid) return true;
+  if (re && ge && re === ge) return true;
+  return false;
+}
+
+/**
+ * @brief Key for `productGrants` map: stable `user_id` when set, else normalized email.
  */
 function grantsMapKey(record: UserManagementRecord): string {
+  const uid = record.user_id?.trim();
+  if (uid) return `uid:${uid}`;
   return record.user_email?.trim().toLowerCase() || "";
 }
 
@@ -598,7 +617,9 @@ export default function UserManagementPage() {
     () => records.find((r) => r.id === grantModalRecordId) ?? null,
     [records, grantModalRecordId],
   );
-  const grantMapKey = grantModalRecord?.user_email?.trim().toLowerCase() ?? "";
+  const grantMapKey = grantModalRecord
+    ? grantsMapKey(grantModalRecord)
+    : "";
   const grantDisplayLabel =
     grantModalRecord?.user_email?.trim() || grantModalRecord?.id || "—";
 
@@ -621,23 +642,36 @@ export default function UserManagementPage() {
       });
       setOriginalNotes(original);
 
-      // Fetch product grants only for these NFR emails (avoids loading 100k+ grants)
-      const emails = data
-        .map((r) => r.user_email)
-        .filter((e): e is string => typeof e === "string" && e.trim().length > 0);
-      if (emails.length > 0) {
-        const grantsResult = await getProductGrantsForEmails(emails);
+      // Fetch product grants for these NFR rows (user_id + email; avoids loading 100k+ grants)
+      const userDescriptors = data.map((r) => ({
+        userId: r.user_id ?? null,
+        email: r.user_email ?? null,
+      }));
+      const hasAnyDescriptor = userDescriptors.some(
+        (u) =>
+          (typeof u.userId === "string" && u.userId.trim().length > 0) ||
+          (typeof u.email === "string" && u.email.trim().length > 0)
+      );
+      if (hasAnyDescriptor) {
+        const grantsResult = await getProductGrantsForUsers(userDescriptors);
         if (grantsResult.error) {
           console.error("Error fetching product grants for NFR users:", grantsResult.error);
         } else if (grantsResult.data) {
           const grouped: Record<string, ProductGrant[]> = {};
-          grantsResult.data.forEach((grant) => {
-            const gk =
-              grant.user_email?.trim().toLowerCase() || "";
-            if (!gk) return;
-            if (!grouped[gk]) grouped[gk] = [];
-            grouped[gk].push(grant);
-          });
+          for (const r of data) {
+            grouped[grantsMapKey(r)] = [];
+          }
+          for (const grant of grantsResult.data) {
+            for (const r of data) {
+              if (grantMatchesRecord(grant, r)) {
+                const k = grantsMapKey(r);
+                if (!grouped[k]) grouped[k] = [];
+                if (!grouped[k].some((g) => g.id === grant.id)) {
+                  grouped[k].push(grant);
+                }
+              }
+            }
+          }
           setProductGrants(grouped);
         }
       } else {

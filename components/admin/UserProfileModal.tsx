@@ -21,7 +21,7 @@ import {
   getCustomerInvoicesAdmin,
   getUserSupportTicketsAdmin,
 } from "@/app/actions/user-management";
-import { getProductGrantsForEmails } from "@/app/actions/product-grants";
+import { getProductGrantsForUsers } from "@/app/actions/product-grants";
 import type { ProductGrant } from "@/app/actions/product-grants";
 import { getCustomerSubscriptions } from "@/utils/stripe/actions";
 import { updateUserProStatus } from "@/utils/subscriptions/check-subscription";
@@ -578,29 +578,35 @@ export default function UserProfileModal({
   const [userOrders, setUserOrders] = useState<AdminUserOrderRow[]>([]);
   const [loadingUserOrders, setLoadingUserOrders] = useState(false);
 
-  const fetchUserProductGrants = useCallback(async (userEmail: string) => {
-    if (!userEmail?.trim()) {
-      setUserProductGrants([]);
-      return;
-    }
-    try {
-      setLoadingProductGrants(true);
-      const { data, error } = await getProductGrantsForEmails([
-        userEmail.trim().toLowerCase(),
-      ]);
-      if (error) {
+  const fetchUserProductGrants = useCallback(
+    async (args: { userId: string; email?: string | null }) => {
+      if (!args.userId?.trim()) {
+        setUserProductGrants([]);
+        return;
+      }
+      try {
+        setLoadingProductGrants(true);
+        const { data, error } = await getProductGrantsForUsers([
+          {
+            userId: args.userId.trim(),
+            email: args.email?.trim() ? args.email.trim().toLowerCase() : null,
+          },
+        ]);
+        if (error) {
+          console.error("Error fetching product grants:", error);
+          setUserProductGrants([]);
+        } else {
+          setUserProductGrants(data ?? []);
+        }
+      } catch (error) {
         console.error("Error fetching product grants:", error);
         setUserProductGrants([]);
-      } else {
-        setUserProductGrants(data ?? []);
+      } finally {
+        setLoadingProductGrants(false);
       }
-    } catch (error) {
-      console.error("Error fetching product grants:", error);
-      setUserProductGrants([]);
-    } finally {
-      setLoadingProductGrants(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   const fetchUserSubscriptions = useCallback(async (customerId: string) => {
     try {
@@ -755,8 +761,11 @@ export default function UserProfileModal({
       setUserOrders([]);
       setHasPaymentMethod(null);
 
-      if (user.email) {
-        fetchUserProductGrants(user.email);
+      if (user.id) {
+        fetchUserProductGrants({
+          userId: user.id,
+          email: user.email ?? null,
+        });
       }
       if (user.customerId) {
         fetchUserSubscriptions(user.customerId);
