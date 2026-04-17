@@ -4,6 +4,17 @@ import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 import type { FacebookCampaign } from '@/utils/facebook/api';
 import { applyDailyBudgetGuardrails, getGrowthGuardrailsFromEnv } from '@/utils/growth/guardrails';
 
+function resolveFacebookContext(request: NextRequest) {
+  const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
+  const envToken = process.env.FACEBOOK_SYSTEM_USER_TOKEN?.trim() ?? null;
+  const token = cookieToken || envToken;
+  const adAccountId =
+    request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value?.trim() ??
+    process.env.FACEBOOK_AD_ACCOUNT_ID?.trim() ??
+    null;
+  return { token, adAccountId };
+}
+
 /**
  * Format Meta/API date for datetime-local input (YYYY-MM-DDTHH:mm).
  * Handles ISO 8601, date-only, and Unix timestamp (seconds or ms).
@@ -168,12 +179,8 @@ export async function GET(
       });
     }
 
-    const adAccountId =
-      process.env.FACEBOOK_AD_ACCOUNT_ID ??
-      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
-      null;
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const { token, adAccountId } = resolveFacebookContext(request);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     
     if (!facebookAPI) {
       return NextResponse.json({
@@ -257,12 +264,8 @@ export async function PUT(
       });
     }
 
-    const adAccountId =
-      process.env.FACEBOOK_AD_ACCOUNT_ID ??
-      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
-      null;
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const { token, adAccountId } = resolveFacebookContext(request);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     
     if (!facebookAPI) {
       return NextResponse.json({
@@ -391,12 +394,8 @@ export async function DELETE(
       });
     }
 
-    const adAccountId =
-      process.env.FACEBOOK_AD_ACCOUNT_ID ??
-      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
-      null;
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const { token, adAccountId } = resolveFacebookContext(request);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     
     if (!facebookAPI) {
       return NextResponse.json({

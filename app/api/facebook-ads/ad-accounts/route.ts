@@ -12,8 +12,10 @@ import { createFacebookAPITokenOnly, FACEBOOK_TOKEN_COOKIE_NAME } from '@/utils/
  */
 export async function GET(request: NextRequest) {
   try {
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPITokenOnly(getToken);
+    const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
+    const envToken = process.env.FACEBOOK_SYSTEM_USER_TOKEN?.trim() ?? null;
+    const token = cookieToken || envToken;
+    const facebookAPI = createFacebookAPITokenOnly(() => token);
 
     if (!facebookAPI) {
       return NextResponse.json({
@@ -23,7 +25,25 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
-    const adAccounts = await facebookAPI.getAdAccounts();
+    let adAccounts = await facebookAPI.getAdAccounts().catch(() => []);
+    if (
+      (!Array.isArray(adAccounts) || adAccounts.length === 0) &&
+      process.env.FACEBOOK_AD_ACCOUNT_ID
+    ) {
+      const id = String(process.env.FACEBOOK_AD_ACCOUNT_ID).replace(/^act_/, '').trim();
+      if (id) {
+        adAccounts = [
+          {
+            id: `act_${id}`,
+            account_id: id,
+            name: `Ad Account ${id}`,
+            currency: 'USD',
+            account_status: 1,
+            timezone_name: '',
+          } as any,
+        ];
+      }
+    }
     return NextResponse.json({
       success: true,
       adAccounts: adAccounts.map((a) => ({

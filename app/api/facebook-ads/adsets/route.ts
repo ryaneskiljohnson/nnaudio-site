@@ -1,7 +1,12 @@
+/**
+ * @fileoverview Facebook Ads ad-sets API route. Supports listing and creating ad sets with auth checks, guardrails, and Meta-specific compatibility handling.
+ * @module app/api/facebook-ads/adsets/route
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
 import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 import { applyDailyBudgetGuardrails, getGrowthGuardrailsFromEnv } from '@/utils/growth/guardrails';
+import { createClient } from '@/utils/supabase/server';
 
 /** Optimization goals that require bid constraints (e.g. roas_average_floor) or bid_amount. Meta returns error 2490487 if sent without them. We do not support these in the UI. */
 const OPTIMIZATION_GOALS_REQUIRING_BID_CONSTRAINTS = ['VALUE', 'LOWEST_COST_WITH_MIN_ROAS'] as const;
@@ -10,6 +15,46 @@ const OPTIMIZATION_GOALS_REQUIRING_BID_CONSTRAINTS = ['VALUE', 'LOWEST_COST_WITH
  * When `isFacebookAdsMockEnabled()`, GET/POST return demo ad sets (local/tests only; never in production).
  */
 const devFallbackAdSets: Array<{ id: string; name: string; campaignId: string; status: string; budget: number }> = [];
+
+async function requireAdmin() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+  const { data: adminCheck } = await supabase
+    .from('admins')
+    .select('id')
+    .eq('user', user.id)
+    .single();
+  if (!adminCheck) {
+    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+  }
+  return null;
+}
+
+function resolveFacebookContext(request: NextRequest) {
+  const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
+  const envToken = process.env.FACEBOOK_SYSTEM_USER_TOKEN?.trim() ?? null;
+  const token = cookieToken || envToken;
+  const adAccountId =
+    request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value?.trim() ??
+    process.env.FACEBOOK_AD_ACCOUNT_ID?.trim() ??
+    null;
+  return { token, adAccountId };
+}
+
+/**
+ * @brief Normalizes a Meta identifier for resilient comparisons.
+ * @param id Raw Meta identifier (e.g., "act_123", "123", or undefined).
+ * @returns A trimmed ID with `act_` prefix removed when present.
+ * @note Some API surfaces return account/campaign IDs with prefixes while others return plain numeric strings.
+ */
+function normalizeMetaId(id?: string | null): string {
+  return String(id ?? '').trim().replace(/^act_/i, '');
+}
 
 /** Normalize a raw Meta ad set for list/UI: id, name, campaignId, budget, optimization_goal, targeting summary. */
 function normalizeAdSet(raw: {
@@ -48,6 +93,11 @@ function normalizeAdSet(raw: {
 
 export async function GET(request: NextRequest) {
   try {
+    const authError = await requireAdmin();
+    if (authError) {
+      return authError;
+    }
+
     const url = new URL(request.url);
     const campaignId = url.searchParams.get('campaignId');
     
@@ -112,20 +162,20 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? null;
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const token = getToken();
+    const { token, adAccountId } = resolveFacebookContext(request);
     if (!token?.trim() || !adAccountId?.trim()) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads. Connect in Ad Manager → Settings.' }, { status: 401 });
     }
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     if (!facebookAPI) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads' }, { status: 401 });
     }
 
     let rawAdSets: Array<{ id: string; name?: string; campaign_id?: string; daily_budget?: string; lifetime_budget?: string; status?: string }>;
     try {
-      const data = await facebookAPI.getAdSets(campaignId || undefined);
+      // Always fetch from account scope and filter locally. Meta's campaign edge can
+      // intermittently omit paused/new ad sets, which breaks create-ad selection.
+      const data = await facebookAPI.getAdSets();
       rawAdSets = Array.isArray(data) ? data : [];
     } catch (apiError) {
       console.error('Facebook API getAdSets failed:', apiError);
@@ -136,6 +186,10 @@ export async function GET(request: NextRequest) {
     }
 
     let adSets = Array.isArray(rawAdSets) ? rawAdSets.map(normalizeAdSet) : [];
+    if (campaignId) {
+      const campaignIdNorm = normalizeMetaId(campaignId);
+      adSets = adSets.filter((adSet) => normalizeMetaId(adSet.campaignId) === campaignIdNorm);
+    }
     if (process.env.NODE_ENV === 'development' && devFallbackAdSets.length > 0) {
       const forCampaign = campaignId
         ? devFallbackAdSets.filter((a) => a.campaignId === campaignId)
@@ -164,6 +218,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAdmin();
+    if (authError) {
+      return authError;
+    }
+
     if (isFacebookAdsMockEnabled()) {
       const body = await request.json();
       
@@ -243,16 +302,14 @@ export async function POST(request: NextRequest) {
       : typeof rawLifetimeBudget === 'string' ? parseFloat(rawLifetimeBudget) : NaN;
     const useLifetimeBudget = Number.isFinite(lifetimeBudgetNum) && lifetimeBudgetNum > 0;
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? null;
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const token = getToken();
+    const { token, adAccountId } = resolveFacebookContext(request);
     if (!token?.trim()) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads. Connect your account in Ad Manager → Settings.' }, { status: 401 });
     }
     if (!adAccountId?.trim()) {
       return NextResponse.json({ success: false, error: 'No ad account selected. Connect Facebook in Ad Manager → Settings and ensure an ad account is available.' }, { status: 401 });
     }
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     if (!facebookAPI) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads. Connect your account in Ad Manager → Settings.' }, { status: 401 });
     }
@@ -276,24 +333,6 @@ export async function POST(request: NextRequest) {
         const cents = parseInt(db, 10);
         if (Number.isFinite(cents)) campaignDailyBudgetDollars = cents / 100;
       }
-      /* Campaign-level budget (CBO) forces constraints Meta can't fulfil for new accounts at low budgets.
-         Meta does not allow removing CBO via the API once set. The only fix is to delete this campaign and
-         create a new one without a campaign-level budget, then set budget per ad set (e.g. $15/day). */
-      if (campaignHasBudget) {
-        return NextResponse.json({
-          success: false,
-          error: `This campaign has a campaign-level budget (Campaign Budget Optimization / CBO) of $${campaignDailyBudgetDollars ?? 0}/day. Meta requires CBO campaigns to have at least ~$200 total budget and enforces bid strategy rules that new ad accounts cannot use. Meta does not allow removing CBO via API.\n\nTo fix: delete this campaign and create a new one — leave the Campaign Budget field empty when creating it. Then create your ad sets each with their own $15/day budget. No CBO = no restrictions.`,
-        }, { status: 400 });
-      }
-      /* Campaign bid strategies that require each ad set to send bid_amount. We don't support that here, so block and explain. */
-      const campaignBidStrategy = (campaign as { bid_strategy?: string })?.bid_strategy?.toUpperCase?.();
-      const BID_STRATEGIES_REQUIRING_BID_AMOUNT = ['LOWEST_COST_WITH_BID_CAP', 'COST_CAP', 'TARGET_COST'];
-      if (campaignBidStrategy && BID_STRATEGIES_REQUIRING_BID_AMOUNT.includes(campaignBidStrategy)) {
-        return NextResponse.json({
-          success: false,
-          error: 'Bid amount or bid constraints required: This campaign uses a bid strategy (bid cap or target cost) that requires every ad set to set a bid amount. That isn\'t configurable in this flow.\n\nUse a campaign that uses "Lowest cost" without a cap, or create and set the bid in Meta Ads Manager.',
-        }, { status: 400 });
-      }
     } catch (_) {
       specialAdCategories = ['NONE'];
     }
@@ -301,42 +340,83 @@ export async function POST(request: NextRequest) {
       specialAdCategories = ['NONE'];
     }
 
-    let adSet;
-    try {
-      adSet = await facebookAPI.createAdSet({
-        name,
-        campaign_id: campaignId,
-        status: String(status).toUpperCase(),
-        targeting: targetingPayload,
-        optimization_goal: optimizationGoal || 'LINK_CLICKS',
-        billing_event: billingEvent || 'LINK_CLICKS',
-        special_ad_categories: specialAdCategories,
-        campaign_has_budget: campaignHasBudget,
-        campaign_daily_budget_dollars: campaignDailyBudgetDollars,
-        ...(campaignHasBudget
+    const baseAdSetPayload = {
+      name,
+      campaign_id: campaignId,
+      status: String(status).toUpperCase(),
+      targeting: targetingPayload,
+      optimization_goal: optimizationGoal || 'LINK_CLICKS',
+      billing_event: billingEvent || 'LINK_CLICKS',
+      special_ad_categories: specialAdCategories,
+      campaign_has_budget: campaignHasBudget,
+      campaign_daily_budget_dollars: campaignDailyBudgetDollars,
+      ...(campaignHasBudget
+        ? {
+            start_time: startTime && String(startTime).trim() ? String(startTime).trim() : undefined,
+            end_time: endTime && String(endTime).trim() ? String(endTime).trim() : undefined,
+          }
+        : useLifetimeBudget
           ? {
+              lifetime_budget: lifetimeBudgetNum!,
               start_time: startTime && String(startTime).trim() ? String(startTime).trim() : undefined,
               end_time: endTime && String(endTime).trim() ? String(endTime).trim() : undefined,
             }
-          : useLifetimeBudget
-            ? {
-                lifetime_budget: lifetimeBudgetNum!,
-                start_time: startTime && String(startTime).trim() ? String(startTime).trim() : undefined,
-                end_time: endTime && String(endTime).trim() ? String(endTime).trim() : undefined,
-              }
-            : {
-                daily_budget: dailyBudget,
-                start_time: startTime && String(startTime).trim() ? String(startTime).trim() : undefined,
-                end_time: endTime && String(endTime).trim() ? String(endTime).trim() : undefined,
-              }
-        ),
-      });
+          : {
+              daily_budget: dailyBudget,
+              start_time: startTime && String(startTime).trim() ? String(startTime).trim() : undefined,
+              end_time: endTime && String(endTime).trim() ? String(endTime).trim() : undefined,
+            }
+      ),
+    };
+
+    let adSet;
+    let createdWithBidFallback = false;
+    try {
+      adSet = await facebookAPI.createAdSet(baseAdSetPayload);
     } catch (apiError) {
+      const firstErr = apiError as Error & { metaCode?: number; metaData?: { error_subcode?: number } };
+      const firstSubcode = firstErr?.metaData?.error_subcode ?? (firstErr?.metaData as any)?.error_subcode;
+
+      if (firstSubcode === 2490487) {
+        try {
+          // Some Meta campaigns demand explicit bid constraints; retry once with a conservative bid cap.
+          adSet = await facebookAPI.createAdSet({
+            ...baseAdSetPayload,
+            bid_strategy: 'LOWEST_COST_WITH_BID_CAP',
+            bid_amount: 100,
+          });
+          createdWithBidFallback = true;
+        } catch (retryError) {
+          apiError = retryError;
+        }
+      }
+
+      if (adSet != null) {
+        const statusStr = (adSet as { status?: string }).status ?? status ?? 'PAUSED';
+        return NextResponse.json({
+          success: true,
+          adSet: {
+            id: adSet.id,
+            name: adSet.name,
+            campaignId: adSet.campaign_id,
+            status: String(statusStr).toLowerCase(),
+            createdAt: adSet.created_time
+          },
+          guardrailAdjustments: {
+            changed: dailyBudgetGuardrail.changed,
+            dailyBudget: dailyBudgetGuardrail,
+          },
+          fallbackApplied: createdWithBidFallback
+            ? { bid_strategy: 'LOWEST_COST_WITH_BID_CAP', bid_amount: 100 }
+            : undefined,
+        });
+      }
+
       const err = apiError as Error & { metaCode?: number; metaData?: { error_subcode?: number } };
       let message = err?.message ?? 'Create ad set failed';
       const subcode = err?.metaData?.error_subcode ?? (err?.metaData as any)?.error_subcode;
       if (subcode === 2490487) {
-        message = 'Bid amount or bid constraints required: Meta expects a bid cap or ROAS settings for this campaign, which aren\'t supported here.\n\nTry: (1) Use a campaign created here with "Ad set level" budget and no bid cap, or (2) Set optimization goal to "Link clicks" instead of "Conversions", or (3) Create the ad set in Meta Ads Manager and set the bid there.';
+        message = 'Bid amount or bid constraints required: Meta rejected this ad set even after an automatic bid-cap retry.\n\nTry one of these in the form: (1) Optimization goal = Link clicks, Billing event = Link clicks, (2) Use a different campaign objective, or (3) Create once in Meta Ads Manager, then manage here.';
       } else if (subcode === 2446404) {
         message = 'Billing option not available: Your ad account is new to Facebook Products. Some billing and bid options are only available after your account has followed Meta\'s policies for several weeks.\n\nCreate this ad set in Meta Ads Manager (ads.facebook.com) for now, or try again later once your account is eligible.';
       }

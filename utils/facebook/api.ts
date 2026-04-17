@@ -707,7 +707,24 @@ export class FacebookAdsAPI {
     });
     const result = await response.json();
     if (!response.ok) {
-      throw new Error((result as any).error?.message || `Create creative failed: ${response.status}`);
+      const err = (result as any)?.error;
+      const message =
+        err?.error_user_msg ||
+        err?.error_user_title ||
+        err?.message ||
+        (err?.error_data ? `Meta error: ${JSON.stringify(err.error_data)}` : null) ||
+        `Create creative failed (${err?.code ?? response.status})`;
+      const e = new Error(message) as Error & {
+        metaCode?: number;
+        metaSubcode?: number;
+        metaData?: unknown;
+        statusCode?: number;
+      };
+      e.metaCode = err?.code;
+      e.metaSubcode = err?.error_subcode;
+      e.metaData = err?.error_data ?? err;
+      e.statusCode = response.status;
+      throw e;
     }
     const id = (result as any).id;
     if (!id) throw new Error('No creative id in response');

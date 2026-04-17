@@ -2,9 +2,45 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, CAMPAIGN_OBJECTIVES, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
 import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 import { applyDailyBudgetGuardrails, getGrowthGuardrailsFromEnv } from '@/utils/growth/guardrails';
+import { createClient } from '@/utils/supabase/server';
+
+async function requireAdmin() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+  const { data: adminCheck } = await supabase
+    .from('admins')
+    .select('id')
+    .eq('user', user.id)
+    .single();
+  if (!adminCheck) {
+    return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+  }
+  return null;
+}
+
+function resolveFacebookContext(request: NextRequest) {
+  const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
+  const envToken = process.env.FACEBOOK_SYSTEM_USER_TOKEN?.trim() ?? null;
+  const token = cookieToken || envToken;
+  const adAccountId =
+    request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value?.trim() ??
+    process.env.FACEBOOK_AD_ACCOUNT_ID?.trim() ??
+    null;
+  return { token, adAccountId };
+}
 
 export async function GET(request: NextRequest) {
   try {
+    const authError = await requireAdmin();
+    if (authError) {
+      return authError;
+    }
+
     if (isFacebookAdsMockEnabled()) {
       const mockCampaigns = [
         {
@@ -70,12 +106,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const adAccountId =
-      process.env.FACEBOOK_AD_ACCOUNT_ID ??
-      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
-      null;
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const { token, adAccountId } = resolveFacebookContext(request);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     
     if (!facebookAPI) {
       return NextResponse.json({
@@ -129,6 +161,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAdmin();
+    if (authError) {
+      return authError;
+    }
+
     if (isFacebookAdsMockEnabled()) {
       const body = await request.json();
       
@@ -162,12 +199,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const adAccountId =
-      process.env.FACEBOOK_AD_ACCOUNT_ID ??
-      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
-      null;
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const { token, adAccountId } = resolveFacebookContext(request);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     
     if (!facebookAPI) {
       return NextResponse.json({

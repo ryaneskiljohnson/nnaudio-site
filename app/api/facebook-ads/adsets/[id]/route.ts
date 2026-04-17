@@ -8,6 +8,17 @@ import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOK
 import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 import { applyDailyBudgetGuardrails, getGrowthGuardrailsFromEnv } from '@/utils/growth/guardrails';
 
+function resolveFacebookContext(request: NextRequest) {
+  const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
+  const envToken = process.env.FACEBOOK_SYSTEM_USER_TOKEN?.trim() ?? null;
+  const token = cookieToken || envToken;
+  const adAccountId =
+    request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value?.trim() ??
+    process.env.FACEBOOK_AD_ACCOUNT_ID?.trim() ??
+    null;
+  return { token, adAccountId };
+}
+
 /** Optimization goals that require bid constraints (Meta error 2490487). We do not support them in the UI. */
 const OPTIMIZATION_GOALS_REQUIRING_BID_CONSTRAINTS = ['VALUE', 'LOWEST_COST_WITH_MIN_ROAS'] as const;
 
@@ -51,12 +62,8 @@ export async function GET(
       return NextResponse.json({ success: true, adSet, isDevelopmentMode: true });
     }
 
-    const adAccountId =
-      process.env.FACEBOOK_AD_ACCOUNT_ID ??
-      _request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
-      null;
-    const getToken = () => _request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const { token, adAccountId } = resolveFacebookContext(_request);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     if (!facebookAPI) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads' }, { status: 401 });
     }
@@ -100,12 +107,8 @@ export async function PUT(
       return NextResponse.json({ success: true, adSet, isDevelopmentMode: true });
     }
 
-    const adAccountId =
-      process.env.FACEBOOK_AD_ACCOUNT_ID ??
-      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
-      null;
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const { token, adAccountId } = resolveFacebookContext(request);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     if (!facebookAPI) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads' }, { status: 401 });
     }
@@ -189,12 +192,8 @@ export async function DELETE(
       return NextResponse.json({ success: true, message: 'Ad set deleted (Development Mode)', isDevelopmentMode: true });
     }
 
-    const adAccountId =
-      process.env.FACEBOOK_AD_ACCOUNT_ID ??
-      _request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
-      null;
-    const getToken = () => _request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const { token, adAccountId } = resolveFacebookContext(_request);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     if (!facebookAPI) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads' }, { status: 401 });
     }

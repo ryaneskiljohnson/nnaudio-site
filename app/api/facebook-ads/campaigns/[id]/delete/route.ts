@@ -21,12 +21,14 @@ export async function POST(
       });
     }
 
+    const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
+    const envToken = process.env.FACEBOOK_SYSTEM_USER_TOKEN?.trim() ?? null;
+    const token = cookieToken || envToken;
     const adAccountId =
-      process.env.FACEBOOK_AD_ACCOUNT_ID ??
-      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ??
+      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value?.trim() ??
+      process.env.FACEBOOK_AD_ACCOUNT_ID?.trim() ??
       null;
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     
     if (!facebookAPI) {
       return NextResponse.json({
