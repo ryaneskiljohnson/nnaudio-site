@@ -39,6 +39,7 @@ import {
   revokeProductGrant,
   type ProductGrant,
 } from "@/app/actions/product-grants";
+import { normalizeEmailForGrantLookup } from "@/utils/supabase/email-grant-normalize";
 
 /**
  * @brief Whether a grant row belongs to a user_management row (by user_id or email).
@@ -47,8 +48,8 @@ function grantMatchesRecord(
   grant: ProductGrant,
   record: UserManagementRecord
 ): boolean {
-  const re = record.user_email?.trim().toLowerCase() ?? "";
-  const ge = grant.user_email?.trim().toLowerCase() ?? "";
+  const re = normalizeEmailForGrantLookup(record.user_email ?? "");
+  const ge = normalizeEmailForGrantLookup(grant.user_email ?? "");
   const rid = record.user_id?.trim();
   const gid = grant.user_id?.trim() ?? "";
 
@@ -63,7 +64,7 @@ function grantMatchesRecord(
 function grantsMapKey(record: UserManagementRecord): string {
   const uid = record.user_id?.trim();
   if (uid) return `uid:${uid}`;
-  return record.user_email?.trim().toLowerCase() || "";
+  return normalizeEmailForGrantLookup(record.user_email ?? "");
 }
 
 const Container = styled.div`
