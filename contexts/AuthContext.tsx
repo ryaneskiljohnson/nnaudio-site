@@ -197,6 +197,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               subscription_source: null,
               trial_expiration: null,
               last_stripe_api_check: null,
+              nnaudio_access_installer_macos_at: null,
+              nnaudio_access_installer_windows_at: null,
               avatar_url: null,
               updated_at: new Date().toISOString(),
             };
