@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 
 export async function GET(request: NextRequest) {
   try {
-    // Development mode: mock connection if Facebook app is not ready
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       // Simulate successful connection and redirect back to ad manager
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/admin/ad-manager?connected=true&mock=true`);
     }

@@ -1,5 +1,6 @@
 /**
- * Environment variables checker for debugging deployment issues
+ * @fileoverview Environment variable checks for deployment and automation readiness.
+ * @module utils/env-check
  */
 
 export const checkEnvironmentVariables = () => {
@@ -67,5 +68,38 @@ export const logEmailEnvStatus = () => {
   for (const [name, kind] of vars) {
     const set = !!process.env[name];
     console.log(`  ${name}: ${set ? 'SET' : 'MISSING'} (${kind})`);
+  }
+};
+
+/** Growth automation env check for conservative AI-led ad execution. */
+export const logGrowthEnvStatus = () => {
+  const vars: [string, string][] = [
+    ["FACEBOOK_APP_ID", "required"],
+    ["FACEBOOK_APP_SECRET", "required"],
+    ["FACEBOOK_AD_ACCOUNT_ID", "required"],
+    ["FACEBOOK_SYSTEM_USER_TOKEN", "required for autonomous Meta queue actions"],
+    ["SENDGRID_API_KEY", "required"],
+    ["CRON_SECRET", "required"],
+    ["SUPABASE_SERVICE_ROLE_KEY", "required"],
+    ["NEXT_PUBLIC_META_PIXEL_ID", "recommended"],
+    ["META_CONVERSIONS_API_TOKEN", "recommended"],
+    ["NEXT_PUBLIC_GTM_ID", "recommended"],
+    ["AI_GROWTH_LAUNCH_DAILY_BUDGET_USD", "optional override"],
+    ["AI_GROWTH_MAX_DAILY_BUDGET_PER_CAMPAIGN_USD", "optional override"],
+    ["AI_GROWTH_MAX_DAILY_BUDGET_INCREASE_PCT", "optional override"],
+    ["AI_GROWTH_MIN_CONVERSIONS_BEFORE_SCALE", "optional override"],
+    ["AI_GROWTH_MIN_ROAS_BEFORE_SCALE", "optional override"],
+    ["AI_GROWTH_MAX_CPA_USD", "optional override"],
+    ["AI_GROWTH_AUTO_ENQUEUE_BASELINE", "optional override (default true)"],
+    ["AI_GROWTH_AUTO_ENQUEUE_GUARDRAIL_SWEEP", "optional override (default true)"],
+    ["AI_GROWTH_AUTO_ENQUEUE_SCALE", "optional override (default true)"],
+    ["AI_GROWTH_GUARDRAIL_SWEEP_INTERVAL_MINUTES", "optional override (default 15)"],
+    ["FACEBOOK_MOCK_CONNECTION", "optional local test mode for autonomous Meta actions"],
+  ];
+
+  console.log("Growth automation env:");
+  for (const [name, kind] of vars) {
+    const set = !!process.env[name];
+    console.log(`  ${name}: ${set ? "SET" : "MISSING"} (${kind})`);
   }
 };

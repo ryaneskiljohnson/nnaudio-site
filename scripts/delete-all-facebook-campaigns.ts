@@ -7,15 +7,15 @@
  */
 import { config } from 'dotenv';
 import { createFacebookAPI } from '../utils/facebook/api';
+import { isFacebookAdsMockEnabled } from '../utils/facebook/mock-mode';
 
 config({ path: '.env.local' });
 
 async function main() {
-  const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
   const token = process.env.FACEBOOK_ACCESS_TOKEN ?? null;
   const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? null;
 
-  if (mockConnection) {
+  if (isFacebookAdsMockEnabled()) {
     console.log('FACEBOOK_MOCK_CONNECTION is true. No live API calls; nothing to delete.');
     process.exit(0);
   }

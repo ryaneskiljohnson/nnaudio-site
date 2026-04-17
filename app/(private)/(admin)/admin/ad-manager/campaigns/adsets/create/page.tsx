@@ -110,6 +110,7 @@ export default function CreateAdSetSelectCampaignPage() {
   const { user } = useAuth();
   const [campaigns, setCampaigns] = useState<Array<{ id: string; name: string; status?: string }>>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/facebook-ads/campaigns")
@@ -123,9 +124,13 @@ export default function CreateAdSetSelectCampaignPage() {
               status: c.status,
             }))
           );
+        } else {
+          setFetchError(data.error || "Failed to load campaigns");
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        setFetchError("Failed to load campaigns");
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -148,6 +153,13 @@ export default function CreateAdSetSelectCampaignPage() {
 
       {loading ? (
         <LoadingComponent />
+      ) : fetchError ? (
+        <EmptyState>
+          <p>{fetchError}</p>
+          <p style={{ marginTop: "0.75rem" }}>
+            If Facebook is connected, refresh this page. If not, reconnect in Ad Manager settings.
+          </p>
+        </EmptyState>
       ) : campaigns.length === 0 ? (
         <EmptyState>
           <p>No campaigns yet. Create a campaign first, then you can add ad sets.</p>

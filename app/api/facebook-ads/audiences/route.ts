@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 
 interface AudienceCreateBody {
   name: string;
@@ -20,8 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Audience name is required' }, { status: 400 });
     }
 
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    if (mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const mockAudience = {
         id: `mock_audience_${Date.now()}`,
         name,
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? null;
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId ?? '0', getToken);
+    const facebookAPI = createFacebookAPI(adAccountId, getToken);
 
     if (!facebookAPI) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads' }, { status: 401 });
@@ -68,9 +68,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-
-    if (mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const mockAudiences = [
         { id: '1', name: 'Music Producers 25-35', description: 'Producers 25-35', approximate_count: 45000 },
         { id: '2', name: 'Lookalike - Existing Customers', description: 'Lookalike', approximate_count: 2100000 }
@@ -80,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? null;
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId ?? '0', getToken);
+    const facebookAPI = createFacebookAPI(adAccountId, getToken);
 
     if (!facebookAPI) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads' }, { status: 401 });

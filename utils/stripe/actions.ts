@@ -414,6 +414,10 @@ export async function getCheckoutSessionResult(sessionId: string): Promise<{
   hasTrialPeriod?: boolean;
   subscription?: Stripe.Subscription | string;
   metadata?: Record<string, string>;
+  /** @brief Session `amount_total` in cents (Checkout), when present. */
+  amountTotal?: number | null;
+  /** @brief Session currency (lowercase ISO). */
+  currency?: string | null;
   error?: string;
 }> {
   try {
@@ -472,6 +476,8 @@ export async function getCheckoutSessionResult(sessionId: string): Promise<{
       hasTrialPeriod,
       subscription,
       metadata: session.metadata || undefined,
+      amountTotal: session.amount_total ?? null,
+      currency: session.currency ?? null,
     };
   } catch (error) {
     console.error("Error fetching checkout session:", error);

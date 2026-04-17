@@ -270,7 +270,7 @@ export async function getSubscribers(
       });
     }
 
-    // Transform subscribers to include names, mock engagement data, and audience counts
+    // Transform subscribers to include names, audience counts; opens/clicks reserved for real campaign stats
     const transformedSubscribers = (subscribers || []).map((subscriber) => {
       const profile = profilesMap.get(subscriber.user_id) || {};
       const firstName = profile.first_name || '';
@@ -289,11 +289,10 @@ export async function getSubscribers(
         status: subscriber.status || 'active',
         subscribeDate: subscriber.created_at || new Date().toISOString(),
         lastActivity: subscriber.created_at || new Date().toISOString(),
-        engagement:
-          Math.random() > 0.5 ? 'High' : Math.random() > 0.5 ? 'Medium' : 'Low',
-        totalOpens: Math.floor(Math.random() * 50),
-        totalClicks: Math.floor(Math.random() * 20),
-        tags: ['Email', 'Newsletter'],
+        engagement: '',
+        totalOpens: 0,
+        totalClicks: 0,
+        tags: [] as string[],
         audienceCount: audienceCountsMap.get(subscriber.id) || 0,
       };
     });

@@ -707,7 +707,24 @@ export class FacebookAdsAPI {
     });
     const result = await response.json();
     if (!response.ok) {
-      throw new Error((result as any).error?.message || `Create creative failed: ${response.status}`);
+      const err = (result as any)?.error;
+      const message =
+        err?.error_user_msg ||
+        err?.error_user_title ||
+        err?.message ||
+        (err?.error_data ? `Meta error: ${JSON.stringify(err.error_data)}` : null) ||
+        `Create creative failed (${err?.code ?? response.status})`;
+      const e = new Error(message) as Error & {
+        metaCode?: number;
+        metaSubcode?: number;
+        metaData?: unknown;
+        statusCode?: number;
+      };
+      e.metaCode = err?.code;
+      e.metaSubcode = err?.error_subcode;
+      e.metaData = err?.error_data ?? err;
+      e.statusCode = response.status;
+      throw e;
     }
     const id = (result as any).id;
     if (!id) throw new Error('No creative id in response');
@@ -899,14 +916,33 @@ export function removeFacebookToken(): void {
  * @param getToken - Optional. Server-side: pass () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null
  */
 export function createFacebookAPI(
-  adAccountId: string,
+  adAccountId: string | null | undefined,
   getToken?: () => string | null
 ): FacebookAdsAPI | null {
   const token = getToken ? getToken() : getStoredFacebookToken();
   if (!token) {
     return null;
   }
-  return new FacebookAdsAPI(token, normalizeAdAccountId(adAccountId));
+  const raw = String(adAccountId ?? "").trim();
+  if (!raw) {
+    return null;
+  }
+  return new FacebookAdsAPI(token, normalizeAdAccountId(raw));
+}
+
+/**
+ * @brief Builds a client with only a user token — for Graph `me/*` calls (e.g. list ad accounts).
+ * @param getToken Returns the Meta user access token.
+ * @returns API instance or null if no token. Ad account id is a placeholder and must not be used for `act_*` calls.
+ */
+export function createFacebookAPITokenOnly(
+  getToken: () => string | null
+): FacebookAdsAPI | null {
+  const token = getToken();
+  if (!token?.trim()) {
+    return null;
+  }
+  return new FacebookAdsAPI(token, "0");
 }
 
 /**

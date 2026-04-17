@@ -1261,7 +1261,7 @@ function AnalyticsTab({
   const [projectionParams, setProjectionParams] = useState({
     monthlyAdSpend: 0,
     monthlyMarketingCost: 0,
-    roas: 3.0, // Return on Ad Spend (3x means $3 revenue per $1 spent)
+    roas: 0,
     projectionPeriod: 'endOfYear' as 'endOfYear' | 'nextYear',
   });
 

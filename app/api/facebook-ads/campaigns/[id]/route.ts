@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, CAMPAIGN_OBJECTIVES, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 import type { FacebookCampaign } from '@/utils/facebook/api';
+import { applyDailyBudgetGuardrails, getGrowthGuardrailsFromEnv } from '@/utils/growth/guardrails';
+
+function resolveFacebookContext(request: NextRequest) {
+  const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
+  const envToken = process.env.FACEBOOK_SYSTEM_USER_TOKEN?.trim() ?? null;
+  const token = cookieToken || envToken;
+  const adAccountId =
+    request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value?.trim() ??
+    process.env.FACEBOOK_AD_ACCOUNT_ID?.trim() ??
+    null;
+  return { token, adAccountId };
+}
 
 /**
  * Format Meta/API date for datetime-local input (YYYY-MM-DDTHH:mm).
@@ -80,11 +93,7 @@ export async function GET(
   try {
     const { id: campaignId } = await params;
     
-    // Development mode: return mock campaign data
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const mockCampaigns = {
         "1": {
           id: "1",
@@ -170,9 +179,8 @@ export async function GET(
       });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const { token, adAccountId } = resolveFacebookContext(request);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     
     if (!facebookAPI) {
       return NextResponse.json({
@@ -230,11 +238,7 @@ export async function PUT(
     const { id: campaignId } = await params;
     const body = await request.json();
     
-    // Development mode: simulate campaign update
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       // Simulate update delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -260,9 +264,8 @@ export async function PUT(
       });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const { token, adAccountId } = resolveFacebookContext(request);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     
     if (!facebookAPI) {
       return NextResponse.json({
@@ -291,8 +294,27 @@ export async function PUT(
 
     // Update campaign. Meta does not allow changing objective on existing campaigns — omit it.
     // Writable: name, status, daily_budget, lifetime_budget, special_ad_categories, buying_type.
+    const guardrails = getGrowthGuardrailsFromEnv();
+    const existingCampaign = await facebookAPI.getCampaign(campaignId);
+    const previousDailyBudgetUsd =
+      existingCampaign?.daily_budget != null
+        ? parseInt(String(existingCampaign.daily_budget), 10) / 100
+        : null;
     const budgetUpdates: { daily_budget?: number; lifetime_budget?: number } = {};
-    if (budget?.type === 'daily' && budget.amount != null) budgetUpdates.daily_budget = budget.amount;
+    let dailyBudgetGuardrail:
+      | ReturnType<typeof applyDailyBudgetGuardrails>
+      | null = null;
+    if (budget?.type === 'daily' && budget.amount != null) {
+      dailyBudgetGuardrail = applyDailyBudgetGuardrails(
+        Number(budget.amount),
+        guardrails,
+        {
+          mode: 'update',
+          previousDailyBudgetUsd,
+        }
+      );
+      budgetUpdates.daily_budget = dailyBudgetGuardrail.appliedUsd;
+    }
     if (budget?.type === 'lifetime' && budget.amount != null) budgetUpdates.lifetime_budget = budget.amount;
     await facebookAPI.updateCampaign(campaignId, {
       name,
@@ -334,6 +356,13 @@ export async function PUT(
     return NextResponse.json({
       success: true,
       campaign,
+      guardrailAdjustments:
+        dailyBudgetGuardrail != null
+          ? {
+              changed: dailyBudgetGuardrail.changed,
+              dailyBudget: dailyBudgetGuardrail,
+            }
+          : null,
     });
   } catch (error) {
     console.error('Error updating campaign:', error);
@@ -354,11 +383,7 @@ export async function DELETE(
   try {
     const { id: campaignId } = await params;
     
-    // Development mode: simulate campaign deletion
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       // Simulate deletion delay
       await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -369,9 +394,8 @@ export async function DELETE(
       });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const { token, adAccountId } = resolveFacebookContext(request);
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     
     if (!facebookAPI) {
       return NextResponse.json({

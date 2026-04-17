@@ -130,50 +130,21 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
 
     const activeSubscriptions = monthlySubscribers + annualSubscribers;
 
-    // TODO: Integrate with Stripe tables when available
-    // Using mock data for revenue calculations for now
-    const invoices: any[] = [];
-    const paymentIntents: any[] = [];
+    let monthlyRevenue = 0;
+    let lifetimeRevenue = 0;
+    try {
+      monthlyRevenue = await getMonthlyRevenue();
+    } catch (e) {
+      console.error("getAdminDashboardStats: getMonthlyRevenue failed", e);
+    }
+    try {
+      lifetimeRevenue = await getLifetimeRevenue();
+    } catch (e) {
+      console.error("getAdminDashboardStats: getLifetimeRevenue failed", e);
+    }
 
-    console.log("Using mock revenue data - Stripe tables not available");
-
-    // Calculate revenue (using mock data for now)
-    const paidInvoices = invoices?.filter((inv) => inv.status === "paid") || [];
-    const succeededPayments =
-      paymentIntents?.filter((pi) => {
-        const attrs = pi.attrs as any;
-        return attrs?.status === "succeeded" && !attrs?.refunded;
-      }) || [];
-
-    const totalInvoiceRevenue =
-      paidInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0) / 100;
-    const totalPaymentRevenue =
-      succeededPayments.reduce((sum, pi) => sum + (pi.amount || 0), 0) / 100;
-    const lifetimeRevenue = totalInvoiceRevenue + totalPaymentRevenue;
-
-    // Calculate monthly revenue (last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const recentInvoices = paidInvoices.filter(
-      (inv) => inv.period_end && new Date(inv.period_end) >= thirtyDaysAgo
-    );
-    const recentPayments = succeededPayments.filter(
-      (pi) => pi.created && new Date(pi.created) >= thirtyDaysAgo
-    );
-
-    const monthlyInvoiceRevenue =
-      recentInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0) / 100;
-    const monthlyPaymentRevenue =
-      recentPayments.reduce((sum, pi) => sum + (pi.amount || 0), 0) / 100;
-    const monthlyRevenue = monthlyInvoiceRevenue + monthlyPaymentRevenue;
-
-    // Calculate churn rate (using mock data)
-    const canceledSubs = 0; // Mock: no canceled subscriptions
-    const churnRate =
-      activeSubscriptions > 0
-        ? (canceledSubs / (activeSubscriptions + canceledSubs)) * 100
-        : 0;
+    /** @note Stripe cancellation-based churn not aggregated here yet */
+    const churnRate = 0;
 
     // Get recent activity
     const recentActivity = await getRecentActivity();

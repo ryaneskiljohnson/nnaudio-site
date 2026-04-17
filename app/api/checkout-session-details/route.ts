@@ -59,6 +59,10 @@ export async function GET(request: NextRequest) {
         paymentIntent.metadata?.bundle_slug ||
         paymentIntent.metadata?.plan_name ||
         null;
+      const promotionId =
+        (paymentIntent.metadata?.promotion_id as string | undefined)?.trim() ||
+        null;
+
       return NextResponse.json({
         success: true,
         value,
@@ -67,6 +71,7 @@ export async function GET(request: NextRequest) {
         mode,
         customerId,
         tier,
+        promotion_id: promotionId,
         contentId,
         contentName,
       });
@@ -130,6 +135,9 @@ export async function GET(request: NextRequest) {
       tier = (session.metadata?.plan_type as string) || null;
     }
 
+    const promotionId =
+      (session.metadata?.promotion_id as string | undefined)?.trim() || null;
+
     return NextResponse.json({
       success: true,
       value,
@@ -140,6 +148,7 @@ export async function GET(request: NextRequest) {
       contentId,
       contentName,
       tier,
+      promotion_id: promotionId,
     });
   } catch (error) {
     console.error("Error fetching checkout session details:", error);

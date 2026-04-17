@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 
 export async function DELETE(
   request: NextRequest,
@@ -16,13 +17,13 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Audience ID required' }, { status: 400 });
     }
 
-    if (process.env.FACEBOOK_MOCK_CONNECTION === 'true') {
+    if (isFacebookAdsMockEnabled()) {
       return NextResponse.json({ success: true, message: 'Deleted (mock)' });
     }
 
     const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? null;
     const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId ?? '0', getToken);
+    const facebookAPI = createFacebookAPI(adAccountId, getToken);
 
     if (!facebookAPI) {
       return NextResponse.json({ success: false, error: 'Not connected to Facebook Ads' }, { status: 401 });

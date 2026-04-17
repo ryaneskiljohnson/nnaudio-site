@@ -22,6 +22,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "env:email": "bun run scripts/check-email-env.ts",
+    "env:growth": "bun run scripts/check-growth-readiness-env.ts",
+    "test:growth-smoke": "bun run scripts/smoke-test-growth-ops.ts",
+    "growth:reset-stuck-queue": "bun run scripts/reset-stuck-growth-queue.ts",
+    "growth:vercel-env": "bun run scripts/vercel-upsert-facebook-growth-env.ts",
+    "growth:vercel-cli-env": "bash scripts/vercel-set-facebook-env-from-local.sh",
+    "ads:create-purchase": "bun run scripts/create-purchase-meta-ads.ts",
     "check:dead-product-audio": "npx tsx scripts/check-dead-product-audio.ts",
     "verify:barrels": "bun run scripts/check-server-barrel-exports.ts"
   },

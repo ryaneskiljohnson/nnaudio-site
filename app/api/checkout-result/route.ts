@@ -58,36 +58,30 @@ export async function GET(request: NextRequest) {
           typeof sessionResult.subscription !== "string" &&
           sessionResult.subscription.trial_end));
 
-    // Get subscription value and currency for dataLayer tracking
+    // Determine if this is a lifetime purchase (one-time payment)
+    const isLifetime = sessionResult.mode === "payment";
+
+    // Paid amount for success page + promotion revenue (prefer session amount_total = actual charge)
     let subscriptionValue: number | undefined;
     let subscriptionCurrency: string | undefined;
 
     if (
       !isTrial &&
-      sessionResult.subscription &&
-      typeof sessionResult.subscription !== "string"
+      sessionResult.amountTotal != null &&
+      sessionResult.amountTotal > 0
     ) {
-      // Get the amount from the subscription
+      subscriptionValue = sessionResult.amountTotal / 100;
+      subscriptionCurrency = (sessionResult.currency || "usd").toUpperCase();
+    } else if (
+      !isTrial &&
+      sessionResult.subscription &&
+      typeof sessionResult.subscription !== "string" &&
+      sessionResult.subscription.items?.data?.[0]?.price
+    ) {
       const subscription = sessionResult.subscription;
-      if (subscription.items?.data?.[0]?.price) {
-        subscriptionValue =
-          (subscription.items.data[0].price.unit_amount || 0) / 100; // Convert cents to dollars
-        subscriptionCurrency = subscription.currency?.toUpperCase() || "USD";
-      }
-    } else if (sessionResult.mode === "payment") {
-      // For one-time payments (lifetime), we need to get amount_total from the session
-      // The session object should have amount_total, but we need to retrieve it with the session
-      // For now, we'll let the frontend fetch it via the session details API
-    }
-
-    // Determine if this is a lifetime purchase (one-time payment)
-    const isLifetime = sessionResult.mode === "payment";
-
-    // Get value for lifetime purchases (amountTotal/currency may be on session type)
-    const sessionAny = sessionResult as { amountTotal?: number; currency?: string };
-    if (isLifetime && sessionAny.amountTotal) {
-      subscriptionValue = sessionAny.amountTotal / 100; // Convert cents to dollars
-      subscriptionCurrency = sessionAny.currency?.toUpperCase() || "USD";
+      subscriptionValue =
+        (subscription.items.data[0].price.unit_amount || 0) / 100;
+      subscriptionCurrency = subscription.currency?.toUpperCase() || "USD";
     }
 
     // If this is a subscription with a trial, immediately refresh subscription status
@@ -131,6 +125,15 @@ export async function GET(request: NextRequest) {
     if (subscriptionValue !== undefined && subscriptionCurrency) {
       params.append("value", subscriptionValue.toString());
       params.append("currency", subscriptionCurrency);
+    }
+
+    const planTypeMeta = sessionResult.metadata?.plan_type?.trim();
+    if (planTypeMeta) {
+      params.append("plan_type", planTypeMeta);
+    }
+    const promotionMeta = sessionResult.metadata?.promotion_id?.trim();
+    if (promotionMeta) {
+      params.append("promotion_id", promotionMeta);
     }
 
     // Payment successful, redirect to success page with appropriate parameters

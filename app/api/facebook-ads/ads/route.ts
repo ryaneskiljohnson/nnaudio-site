@@ -1,17 +1,55 @@
+/**
+ * @fileoverview Lists and creates Meta ads for Ad Manager.
+ * @module api/facebook-ads/ads
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 
+/**
+ * @brief Detects Meta's "app in development mode" creative restriction.
+ * @param error - Unknown thrown error from creative creation.
+ * @returns True when the failure is caused by app mode/publication status.
+ */
+function isAppInDevelopmentModeCreativeError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return (
+    message.toLowerCase().includes('app that is in development mode') ||
+    message.toLowerCase().includes('must be in public to create this ad')
+  );
+}
+
+/**
+ * @brief Reuses an existing creative when Meta blocks new creative generation.
+ * @param facebookAPI - Configured Facebook Ads API client.
+ * @param adSetId - Target ad set for the ad being created.
+ * @returns A creative payload suitable for `createAd`, or null when none available.
+ * @note This fallback keeps ad creation operational while app publication settings are fixed.
+ */
+async function buildFallbackCreativePayload(
+  facebookAPI: ReturnType<typeof createFacebookAPI>,
+  adSetId: string
+): Promise<{ creative_id: string } | null> {
+  if (!facebookAPI) return null;
+  const scopedAds = await facebookAPI.getAds(adSetId).catch(() => []);
+  const accountAds = scopedAds.length > 0 ? scopedAds : await facebookAPI.getAds().catch(() => []);
+  const reusableCreativeId = accountAds.find((ad) => ad.creative?.id)?.creative?.id;
+  return reusableCreativeId ? { creative_id: reusableCreativeId } : null;
+}
+
+/**
+ * @brief Lists ads from Meta with optional ad set or campaign filtering.
+ * @param request - Incoming HTTP request.
+ * @returns Ads payload for the admin UI.
+ */
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const adSetId = url.searchParams.get('adSetId');
     const campaignId = url.searchParams.get('campaignId');
     
-    // Development mode: return mock ads
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const mockAds = [
         {
           id: "ad_1",
@@ -92,9 +130,14 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
+    const envToken = process.env.FACEBOOK_SYSTEM_USER_TOKEN?.trim() ?? null;
+    const token = cookieToken || envToken;
+    const adAccountId =
+      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value?.trim() ??
+      process.env.FACEBOOK_AD_ACCOUNT_ID?.trim() ??
+      null;
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     
     if (!facebookAPI) {
       return NextResponse.json({
@@ -118,13 +161,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * @brief Creates a Meta ad and auto-recovers from creative generation restrictions.
+ * @param request - Incoming HTTP request with ad details and creative data.
+ * @returns Newly created ad object, or a descriptive API error.
+ * @example POST /api/facebook-ads/ads with { name, adSetId, status, image_hash, link, message }.
+ */
 export async function POST(request: NextRequest) {
   try {
-    // Development mode: simulate ad creation
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const mockConnection = process.env.FACEBOOK_MOCK_CONNECTION === 'true';
-    
-    if (isDevelopment && mockConnection) {
+    if (isFacebookAdsMockEnabled()) {
       const body = await request.json();
       
       // Simulate ad creation delay
@@ -155,9 +200,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const adAccountId = process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? '123456789';
-    const getToken = () => request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value ?? null;
-    const facebookAPI = createFacebookAPI(adAccountId, getToken);
+    const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
+    const envToken = process.env.FACEBOOK_SYSTEM_USER_TOKEN?.trim() ?? null;
+    const token = cookieToken || envToken;
+    const adAccountId =
+      request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value?.trim() ??
+      process.env.FACEBOOK_AD_ACCOUNT_ID?.trim() ??
+      null;
+    const facebookAPI = createFacebookAPI(adAccountId, () => token);
     
     if (!facebookAPI) {
       return NextResponse.json({
@@ -203,6 +253,7 @@ export async function POST(request: NextRequest) {
     }
 
     let creativePayload: { creative_id?: string; [k: string]: unknown } = creative || {};
+    let usedCreativeFallback = false;
 
     if (creative_id) {
       creativePayload = { creative_id };
@@ -223,7 +274,17 @@ export async function POST(request: NextRequest) {
         creativePayload = { creative_id: createdCreativeId };
       } catch (creativeError) {
         console.error('Create ad creative failed:', creativeError);
-        if (process.env.NODE_ENV === 'development') {
+        if (isAppInDevelopmentModeCreativeError(creativeError)) {
+          const fallbackCreativePayload = await buildFallbackCreativePayload(facebookAPI, adSetId);
+          if (fallbackCreativePayload) {
+            creativePayload = fallbackCreativePayload;
+            usedCreativeFallback = true;
+          } else {
+            throw new Error(
+              'Meta blocked new creative creation because the app is in development mode, and no existing creative is available for fallback.'
+            );
+          }
+        } else if (process.env.NODE_ENV === 'development') {
           return NextResponse.json({
             success: true,
             ad: {
@@ -236,8 +297,9 @@ export async function POST(request: NextRequest) {
             },
             message: 'Ad created (development fallback; creative creation failed)'
           });
+        } else {
+          throw creativeError;
         }
-        throw creativeError;
       }
     }
 
@@ -259,7 +321,11 @@ export async function POST(request: NextRequest) {
           campaignId: ad.campaign_id,
           status: adStatus ? String(adStatus).toLowerCase() : (status || 'paused').toLowerCase(),
           createdAt: ad.created_time
-        }
+        },
+        ...(usedCreativeFallback && {
+          warning:
+            'Meta blocked new creative generation because the app is in development mode. Ad was created with an existing approved creative instead.'
+        })
       });
     } catch (adError) {
       console.error('Create ad failed:', adError);
