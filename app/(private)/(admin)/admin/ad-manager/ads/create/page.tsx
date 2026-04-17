@@ -569,6 +569,15 @@ interface AdData {
   status: 'active' | 'paused';
 }
 
+/**
+ * @brief Normalizes Meta IDs to avoid string-format mismatches.
+ * @param id Raw ID from API or UI state (can include `act_` prefix).
+ * @returns Normalized ID string used for safe comparisons.
+ */
+function normalizeMetaId(id?: string | null): string {
+  return String(id ?? '').trim().replace(/^act_/i, '');
+}
+
 export default function CreateAdPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -577,6 +586,8 @@ export default function CreateAdPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [adSets, setAdSets] = useState<any[]>([]);
+  const [allAdSets, setAllAdSets] = useState<any[]>([]);
+  const [adSetFilterFallback, setAdSetFilterFallback] = useState(false);
   const [adSetsLoading, setAdSetsLoading] = useState(false);
   const [adSetsError, setAdSetsError] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -621,7 +632,9 @@ export default function CreateAdPage() {
 
   const fetchAdSets = async (campaignId: string) => {
     if (!campaignId) {
+      setAllAdSets([]);
       setAdSets([]);
+      setAdSetFilterFallback(false);
       setAdSetsError(null);
       setAdSetsLoading(false);
       return;
@@ -630,7 +643,7 @@ export default function CreateAdPage() {
     setAdSetsError(null);
     setAdSets([]);
     try {
-      const response = await fetch(`/api/facebook-ads/adsets?campaignId=${encodeURIComponent(campaignId)}`, {
+      const response = await fetch('/api/facebook-ads/adsets', {
         credentials: 'include',
         cache: 'no-store',
       });
@@ -641,17 +654,32 @@ export default function CreateAdPage() {
         return;
       }
       if (data.success && Array.isArray(data.adSets)) {
-        setAdSets(data.adSets);
-        if (data.adSets.length === 0) {
+        setAllAdSets(data.adSets);
+        const selectedCampaignId = normalizeMetaId(campaignId);
+        const filteredAdSets = data.adSets.filter((adSet: { campaignId?: string; campaign_id?: string }) => {
+          const adSetCampaignId = normalizeMetaId(adSet.campaignId ?? adSet.campaign_id ?? '');
+          return adSetCampaignId === selectedCampaignId;
+        });
+        const resolvedAdSets = filteredAdSets.length > 0 ? filteredAdSets : data.adSets;
+        setAdSets(resolvedAdSets);
+        setAdSetFilterFallback(filteredAdSets.length === 0 && data.adSets.length > 0);
+        if (resolvedAdSets.length === 0) {
           setAdSetsError(null);
         }
+        if (!resolvedAdSets.some((adSet: { id?: string }) => adSet.id === adData.adSetId)) {
+          setAdData((prev) => ({ ...prev, adSetId: '' }));
+        }
       } else {
+        setAllAdSets([]);
         setAdSets([]);
+        setAdSetFilterFallback(false);
         setAdSetsError(data.error || 'Could not load ad sets.');
       }
     } catch (error) {
       console.error('Error fetching ad sets:', error);
+      setAllAdSets([]);
       setAdSets([]);
+      setAdSetFilterFallback(false);
       setAdSetsError('Failed to load ad sets. Try again.');
     } finally {
       setAdSetsLoading(false);
@@ -861,11 +889,16 @@ export default function CreateAdPage() {
                     )}
                   </p>
                 )}
-                {!adSetsLoading && !adSetsError && adSets.length === 0 && (
+                {!adSetsLoading && !adSetsError && adSetFilterFallback && (
+                  <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    No exact ID match for this campaign in Meta right now, so showing all available ad sets.
+                  </p>
+                )}
+                {!adSetsLoading && !adSetsError && allAdSets.length === 0 && (
                   <p style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                     No ad sets in this campaign.{' '}
                     <Link
-                      href={`/admin/ad-manager/campaigns/${adData.campaignId}/adsets/create`}
+                      href={`/admin/ad-manager/campaigns/adsets/create?campaignId=${encodeURIComponent(adData.campaignId)}`}
                       style={{ color: 'var(--primary)' }}
                     >
                       Create one first

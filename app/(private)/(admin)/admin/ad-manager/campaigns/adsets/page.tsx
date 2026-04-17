@@ -287,6 +287,15 @@ interface AdSetRow {
   createdAt: string;
 }
 
+/**
+ * @brief Normalizes Meta IDs for reliable equality checks.
+ * @param id Raw ID value from UI/API.
+ * @returns Trimmed ID without an `act_` prefix.
+ */
+function normalizeMetaId(id?: string | null) {
+  return String(id ?? "").trim().replace(/^act_/i, "");
+}
+
 function normalizeAdSet(raw: Record<string, unknown>): AdSetRow {
   const campaignId =
     (raw.campaignId as string) || (raw.campaign_id as string) || "";
@@ -343,9 +352,7 @@ export default function CampaignAdSetsPage() {
     async function load() {
       setConnectionError(null);
       try {
-        const adsetsUrl = campaignIdFromUrl
-          ? `/api/facebook-ads/adsets?campaignId=${encodeURIComponent(campaignIdFromUrl)}`
-          : "/api/facebook-ads/adsets";
+        const adsetsUrl = "/api/facebook-ads/adsets";
         const [adSetsRes, campaignsRes] = await Promise.all([
           fetch(adsetsUrl, { credentials: "include" }),
           fetch("/api/facebook-ads/campaigns", { credentials: "include" }),
@@ -379,7 +386,9 @@ export default function CampaignAdSetsPage() {
   }, [campaignIdFromUrl]);
 
   const filteredAdSets = campaignFilter
-    ? adSets.filter((a) => a.campaignId === campaignFilter)
+    ? adSets.filter(
+        (a) => normalizeMetaId(a.campaignId) === normalizeMetaId(campaignFilter)
+      )
     : adSets;
   const campaignNameById = Object.fromEntries(
     campaigns.map((c) => [c.id, c.name])
@@ -410,7 +419,7 @@ export default function CampaignAdSetsPage() {
           <ActionLink
             href={
               campaignFilter
-                ? `/admin/ad-manager/campaigns/${campaignFilter}/adsets/create`
+                ? `/admin/ad-manager/campaigns/adsets/create?campaignId=${encodeURIComponent(campaignFilter)}`
                 : "/admin/ad-manager/campaigns/adsets/create"
             }
           >
@@ -513,7 +522,7 @@ export default function CampaignAdSetsPage() {
                       <FaChartLine />
                     </SmallLink>
                     <SmallLink
-                      href={`/admin/ad-manager/campaigns/${adSet.campaignId}/adsets/create`}
+                      href={`/admin/ad-manager/campaigns/adsets/create?campaignId=${encodeURIComponent(adSet.campaignId)}`}
                       title="Create another ad set in this campaign"
                     >
                       <FaPlus />
@@ -536,7 +545,7 @@ export default function CampaignAdSetsPage() {
               <ActionLink
                 href={
                   campaignFilter
-                    ? `/admin/ad-manager/campaigns/${campaignFilter}/adsets/create`
+                    ? `/admin/ad-manager/campaigns/adsets/create?campaignId=${encodeURIComponent(campaignFilter)}`
                     : "/admin/ad-manager/campaigns/adsets/create"
                 }
                 style={{ marginTop: "1rem" }}
