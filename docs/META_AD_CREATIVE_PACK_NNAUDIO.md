@@ -14,6 +14,18 @@
 
 **Upload note:** Prefer **1:1** and **4:5** from the same source image; keep UI screenshots legible when small.
 
+### Push these ads into Meta automatically
+
+From the repo (requires `.env.local`: `FACEBOOK_SYSTEM_USER_TOKEN`, `FACEBOOK_AD_ACCOUNT_ID`, `META_PAGE_ID`, plus target ad set id):
+
+```bash
+bun run ads:create-purchase -- --ad-set-id=YOUR_AD_SET_NUMERIC_ID
+# optional: --limit=3   or   META_PURCHASE_AD_SET_ID=... in .env.local
+# dry list: --dry-run
+```
+
+Creates **paused** link ads (uploads each `nnaud.io` image to the ad account, then creative + ad). Turn them on in Ads Manager after review.
+
 ---
 
 ## Purchase pack A: Cymasphere (high AOV)
