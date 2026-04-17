@@ -220,25 +220,50 @@ export async function POST(request: NextRequest) {
       const productIds = [...new Set((items as CartItem[]).map((i) => i.id).filter(Boolean))] as string[];
       if (productIds.length > 0) {
         const adminSupabase = await createSupabaseServiceRole();
-        const now = new Date().toISOString();
-        const rows = productIds.map((product_id) => ({
-          user_email: user.email!.toLowerCase(),
-          product_id,
-          granted_at: now,
-          granted_by: user.id,
-          notes: 'Free checkout',
-          amount: 0,
-          updated_at: now,
-        }));
-        const { error: grantError } = await (adminSupabase as any)
+        const normalizedEmail = user.email!.toLowerCase();
+        
+        // Find which products the user already has
+        const { data: existingGrants, error: fetchError } = await (adminSupabase as any)
           .from('product_grants')
-          .upsert(rows, { onConflict: 'user_email,product_id' });
-        if (grantError) {
-          console.error('[payment-intent] Free order product_grants upsert error:', grantError);
+          .select('product_id')
+          .or(`user_id.eq.${user.id},user_email.eq.${normalizedEmail}`)
+          .in('product_id', productIds);
+
+        if (fetchError) {
+          console.error('[payment-intent] Free order fetch existing grants error:', fetchError);
           return NextResponse.json(
-            { success: false, error: 'Failed to record your free order. Please try again or contact support.' },
+            { success: false, error: 'Failed to verify existing products. Please try again or contact support.' },
             { status: 500 }
           );
+        }
+
+        const existingProductIds = new Set((existingGrants || []).map((g: any) => g.product_id));
+        const newProductIds = productIds.filter(id => !existingProductIds.has(id));
+
+        if (newProductIds.length > 0) {
+          const now = new Date().toISOString();
+          const rows = newProductIds.map((product_id) => ({
+            user_email: normalizedEmail,
+            user_id: user.id,
+            product_id,
+            granted_at: now,
+            granted_by: user.id,
+            notes: 'Free checkout',
+            amount: 0,
+            updated_at: now,
+          }));
+          
+          const { error: grantError } = await (adminSupabase as any)
+            .from('product_grants')
+            .insert(rows);
+            
+          if (grantError) {
+            console.error('[payment-intent] Free order product_grants insert error:', grantError);
+            return NextResponse.json(
+              { success: false, error: 'Failed to record your free order. Please try again or contact support.' },
+              { status: 500 }
+            );
+          }
         }
       }
 

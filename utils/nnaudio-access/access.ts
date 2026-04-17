@@ -10,6 +10,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/database.types";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { requireUuid } from "@/utils/validation";
 import Stripe from "stripe";
 import { stripe } from "@/utils/stripe/client";
 
@@ -100,6 +101,89 @@ export async function resolveGrantEmail(
 }
 
 /**
+ * @brief Loads product_ids from product_grants by `user_id` and/or normalized email (deduped).
+ * @param adminSupabase Service-role Supabase client
+ * @param userId Auth user id
+ * @param grantEmail Normalized grant email or null
+ * @returns Set of product UUIDs from grant rows
+ */
+export async function fetchProductGrantIdsForUser(
+  adminSupabase: SupabaseClient<Database>,
+  userId: string,
+  grantEmail: string | null
+): Promise<Set<string>> {
+  const ids = new Set<string>();
+  const client = adminSupabase as any;
+
+  const [byUid, byEmail] = await Promise.all([
+    client.from("product_grants").select("product_id").eq("user_id", userId),
+    grantEmail
+      ? client
+          .from("product_grants")
+          .select("product_id")
+          .eq("user_email", grantEmail)
+      : Promise.resolve({ data: [] as { product_id: string }[] }),
+  ]);
+
+  for (const row of [...(byUid.data ?? []), ...(byEmail.data ?? [])]) {
+    if (row.product_id) ids.add(row.product_id);
+  }
+  return ids;
+}
+
+/**
+ * @brief Loads payment intents from Stripe customers that match `grantEmail` with a trust check,
+ *   and persists `profiles.customer_id` when the profile has none (self-heal).
+ */
+async function mergePaymentIntentsFromTrustedStripeCustomersByEmail(
+  adminSupabase: SupabaseClient<Database>,
+  userId: string,
+  grantEmail: string,
+  profileHasCustomerId: boolean,
+  allPaymentIntents: Map<string, Stripe.PaymentIntent>,
+  withTimeout: <T>(promise: Promise<T>, timeoutMs: number) => Promise<T>
+): Promise<void> {
+  const list = await withTimeout(
+    stripe.customers.list({ email: grantEmail, limit: 10 }),
+    5000
+  ).catch(() => ({ data: [] as Stripe.Customer[] }));
+
+  const trusted = list.data.filter(
+    (c) =>
+      c.email?.trim().toLowerCase() === grantEmail &&
+      (c.metadata?.user_id === userId ||
+        (!profileHasCustomerId && list.data.length === 1))
+  );
+
+  if (trusted.length === 0) {
+    return;
+  }
+
+  let wroteCustomerId = profileHasCustomerId;
+  for (const chosen of trusted) {
+    if (!wroteCustomerId && chosen.id) {
+      const { error } = await adminSupabase
+        .from("profiles")
+        .update({ customer_id: chosen.id })
+        .eq("id", userId);
+      if (!error) {
+        wroteCustomerId = true;
+      }
+    }
+
+    const r = await withTimeout(
+      stripe.paymentIntents.list({
+        customer: chosen.id,
+        limit: 100,
+        expand: ["data.latest_charge"],
+      }),
+      5000
+    ).catch(() => null);
+    r?.data.forEach((pi) => allPaymentIntents.set(pi.id, pi));
+  }
+}
+
+/**
  * @brief Fetches all product IDs the user has access to
  * Sources: product grants + one-time Stripe purchases (individual or bundles).
  * Bundle purchases are expanded to constituent products.
@@ -140,41 +224,71 @@ export async function getAccessibleProductIds(
       ),
     ]);
 
-  // Run product_grants and Stripe in parallel (they don't depend on each other)
-  const productGrantsPromise =
-    grantEmail !== null
-      ? (adminSupabase as any)
-          .from("product_grants")
-          .select("product_id")
-          .eq("user_email", grantEmail)
-      : Promise.resolve({ data: [] });
+  t0 = Date.now();
+  const grantIdSet = await fetchProductGrantIdsForUser(
+    adminSupabase,
+    userId,
+    grantEmail
+  );
+  grantIdSet.forEach((id) => productIds.add(id));
+  pushTiming(timings, "product_grants", t0);
 
-  // Single Stripe call: search by user_id in metadata (filters succeeded server-side)
-  // All our payment flows set user_id when creating payment intents
+  // Stripe: merge payment intents from customer_id, metadata user_id, and customer email
   t0 = Date.now();
   const allPaymentIntents = new Map<string, Stripe.PaymentIntent>();
-  const stripeSearchPromise = withTimeout(
-    stripe.paymentIntents.search({
-      query: `status:'succeeded' AND metadata['user_id']:'${userId}'`,
-      limit: 100,
-      expand: ["data.latest_charge"],
-    }),
-    8000
-  )
-    .then((r) => r.data.forEach((pi) => allPaymentIntents.set(pi.id, pi)))
-    .catch(() => {});
+  const safeUserId = requireUuid(userId);
 
-  const [productGrantsResult] = await Promise.all([
-    productGrantsPromise,
-    stripeSearchPromise,
-  ]);
-  pushTiming(timings, "product_grants", t0);
+  const stripeTasks: Promise<void>[] = [];
+
+  if (profile?.customer_id) {
+    stripeTasks.push(
+      withTimeout(
+        stripe.paymentIntents.list({
+          customer: profile.customer_id,
+          limit: 100,
+          expand: ["data.latest_charge"],
+        }),
+        5000
+      )
+        .then((r) => {
+          r.data.forEach((pi) => allPaymentIntents.set(pi.id, pi));
+        })
+        .catch(() => {})
+    );
+  }
+
+  if (safeUserId) {
+    stripeTasks.push(
+      withTimeout(
+        stripe.paymentIntents.search({
+          query: `status:'succeeded' AND metadata['user_id']:'${safeUserId}'`,
+          limit: 100,
+          expand: ["data.latest_charge"],
+        }),
+        8000
+      )
+        .then((r) => {
+          r.data.forEach((pi) => allPaymentIntents.set(pi.id, pi));
+        })
+        .catch(() => {})
+    );
+  }
+
+  if (grantEmail) {
+    stripeTasks.push(
+      mergePaymentIntentsFromTrustedStripeCustomersByEmail(
+        adminSupabase,
+        userId,
+        grantEmail,
+        Boolean(profile?.customer_id),
+        allPaymentIntents,
+        withTimeout
+      ).catch(() => {})
+    );
+  }
+
+  await Promise.all(stripeTasks);
   pushTiming(timings, "stripe_payment_intents", t0);
-
-  const { data: productGrants } = await productGrantsResult;
-  (productGrants || []).forEach((g: { product_id: string }) => {
-    if (g.product_id) productIds.add(g.product_id);
-  });
 
   const successfulPayments = Array.from(allPaymentIntents.values()).filter(
     (pi) => pi.status === "succeeded"

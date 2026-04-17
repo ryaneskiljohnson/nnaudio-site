@@ -27,9 +27,9 @@ import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
 import {
   getUserManagementRecords,
   createUserManagementRecord,
-  updateUserManagementRecord,
+  updateUserManagementRecordById,
   createUserManagementWithInvite,
-  deleteUserManagementRecord,
+  deleteUserManagementRecordById,
   type UserManagementRecord,
 } from "@/app/actions/user-management";
 import {
@@ -40,6 +40,12 @@ import {
   type ProductGrant,
 } from "@/app/actions/product-grants";
 
+/**
+ * @brief Key for `productGrants` map (normalized email); empty when pre-invite has no email yet.
+ */
+function grantsMapKey(record: UserManagementRecord): string {
+  return record.user_email?.trim().toLowerCase() || "";
+}
 
 const Container = styled.div`
   width: 100%;
@@ -550,7 +556,7 @@ export default function UserManagementPage() {
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
-  const [updatingEmail, setUpdatingEmail] = useState<string | null>(null);
+  const [updatingRowId, setUpdatingRowId] = useState<string | null>(null);
   const [notification, setNotification] = useState<{
     type: 'success' | 'error';
     message: string;
@@ -577,7 +583,9 @@ export default function UserManagementPage() {
 
   // Product grants state
   const [productGrants, setProductGrants] = useState<Record<string, ProductGrant[]>>({});
-  const [showGrantModal, setShowGrantModal] = useState<string | null>(null);
+  const [grantModalRecordId, setGrantModalRecordId] = useState<string | null>(
+    null,
+  );
   const [showGrantForm, setShowGrantForm] = useState(false);
   const [grantFormProductId, setGrantFormProductId] = useState('');
   const [grantFormNotes, setGrantFormNotes] = useState('');
@@ -585,6 +593,14 @@ export default function UserManagementPage() {
   const [grantLoading, setGrantLoading] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [productSearchQuery, setProductSearchQuery] = useState('');
+
+  const grantModalRecord = useMemo(
+    () => records.find((r) => r.id === grantModalRecordId) ?? null,
+    [records, grantModalRecordId],
+  );
+  const grantMapKey = grantModalRecord?.user_email?.trim().toLowerCase() ?? "";
+  const grantDisplayLabel =
+    grantModalRecord?.user_email?.trim() || grantModalRecord?.id || "—";
 
   const fetchRecords = async () => {
     try {
@@ -601,12 +617,14 @@ export default function UserManagementPage() {
       // Store original notes values
       const original: Record<string, string> = {};
       data.forEach((record) => {
-        original[record.user_email] = record.notes || "";
+        original[record.id] = record.notes || "";
       });
       setOriginalNotes(original);
 
       // Fetch product grants only for these NFR emails (avoids loading 100k+ grants)
-      const emails = data.map((r) => r.user_email);
+      const emails = data
+        .map((r) => r.user_email)
+        .filter((e): e is string => typeof e === "string" && e.trim().length > 0);
       if (emails.length > 0) {
         const grantsResult = await getProductGrantsForEmails(emails);
         if (grantsResult.error) {
@@ -614,8 +632,11 @@ export default function UserManagementPage() {
         } else if (grantsResult.data) {
           const grouped: Record<string, ProductGrant[]> = {};
           grantsResult.data.forEach((grant) => {
-            if (!grouped[grant.user_email]) grouped[grant.user_email] = [];
-            grouped[grant.user_email].push(grant);
+            const gk =
+              grant.user_email?.trim().toLowerCase() || "";
+            if (!gk) return;
+            if (!grouped[gk]) grouped[gk] = [];
+            grouped[gk].push(grant);
           });
           setProductGrants(grouped);
         }
@@ -732,7 +753,8 @@ export default function UserManagementPage() {
   const refreshGrantsForEmail = async (email: string) => {
     const result = await getUserProductGrants(email);
     if (result.error || !result.data) return;
-    setProductGrants((prev) => ({ ...prev, [email]: result.data! }));
+    const key = email.trim().toLowerCase();
+    setProductGrants((prev) => ({ ...prev, [key]: result.data! }));
   };
 
   useEffect(() => {
@@ -760,13 +782,14 @@ export default function UserManagementPage() {
     lastProcessedEmailQueryRef.current = queryKey;
 
     const record = records.find(
-      (r) => r.user_email.toLowerCase() === normalized
+      (r) => (r.user_email?.toLowerCase() ?? "") === normalized
     );
     if (record) {
-      setSearchQuery(record.user_email);
-      setShowGrantModal(record.user_email);
+      const displayEmail = record.user_email ?? "";
+      setSearchQuery(displayEmail);
+      setGrantModalRecordId(record.id);
       setShowGrantForm(true);
-      void refreshGrantsForEmail(record.user_email);
+      void refreshGrantsForEmail(displayEmail);
     } else {
       setShowCreateModal(true);
       setFormEmail(raw.trim());
@@ -888,58 +911,33 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleUpdatePro = async (email: string, newPro: boolean) => {
+  const handleUpdateActive = async (recordId: string, active: boolean) => {
     try {
-      setUpdatingEmail(email);
-      const result = await updateUserManagementRecord(email, { pro: newPro });
+      setUpdatingRowId(recordId);
+      const result = await updateUserManagementRecordById(recordId, { active });
 
       if (result.error) {
         throw new Error(result.error);
       }
 
-      // Update local state
-      setRecords(prev =>
-        prev.map(record =>
-          record.user_email === email ? { ...record, pro: newPro } : record
-        )
-      );
-    } catch (err: any) {
-      showNotification('error', err.message || 'Failed to update pro status');
-      console.error('Update pro error:', err);
-      // Revert local state on error
-      fetchRecords();
-    } finally {
-      setUpdatingEmail(null);
-    }
-  };
-
-  const handleUpdateActive = async (email: string, active: boolean) => {
-    try {
-      setUpdatingEmail(email);
-      const result = await updateUserManagementRecord(email, { active });
-
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      setRecords(prev =>
-        prev.map(record =>
-          record.user_email === email ? { ...record, active } : record
-        )
+      setRecords((prev) =>
+        prev.map((record) =>
+          record.id === recordId ? { ...record, active } : record,
+        ),
       );
     } catch (err: unknown) {
       showNotification('error', err instanceof Error ? err.message : 'Failed to update active status');
       console.error('Update active error:', err);
       fetchRecords();
     } finally {
-      setUpdatingEmail(null);
+      setUpdatingRowId(null);
     }
   };
 
-  const handleUpdateNotes = async (email: string, newNotes: string) => {
+  const handleUpdateNotes = async (recordId: string, newNotes: string) => {
     try {
-      setUpdatingEmail(email);
-      const result = await updateUserManagementRecord(email, {
+      setUpdatingRowId(recordId);
+      const result = await updateUserManagementRecordById(recordId, {
         notes: newNotes || null,
       });
 
@@ -947,48 +945,46 @@ export default function UserManagementPage() {
         throw new Error(result.error);
       }
 
-      // Update local state
-      setRecords(prev =>
-        prev.map(record =>
-          record.user_email === email ? { ...record, notes: newNotes || null } : record
-        )
+      setRecords((prev) =>
+        prev.map((record) =>
+          record.id === recordId
+            ? { ...record, notes: newNotes || null }
+            : record,
+        ),
       );
-      
-      // Update original notes to reflect the saved value
-      setOriginalNotes(prev => ({
+
+      setOriginalNotes((prev) => ({
         ...prev,
-        [email]: newNotes || '',
+        [recordId]: newNotes || '',
       }));
     } catch (err: any) {
       showNotification('error', err.message || 'Failed to update notes');
       console.error('Update notes error:', err);
-      // Revert local state on error
       fetchRecords();
     } finally {
-      setUpdatingEmail(null);
+      setUpdatingRowId(null);
     }
   };
 
-  const handleDelete = async (email: string) => {
-    if (!confirm(`Are you sure you want to delete the user management record for ${email}?`)) {
+  const handleDelete = async (record: UserManagementRecord) => {
+    const label = record.user_email?.trim() || record.id;
+    if (!confirm(`Are you sure you want to delete the user management record for ${label}?`)) {
       return;
     }
 
     try {
-      setUpdatingEmail(email);
-      const result = await deleteUserManagementRecord(email);
+      setUpdatingRowId(record.id);
+      const result = await deleteUserManagementRecordById(record.id);
 
       if (result.error) {
         throw new Error(result.error);
       }
 
-      // Remove from local state
-      setRecords(prev => prev.filter(record => record.user_email !== email));
-      
-      // Remove from original notes
-      setOriginalNotes(prev => {
+      setRecords((prev) => prev.filter((r) => r.id !== record.id));
+
+      setOriginalNotes((prev) => {
         const next = { ...prev };
-        delete next[email];
+        delete next[record.id];
         return next;
       });
 
@@ -997,7 +993,7 @@ export default function UserManagementPage() {
       showNotification('error', err.message || 'Failed to delete record');
       console.error('Delete error:', err);
     } finally {
-      setUpdatingEmail(null);
+      setUpdatingRowId(null);
     }
   };
 
@@ -1011,9 +1007,10 @@ export default function UserManagementPage() {
     return records.filter((record) => {
       if (!searchQuery.trim()) return true;
       const query = searchQuery.toLowerCase();
-      const emailMatch = record.user_email.toLowerCase().includes(query);
+      const emailStr = record.user_email ?? "";
+      const emailMatch = emailStr.toLowerCase().includes(query);
       const notesMatch = (record.notes || '').toLowerCase().includes(query);
-      const productGrantsList = productGrants[record.user_email] || [];
+      const productGrantsList = productGrants[grantsMapKey(record)] || [];
       const productMatch = productGrantsList.some((grant: any) => 
         grant.products?.name?.toLowerCase().includes(query) ||
         grant.products?.slug?.toLowerCase().includes(query)
@@ -1163,20 +1160,25 @@ export default function UserManagementPage() {
                     </tr>
                   ) : (
                     filteredRecords.map((record) => (
-                      <React.Fragment key={record.user_email}>
+                      <React.Fragment key={record.id}>
                         <TableRow>
                           <EmailCell>
-                            <span>{record.user_email}</span>
+                            <span>{record.user_email ?? "—"}</span>
                           </EmailCell>
                           <TableCell>
-                            {updatingEmail === record.user_email ? (
+                            {updatingRowId === record.id ? (
                               <NNAudioLoadingSpinner size={20} />
                             ) : (
                               <ToggleSwitch $checked={record.active !== false}>
                                 <input
                                   type="checkbox"
                                   checked={record.active !== false}
-                                  onChange={(e) => handleUpdateActive(record.user_email, e.target.checked)}
+                                  onChange={(e) =>
+                                    handleUpdateActive(
+                                      record.id,
+                                      e.target.checked
+                                    )
+                                  }
                                 />
                                 <span className="slider" />
                               </ToggleSwitch>
@@ -1185,12 +1187,12 @@ export default function UserManagementPage() {
                           <TableCell>
                             <button
                             onClick={() => {
-                              setShowGrantModal(record.user_email);
+                              setGrantModalRecordId(record.id);
                               setShowGrantForm(false);
                             }}
                             style={{
                               padding: '8px 16px',
-                              background: (productGrants[record.user_email]?.length || 0) > 0 
+                              background: (productGrants[grantsMapKey(record)]?.length || 0) > 0 
                                 ? 'linear-gradient(90deg, var(--primary), var(--accent))'
                                 : 'rgba(255, 255, 255, 0.1)',
                               border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -1212,11 +1214,11 @@ export default function UserManagementPage() {
                             }}
                           >
                             <FaGift />
-                            {productGrants[record.user_email]?.length || 0} Product{productGrants[record.user_email]?.length !== 1 ? 's' : ''}
+                            {productGrants[grantsMapKey(record)]?.length || 0} Product{productGrants[grantsMapKey(record)]?.length !== 1 ? 's' : ''}
                           </button>
                         </TableCell>
                         <TableCell>
-                          {updatingEmail === record.user_email ? (
+                          {updatingRowId === record.id ? (
                             <NNAudioLoadingSpinner size={20} />
                           ) : (
                             <NotesCellContainer>
@@ -1228,8 +1230,8 @@ export default function UserManagementPage() {
                                     const newValue = e.target.value;
                                     // Update local state immediately for better UX
                                     setRecords(prev =>
-                                      prev.map(r =>
-                                        r.user_email === record.user_email
+                                      prev.map((r) =>
+                                        r.id === record.id
                                           ? { ...r, notes: newValue }
                                           : r
                                       )
@@ -1237,10 +1239,16 @@ export default function UserManagementPage() {
                                   }}
                                 />
                                 <SaveButton
-                                  onClick={() => handleUpdateNotes(record.user_email, record.notes || '')}
+                                  onClick={() =>
+                                    handleUpdateNotes(
+                                      record.id,
+                                      record.notes || ""
+                                    )
+                                  }
                                   disabled={
-                                    updatingEmail === record.user_email ||
-                                    (record.notes || '') === (originalNotes[record.user_email] || '')
+                                    updatingRowId === record.id ||
+                                    (record.notes || "") ===
+                                      (originalNotes[record.id] || "")
                                   }
                                 >
                                   <FaCheck />
@@ -1251,8 +1259,10 @@ export default function UserManagementPage() {
                           </TableCell>
                           <TableCell style={{ textAlign: 'center' }}>
                             <DeleteButton
-                              onClick={() => handleDelete(record.user_email)}
-                              disabled={updatingEmail === record.user_email}
+                              onClick={() =>
+                                handleDelete(record)
+                              }
+                              disabled={updatingRowId === record.id}
                               title="Delete user management record"
                             >
                               <FaTrash />
@@ -1835,13 +1845,13 @@ export default function UserManagementPage() {
         )}
 
         {/* Product Grants Modal */}
-        {showGrantModal && (
+        {grantModalRecordId && (
           <ModalOverlay
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => {
-              setShowGrantModal(null);
+              setGrantModalRecordId(null);
               setShowGrantForm(false);
               setGrantFormProductId('');
               setGrantFormNotes('');
@@ -1859,10 +1869,10 @@ export default function UserManagementPage() {
               <ModalHeader>
                 <ModalTitle>
                   <FaGift />
-                  Product Grants - {showGrantModal}
+                  Product Grants - {grantDisplayLabel}
                 </ModalTitle>
                 <CloseButton onClick={() => {
-                  setShowGrantModal(null);
+                  setGrantModalRecordId(null);
                   setShowGrantForm(false);
                   setGrantFormProductId('');
                   setGrantFormNotes('');
@@ -1877,20 +1887,21 @@ export default function UserManagementPage() {
                 <div>
                   <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                      {productGrants[showGrantModal]?.length || 0} product{(productGrants[showGrantModal]?.length || 0) !== 1 ? 's' : ''} granted
+                      {productGrants[grantMapKey]?.length || 0} product{(productGrants[grantMapKey]?.length || 0) !== 1 ? 's' : ''} granted
                     </div>
                     <Button
                       variant="primary"
                       onClick={() => setShowGrantForm(true)}
+                      disabled={!grantModalRecord?.user_email?.trim()}
                       style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                     >
                       <FaPlus /> Grant New Product
                     </Button>
                   </div>
 
-                  {productGrants[showGrantModal]?.length > 0 ? (
+                  {(productGrants[grantMapKey]?.length ?? 0) > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '400px', overflowY: 'auto' }}>
-                      {productGrants[showGrantModal].map((grant: any) => (
+                      {(productGrants[grantMapKey] ?? []).map((grant: any) => (
                         <div
                           key={grant.id}
                           style={{
@@ -1938,14 +1949,15 @@ export default function UserManagementPage() {
                           </div>
                           <button
                             onClick={async () => {
-                              if (!confirm(`Revoke "${grant.products?.name || 'this product'}" from ${showGrantModal}?`)) return;
+                              if (!confirm(`Revoke "${grant.products?.name || 'this product'}" from ${grantDisplayLabel}?`)) return;
                               try {
                                 const result = await revokeProductGrant(grant.id);
                                 if (result.success) {
                                   showNotification('success', 'Product grant revoked');
-                                  if (showGrantModal) refreshGrantsForEmail(showGrantModal);
-                                  if (productGrants[showGrantModal]?.length === 1) {
-                                    setShowGrantModal(null);
+                                  const em = grantModalRecord?.user_email?.trim();
+                                  if (em) void refreshGrantsForEmail(em);
+                                  if ((productGrants[grantMapKey]?.length ?? 0) === 1) {
+                                    setGrantModalRecordId(null);
                                   }
                                 } else {
                                   throw new Error(result.error || 'Failed to revoke');
@@ -2005,10 +2017,15 @@ export default function UserManagementPage() {
                     showNotification('error', 'Please select a product');
                     return;
                   }
+                  const grantEmail = grantModalRecord?.user_email?.trim();
+                  if (!grantEmail) {
+                    showNotification('error', 'This NFR record needs an email before granting products.');
+                    return;
+                  }
                   try {
                     setGrantLoading(true);
                     const result = await grantProduct(
-                      showGrantModal,
+                      grantEmail,
                       grantFormProductId,
                       grantFormNotes.trim() || null,
                       parseFloat(grantFormAmount) || 0
@@ -2024,7 +2041,7 @@ export default function UserManagementPage() {
                     setGrantFormNotes('');
                     setGrantFormAmount('0');
                     setProductSearchQuery('');
-                    if (showGrantModal) refreshGrantsForEmail(showGrantModal);
+                    void refreshGrantsForEmail(grantEmail);
                   } catch (err: any) {
                     console.error("[Grant Product] Exception:", err);
                     showNotification('error', err.message || 'Failed to grant product');
@@ -2083,7 +2100,7 @@ export default function UserManagementPage() {
                       {products
                         .filter(p => {
                           // Filter out already granted products
-                          if (productGrants[showGrantModal]?.some((g: any) => g.product_id === p.id)) {
+                          if (productGrants[grantMapKey]?.some((g: any) => g.product_id === p.id)) {
                             return false;
                           }
                           // Only show products that match the search query
@@ -2146,7 +2163,7 @@ export default function UserManagementPage() {
                           </div>
                         ))}
                       {(!productSearchQuery.trim() || products.filter(p => {
-                        if (productGrants[showGrantModal]?.some((g: any) => g.product_id === p.id)) {
+                        if (productGrants[grantMapKey]?.some((g: any) => g.product_id === p.id)) {
                           return false;
                         }
                         const query = productSearchQuery.toLowerCase();

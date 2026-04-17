@@ -16,30 +16,75 @@ export type Database = {
     Tables: {
       admin_notification_preferences: {
         Row: {
-          id: string
-          user_id: string
-          notify_on_paid_order: boolean
-          notify_on_free_order: boolean
           created_at: string
+          id: string
+          notify_on_free_order: boolean
+          notify_on_paid_order: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notify_on_free_order?: boolean
+          notify_on_paid_order?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notify_on_free_order?: boolean
+          notify_on_paid_order?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      admin_support_ticket_state: {
+        Row: {
+          admin_user_id: string
+          created_at: string
+          dismissed_at: string | null
+          dismissed_message_id: string | null
+          id: string
+          ticket_id: string
           updated_at: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          notify_on_paid_order?: boolean
-          notify_on_free_order?: boolean
+          admin_user_id: string
           created_at?: string
+          dismissed_at?: string | null
+          dismissed_message_id?: string | null
+          id?: string
+          ticket_id: string
           updated_at?: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          notify_on_paid_order?: boolean
-          notify_on_free_order?: boolean
+          admin_user_id?: string
           created_at?: string
+          dismissed_at?: string | null
+          dismissed_message_id?: string | null
+          id?: string
+          ticket_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_support_ticket_state_dismissed_message_id_fkey"
+            columns: ["dismissed_message_id"]
+            isOneToOne: false
+            referencedRelation: "support_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_support_ticket_state_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       admins: {
         Row: {
@@ -2913,6 +2958,96 @@ export type Database = {
           },
         ]
       }
+      facebook_campaign_metadata: {
+        Row: {
+          campaign_id: string
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          platforms: Json | null
+          start_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          platforms?: Json | null
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          platforms?: Json | null
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      growth_action_queue: {
+        Row: {
+          action_type: string
+          attempt_count: number
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          idempotency_key: string | null
+          last_error: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          payload: Json
+          priority: number
+          result: Json | null
+          run_after: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          action_type: string
+          attempt_count?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          idempotency_key?: string | null
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          payload?: Json
+          priority?: number
+          result?: Json | null
+          run_after?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          attempt_count?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          idempotency_key?: string | null
+          last_error?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          payload?: Json
+          priority?: number
+          result?: Json | null
+          run_after?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ios_subscriptions: {
         Row: {
           apple_validation_response: Json | null
@@ -3094,6 +3229,7 @@ export type Database = {
           product_id: string
           updated_at: string
           user_email: string
+          user_id: string | null
         }
         Insert: {
           amount?: number
@@ -3105,6 +3241,7 @@ export type Database = {
           product_id: string
           updated_at?: string
           user_email: string
+          user_id?: string | null
         }
         Update: {
           amount?: number
@@ -3116,6 +3253,7 @@ export type Database = {
           product_id?: string
           updated_at?: string
           user_email?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -3181,8 +3319,8 @@ export type Database = {
           moderated_by: string | null
           moderation_status: string
           product_id: string
-          rejection_reason: string | null
           rating: number
+          rejection_reason: string | null
           review_text: string | null
           stripe_payment_intent_id: string | null
           submission_source: string
@@ -3201,8 +3339,8 @@ export type Database = {
           moderated_by?: string | null
           moderation_status?: string
           product_id: string
-          rejection_reason?: string | null
           rating: number
+          rejection_reason?: string | null
           review_text?: string | null
           stripe_payment_intent_id?: string | null
           submission_source?: string
@@ -3221,8 +3359,8 @@ export type Database = {
           moderated_by?: string | null
           moderation_status?: string
           product_id?: string
-          rejection_reason?: string | null
           rating?: number
+          rejection_reason?: string | null
           review_text?: string | null
           stripe_payment_intent_id?: string | null
           submission_source?: string
@@ -3380,6 +3518,8 @@ export type Database = {
           id: string
           last_name: string | null
           last_stripe_api_check: string | null
+          nnaudio_access_installer_macos_at: string | null
+          nnaudio_access_installer_windows_at: string | null
           subscription: Database["public"]["Enums"]["subscription_type"] | null
           subscription_expiration: string | null
           subscription_source: string | null
@@ -3398,6 +3538,8 @@ export type Database = {
           id: string
           last_name?: string | null
           last_stripe_api_check?: string | null
+          nnaudio_access_installer_macos_at?: string | null
+          nnaudio_access_installer_windows_at?: string | null
           subscription?: Database["public"]["Enums"]["subscription_type"] | null
           subscription_expiration?: string | null
           subscription_source?: string | null
@@ -3416,6 +3558,8 @@ export type Database = {
           id?: string
           last_name?: string | null
           last_stripe_api_check?: string | null
+          nnaudio_access_installer_macos_at?: string | null
+          nnaudio_access_installer_windows_at?: string | null
           subscription?: Database["public"]["Enums"]["subscription_type"] | null
           subscription_expiration?: string | null
           subscription_source?: string | null
@@ -3429,6 +3573,7 @@ export type Database = {
       promotions: {
         Row: {
           active: boolean
+          applicable_plans: string[] | null
           banner_theme: Json | null
           conversions: number | null
           created_at: string
@@ -3442,6 +3587,9 @@ export type Database = {
           priority: number | null
           promotion_target_mode: string
           revenue: number | null
+          sale_price_annual: number | null
+          sale_price_lifetime: number | null
+          sale_price_monthly: number | null
           start_date: string | null
           stripe_coupon_code: string | null
           stripe_coupon_created: boolean | null
@@ -3452,6 +3600,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          applicable_plans?: string[] | null
           banner_theme?: Json | null
           conversions?: number | null
           created_at?: string
@@ -3465,6 +3614,9 @@ export type Database = {
           priority?: number | null
           promotion_target_mode?: string
           revenue?: number | null
+          sale_price_annual?: number | null
+          sale_price_lifetime?: number | null
+          sale_price_monthly?: number | null
           start_date?: string | null
           stripe_coupon_code?: string | null
           stripe_coupon_created?: boolean | null
@@ -3475,6 +3627,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          applicable_plans?: string[] | null
           banner_theme?: Json | null
           conversions?: number | null
           created_at?: string
@@ -3488,6 +3641,9 @@ export type Database = {
           priority?: number | null
           promotion_target_mode?: string
           revenue?: number | null
+          sale_price_annual?: number | null
+          sale_price_lifetime?: number | null
+          sale_price_monthly?: number | null
           start_date?: string | null
           stripe_coupon_code?: string | null
           stripe_coupon_created?: boolean | null
@@ -3665,6 +3821,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "product_reviews"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_followups_subscriber_id_fkey"
+            columns: ["subscriber_id"]
+            isOneToOne: false
+            referencedRelation: "subscriber_engagement_summary"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_followups_subscriber_id_fkey"
+            columns: ["subscriber_id"]
+            isOneToOne: false
+            referencedRelation: "subscriber_profiles"
+            referencedColumns: ["subscriber_id"]
           },
           {
             foreignKeyName: "review_followups_subscriber_id_fkey"
@@ -4086,21 +4256,51 @@ export type Database = {
       user_management: {
         Row: {
           active: boolean
+          id: string
           notes: string | null
           pro: boolean
-          user_email: string
+          user_email: string | null
+          user_id: string | null
         }
         Insert: {
           active?: boolean
+          id?: string
           notes?: string | null
           pro?: boolean
-          user_email: string
+          user_email?: string | null
+          user_id?: string | null
         }
         Update: {
           active?: boolean
+          id?: string
           notes?: string | null
           pro?: boolean
-          user_email?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_management_merge_audit: {
+        Row: {
+          dropped_id: string
+          kept_id: string
+          merged_at: string
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          dropped_id: string
+          kept_id: string
+          merged_at?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          dropped_id?: string
+          kept_id?: string
+          merged_at?: string
+          user_email?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -4619,6 +4819,20 @@ export type Database = {
           transaction_id: string
         }[]
       }
+      get_active_promotion: {
+        Args: { plan_type: string }
+        Returns: {
+          banner_theme: Json
+          description: string
+          discount_type: string
+          discount_value: number
+          id: string
+          name: string
+          sale_price: number
+          stripe_coupon_code: string
+          title: string
+        }[]
+      }
       get_admin_grant_orders_paginated: {
         Args: {
           p_filter?: string
@@ -4711,6 +4925,8 @@ export type Database = {
         }
         Returns: string
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       attachment_type: "image" | "video" | "document" | "audio" | "other"
@@ -5039,4 +5255,3 @@ export const Constants = {
     },
   },
 } as const
-

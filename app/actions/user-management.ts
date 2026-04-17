@@ -21,10 +21,13 @@ import {
 } from "@/utils/stripe/admin-analytics";
 import { stripe } from "@/utils/stripe/client";
 import { fetchProfile } from "@/utils/supabase/actions";
+import { resolveProfileUserIdByEmail } from "@/utils/supabase/resolve-profile-user-id";
 // Email is imported dynamically where used (SendGrid via @/utils/email).
 
 export interface UserManagementRecord {
-  user_email: string;
+  id: string;
+  user_id?: string | null;
+  user_email: string | null;
   pro: boolean;
   notes: string | null;
   active: boolean;
@@ -68,6 +71,53 @@ export async function checkAdmin(supabase: SupabaseClientType) {
     .single();
 
   return adminError?.code !== "PGRST116" && !!adminCheck;
+}
+
+/**
+ * @brief Resolves user_management row id by profile-linked user_id first, then normalized email.
+ */
+async function resolveUserManagementRowId(
+  supabase: SupabaseClientType,
+  resolvedUserId: string | null,
+  normalizedEmail: string,
+): Promise<string | null> {
+  if (resolvedUserId) {
+    const { data } = await supabase
+      .from("user_management")
+      .select("id")
+      .eq("user_id", resolvedUserId)
+      .maybeSingle();
+    if (data?.id) return data.id;
+  }
+  const { data } = await supabase
+    .from("user_management")
+    .select("id")
+    .eq("user_email", normalizedEmail)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+/**
+ * @brief Loads NFR pro flag: user_id match first, then email (no PostgREST .or() string interpolation).
+ */
+async function fetchUserManagementProByUserIdOrEmail(
+  serviceSupabase: ServiceRoleClientType,
+  userId: string,
+  normalizedEmail: string | null,
+): Promise<{ pro: boolean } | null> {
+  const { data: byId } = await serviceSupabase
+    .from("user_management")
+    .select("pro")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (byId) return byId;
+  if (!normalizedEmail) return null;
+  const { data: byEmail } = await serviceSupabase
+    .from("user_management")
+    .select("pro")
+    .eq("user_email", normalizedEmail)
+    .maybeSingle();
+  return byEmail ?? null;
 }
 
 /**
@@ -250,25 +300,47 @@ export async function createUserManagementRecord(
       return { data: null, error: "pro must be a boolean" };
     }
 
+    const serviceSupabase = await createSupabaseServiceRole();
+    const normalizedEmail = user_email.toLowerCase().trim();
+    const resolvedUserId = await resolveProfileUserIdByEmail(
+      serviceSupabase,
+      user_email,
+    );
+
     const { data, error } = await supabase
       .from("user_management")
       .insert([
         {
-          user_email,
+          user_email: normalizedEmail,
+          user_id: resolvedUserId,
           pro,
           notes: notes || null,
+          active: active !== undefined ? active : true,
         },
       ])
       .select()
       .single();
 
     if (error) {
-      // Handle duplicate email (primary key constraint)
       if (error.code === "23505") {
-        return {
-          data: null,
-          error: "User with this email already exists",
-        };
+        let existing: UserManagementRecord | null = null;
+        if (resolvedUserId) {
+          const { data: byUid } = await supabase
+            .from("user_management")
+            .select("*")
+            .eq("user_id", resolvedUserId)
+            .maybeSingle();
+          existing = (byUid as UserManagementRecord | null) ?? null;
+        }
+        if (!existing) {
+          const { data: byEmail } = await supabase
+            .from("user_management")
+            .select("*")
+            .eq("user_email", normalizedEmail)
+            .maybeSingle();
+          existing = (byEmail as UserManagementRecord | null) ?? null;
+        }
+        return { data: existing, error: null };
       }
 
       console.error("Error creating user_management record:", error);
@@ -279,20 +351,10 @@ export async function createUserManagementRecord(
     // If pro status is true, also update the user's profile subscription
     if (pro) {
       try {
-        // Find user by email in auth.users
-        const serviceSupabase = await createSupabaseServiceRole();
-        const { data: authUser } = await serviceSupabase.auth.admin.listUsers();
-        const matchingUser = authUser?.users.find(
-          (u) =>
-            u.email?.toLowerCase().trim() === user_email.toLowerCase().trim(),
-        );
-
-        if (matchingUser) {
-          // Use centralized function to update the profile
-          // This will check user_management, Stripe, and iOS subscriptions
+        if (resolvedUserId) {
           const { updateUserProStatus } =
             await import("@/utils/subscriptions/check-subscription");
-          await updateUserProStatus(matchingUser.id);
+          await updateUserProStatus(resolvedUserId);
         }
       } catch (profileUpdateError) {
         // Log but don't fail the user_management creation
@@ -339,7 +401,11 @@ export async function updateUserManagementRecord(
     }
 
     // Build update object
-    const updateData: { pro?: boolean; notes?: string | null } = {};
+    const updateData: {
+      pro?: boolean;
+      notes?: string | null;
+      active?: boolean;
+    } = {};
 
     if (typeof updates.pro === "boolean") {
       updateData.pro = updates.pro;
@@ -349,14 +415,34 @@ export async function updateUserManagementRecord(
       updateData.notes = updates.notes || null;
     }
 
+    if (typeof updates.active === "boolean") {
+      updateData.active = updates.active;
+    }
+
     if (Object.keys(updateData).length === 0) {
       return { data: null, error: "No fields to update" };
+    }
+
+    const serviceSupabase = await createSupabaseServiceRole();
+    const normalizedEmail = user_email.toLowerCase().trim();
+    const resolvedUserId = await resolveProfileUserIdByEmail(
+      serviceSupabase,
+      user_email,
+    );
+
+    const rowId = await resolveUserManagementRowId(
+      supabase,
+      resolvedUserId,
+      normalizedEmail,
+    );
+    if (!rowId) {
+      return { data: null, error: "Record not found" };
     }
 
     const { data, error } = await supabase
       .from("user_management")
       .update(updateData)
-      .eq("user_email", user_email)
+      .eq("id", rowId)
       .select()
       .single();
 
@@ -372,20 +458,11 @@ export async function updateUserManagementRecord(
     // If pro status was updated, also update the user's profile subscription
     if (typeof updates.pro === "boolean") {
       try {
-        // Find user by email in auth.users
-        const serviceSupabase = await createSupabaseServiceRole();
-        const { data: authUser } = await serviceSupabase.auth.admin.listUsers();
-        const matchingUser = authUser?.users.find(
-          (u) =>
-            u.email?.toLowerCase().trim() === user_email.toLowerCase().trim(),
-        );
-
-        if (matchingUser) {
-          // Use centralized function to update the profile
-          // This will check user_management, Stripe, and iOS subscriptions
+        const uid = (data as UserManagementRecord).user_id ?? resolvedUserId;
+        if (uid) {
           const { updateUserProStatus } =
             await import("@/utils/subscriptions/check-subscription");
-          await updateUserProStatus(matchingUser.id);
+          await updateUserProStatus(uid);
         }
       } catch (profileUpdateError) {
         // Log but don't fail the user_management update
@@ -444,12 +521,20 @@ export async function createUserManagementWithInvite(
       return { data: null, error: "pro must be a boolean" };
     }
 
+    const serviceSupabaseForResolve = await createSupabaseServiceRole();
+    const normalizedInviteEmail = user_email.toLowerCase().trim();
+    const resolvedInviteUserId = await resolveProfileUserIdByEmail(
+      serviceSupabaseForResolve,
+      user_email,
+    );
+
     // Step 1: Create user_management record first
     const { data: userManagementData, error: insertError } = await supabase
       .from("user_management")
       .insert([
         {
-          user_email,
+          user_email: normalizedInviteEmail,
+          user_id: resolvedInviteUserId,
           pro,
           notes: notes || null,
           active: active !== undefined ? active : true,
@@ -564,10 +649,160 @@ export async function deleteUserManagementRecord(user_email: string): Promise<{
       return { success: false, error: "Valid email is required" };
     }
 
+    const serviceSupabase = await createSupabaseServiceRole();
+    const normalizedEmail = user_email.toLowerCase().trim();
+    const resolvedUserId = await resolveProfileUserIdByEmail(
+      serviceSupabase,
+      user_email,
+    );
+
+    const rowId = await resolveUserManagementRowId(
+      supabase,
+      resolvedUserId,
+      normalizedEmail,
+    );
+    if (!rowId) {
+      return { success: false, error: "Record not found" };
+    }
+
     const { error } = await supabase
       .from("user_management")
       .delete()
-      .eq("user_email", user_email);
+      .eq("id", rowId);
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        return { success: false, error: "Record not found" };
+      }
+
+      console.error("Error deleting user_management record:", error);
+      return { success: false, error: "Failed to delete record" };
+    }
+
+    return { success: true, error: null };
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return {
+      success: false,
+      error: "Internal server error",
+    };
+  }
+}
+
+/**
+ * @brief Updates a user_management row by primary key (admin only).
+ * @param id - Surrogate `user_management.id`
+ * @param updates - Fields to patch
+ * @returns Updated row or error
+ */
+export async function updateUserManagementRecordById(
+  id: string,
+  updates: {
+    pro?: boolean;
+    notes?: string | null;
+    active?: boolean;
+  },
+): Promise<{
+  data: UserManagementRecord | null;
+  error: string | null;
+}> {
+  try {
+    const supabase = await createClient();
+
+    if (!(await checkAdmin(supabase))) {
+      return { data: null, error: "Unauthorized" };
+    }
+
+    if (!id || typeof id !== "string") {
+      return { data: null, error: "Valid record id is required" };
+    }
+
+    const updateData: {
+      pro?: boolean;
+      notes?: string | null;
+      active?: boolean;
+    } = {};
+
+    if (typeof updates.pro === "boolean") {
+      updateData.pro = updates.pro;
+    }
+
+    if (updates.notes !== undefined) {
+      updateData.notes = updates.notes || null;
+    }
+
+    if (typeof updates.active === "boolean") {
+      updateData.active = updates.active;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return { data: null, error: "No fields to update" };
+    }
+
+    const { data, error } = await supabase
+      .from("user_management")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") {
+        return { data: null, error: "Record not found" };
+      }
+
+      console.error("Error updating user_management record:", error);
+      return { data: null, error: "Failed to update record" };
+    }
+
+    if (typeof updates.pro === "boolean") {
+      try {
+        const uid = (data as UserManagementRecord).user_id;
+        if (uid) {
+          const { updateUserProStatus } =
+            await import("@/utils/subscriptions/check-subscription");
+          await updateUserProStatus(uid);
+        }
+      } catch (profileUpdateError) {
+        console.error(
+          "Error updating profile after NFR change:",
+          profileUpdateError,
+        );
+      }
+    }
+
+    return { data: data as UserManagementRecord, error: null };
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return {
+      data: null,
+      error: "Internal server error",
+    };
+  }
+}
+
+/**
+ * @brief Deletes a user_management row by primary key (admin only).
+ * @param id - Surrogate `user_management.id`
+ */
+export async function deleteUserManagementRecordById(
+  id: string,
+): Promise<{ success: boolean; error: string | null }> {
+  try {
+    const supabase = await createClient();
+
+    if (!(await checkAdmin(supabase))) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    if (!id || typeof id !== "string") {
+      return { success: false, error: "Valid record id is required" };
+    }
+
+    const { error } = await supabase
+      .from("user_management")
+      .delete()
+      .eq("id", id);
 
     if (error) {
       if (error.code === "PGRST116") {
@@ -749,11 +984,11 @@ export async function getUserByIdAdmin(userId: string): Promise<{
     let hasNfrEliteBundle = false;
     if (authUser.email) {
       const normalizedEmail = authUser.email.toLowerCase().trim();
-      const { data: nfrRecord } = await serviceSupabase
-        .from("user_management")
-        .select("pro")
-        .eq("user_email", normalizedEmail)
-        .maybeSingle();
+      const nfrRecord = await fetchUserManagementProByUserIdOrEmail(
+        serviceSupabase,
+        userId,
+        normalizedEmail,
+      );
       hasNfr = nfrRecord?.pro ?? false;
       if (hasNfr) {
         const eliteSet = await getNormalizedEmailsWithUltimateBundleProductGrants(
@@ -1452,11 +1687,11 @@ export async function getSupportTicketsAdmin(): Promise<{
         let hasNfr = false;
         if (email) {
           const normalizedEmail = email.toLowerCase().trim();
-          const { data: nfrRecord } = await serviceSupabase
-            .from("user_management")
-            .select("pro")
-            .eq("user_email", normalizedEmail)
-            .maybeSingle();
+          const nfrRecord = await fetchUserManagementProByUserIdOrEmail(
+            serviceSupabase,
+            userId,
+            normalizedEmail,
+          );
           hasNfr = nfrRecord?.pro ?? false;
         }
 

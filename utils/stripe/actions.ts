@@ -719,14 +719,12 @@ export async function createCustomerPortalSession(
       };
     }
 
-    // Sync the Stripe customer's email with the logged-in user so Stripe's form is pre-filled
     const email = user.email?.trim();
     if (email) {
-      try {
-        await stripe.customers.update(profile.customer_id, { email: email.toLowerCase() });
-      } catch (updateErr) {
-        console.warn("Could not update Stripe customer email before portal:", updateErr);
-      }
+      const { syncStripeCustomerEmailFromProfile } = await import(
+        "@/utils/stripe/sync-customer-email"
+      );
+      await syncStripeCustomerEmailFromProfile(supabase, user.id, email);
     }
 
     const returnUrl = DEFAULT_RETURN_URL;

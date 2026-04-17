@@ -7,6 +7,7 @@ import Stripe from "stripe";
 import { requireUuid } from "@/utils/validation";
 import { stripe } from "@/utils/stripe/client";
 import {
+  fetchProductGrantIdsForUser,
   resolveGrantEmail,
   validateToken,
 } from "@/utils/nnaudio-access/access";
@@ -51,31 +52,22 @@ export async function POST(request: NextRequest) {
 
     let productIds = new Set<string>();
 
-    // Check individual product grants
-    if (grantEmail) {
+    const grantIdSet = await fetchProductGrantIdsForUser(
+      adminSupabase,
+      userId,
+      grantEmail
+    );
+    if (grantIdSet.size > 0) {
+      grantIdSet.forEach((pid) => {
+        productIds.add(pid);
+      });
       console.log(
-        `[NNAudio Access Products] Checking product grants for email: ${grantEmail}`
+        `[NNAudio Access Products] user=${userId} grants=${grantIdSet.size} (email=${grantEmail ?? "n/a"})`
       );
-      const { data: productGrants, error: grantsError } = await (adminSupabase as any)
-        .from("product_grants")
-        .select("product_id")
-        .eq("user_email", grantEmail);
-
-      if (grantsError) {
-        console.error(`[NNAudio Access Products] Error fetching product grants:`, grantsError);
-      }
-
-      if (productGrants && productGrants.length > 0) {
-        console.log(`[NNAudio Access Products] User has ${productGrants.length} product grants`);
-        productGrants.forEach((grant: { product_id: string }) => {
-          if (grant.product_id) {
-            productIds.add(grant.product_id);
-            console.log(`[NNAudio Access Products] Added granted product: ${grant.product_id}`);
-          }
-        });
-      } else {
-        console.log(`[NNAudio Access Products] No product grants found for ${grantEmail}`);
-      }
+    } else {
+      console.log(
+        `[NNAudio Access Products] No product grants found for user ${userId} (email: ${grantEmail ?? "n/a"})`
+      );
     }
 
     // Note: Subscriptions no longer grant all products automatically

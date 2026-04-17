@@ -1533,28 +1533,63 @@ export async function getAllUsersForCRM(
       .map((p) => (p as typeof p & { email?: string }).email)
       .filter((email): email is string => !!email && email.length > 0);
 
-    const nfrStatusMap: Record<string, boolean> = {};
-    if (userEmails.length > 0) {
+    const nfrByUserId: Record<string, boolean> = {};
+    const nfrByEmail: Record<string, boolean> = {};
+    const profileIds = profiles.map((p) => (p as { id: string }).id);
+    const normalizedEmails = userEmails.map((e) => e.toLowerCase().trim());
+    if (profileIds.length > 0 || normalizedEmails.length > 0) {
       try {
-        // Fetch all NFR records and match by normalized email (case-insensitive)
-        // This approach is more reliable than trying to filter in the query
-        const { data: nfrRecords, error: nfrError } = await supabase
-          .from("user_management")
-          .select("user_email, pro");
+        const [byIdsRes, byEmailsRes] = await Promise.all([
+          profileIds.length > 0
+            ? supabase
+                .from("user_management")
+                .select("user_id, user_email, pro")
+                .in("user_id", profileIds)
+            : Promise.resolve({
+                data: [] as {
+                  user_id?: string | null;
+                  user_email?: string | null;
+                  pro?: boolean | null;
+                }[],
+                error: null,
+              }),
+          normalizedEmails.length > 0
+            ? supabase
+                .from("user_management")
+                .select("user_id, user_email, pro")
+                .in("user_email", normalizedEmails)
+            : Promise.resolve({
+                data: [] as {
+                  user_id?: string | null;
+                  user_email?: string | null;
+                  pro?: boolean | null;
+                }[],
+                error: null,
+              }),
+        ]);
 
-        if (!nfrError && nfrRecords) {
-          // Create normalized email sets for efficient lookup
-          const normalizedUserEmails = new Set(
-            userEmails.map((e) => e.toLowerCase().trim())
-          );
-          
-          // Match records by normalized email
-          nfrRecords.forEach((record) => {
-            const normalizedRecordEmail = record.user_email.toLowerCase().trim();
-            if (normalizedUserEmails.has(normalizedRecordEmail)) {
-              nfrStatusMap[normalizedRecordEmail] = record.pro ?? false;
+        const nfrError = byIdsRes.error ?? byEmailsRes.error;
+        const nfrRecords = [
+          ...(byIdsRes.data ?? []),
+          ...(byEmailsRes.data ?? []),
+        ];
+
+        if (!nfrError && nfrRecords.length > 0) {
+          nfrRecords.forEach(
+            (record: {
+              user_id?: string | null;
+              user_email?: string | null;
+              pro?: boolean | null;
+            }) => {
+              if (record.user_id) {
+                nfrByUserId[record.user_id] = record.pro ?? false;
+              }
+              const em = record.user_email?.toLowerCase().trim();
+              if (em) {
+                nfrByEmail[em] = record.pro ?? false;
+              }
             }
-          });
+          );
         }
       } catch (nfrErr) {
         console.error("Error fetching NFR status:", nfrErr);
@@ -1565,7 +1600,11 @@ export async function getAllUsersForCRM(
       .map((p) => {
         const em = (p as typeof p & { email?: string }).email || "";
         const norm = em.toLowerCase().trim();
-        return { norm, hasNfr: norm ? (nfrStatusMap[norm] ?? false) : false };
+        const pid = (p as { id: string }).id;
+        const hasNfr = norm
+          ? (nfrByUserId[pid] ?? nfrByEmail[norm] ?? false)
+          : false;
+        return { norm, hasNfr };
       })
       .filter((x) => x.hasNfr && x.norm)
       .map((x) => x.norm);
@@ -1591,7 +1630,10 @@ export async function getAllUsersForCRM(
       const userEmail =
         (profile as typeof profile & { email?: string }).email || "";
       const normalizedEmail = userEmail.toLowerCase().trim();
-      const hasNfr = nfrStatusMap[normalizedEmail] ?? false;
+      const hasNfr =
+        nfrByUserId[profile.id] ??
+        (normalizedEmail ? nfrByEmail[normalizedEmail] : false) ??
+        false;
 
       const p = profile as typeof profile & {
         nnaudio_access_installer_macos_at?: string | null;

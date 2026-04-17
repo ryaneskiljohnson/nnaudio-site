@@ -167,12 +167,24 @@ export async function POST(request: NextRequest) {
 
     // Grant the product to the user (similar to product grants)
     // Check if grant already exists
-    const { data: existingGrant } = await (adminSupabase as any)
+    const grantEmailLower = profile.email.toLowerCase();
+    let existingGrant: { id: string } | null = null;
+    const { data: byUid } = await (adminSupabase as any)
       .from("product_grants")
       .select("id")
-      .eq("user_email", profile.email.toLowerCase())
+      .eq("user_id", user.id)
       .eq("product_id", code.product_id)
       .maybeSingle();
+    existingGrant = byUid ?? null;
+    if (!existingGrant) {
+      const { data: byEmail } = await (adminSupabase as any)
+        .from("product_grants")
+        .select("id")
+        .eq("user_email", grantEmailLower)
+        .eq("product_id", code.product_id)
+        .maybeSingle();
+      existingGrant = byEmail ?? null;
+    }
 
     if (!existingGrant) {
       // Create product grant with reseller information
@@ -185,7 +197,8 @@ export async function POST(request: NextRequest) {
       const { error: grantError } = await (adminSupabase as any)
         .from("product_grants")
         .insert({
-          user_email: profile.email.toLowerCase(),
+          user_email: grantEmailLower,
+          user_id: user.id,
           product_id: code.product_id,
           granted_by: user.id,
           notes: `Redeemed via reseller code: ${normalizedCode} from ${resellerName}`,

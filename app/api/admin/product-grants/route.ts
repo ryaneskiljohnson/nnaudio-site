@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { invalidateUserProductCacheByEmail } from "@/lib/product-cache";
+import { resolveProfileUserIdByEmail } from "@/utils/supabase/resolve-profile-user-id";
 
 // GET - List all product grants (admin only)
 export async function GET(request: NextRequest) {
@@ -112,22 +113,57 @@ export async function POST(request: NextRequest) {
 
     console.log("[product-grants POST] Checking for existing grant...");
 
-    // Check if grant already exists
-    const { data: existing, error: existingError } = await (adminSupabase as any)
-      .from("product_grants")
-      .select("id")
-      .eq("user_email", user_email.toLowerCase())
-      .eq("product_id", product_id)
-      .maybeSingle();
+    const normalizedEmail = user_email.toLowerCase();
+    const resolvedUserId = await resolveProfileUserIdByEmail(
+      adminSupabase,
+      user_email
+    );
 
-    if (existingError) {
-      // Any error here likely means the table doesn't exist
-      console.error("[product-grants POST] Error checking existing grant:", existingError);
-      return NextResponse.json({ 
-        error: `Database error: ${existingError.message}`,
-        code: existingError.code,
-        hint: existingError.hint || "The product_grants table may not exist. Please run the migration: supabase/migrations/20250122000001_create_product_grants_table.sql"
-      }, { status: 500 });
+    let existing: { id: string } | null = null;
+    if (resolvedUserId) {
+      const { data: byUid, error: uidErr } = await (adminSupabase as any)
+        .from("product_grants")
+        .select("id")
+        .eq("user_id", resolvedUserId)
+        .eq("product_id", product_id)
+        .maybeSingle();
+      if (uidErr) {
+        console.error("[product-grants POST] Error checking existing grant (user_id):", uidErr);
+        return NextResponse.json(
+          {
+            error: `Database error: ${uidErr.message}`,
+            code: uidErr.code,
+            hint:
+              uidErr.hint ||
+              "The product_grants table may not exist. Please run migrations.",
+          },
+          { status: 500 }
+        );
+      }
+      existing = byUid ?? null;
+    }
+    if (!existing) {
+      const { data: byEmail, error: existingError } = await (adminSupabase as any)
+        .from("product_grants")
+        .select("id")
+        .eq("user_email", normalizedEmail)
+        .eq("product_id", product_id)
+        .maybeSingle();
+
+      if (existingError) {
+        console.error("[product-grants POST] Error checking existing grant:", existingError);
+        return NextResponse.json(
+          {
+            error: `Database error: ${existingError.message}`,
+            code: existingError.code,
+            hint:
+              existingError.hint ||
+              "The product_grants table may not exist. Please run the migration: supabase/migrations/20250122000001_create_product_grants_table.sql",
+          },
+          { status: 500 }
+        );
+      }
+      existing = byEmail ?? null;
     }
 
     if (existing) {
@@ -144,7 +180,8 @@ export async function POST(request: NextRequest) {
     const { data: grant, error } = await (adminSupabase as any)
       .from("product_grants")
       .insert({
-        user_email: user_email.toLowerCase(),
+        user_email: normalizedEmail,
+        user_id: resolvedUserId,
         product_id,
         granted_by: user.id,
         notes: notes || null,

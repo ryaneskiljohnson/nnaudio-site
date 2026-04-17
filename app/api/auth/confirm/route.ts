@@ -52,6 +52,17 @@ export async function GET(request: NextRequest) {
 
     if (!error) {
       await new Promise((resolve) => setTimeout(resolve, 100));
+      if (type === "email_change") {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user?.email) {
+          const { syncStripeCustomerEmailFromProfile } = await import(
+            "@/utils/stripe/sync-customer-email"
+          );
+          await syncStripeCustomerEmailFromProfile(supabase, user.id, user.email);
+        }
+      }
       if (type === "recovery" || type === "invite") {
         redirect("/reset-password");
       }

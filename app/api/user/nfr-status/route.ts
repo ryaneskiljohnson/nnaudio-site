@@ -1,3 +1,14 @@
+/**
+ * @fileoverview Returns NFR (user_management.pro) and elite (notes) for the authenticated user.
+ * @module app/api/user/nfr-status
+ *
+ * @returns JSON `{ hasNfr, hasElite, notes, error }`
+ * @status 200 Success
+ * @status 401 Not authenticated
+ * @status 400 No email on session
+ * @status 500 Internal error
+ */
+
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { NextResponse } from "next/server";
@@ -5,7 +16,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const supabase = await createClient();
-    
+
     const {
       data: { user },
       error: authError,
@@ -18,7 +29,6 @@ export async function GET() {
       );
     }
 
-    // Get user email
     const email = user.email;
     if (!email) {
       return NextResponse.json(
@@ -27,77 +37,65 @@ export async function GET() {
       );
     }
 
-    // Use service role client to bypass RLS and check user_management table
     const serviceSupabase = await createSupabaseServiceRole();
-    
-    // Normalize email for comparison (lowercase and trim)
     const normalizedEmail = email.toLowerCase().trim();
-    
-    console.log(`[NFR Status] Checking for email: "${email}" (normalized: "${normalizedEmail}")`);
-    
-    // Try exact match first
+
+    console.log(
+      `[NFR Status] Checking for email: "${email}" (normalized: "${normalizedEmail}")`,
+    );
+
     let { data, error } = await (serviceSupabase as any)
       .from("user_management")
       .select("pro, notes, user_email")
-      .eq("user_email", normalizedEmail)
+      .eq("user_id", user.id)
       .maybeSingle();
 
-    // If no exact match, try case-insensitive search
     if (!data && (error?.code === "PGRST116" || !error)) {
-      const { data: caseInsensitiveData, error: caseInsensitiveError } = await (serviceSupabase as any)
+      const emailMatch = await (serviceSupabase as any)
         .from("user_management")
         .select("pro, notes, user_email")
-        .ilike("user_email", `%${normalizedEmail}%`)
+        .eq("user_email", normalizedEmail)
         .maybeSingle();
-      
-      if (caseInsensitiveData) {
-        data = caseInsensitiveData;
-        error = null;
-        console.log(`[NFR Status] Found case-insensitive match: "${caseInsensitiveData.user_email}"`);
-      } else if (caseInsensitiveError && caseInsensitiveError.code !== "PGRST116") {
-        console.error("[NFR Status] Case-insensitive search error:", caseInsensitiveError);
-      }
-    }
-
-    // If still no match, try with original email (in case it's stored with different casing)
-    if (!data) {
-      const { data: originalEmailData, error: originalEmailError } = await (serviceSupabase as any)
-        .from("user_management")
-        .select("pro, notes, user_email")
-        .eq("user_email", email.trim())
-        .maybeSingle();
-      
-      if (originalEmailData) {
-        data = originalEmailData;
-        error = null;
-        console.log(`[NFR Status] Found exact match with original email: "${originalEmailData.user_email}"`);
-      }
+      data = emailMatch.data;
+      error = emailMatch.error;
     }
 
     if (error && error.code !== "PGRST116") {
-      console.error("[NFR Status] Error checking user_management:", error, "for email:", normalizedEmail);
-      return NextResponse.json({ hasNfr: false, hasElite: false, error: error.message });
+      console.error(
+        "[NFR Status] Error checking user_management:",
+        error,
+        "for email:",
+        normalizedEmail,
+      );
+      return NextResponse.json({
+        hasNfr: false,
+        hasElite: false,
+        error: error.message,
+      });
     }
 
     if (!data) {
       console.log(`[NFR Status] No record found for email: ${normalizedEmail}`);
-      return NextResponse.json({ hasNfr: false, hasElite: false, error: null });
+      return NextResponse.json({
+        hasNfr: false,
+        hasElite: false,
+        error: null,
+      });
     }
 
-    // Check notes field for "elite" (case-insensitive)
-    const notes = data?.notes?.toLowerCase() || "";
+    const notes = data.notes?.toLowerCase() || "";
     const hasEliteAccess = notes.includes("elite");
 
-    console.log(`[NFR Status] Found record for ${data.user_email}:`, { 
-      hasPro: data?.pro, 
-      hasElite: hasEliteAccess, 
-      notes: data?.notes 
-    });
-    
-    return NextResponse.json({
-      hasNfr: data?.pro ?? false,
+    console.log(`[NFR Status] Found record for ${data.user_email}:`, {
+      hasPro: data.pro,
       hasElite: hasEliteAccess,
-      notes: data?.notes ?? null,
+      notes: data.notes,
+    });
+
+    return NextResponse.json({
+      hasNfr: data.pro ?? false,
+      hasElite: hasEliteAccess,
+      notes: data.notes ?? null,
       error: null,
     });
   } catch (error) {

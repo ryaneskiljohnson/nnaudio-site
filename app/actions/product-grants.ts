@@ -2,10 +2,12 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { resolveProfileUserIdByEmail } from "@/utils/supabase/resolve-profile-user-id";
 
 export interface ProductGrant {
   id: string;
   user_email: string;
+  user_id?: string | null;
   product_id: string;
   granted_at: string;
   granted_by: string | null;
@@ -107,7 +109,20 @@ export async function getProductGrantsForEmails(emails: string[]): Promise<{
     const normalized = [...new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
     const adminSupabase = await createSupabaseServiceRole();
 
-    const { data: grants, error } = await (adminSupabase as any)
+    const { data: profileRows } = await adminSupabase
+      .from("profiles")
+      .select("id")
+      .in("email", normalized);
+
+    const userIds = [
+      ...new Set(
+        (profileRows ?? [])
+          .map((p: { id: string }) => p.id)
+          .filter(Boolean)
+      ),
+    ];
+
+    const byEmailPromise = (adminSupabase as any)
       .from("product_grants")
       .select(`
         *,
@@ -120,6 +135,38 @@ export async function getProductGrantsForEmails(emails: string[]): Promise<{
       `)
       .in("user_email", normalized)
       .order("granted_at", { ascending: false });
+
+    const byUserIdPromise =
+      userIds.length > 0
+        ? (adminSupabase as any)
+            .from("product_grants")
+            .select(`
+              *,
+              products:product_id (
+                id,
+                name,
+                slug,
+                featured_image_url
+              )
+            `)
+            .in("user_id", userIds)
+            .order("granted_at", { ascending: false })
+        : Promise.resolve({ data: [] as ProductGrant[] });
+
+    const [emailResult, userIdResult] = await Promise.all([
+      byEmailPromise,
+      byUserIdPromise,
+    ]);
+
+    const error = emailResult.error ?? userIdResult.error;
+    const mergedById = new Map<string, ProductGrant>();
+    for (const row of [...(emailResult.data ?? []), ...(userIdResult.data ?? [])]) {
+      if (row?.id) mergedById.set(row.id, row as ProductGrant);
+    }
+    const grants = Array.from(mergedById.values()).sort(
+      (a, b) =>
+        new Date(b.granted_at).getTime() - new Date(a.granted_at).getTime()
+    );
 
     if (error) {
       console.error("[Product Grants] Error fetching grants for emails:", error);
@@ -148,10 +195,13 @@ export async function getUserProductGrants(userEmail: string): Promise<{
     }
 
     const adminSupabase = await createSupabaseServiceRole();
+    const normalizedEmail = userEmail.toLowerCase();
+    const resolvedUserId = await resolveProfileUserIdByEmail(
+      adminSupabase,
+      userEmail
+    );
 
-    const { data: grants, error } = await (adminSupabase as any)
-      .from("product_grants")
-      .select(`
+    const selectGrant = `
         *,
         products:product_id (
           id,
@@ -159,14 +209,44 @@ export async function getUserProductGrants(userEmail: string): Promise<{
           slug,
           featured_image_url
         )
-      `)
-      .eq("user_email", userEmail.toLowerCase())
+      `;
+
+    const byEmailPromise = (adminSupabase as any)
+      .from("product_grants")
+      .select(selectGrant)
+      .eq("user_email", normalizedEmail)
       .order("granted_at", { ascending: false });
 
+    const byUserIdPromise = resolvedUserId
+      ? (adminSupabase as any)
+          .from("product_grants")
+          .select(selectGrant)
+          .eq("user_id", resolvedUserId)
+          .order("granted_at", { ascending: false })
+      : Promise.resolve({ data: [] as ProductGrant[], error: null });
+
+    const [emailResult, userIdResult] = await Promise.all([
+      byEmailPromise,
+      byUserIdPromise,
+    ]);
+
+    const error = emailResult.error ?? userIdResult.error;
     if (error) {
       console.error("[Product Grants] Error fetching user grants:", error);
       return { data: null, error: error.message };
     }
+
+    const mergedById = new Map<string, ProductGrant>();
+    for (const row of [
+      ...(emailResult.data ?? []),
+      ...(userIdResult.data ?? []),
+    ]) {
+      if (row?.id) mergedById.set(row.id, row as ProductGrant);
+    }
+    const grants = Array.from(mergedById.values()).sort(
+      (a, b) =>
+        new Date(b.granted_at).getTime() - new Date(a.granted_at).getTime()
+    );
 
     return { data: grants as ProductGrant[], error: null };
   } catch (error: any) {
@@ -204,18 +284,36 @@ export async function grantProduct(
     }
 
     const adminSupabase = await createSupabaseServiceRole();
+    const normalizedEmail = userEmail.toLowerCase();
+    const resolvedUserId = await resolveProfileUserIdByEmail(
+      adminSupabase,
+      userEmail
+    );
 
-    // Check if grant already exists
-    const { data: existing, error: existingError } = await (adminSupabase as any)
-      .from("product_grants")
-      .select("id")
-      .eq("user_email", userEmail.toLowerCase())
-      .eq("product_id", productId)
-      .maybeSingle();
+    // Check if grant already exists (by user_id or email + product)
+    let existing: { id: string } | null = null;
+    if (resolvedUserId) {
+      const { data: byUid } = await (adminSupabase as any)
+        .from("product_grants")
+        .select("id")
+        .eq("user_id", resolvedUserId)
+        .eq("product_id", productId)
+        .maybeSingle();
+      existing = byUid ?? null;
+    }
+    if (!existing) {
+      const { data: byEmail, error: existingError } = await (adminSupabase as any)
+        .from("product_grants")
+        .select("id")
+        .eq("user_email", normalizedEmail)
+        .eq("product_id", productId)
+        .maybeSingle();
 
-    if (existingError && existingError.code !== "PGRST116") {
-      console.error("[Product Grants] Error checking existing grant:", existingError);
-      return { data: null, error: existingError.message };
+      if (existingError && existingError.code !== "PGRST116") {
+        console.error("[Product Grants] Error checking existing grant:", existingError);
+        return { data: null, error: existingError.message };
+      }
+      existing = byEmail ?? null;
     }
 
     if (existing) {
@@ -226,7 +324,8 @@ export async function grantProduct(
     const { data: grant, error } = await (adminSupabase as any)
       .from("product_grants")
       .insert({
-        user_email: userEmail.toLowerCase(),
+        user_email: normalizedEmail,
+        user_id: resolvedUserId,
         product_id: productId,
         granted_by: user.id,
         notes: notes || null,
