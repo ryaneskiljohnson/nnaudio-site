@@ -654,7 +654,7 @@ export async function getAdminOrders(limit = 200): Promise<{
     // 5. Fetch ALL product grants (with amount for historical order records)
     const { data: grants } = await (adminSupabase as any)
       .from("product_grants")
-      .select("id, product_id, user_email, granted_at, notes, amount")
+      .select("id, product_id, user_id, user_email, granted_at, notes, amount")
       .order("granted_at", { ascending: false });
 
     const grantOrders: AdminOrder[] = [];
@@ -693,7 +693,7 @@ export async function getAdminOrders(limit = 200): Promise<{
         }
       }
 
-      // Group grants by (user_email, minute) so batches created together appear as one order
+      // Group grants by (user_id, minute) so batches created together appear as one order
       const MINUTE_MS = 60 * 1000;
       const grantGroups = new Map<
         string,
@@ -725,7 +725,7 @@ export async function getAdminOrders(limit = 200): Promise<{
         const minuteBucket = Math.floor(
           new Date(grant.granted_at).getTime() / MINUTE_MS
         );
-        const groupKey = `${(grant.user_email ?? "").toLowerCase()}|${minuteBucket}`;
+        const groupKey = `${grant.user_id ?? ""}|${minuteBucket}`;
 
         if (!grantGroups.has(groupKey)) {
           grantGroups.set(groupKey, []);

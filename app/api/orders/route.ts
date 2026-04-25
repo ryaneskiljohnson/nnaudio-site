@@ -127,14 +127,12 @@ export async function GET(request: NextRequest) {
       amount?: number;
     }> = [];
     
-    if (profile?.email) {
-      console.log(`[Orders API] Checking product grants for email: ${profile.email.toLowerCase()}`);
-      // Use service role client to bypass RLS for product_grants query
+    {
       const adminSupabase = await createSupabaseServiceRole();
       const { data: grants, error: grantsError } = await (adminSupabase as any)
         .from("product_grants")
         .select("id, product_id, granted_at, notes, amount")
-        .eq("user_email", profile.email.toLowerCase())
+        .eq("user_id", user.id)
         .order("granted_at", { ascending: false });
 
       if (grantsError) {
@@ -145,10 +143,8 @@ export async function GET(request: NextRequest) {
         grantedProducts = grants as typeof grantedProducts;
         console.log(`[Orders API] Found ${grants.length} product grants:`, grants);
       } else {
-        console.log(`[Orders API] No product grants found for ${profile.email.toLowerCase()}`);
+        console.log(`[Orders API] No product grants found for user_id ${user.id}`);
       }
-    } else {
-      console.log(`[Orders API] No profile email found, skipping product grants check`);
     }
 
     // Transform payment intents into orders

@@ -65,10 +65,10 @@ export async function GET(request: NextRequest) {
     // Get unique customers
     const { data: uniqueCustomersData } = await (adminSupabase as any)
       .from("product_grants")
-      .select("user_email");
+      .select("user_id");
 
     const uniqueCustomers = uniqueCustomersData
-      ? new Set(uniqueCustomersData.map((g: any) => g.user_email)).size
+      ? new Set(uniqueCustomersData.map((g: any) => g.user_id)).size
       : 0;
 
     // Get unique products

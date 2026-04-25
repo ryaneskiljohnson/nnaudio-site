@@ -669,7 +669,8 @@ export default function ProductsManagementPage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      let url = '/api/products?limit=10000'; // Increased limit to show all products
+      let url =
+        "/api/products?limit=10000&include_nnaudio_access_product=true";
       
       if (filter !== 'all') {
         url += `&category=${filter}`;

@@ -135,15 +135,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Check for product grants (free licenses)
-    if (profile?.email) {
-      console.log(`[My Products] Checking product grants for email: ${profile.email.toLowerCase()}`);
-      // Use service role client to bypass RLS for product_grants query (table not in generated DB types)
+    // Check for product grants (free licenses), keyed by auth user id
+    {
+      console.log(`[My Products] Checking product grants for user_id: ${user.id}`);
       const adminSupabase = await createSupabaseServiceRole();
       const { data: productGrants, error: grantsError } = await (adminSupabase as any)
         .from("product_grants")
         .select("product_id")
-        .eq("user_email", profile.email.toLowerCase());
+        .eq("user_id", user.id);
 
       if (grantsError) {
         console.error(`[My Products] Error fetching product grants:`, grantsError);
@@ -157,7 +156,7 @@ export async function GET(request: NextRequest) {
           }
         });
       } else {
-        console.log(`[My Products] No product grants found for ${profile.email.toLowerCase()}`);
+        console.log(`[My Products] No product grants found for user_id ${user.id}`);
       }
     }
 

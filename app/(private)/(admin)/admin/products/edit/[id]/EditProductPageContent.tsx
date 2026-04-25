@@ -859,7 +859,9 @@ export default function EditProductPage() {
         if (productsFromSlug) {
           // Already have products from slug response; still fetch available products to add
           try {
-            const allProductsResponse = await fetch('/api/products?status=all&limit=1000');
+            const allProductsResponse = await fetch(
+            '/api/products?status=all&limit=1000&include_nnaudio_access_product=true',
+          );
             if (allProductsResponse.ok) {
               const allProductsData = await allProductsResponse.json();
               if (allProductsData.success) {
@@ -930,7 +932,9 @@ export default function EditProductPage() {
           // Fetch available products to add (excluding bundle products and this bundle itself)
           // Use the fetched bundle products, not the state (which might not be updated yet)
           try {
-            const allProductsResponse = await fetch('/api/products?status=all&limit=1000');
+            const allProductsResponse = await fetch(
+            '/api/products?status=all&limit=1000&include_nnaudio_access_product=true',
+          );
             if (!allProductsResponse.ok) {
               console.error(`Failed to fetch available products: HTTP ${allProductsResponse.status}`);
               setAvailableProducts([]);
@@ -970,7 +974,9 @@ export default function EditProductPage() {
           setBundleProducts([]);
           // Still try to fetch available products
           try {
-            const allProductsResponse = await fetch('/api/products?status=all&limit=1000');
+            const allProductsResponse = await fetch(
+            '/api/products?status=all&limit=1000&include_nnaudio_access_product=true',
+          );
             if (allProductsResponse.ok) {
               const contentType = allProductsResponse.headers.get('content-type');
               if (contentType && contentType.includes('application/json')) {
@@ -994,7 +1000,9 @@ export default function EditProductPage() {
         // or at least allow adding products (we'll create the bundle when first product is added)
         // For now, still fetch available products so the UI can show the add button
         try {
-          const allProductsResponse = await fetch('/api/products?status=all&limit=1000');
+          const allProductsResponse = await fetch(
+            '/api/products?status=all&limit=1000&include_nnaudio_access_product=true',
+          );
           if (allProductsResponse.ok) {
             const contentType = allProductsResponse.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {

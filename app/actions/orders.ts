@@ -195,12 +195,12 @@ export async function getOrders(): Promise<{
       amount?: number;
     }> = [];
     
-    if (profile?.email) {
+    {
       const adminSupabase = await createSupabaseServiceRole();
       const { data: grants, error: grantsError } = await (adminSupabase as any)
         .from("product_grants")
         .select("id, product_id, granted_at, notes, amount")
-        .eq("user_email", profile.email.toLowerCase())
+        .eq("user_id", user.id)
         .order("granted_at", { ascending: false });
 
       if (grantsError) {
