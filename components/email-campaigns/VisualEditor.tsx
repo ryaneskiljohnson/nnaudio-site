@@ -41,7 +41,7 @@ import {
   FaDiscord,
   FaEye,
   FaCode,
-  FaSave
+  FaCheck
 } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 
@@ -1005,6 +1005,10 @@ export default function VisualEditor({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  /** @note Debounced DOM→state sync so draft/preview use latest HTML without a per-block Save. */
+  const inputSyncTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  /** @brief Snapshot of content at edit start; used so Cancel can discard in-memory/ DOM changes after live sync. */
+  const editSessionSnapshotRef = useRef<Record<string, { content?: string; footerText?: string }>>({});
   
   // Link and color picker modals
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -1031,6 +1035,63 @@ export default function VisualEditor({
     selectedText: string;
     elementId: string;
   } | null>(null);
+
+  const clearInputSyncTimer = useCallback((elementId: string) => {
+    const t = inputSyncTimersRef.current[elementId];
+    if (t) {
+      clearTimeout(t);
+      delete inputSyncTimersRef.current[elementId];
+    }
+  }, []);
+
+  const syncContentFromDomToStateNow = useCallback(
+    (elementId: string, dom: HTMLElement) => {
+      const set = setEmailElements as React.Dispatch<React.SetStateAction<any[]>>;
+      set((prev: any[]) => {
+        const el = prev.find((e: any) => e.id === elementId);
+        if (!el) return prev;
+        const raw = dom instanceof HTMLTextAreaElement ? dom.value : dom.innerHTML;
+        if (el.type === "footer") {
+          const prevText = el.footerText ?? "";
+          if (raw === prevText) return prev;
+          return prev.map((e: any) => (e.id === elementId ? { ...e, footerText: raw } : e));
+        }
+        const prevContent = el.content ?? "";
+        if (raw === prevContent) return prev;
+        return prev.map((e: any) => (e.id === elementId ? { ...e, content: raw } : e));
+      });
+    },
+    [setEmailElements]
+  );
+
+  const scheduleInputSyncFromDom = useCallback(
+    (elementId: string) => {
+      clearInputSyncTimer(elementId);
+      inputSyncTimersRef.current[elementId] = setTimeout(() => {
+        const dom =
+          (document.querySelector(`[data-element-id="${elementId}"]`) as HTMLElement | null) ||
+          (document.querySelector(`.editable-text[data-element-id="${elementId}"]`) as HTMLElement | null);
+        if (dom) {
+          syncContentFromDomToStateNow(elementId, dom);
+        }
+        delete inputSyncTimersRef.current[elementId];
+      }, 100);
+    },
+    [clearInputSyncTimer, syncContentFromDomToStateNow]
+  );
+
+  const flushInputSyncToState = useCallback(
+    (elementId: string) => {
+      clearInputSyncTimer(elementId);
+      const dom =
+        (document.querySelector(`[data-element-id="${elementId}"]`) as HTMLElement | null) ||
+        (document.querySelector(`.editable-text[data-element-id="${elementId}"]`) as HTMLElement | null);
+      if (dom) {
+        syncContentFromDomToStateNow(elementId, dom);
+      }
+    },
+    [clearInputSyncTimer, syncContentFromDomToStateNow]
+  );
 
   // ✨ NEW: Update design setting
   const updateDesignSetting = (key: string, value: string) => {
@@ -1089,7 +1150,10 @@ export default function VisualEditor({
           document.execCommand(command, false, value);
       }
       
-      // No need to update state - content will be saved when editing stops
+      if (editingElement) {
+        clearInputSyncTimer(editingElement);
+        syncContentFromDomToStateNow(editingElement, editingElementDOM);
+      }
       console.log(`📄 Formatting applied to element:`, editingElement);
     } catch (error) {
       console.error('❌ Error applying format:', error);
@@ -1105,12 +1169,10 @@ export default function VisualEditor({
 
   // Link and color picker handlers
   const openLinkModal = () => {
-    // Only work if we're editing an element
     if (!editingElement) {
       return;
     }
-    
-    // Get the editing element
+    flushInputSyncToState(editingElement);
     const editingElementDOM = document.querySelector(`[data-element-id="${editingElement}"]`) as HTMLElement;
     if (!editingElementDOM) return;
     
@@ -1308,7 +1370,10 @@ export default function VisualEditor({
           console.log('✅ Link appended to element (no selection)');
         }
       
-      console.log('✅ Link applied to DOM (will save on Save button click)');
+      if (editingElement) {
+        clearInputSyncTimer(editingElement);
+        syncContentFromDomToStateNow(editingElement, editingElementDOM);
+      }
       console.log('🔍 Current DOM content after link:', editingElementDOM.innerHTML);
     }
     
@@ -1316,12 +1381,10 @@ export default function VisualEditor({
   };
 
   const openColorPicker = (type: 'text' | 'background') => {
-    // Only work if we're editing an element
     if (!editingElement) {
       return;
     }
-    
-    // Get the editing element
+    flushInputSyncToState(editingElement);
     const editingElementDOM = document.querySelector(`[data-element-id="${editingElement}"]`) as HTMLElement;
     if (!editingElementDOM) return;
     
@@ -1511,7 +1574,15 @@ export default function VisualEditor({
         console.log('✅ Color applied to entire element (no selection API)');
       }
       
-      console.log('✅ Color applied to DOM (will save on Save button click)');
+      if (editingElement) {
+        const dom =
+          (document.querySelector(`[data-element-id="${editingElement}"]`) as HTMLElement | null) ||
+          (document.querySelector(`.editable-text[data-element-id="${editingElement}"]`) as HTMLElement | null);
+        if (dom) {
+          clearInputSyncTimer(editingElement);
+          syncContentFromDomToStateNow(editingElement, dom);
+        }
+      }
     }
     
     closeColorPicker();
@@ -1884,9 +1955,12 @@ export default function VisualEditor({
       duplicateElement(selectedElementId);
     }
     
-    // Escape key - deselect element and stop editing
+    // Escape key - deselect element and stop editing (state is already live-synced)
     if (e.key === 'Escape') {
       e.preventDefault();
+      if (editingElement) {
+        delete editSessionSnapshotRef.current[editingElement];
+      }
     setSelectedElementId(null);
       setEditingElement(null);
     }
@@ -1900,6 +1974,13 @@ export default function VisualEditor({
     };
   }, [handleKeyDown]);
 
+  useEffect(() => {
+    return () => {
+      Object.values(inputSyncTimersRef.current).forEach((t) => clearTimeout(t));
+      inputSyncTimersRef.current = {};
+    };
+  }, []);
+
   const selectElement = (elementId: string) => {
     setSelectedElementId(elementId);
     // DON'T clear editing state when selecting - only clear when explicitly stopping edit
@@ -1908,118 +1989,92 @@ export default function VisualEditor({
   };
 
   const startEditing = (elementId: string) => {
-    console.log('🎯 START EDITING called for element:', elementId);
-    console.log('🎯 Current editingElement state:', editingElement);
+    const el = emailElements.find((x) => x.id === elementId);
+    if (el) {
+      editSessionSnapshotRef.current[elementId] = {
+        content: el.content,
+        footerText: el.footerText,
+      };
+    }
     setEditingElement(elementId);
-    console.log('🎯 Called setEditingElement with:', elementId);
     
     // Set the DOM content when editing starts (since we're not using dangerouslySetInnerHTML in edit mode)
     setTimeout(() => {
-      const element = emailElements.find(el => el.id === elementId);
+      const element = emailElements.find((e) => e.id === elementId);
       const domElement = document.querySelector(`[data-element-id="${elementId}"]`) as HTMLElement;
       if (domElement && element) {
-        let content = '';
-        if (element.type === 'footer') {
+        let text = "";
+        if (element.type === "footer") {
           const year = new Date().getFullYear();
-          content = element.footerText || ('© ' + year + ' NNAud.io All rights reserved.');
+          text = element.footerText || "© " + year + " NNAud.io All rights reserved.";
         } else {
-          content = element.content || (element.type === 'header' ? 'Enter header text...' : 'Enter your text...');
+          text =
+            element.content ||
+            (element.type === "header"
+              ? "Enter header text..."
+              : "Enter your text...");
         }
-        domElement.innerHTML = DOMPurify.sanitize(content);
+        if (domElement instanceof HTMLTextAreaElement) {
+          domElement.value = String(text);
+        } else {
+          domElement.innerHTML = DOMPurify.sanitize(text);
+        }
         domElement.focus();
-        console.log('🎯 Set DOM content for editing:', domElement.innerHTML);
       }
     }, 0);
   };
 
   const saveAndStopEditing = () => {
-    console.log('💾 SAVE AND STOP EDITING called');
-    
-    // Save the current content before stopping editing
     if (editingElement) {
-      try {
-        // Try to find the element in multiple ways
-        let editingElementDOM = document.querySelector(`[data-element-id="${editingElement}"]`);
-        if (!editingElementDOM) {
-          editingElementDOM = document.querySelector(`[data-element-id="${editingElement}"] .editable-text`);
-        }
-        if (!editingElementDOM) {
-          editingElementDOM = document.querySelector(`.editable-text[data-element-id="${editingElement}"]`);
-        }
-
-        if (!editingElementDOM) {
-          console.log('⚠️ Could not find editing element DOM, using stored content');
-          setEditingElement(null);
-          return;
-        }
-
-        // Get the current content, handling both contentEditable divs and textareas
-        let currentContent = '';
-        if (editingElementDOM instanceof HTMLTextAreaElement) {
-          currentContent = editingElementDOM.value;
-        } else {
-          currentContent = editingElementDOM.innerHTML;
-        }
-
-        const element = emailElements.find(el => el.id === editingElement);
-        if (!element) {
-          console.log('⚠️ Could not find element in emailElements');
-          setEditingElement(null);
-          return;
-        }
-
-        console.log('💾 SAVING CONTENT:');
-        console.log('💾 Previous:', element.content);
-        console.log('💾 Current:', currentContent);
-        console.log('💾 Has colors?', currentContent.includes('color:') || currentContent.includes('style='));
-        console.log('💾 Has spans?', currentContent.includes('<span'));
-        console.log('💾 Has links?', currentContent.includes('<a'));
-        
-        // Only update if we have content
-        const existingContent = element.type === 'footer' ? element.footerText : element.content;
-        if (currentContent && currentContent !== existingContent) {
-          // Handle different element types
-          if (element.type === 'footer') {
-            setEmailElements(emailElements.map(el => 
-              el.id === editingElement ? { ...el, footerText: currentContent } : el
-            ));
-          } else {
-            setEmailElements(emailElements.map(el => 
-              el.id === editingElement ? { ...el, content: currentContent } : el
-            ));
-          }
-          console.log('✅ Content saved successfully');
-        } else {
-          console.log('ℹ️ No content changes to save');
-        }
-      } catch (error) {
-        console.log('⚠️ Error while saving content:', error);
-      }
-    } else {
-      console.log('ℹ️ No editing element to save');
+      flushInputSyncToState(editingElement);
+      delete editSessionSnapshotRef.current[editingElement];
     }
-    
     setEditingElement(null);
   };
 
   const cancelEditing = () => {
-    console.log('❌ CANCEL EDITING called');
-    
-    // Restore original content without saving changes
-    if (editingElement) {
-      const editingElementDOM = document.querySelector(`[data-element-id="${editingElement}"]`) as HTMLElement;
-      const originalElement = emailElements.find(el => el.id === editingElement);
-      
-      if (editingElementDOM && originalElement) {
-        // Restore the original content to the DOM
-        if (originalElement.type === 'footer') {
-          editingElementDOM.innerHTML = DOMPurify.sanitize(originalElement.footerText || `© ${new Date().getFullYear()} NNAud.io All rights reserved.`);
-        } else {
-          editingElementDOM.innerHTML = DOMPurify.sanitize(originalElement.content || '');
-        }
-      }
+    if (!editingElement) {
+      setEditingElement(null);
+      return;
     }
-    
+    const id = editingElement;
+    const snap = editSessionSnapshotRef.current[id];
+    clearInputSyncTimer(id);
+    if (snap) {
+      const set = setEmailElements as React.Dispatch<React.SetStateAction<any[]>>;
+      set((prev: any[]) =>
+        prev.map((e: any) => {
+          if (e.id !== id) return e;
+          return {
+            ...e,
+            content: snap.content !== undefined ? snap.content : e.content,
+            footerText: snap.footerText !== undefined ? snap.footerText : e.footerText,
+          };
+        })
+      );
+      setTimeout(() => {
+        const dom = document.querySelector(
+          `[data-element-id="${id}"]`
+        ) as HTMLElement | null;
+        if (dom) {
+          if (dom instanceof HTMLTextAreaElement) {
+            const y = new Date().getFullYear();
+            const ft =
+              snap.footerText !== undefined
+                ? snap.footerText
+                : `© ${y} NNAud.io All rights reserved.`;
+            dom.value = String(ft);
+          } else {
+            const html =
+              snap.content !== undefined
+                ? snap.content
+                : "";
+            dom.innerHTML = DOMPurify.sanitize(html);
+          }
+        }
+      }, 0);
+    }
+    delete editSessionSnapshotRef.current[id];
     setEditingElement(null);
   };
 
@@ -2252,10 +2307,10 @@ export default function VisualEditor({
       }, 150);
     };
 
-    const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
-      // DO NOTHING during editing to prevent re-renders from wiping out formatting
-      // All changes (including colors and links) will be saved when user clicks Save
-      console.log('📝 Input detected but not updating state (preserving DOM changes)');
+    const handleInput = () => {
+      if (isEditing) {
+        scheduleInputSyncFromDom(element.id);
+      }
     };
 
     const handleDragStart = (e: React.DragEvent) => {
@@ -2364,8 +2419,8 @@ export default function VisualEditor({
         <div className="element-controls">
           {isEditing ? (
             <>
-              <ElementControl onClick={(e) => { e.stopPropagation(); saveAndStopEditing(); }} title="Save Changes">
-                <FaSave size={12} />
+              <ElementControl onClick={(e) => { e.stopPropagation(); saveAndStopEditing(); }} title="Done editing">
+                <FaCheck size={12} />
               </ElementControl>
               <ElementControl onClick={(e) => { e.stopPropagation(); cancelEditing(); }} title="Cancel (Discard Changes)">
                 <FaTimes size={12} />
@@ -2713,7 +2768,6 @@ export default function VisualEditor({
               contentEditable={true}
               suppressContentEditableWarning={true}
               onKeyDown={handleKeyDown}
-                // onBlur={handleBlur}
               onInput={handleInput}
               onClick={(e) => {
                 e.stopPropagation();
@@ -2738,9 +2792,7 @@ export default function VisualEditor({
                 width: element.fullWidth ? '100%' : 'auto',
                 textAlign: element.textAlign || 'center'
               }}
-            >
-              {element.content}
-            </EditableText>
+            />
             ) : (
               <a
                 href={element.url || '#'}
