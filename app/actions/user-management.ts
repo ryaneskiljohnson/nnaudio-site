@@ -2006,21 +2006,32 @@ export async function getSupportTicketAdmin(ticketId: string): Promise<{
       }
     }
 
-    // Generate signed URLs for attachments that don't have valid URLs
+    // Generate signed URLs (service role: user JWT often cannot sign private objects)
     const bucketName = "support-attachments";
     const attachmentsWithUrls = await Promise.all(
       (attachments || []).map(async (att) => {
-        let url = att.url;
-        // If no URL or URL looks invalid, generate a signed URL
-        if (!url || !url.includes("supabase.co")) {
+        const needsSigned =
+          !att.url ||
+          (typeof att.url === "string" && att.url.includes("/object/public/")) ||
+          (typeof att.url === "string" &&
+            !att.url.includes("/object/sign/") &&
+            !att.url.includes("token="));
+        let url: string | null = att.url;
+        if (needsSigned) {
           try {
             const { data: signedUrlData, error: signedUrlError } =
               await serviceSupabase.storage
                 .from(bucketName)
-                .createSignedUrl(att.storage_path, 31536000); // 1 year expiry
+                .createSignedUrl(att.storage_path, 31536000);
 
-            if (!signedUrlError && signedUrlData) {
+            if (!signedUrlError && signedUrlData?.signedUrl) {
               url = signedUrlData.signedUrl;
+            } else {
+              console.error(
+                "Error generating signed URL for attachment:",
+                att.id,
+                signedUrlError,
+              );
             }
           } catch (error) {
             console.error(
@@ -3327,8 +3338,9 @@ export async function getUserSupportTicket(ticketId: string): Promise<{
       console.error("Error fetching attachments:", attachmentsError);
     }
 
-    // Get user emails for messages using service role client
     const serviceSupabase = await createSupabaseServiceRole();
+
+    // Get user emails for messages using service role client
     const messageUserIds = [...new Set(messages?.map((m) => m.user_id) || [])];
     const messageUserEmailsMap = new Map<string, string | null>();
 
@@ -3344,21 +3356,37 @@ export async function getUserSupportTicket(ticketId: string): Promise<{
       }
     }
 
-    // Generate signed URLs for attachments that don't have valid URLs
+    /**
+     * @note Signed URLs must be created with a client that can sign private objects. The
+     * end-user client often lacks storage.objects read rights; service role can always sign.
+     * We also re-sign if we previously stored a public object URL (does not work for a private bucket).
+     */
     const bucketName = "support-attachments";
+    const signStorage = serviceSupabase ?? supabase;
     const attachmentsWithUrls = await Promise.all(
       (attachments || []).map(async (att) => {
-        let url = att.url;
-        // If no URL or URL looks invalid, generate a signed URL
-        if (!url || !url.includes("supabase.co")) {
+        const needsSigned =
+          !att.url ||
+          (typeof att.url === "string" && att.url.includes("/object/public/")) ||
+          (typeof att.url === "string" &&
+            !att.url.includes("/object/sign/") &&
+            !att.url.includes("token="));
+        let url: string | null = att.url;
+        if (needsSigned) {
           try {
             const { data: signedUrlData, error: signedUrlError } =
-              await supabase.storage
+              await signStorage.storage
                 .from(bucketName)
-                .createSignedUrl(att.storage_path, 31536000); // 1 year expiry
+                .createSignedUrl(att.storage_path, 31536000);
 
-            if (!signedUrlError && signedUrlData) {
+            if (!signedUrlError && signedUrlData?.signedUrl) {
               url = signedUrlData.signedUrl;
+            } else {
+              console.error(
+                "Error generating signed URL for attachment:",
+                att.id,
+                signedUrlError,
+              );
             }
           } catch (error) {
             console.error(
@@ -3670,6 +3698,9 @@ export async function uploadSupportTicketAttachment(
       file.name.endsWith(".txt")
     ) {
       attachmentType = "document";
+    } else if (/\.(heic|heif|avif)$/i.test(file.name)) {
+      /** Browsers / OS often omit image MIME; treat common photo extensions as images. */
+      attachmentType = "image";
     }
 
     // Generate unique filename
@@ -3682,6 +3713,30 @@ export async function uploadSupportTicketAttachment(
     // Convert file to buffer
     const fileBuffer = await file.arrayBuffer();
     const buffer = new Uint8Array(fileBuffer);
+    const contentType =
+      file.type && file.type.length > 0
+        ? file.type
+        : /\.(heic|heif)$/i.test(file.name)
+          ? "image/heic"
+          : "application/octet-stream";
+    const fileTypeForDb = file.type && file.type.length > 0 ? file.type : contentType;
+
+    /**
+     * Storage RLS: the support-attachments bucket has no per-user object policies, so
+     * user-scoped clients often cannot INSERT or createSignedUrl. Use the service
+     * role for upload/signing only after we have verified the user may attach to
+     * this ticket (checks above). Same pattern as addSupportTicketMessageAdmin.
+     */
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return {
+        success: false,
+        error: "Server configuration error: service role not available for storage",
+      };
+    }
+    const storageClient = await createSupabaseServiceRole();
+    if (!storageClient) {
+      return { success: false, error: "Storage unavailable" };
+    }
 
     // Upload to Supabase storage (ensure bucket exists)
     const bucketName = "support-attachments";
@@ -3691,25 +3746,29 @@ export async function uploadSupportTicketAttachment(
     );
     console.log("[Attachment Upload] Storage path:", storagePath);
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from(bucketName)
-      .upload(storagePath, buffer, {
-        contentType: file.type,
-        cacheControl: "3600",
-        upsert: false,
-      });
+    const { data: _uploadData, error: uploadError } =
+      await storageClient.storage
+        .from(bucketName)
+        .upload(storagePath, buffer, {
+          contentType,
+          cacheControl: "3600",
+          upsert: false,
+        });
 
     if (uploadError) {
       console.error("[Attachment Upload] Storage upload error:", uploadError);
-      console.error("[Attachment Upload] Error code:", (uploadError as { statusCode?: number }).statusCode);
+      console.error(
+        "[Attachment Upload] Error code:",
+        (uploadError as { statusCode?: number }).statusCode,
+      );
       console.error("[Attachment Upload] Error message:", uploadError.message);
 
-      // If bucket doesn't exist, try to create it
+      // If bucket doesn't exist, try to create it (service role)
       if (uploadError.message.includes("Bucket not found")) {
         console.log(
           "[Attachment Upload] Bucket not found, attempting to create...",
         );
-        const { error: createError } = await supabase.storage.createBucket(
+        const { error: createError } = await storageClient.storage.createBucket(
           bucketName,
           {
             public: false,
@@ -3724,11 +3783,10 @@ export async function uploadSupportTicketAttachment(
           return { success: false, error: "Failed to create storage bucket" };
         }
         console.log("[Attachment Upload] Bucket created, retrying upload...");
-        // Retry upload
-        const { data: retryData, error: retryError } = await supabase.storage
+        const { error: retryError } = await storageClient.storage
           .from(bucketName)
           .upload(storagePath, buffer, {
-            contentType: file.type,
+            contentType,
             cacheControl: "3600",
             upsert: false,
           });
@@ -3757,13 +3815,13 @@ export async function uploadSupportTicketAttachment(
     // Generate signed URL for private bucket (valid for 1 year)
     let signedUrl: string | null = null;
     try {
-      console.log("[Attachment Upload] Generating signed URL...");
+      console.log("[Attachment Upload] Generating signed URL (service)...");
       const { data: signedUrlData, error: signedUrlError } =
-        await supabase.storage
+        await storageClient.storage
           .from(bucketName)
-          .createSignedUrl(storagePath, 31536000); // 1 year expiry
+          .createSignedUrl(storagePath, 31536000);
 
-      if (!signedUrlError && signedUrlData) {
+      if (!signedUrlError && signedUrlData?.signedUrl) {
         signedUrl = signedUrlData.signedUrl;
         console.log("[Attachment Upload] Signed URL generated successfully");
       } else {
@@ -3771,19 +3829,22 @@ export async function uploadSupportTicketAttachment(
           "[Attachment Upload] Error generating signed URL:",
           signedUrlError,
         );
-        // Fallback: try public URL (won't work for private bucket, but won't break)
-        const { data: urlData } = supabase.storage
-          .from(bucketName)
-          .getPublicUrl(storagePath);
-        signedUrl = urlData?.publicUrl || null;
+        await storageClient.storage.from(bucketName).remove([storagePath]);
+        return {
+          success: false,
+          error: signedUrlError?.message || "Failed to create signed file URL",
+        };
       }
     } catch (urlError) {
       console.error("[Attachment Upload] Error generating URL:", urlError);
-      // Fallback: try public URL
-      const { data: urlData } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(storagePath);
-      signedUrl = urlData?.publicUrl || null;
+      await storageClient.storage.from(bucketName).remove([storagePath]);
+      return {
+        success: false,
+        error:
+          urlError instanceof Error
+            ? urlError.message
+            : "Failed to create signed file URL",
+      };
     }
 
     // Create attachment record using service role client
@@ -3805,7 +3866,7 @@ export async function uploadSupportTicketAttachment(
         message_id: messageId,
         file_name: file.name,
         file_size: file.size,
-        file_type: file.type,
+        file_type: fileTypeForDb,
         attachment_type: attachmentType,
         storage_path: storagePath,
         url: signedUrl,
@@ -3830,7 +3891,7 @@ export async function uploadSupportTicketAttachment(
         console.error(
           "[Attachment Upload] SUPABASE_SERVICE_ROLE_KEY is not set! Cannot use service role fallback.",
         );
-        await supabase.storage.from(bucketName).remove([storagePath]);
+        await storageClient.storage.from(bucketName).remove([storagePath]);
         return {
           success: false,
           error: "Server configuration error: Service role key not available",
@@ -3852,7 +3913,7 @@ export async function uploadSupportTicketAttachment(
               message_id: messageId,
               file_name: file.name,
               file_size: file.size,
-              file_type: file.type,
+              file_type: fileTypeForDb,
               attachment_type: attachmentType,
               storage_path: storagePath,
               url: signedUrl ?? '',
@@ -3881,7 +3942,7 @@ export async function uploadSupportTicketAttachment(
     if (attachmentError) {
       console.error("[Attachment Upload] Final error:", attachmentError);
       // Try to delete uploaded file
-      await supabase.storage.from(bucketName).remove([storagePath]);
+      await storageClient.storage.from(bucketName).remove([storagePath]);
       return {
         success: false,
         error: attachmentError.message || "Failed to create attachment record",
