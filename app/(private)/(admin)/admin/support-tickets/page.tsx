@@ -49,10 +49,11 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  createSupportTicketAdmin, 
+import {
+  createSupportTicketAdmin,
   updateSupportTicketStatusAdmin,
   getSupportTicketsAdmin,
+  getSupportTicketsEnrichmentsAdmin,
   getSupportTicketAdmin,
   deleteSupportTicketAdmin,
   addSupportTicketMessageAdmin,
@@ -1926,6 +1927,29 @@ function SupportTicketsPage() {
   const [loadingTickets, setLoadingTickets] = useState(true);
   /** After first list fetch, refetches skip the full-table skeleton. */
   const ticketsTableInitialFetchDone = useRef(false);
+  /**
+   * @brief Cache of per-user enrichment results loaded lazily for visible rows.
+   *
+   * Keyed by `user_id`. Once a user's enrichment is resolved we keep it for the life
+   * of the page so paging back and forth does not refetch. We track in-flight ids in
+   * a separate ref so concurrent visibility changes do not enqueue duplicates.
+   */
+  const enrichmentByUserId = useRef<
+    Map<
+      string,
+      {
+        product_count: number;
+        order_count: number;
+        has_nfr: boolean;
+        installer_macos_at: string | null;
+        installer_windows_at: string | null;
+      }
+    >
+  >(new Map());
+  const enrichmentInFlight = useRef<Set<string>>(new Set());
+  const [loadingEnrichmentByUser, setLoadingEnrichmentByUser] = useState<
+    Set<string>
+  >(new Set());
   const [ticketDetails, setTicketDetails] = useState<Map<string, Ticket>>(new Map());
   const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
   const [showAIModal, setShowAIModal] = useState(false);
@@ -2036,7 +2060,23 @@ function SupportTicketsPage() {
     setTicketsError(null);
     try {
       const result = await getSupportTicketsAdmin();
-      setTickets(result.tickets || []);
+      const fresh = (result.tickets || []) as Ticket[];
+      // Preserve already-loaded enrichment values across silent refreshes so we
+      // do not flash placeholders on every refetch.
+      const cache = enrichmentByUserId.current;
+      const merged: Ticket[] = fresh.map((t) => {
+        const e = cache.get(t.user_id);
+        if (!e) return t;
+        return {
+          ...t,
+          user_product_count: e.product_count,
+          user_order_count: e.order_count,
+          user_has_nfr: e.has_nfr,
+          user_nnaudio_installer_macos_at: e.installer_macos_at,
+          user_nnaudio_installer_windows_at: e.installer_windows_at,
+        };
+      });
+      setTickets(merged);
       if (result.error) {
         console.error("Error fetching tickets:", result.error);
         setTicketsError(result.error);
@@ -2049,6 +2089,76 @@ function SupportTicketsPage() {
       setLoadingTickets(false);
     }
   };
+
+  /**
+   * @brief Loads per-user enrichment columns (products/orders/NFR/installer) for the
+   * given user ids and merges the results into the tickets list.
+   *
+   * @param userIdsToLoad Candidate ids; already-cached or in-flight ids are skipped.
+   *
+   * @note Runs only for visible (paginated) rows. Concurrency is bounded server-side;
+   * here we only need to filter duplicates and update state once results arrive.
+   */
+  const loadEnrichmentsForUsers = useCallback(
+    async (userIdsToLoad: string[]) => {
+      const cache = enrichmentByUserId.current;
+      const inflight = enrichmentInFlight.current;
+      const toFetch = Array.from(
+        new Set(
+          userIdsToLoad.filter(
+            (id) => id && !cache.has(id) && !inflight.has(id),
+          ),
+        ),
+      );
+      if (toFetch.length === 0) return;
+
+      toFetch.forEach((id) => inflight.add(id));
+      setLoadingEnrichmentByUser((prev) => {
+        const next = new Set(prev);
+        toFetch.forEach((id) => next.add(id));
+        return next;
+      });
+
+      try {
+        const { enrichments, error } =
+          await getSupportTicketsEnrichmentsAdmin(toFetch);
+        if (error) {
+          console.error("Error fetching ticket enrichments:", error);
+        }
+        for (const id of toFetch) {
+          const e = enrichments[id];
+          if (e) cache.set(id, e);
+        }
+
+        if (Object.keys(enrichments).length > 0) {
+          setTickets((prev) =>
+            prev.map((t) => {
+              const e = enrichments[t.user_id];
+              if (!e) return t;
+              return {
+                ...t,
+                user_product_count: e.product_count,
+                user_order_count: e.order_count,
+                user_has_nfr: e.has_nfr,
+                user_nnaudio_installer_macos_at: e.installer_macos_at,
+                user_nnaudio_installer_windows_at: e.installer_windows_at,
+              };
+            }),
+          );
+        }
+      } catch (err) {
+        console.error("Error loading ticket enrichments:", err);
+      } finally {
+        toFetch.forEach((id) => inflight.delete(id));
+        setLoadingEnrichmentByUser((prev) => {
+          const next = new Set(prev);
+          toFetch.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
+    },
+    [],
+  );
 
   const fetchTicketDetails = async (ticketId: string, forceRefresh: boolean = false) => {
     // If already loading and not forcing refresh, skip
@@ -2234,6 +2344,23 @@ function SupportTicketsPage() {
   const totalPages = Math.ceil(ticketsToDisplay.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedTickets = ticketsToDisplay.slice(startIndex, startIndex + itemsPerPage);
+
+  /**
+   * @brief Lazy-load Products/Orders/NFR/installer for whichever rows are currently visible.
+   *
+   * Memoize the visible user-id list as a stable string key so this effect only re-runs
+   * when the visible set actually changes (page, search, filter, sort).
+   */
+  const visibleUserIdsKey = paginatedTickets.map((t) => t.user_id).join(",");
+  useEffect(() => {
+    const ids = paginatedTickets
+      .map((t) => t.user_id)
+      .filter((id): id is string => Boolean(id));
+    if (ids.length > 0) {
+      void loadEnrichmentsForUsers(ids);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleUserIdsKey, loadEnrichmentsForUsers]);
 
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -2970,6 +3097,55 @@ function SupportTicketsPage() {
     }
   };
 
+  /**
+   * @brief Renders a Products / Orders count cell with a placeholder while the
+   * row's enrichment is still loading, a clickable count once it has loaded > 0,
+   * and an em-dash once it has loaded with a 0 count.
+   *
+   * @param ticket Row whose count cell we are rendering.
+   * @param value Either `ticket.user_product_count` or `ticket.user_order_count`.
+   * @param Link Styled link button (`ProductsCountLink` or `OrdersCountLink`).
+   * @param onOpen Callback that opens the per-user dialog.
+   * @param alignSelfStart When true, applies `align-self: flex-start` (mobile/expanded view).
+   */
+  const renderEnrichmentCount = (
+    ticket: Ticket,
+    value: number | undefined,
+    Link: typeof ProductsCountLink | typeof OrdersCountLink,
+    onOpen: (userId: string) => void,
+    alignSelfStart: boolean = false,
+  ) => {
+    if (!ticket.user_id) {
+      return <CountPlaceholder>—</CountPlaceholder>;
+    }
+    if (value === undefined) {
+      const isLoadingForUser = loadingEnrichmentByUser.has(ticket.user_id);
+      return (
+        <CountPlaceholder
+          aria-label={isLoadingForUser ? "Loading" : undefined}
+          style={isLoadingForUser ? { opacity: 0.6 } : undefined}
+        >
+          {isLoadingForUser ? "…" : "—"}
+        </CountPlaceholder>
+      );
+    }
+    if (value > 0) {
+      return (
+        <Link
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen(ticket.user_id);
+          }}
+          style={alignSelfStart ? { alignSelf: "flex-start" } : undefined}
+        >
+          {value}
+        </Link>
+      );
+    }
+    return <CountPlaceholder>—</CountPlaceholder>;
+  };
+
   return (
     <>
       <NextSEO
@@ -3148,33 +3324,19 @@ function SupportTicketsPage() {
                     </div>
                   </UserTableCell>
                   <ProductsCell>
-                    {ticket.user_id && (ticket.user_product_count ?? 0) > 0 ? (
-                      <ProductsCountLink
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openProductsDialog(ticket.user_id);
-                        }}
-                      >
-                        {ticket.user_product_count}
-                      </ProductsCountLink>
-                    ) : (
-                      <CountPlaceholder>—</CountPlaceholder>
+                    {renderEnrichmentCount(
+                      ticket,
+                      ticket.user_product_count,
+                      ProductsCountLink,
+                      openProductsDialog,
                     )}
                   </ProductsCell>
                   <OrdersCell>
-                    {ticket.user_id && (ticket.user_order_count ?? 0) > 0 ? (
-                      <OrdersCountLink
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openOrdersDialog(ticket.user_id);
-                        }}
-                      >
-                        {ticket.user_order_count}
-                      </OrdersCountLink>
-                    ) : (
-                      <CountPlaceholder>—</CountPlaceholder>
+                    {renderEnrichmentCount(
+                      ticket,
+                      ticket.user_order_count,
+                      OrdersCountLink,
+                      openOrdersDialog,
                     )}
                   </OrdersCell>
                   <TableCell data-has-dropdown>
@@ -3756,38 +3918,24 @@ function SupportTicketsPage() {
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
                                 {t("admin.supportTickets.ticketTable.products", "Products")}
                               </div>
-                              {ticket.user_id && (ticket.user_product_count ?? 0) > 0 ? (
-                                <ProductsCountLink
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openProductsDialog(ticket.user_id);
-                                  }}
-                                  style={{ alignSelf: 'flex-start' }}
-                                >
-                                  {ticket.user_product_count}
-                                </ProductsCountLink>
-                              ) : (
-                                <CountPlaceholder>—</CountPlaceholder>
+                              {renderEnrichmentCount(
+                                ticket,
+                                ticket.user_product_count,
+                                ProductsCountLink,
+                                openProductsDialog,
+                                true,
                               )}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
                                 {t("admin.supportTickets.ticketTable.orders", "Orders")}
                               </div>
-                              {ticket.user_id && (ticket.user_order_count ?? 0) > 0 ? (
-                                <OrdersCountLink
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openOrdersDialog(ticket.user_id);
-                                  }}
-                                  style={{ alignSelf: 'flex-start' }}
-                                >
-                                  {ticket.user_order_count}
-                                </OrdersCountLink>
-                              ) : (
-                                <CountPlaceholder>—</CountPlaceholder>
+                              {renderEnrichmentCount(
+                                ticket,
+                                ticket.user_order_count,
+                                OrdersCountLink,
+                                openOrdersDialog,
+                                true,
                               )}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
