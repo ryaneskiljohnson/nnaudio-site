@@ -803,7 +803,7 @@
       "newEmailLabel": "New email address",
       "sendEmailConfirmation": "Send confirmation email",
       "emailChangeCheckInboxTitle": "Check your email",
-      "emailChangeCheckInboxMessage": "We sent a confirmation link. Open it to complete the change. If secure email change is enabled in your project, check both your current and new inboxes.",
+      "emailChangeCheckInboxMessage": "Um Ihre E-Mail-Änderung abzuschließen, öffnen Sie die Bestätigungslinks, die wir an Ihre aktuelle Adresse und an Ihre neue Adresse gesendet haben. Sie müssen in beiden Postfächern bestätigen.",
       "deleteWarning": "Konto dauerhaft löschen",
       "deleteDesc": "Diese Aktion kann nicht rückgängig gemacht werden. Alle Ihre Daten werden dauerhaft gelöscht."
     }

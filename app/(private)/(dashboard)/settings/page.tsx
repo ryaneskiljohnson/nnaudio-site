@@ -371,7 +371,7 @@ function Settings() {
       setConfirmationMessage(
         t(
           "dashboard.settings.emailChangeCheckInboxMessage",
-          "We sent a confirmation link. Open it to complete the change. If secure email change is enabled in your project, check both your current and new inboxes."
+          "To complete your email change, open the confirmation link we sent to your current address and the one we sent to your new address. You need to confirm from both inboxes."
         )
       );
       setConfirmationIcon("info");

@@ -739,7 +739,7 @@
       "newEmailLabel": "New email address",
       "sendEmailConfirmation": "Send confirmation email",
       "emailChangeCheckInboxTitle": "Check your email",
-      "emailChangeCheckInboxMessage": "We sent a confirmation link. Open it to complete the change. If secure email change is enabled in your project, check both your current and new inboxes."
+      "emailChangeCheckInboxMessage": "要完成邮箱更换，请打开我们发送到您当前邮箱和新邮箱的确认链接。您需要在两个收件箱中都完成确认。"
     }
   },
   "billing": {
