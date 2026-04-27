@@ -264,23 +264,21 @@ const ActionButton = styled.button<{ $variant?: 'primary' | 'secondary' | 'succe
 `;
 
 const TableContainer = styled.div`
+  position: relative;
+  max-width: 100%;
+  /* Horizontal scroll when the table is wider than the admin viewport (all breakpoints) */
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
   background-color: var(--card-bg);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  overflow: visible !important;
-  position: relative;
-
-  @media (max-width: 768px) {
-    overflow-x: auto;
-    
-    table {
-      min-width: 1200px;
-    }
-  }
+  scrollbar-gutter: stable;
 `;
 
 const Table = styled.table`
   width: 100%;
+  min-width: 1280px;
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
