@@ -845,7 +845,7 @@
       "newEmailLabel": "New email address",
       "sendEmailConfirmation": "Send confirmation email",
       "emailChangeCheckInboxTitle": "Check your email",
-      "emailChangeCheckInboxMessage": "We sent a confirmation link. Open it to complete the change. If secure email change is enabled in your project, check both your current and new inboxes."
+      "emailChangeCheckInboxMessage": "Para completar el cambio de correo, abre el enlace de confirmación que enviamos a tu dirección actual y el que enviamos a la nueva. Debes confirmar en ambas bandejas de entrada."
     }
   },
   "freeTrial": {

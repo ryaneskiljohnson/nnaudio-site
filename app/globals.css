@@ -17,6 +17,15 @@ input, textarea, [contenteditable="true"] {
   user-select: text;
 }
 
+/* Support tickets UI: allow copying messages, subjects, and metadata (site default disables select on * ) */
+[data-support-tickets-region="true"],
+[data-support-tickets-region="true"] * {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
 /* Basic Reset */
 html,
 body {

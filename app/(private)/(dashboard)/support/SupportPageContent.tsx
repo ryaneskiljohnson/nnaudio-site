@@ -39,6 +39,10 @@ import {
 
 import TableLoadingRow from "@/components/common/TableLoadingRow";
 import * as SupportComponents from "@/components/support/SupportTicketsComponents";
+import {
+  isHeicOrHeifAttachment,
+  SUPPORT_TICKET_FILE_ACCEPT,
+} from "@/utils/support/is-heic-or-heif-attachment";
 
 // Use shared components
 import styled from "styled-components";
@@ -549,6 +553,12 @@ function SupportPage() {
   const [createTicketSuccess, setCreateTicketSuccess] = useState<string | null>(
     null
   );
+  /** @brief Optional files to attach to the first message when creating a ticket. */
+  const [createModalAttachments, setCreateModalAttachments] = useState<File[]>(
+    []
+  );
+  const [showCreateSecurityWarning, setShowCreateSecurityWarning] =
+    useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [ticketDetails, setTicketDetails] = useState<Map<string, Ticket>>(
@@ -560,6 +570,7 @@ function SupportPage() {
   const { t } = useTranslation();
   const { isLoading: languageLoading } = useLanguage();
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const createModalFileInputRef = useRef<HTMLInputElement | null>(null);
   const searchParams = useSearchParams();
 
   // Check scroll position when ticket details change
@@ -697,6 +708,11 @@ function SupportPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticketDetails, selectedTicketId]);
 
+  const handleCreateModalFileUpload = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setCreateModalAttachments((prev) => [...prev, ...Array.from(files)]);
+  };
+
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateTicketError(null);
@@ -710,6 +726,18 @@ function SupportPage() {
       return;
     }
 
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const oversized = createModalAttachments.filter((f) => f.size > maxSize);
+    if (oversized.length > 0) {
+      setCreateTicketError(
+        t(
+          "dashboard.support.errors.oversizeFiles",
+          "One or more files exceed the 10MB size limit. Remove or shrink them and try again."
+        )
+      );
+      return;
+    }
+
     setCreateTicketLoading(true);
 
     try {
@@ -719,20 +747,78 @@ function SupportPage() {
       });
 
       if (result.success && result.ticket) {
-        setCreateTicketSuccess(
-          `Ticket ${result.ticket.ticket_number} created successfully!`
-        );
-        setCreateTicketForm({
-          subject: "",
-          description: "",
-        });
-        // Refresh tickets
-        await fetchTickets();
-        // Close modal after 2 seconds
-        setTimeout(() => {
-          setShowCreateModal(false);
-          setCreateTicketSuccess(null);
-        }, 2000);
+        const uploadErrors: string[] = [];
+        if (
+          createModalAttachments.length > 0 &&
+          result.ticket.firstMessageId
+        ) {
+          for (const file of createModalAttachments) {
+            const up = await uploadSupportTicketAttachment(
+              result.ticket.id,
+              result.ticket.firstMessageId,
+              file
+            );
+            if (!up.success) {
+              uploadErrors.push(
+                `${file.name}: ${up.error || "Upload failed"}`
+              );
+            }
+          }
+          if (uploadErrors.length > 0) {
+            if (uploadErrors.length === createModalAttachments.length) {
+              setCreateTicketError(
+                `${t(
+                  "dashboard.support.errors.ticketCreatedAttachmentsFailed",
+                  "Ticket was created, but we could not upload your files"
+                )}:\n${uploadErrors.join("\n")}`
+              );
+            } else {
+              alert(
+                `Some files failed to upload:\n${uploadErrors.join("\n")}`
+              );
+            }
+          }
+        } else if (
+          createModalAttachments.length > 0 &&
+          !result.ticket.firstMessageId
+        ) {
+          setCreateTicketError(
+            t(
+              "dashboard.support.errors.ticketCreatedNoMessageForFiles",
+              "Your ticket was created, but the first message could not be saved, so we could not attach your files. Open the ticket and send your files in a new message."
+            )
+          );
+        }
+
+        const blockSuccess =
+          (createModalAttachments.length > 0 &&
+            !result.ticket.firstMessageId) ||
+          (createModalAttachments.length > 0 &&
+            result.ticket.firstMessageId != null &&
+            uploadErrors.length > 0 &&
+            uploadErrors.length === createModalAttachments.length);
+
+        if (blockSuccess) {
+          await fetchTickets();
+        } else {
+          setCreateTicketSuccess(
+            `Ticket ${result.ticket.ticket_number} created successfully!`
+          );
+          setCreateTicketForm({
+            subject: "",
+            description: "",
+          });
+          setCreateModalAttachments([]);
+          setShowCreateSecurityWarning(false);
+          if (createModalFileInputRef.current) {
+            createModalFileInputRef.current.value = "";
+          }
+          await fetchTickets();
+          setTimeout(() => {
+            setShowCreateModal(false);
+            setCreateTicketSuccess(null);
+          }, 2000);
+        }
       } else {
         setCreateTicketError(result.error || "Failed to create ticket");
       }
@@ -750,6 +836,11 @@ function SupportPage() {
       subject: "",
       description: "",
     });
+    setCreateModalAttachments([]);
+    setShowCreateSecurityWarning(false);
+    if (createModalFileInputRef.current) {
+      createModalFileInputRef.current.value = "";
+    }
     setCreateTicketError(null);
     setCreateTicketSuccess(null);
   };
@@ -1026,7 +1117,7 @@ function SupportPage() {
         )}
       />
 
-      <TicketsContainer>
+      <TicketsContainer data-support-tickets-region="true">
         <TicketsTitle>
           <FaTicketAlt />
           {t("dashboard.support.title", "Support")}
@@ -1396,6 +1487,114 @@ function SupportPage() {
                     />
                   </FormGroup>
 
+                  <FormGroup>
+                    <FormLabel>
+                      {t(
+                        "dashboard.support.form.attachments",
+                        "Attachments (optional)"
+                      )}
+                    </FormLabel>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      {createModalAttachments.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                            padding: "0.5rem 0.75rem",
+                            background: "rgba(255, 255, 255, 0.05)",
+                            borderRadius: "8px",
+                            fontSize: "0.85rem",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          <FaFile />
+                          <span style={{ flex: 1 }}>
+                            {createModalAttachments.map((f) => f.name).join(", ")}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setCreateModalAttachments([])}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "var(--text-secondary)",
+                              cursor: "pointer",
+                              padding: "0.25rem",
+                              display: "flex",
+                              alignItems: "center",
+                            }}
+                            aria-label={t(
+                              "dashboard.support.form.clearAttachments",
+                              "Remove attachments"
+                            )}
+                          >
+                            <FaTimes />
+                          </button>
+                        </div>
+                      )}
+                      <MessageActions
+                        style={{
+                          width: "100%",
+                          justifyContent: "flex-start",
+                          flexWrap: "wrap",
+                          gap: "0.75rem",
+                        }}
+                      >
+                        <AttachButton
+                          type="button"
+                          onClick={() => {
+                            setShowCreateSecurityWarning(true);
+                            createModalFileInputRef.current?.click();
+                          }}
+                          disabled={createTicketLoading}
+                        >
+                          <FaPaperclip />
+                        </AttachButton>
+                        <span
+                          style={{
+                            fontSize: "0.8rem",
+                            color: "var(--text-secondary)",
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {t(
+                            "dashboard.support.form.attachmentsHint",
+                            "Images, video, audio, and documents (max 10MB per file)"
+                          )}
+                        </span>
+                      </MessageActions>
+                      <FileInput
+                        ref={createModalFileInputRef}
+                        type="file"
+                        multiple
+                        accept={SUPPORT_TICKET_FILE_ACCEPT}
+                        onChange={(e) =>
+                          handleCreateModalFileUpload(e.target.files)
+                        }
+                      />
+                    </div>
+                  </FormGroup>
+                  {showCreateSecurityWarning && (
+                    <SecurityWarning>
+                      <FaFile
+                        style={{ marginRight: "0.5rem", fontSize: "0.85rem" }}
+                      />
+                      <span>
+                        {t(
+                          "dashboard.support.attachmentSecurityNote",
+                          "Please do not upload sensitive information such as credit card numbers, payment methods, or passwords."
+                        )}
+                      </span>
+                    </SecurityWarning>
+                  )}
+
                   {createTicketError && (
                     <ErrorMessage>{createTicketError}</ErrorMessage>
                   )}
@@ -1683,31 +1882,112 @@ function SupportPage() {
                                         <MessageAttachment key={att.id}>
                                           {att.attachment_type === "image" &&
                                           att.url ? (
-                                            <>
-                                              <ImagePreview
-                                                src={att.url}
-                                                alt={att.file_name}
-                                                onClick={() =>
-                                                  window.open(
-                                                    att.url || "",
-                                                    "_blank"
-                                                  )
-                                                }
-                                              />
-                                              <AttachmentInfo
-                                                style={{ marginTop: "0.5rem" }}
-                                              >
-                                                <AttachmentName>
-                                                  {att.file_name}
-                                                </AttachmentName>
-                                                <AttachmentSize>
-                                                  {(
-                                                    att.file_size / 1024
-                                                  ).toFixed(2)}{" "}
-                                                  KB
-                                                </AttachmentSize>
-                                              </AttachmentInfo>
-                                            </>
+                                            isHeicOrHeifAttachment(
+                                              att.file_type,
+                                              att.file_name
+                                            ) ? (
+                                              <>
+                                                <AttachmentContainer
+                                                  style={{
+                                                    marginTop: "0.5rem",
+                                                    cursor: "pointer",
+                                                  }}
+                                                  role="button"
+                                                  tabIndex={0}
+                                                  onClick={() =>
+                                                    att.url &&
+                                                    window.open(
+                                                      att.url,
+                                                      "_blank",
+                                                      "noopener,noreferrer"
+                                                    )
+                                                  }
+                                                  onKeyDown={(e) => {
+                                                    if (
+                                                      e.key === "Enter" ||
+                                                      e.key === " "
+                                                    ) {
+                                                      e.preventDefault();
+                                                      if (att.url) {
+                                                        window.open(
+                                                          att.url,
+                                                          "_blank",
+                                                          "noopener,noreferrer"
+                                                        );
+                                                      }
+                                                    }
+                                                  }}
+                                                >
+                                                  <AttachmentIcon>
+                                                    <FaImage />
+                                                  </AttachmentIcon>
+                                                  <AttachmentInfo>
+                                                    <AttachmentName>
+                                                      {att.file_name}
+                                                    </AttachmentName>
+                                                    <AttachmentSize>
+                                                      {(
+                                                        att.file_size / 1024
+                                                      ).toFixed(2)}{" "}
+                                                      KB
+                                                    </AttachmentSize>
+                                                  </AttachmentInfo>
+                                                  <AttachmentLink
+                                                    href={att.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(ev) =>
+                                                      ev.stopPropagation()
+                                                    }
+                                                  >
+                                                    {t(
+                                                      "dashboard.support.openAttachment",
+                                                      "Open"
+                                                    )}
+                                                  </AttachmentLink>
+                                                </AttachmentContainer>
+                                                <p
+                                                  style={{
+                                                    fontSize: "0.7rem",
+                                                    color:
+                                                      "var(--text-secondary)",
+                                                    margin: "0.25rem 0 0 0",
+                                                    maxWidth: "min(100%, 320px)",
+                                                  }}
+                                                >
+                                                  {t(
+                                                    "dashboard.support.heicHint",
+                                                    "HEIC/HEIF: use Open to view. Safari shows a preview; other browsers may download the file."
+                                                  )}
+                                                </p>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <ImagePreview
+                                                  src={att.url}
+                                                  alt={att.file_name}
+                                                  onClick={() =>
+                                                    window.open(
+                                                      att.url || "",
+                                                      "_blank"
+                                                    )
+                                                  }
+                                                />
+                                                <AttachmentInfo
+                                                  style={{ marginTop: "0.5rem" }}
+                                                >
+                                                  <AttachmentName>
+                                                    {att.file_name}
+                                                  </AttachmentName>
+                                                  <AttachmentSize>
+                                                    {(
+                                                      att.file_size / 1024
+                                                    ).toFixed(2)}{" "}
+                                                    KB
+                                                  </AttachmentSize>
+                                                </AttachmentInfo>
+                                              </>
+                                            )
                                           ) : att.attachment_type === "video" &&
                                             att.url ? (
                                             <>
@@ -1853,7 +2133,12 @@ function SupportPage() {
                                         pendingAttachments[
                                           selectedTicketId
                                         ].forEach((file) => {
-                                          if (file.type.startsWith("image/")) {
+                                          if (
+                                            file.type.startsWith("image/") ||
+                                            /\.(heic|heif|avif)$/i.test(
+                                              file.name
+                                            )
+                                          ) {
                                             const imageUrl =
                                               URL.createObjectURL(file);
                                             URL.revokeObjectURL(imageUrl);
@@ -1917,7 +2202,7 @@ function SupportPage() {
                                 }}
                                 type="file"
                                 multiple
-                                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+                                accept={SUPPORT_TICKET_FILE_ACCEPT}
                                 onChange={(e) =>
                                   handleFileUpload(
                                     selectedTicketId,

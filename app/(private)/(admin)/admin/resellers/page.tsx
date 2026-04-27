@@ -5,7 +5,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import NextSEO from "@/components/NextSEO";
 import Image from "next/image";
 import Link from "next/link";
@@ -26,6 +26,9 @@ import {
   FaBan,
   FaUndo,
   FaFilePdf,
+  FaSort,
+  FaSortUp,
+  FaSortDown,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 import styled, { keyframes } from "styled-components";
@@ -192,6 +195,65 @@ const Th = styled.th`
   @media (max-width: 768px) {
     padding: 0.75rem 0.5rem;
     font-size: 0.8rem;
+  }
+`;
+
+/**
+ * @brief Table header control for the reseller product-stats modal (click to sort)
+ */
+const SortThButton = styled.button<{ $align?: "left" | "center" }>`
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font: inherit;
+  color: inherit;
+  font-weight: 600;
+  width: 100%;
+  justify-content: ${(p) => (p.$align === "center" ? "center" : "flex-start")};
+
+  &:hover {
+    color: var(--primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+`;
+
+/**
+ * @brief Monospace serial in View Codes modal; click copies to clipboard
+ */
+const CopyableSerialButton = styled.button`
+  all: unset;
+  cursor: copy;
+  display: inline-block;
+  max-width: 100%;
+  font-family: "Courier New", monospace;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #ffffff;
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  text-align: left;
+  box-sizing: border-box;
+  user-select: all;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
   }
 `;
 
@@ -953,6 +1015,9 @@ interface ProductCodeStats {
   redeemed: number;
 }
 
+/** @brief Reseller details modal: which column to sort (actions = rows with viewable codes first) */
+type DetailsTableSortKey = "name" | "total" | "available" | "redeemed" | "actions";
+
 /**
  * @brief Format a serial code with hyphens every 4 characters
  * @param {string} code - The serial code to format
@@ -1003,6 +1068,32 @@ function buildCodesCsv(
   const dataLines = rows.map((row) => row.join(","));
   const bom = "\uFEFF";
   return bom + [headerLine, ...dataLines].join("\r\n");
+}
+
+/**
+ * @brief Filter and order codes to match the reseller details table (search + column sort, then serial)
+ * @param codes - All codes for the reseller from the API
+ * @param productOrder - Rows in display order from `detailsModalProductStats` (search + sort applied)
+ * @returns Codes limited to those products, sorted for CSV
+ */
+function orderResellerCodesForTableExport(
+  codes: ResellerCode[],
+  productOrder: ProductCodeStats[]
+): ResellerCode[] {
+  const indexByProduct = new Map(
+    productOrder.map((s, i) => [s.product.id, i])
+  );
+  const allowed = new Set(productOrder.map((s) => s.product.id));
+  const out = codes.filter((c) => allowed.has(c.product_id));
+  out.sort((a, b) => {
+    const ia = indexByProduct.get(a.product_id) ?? 0;
+    const ib = indexByProduct.get(b.product_id) ?? 0;
+    if (ia !== ib) return ia - ib;
+    return (a.serial_code || "").localeCompare(b.serial_code || "", undefined, {
+      sensitivity: "base",
+    });
+  });
+  return out;
 }
 
 /**
@@ -1070,6 +1161,11 @@ export default function ResellersPage() {
     notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [detailsModalProductSearch, setDetailsModalProductSearch] = useState("");
+  const [detailsModalTableSort, setDetailsModalTableSort] = useState<{
+    key: DetailsTableSortKey;
+    direction: "asc" | "desc";
+  }>({ key: "name", direction: "asc" });
 
   useEffect(() => {
     fetchResellers();
@@ -1244,8 +1340,60 @@ export default function ResellersPage() {
   const handleViewDetails = (reseller: Reseller) => {
     setSelectedReseller(reseller);
     setShowDetailsModal(true);
+    setDetailsModalProductSearch("");
+    setDetailsModalTableSort({ key: "name", direction: "asc" });
     fetchResellerStats(reseller.id);
   };
+
+  /**
+   * @brief Cycle sort in reseller details product table: same column flips direction; new column starts asc
+   * @param key - Product name, code counts, or "actions" (rows with at least one code, then by name)
+   */
+  const handleDetailsTableSort = (key: DetailsTableSortKey) => {
+    setDetailsModalTableSort((prev) =>
+      prev.key === key
+        ? { key, direction: prev.direction === "asc" ? "desc" : "asc" }
+        : { key, direction: "asc" }
+    );
+  };
+
+  /**
+   * @brief Reseller details modal: filter by product name/slug, then sort by the selected column
+   */
+  const detailsModalProductStats = useMemo(() => {
+    const q = detailsModalProductSearch.trim().toLowerCase();
+    const list = !q
+      ? productStats
+      : productStats.filter(
+          (s) =>
+            s.product.name.toLowerCase().includes(q) ||
+            s.product.slug.toLowerCase().includes(q)
+        );
+
+    const { key, direction } = detailsModalTableSort;
+    const dir = direction === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      let primary = 0;
+      if (key === "name") {
+        primary = a.product.name.localeCompare(b.product.name, undefined, {
+          sensitivity: "base",
+        });
+      } else if (key === "total" || key === "available" || key === "redeemed") {
+        primary = a[key] - b[key];
+      } else {
+        const canA = a.total > 0 ? 1 : 0;
+        const canB = b.total > 0 ? 1 : 0;
+        primary = canA - canB;
+        if (primary === 0) {
+          primary = a.product.name.localeCompare(b.product.name, undefined, {
+            sensitivity: "base",
+          });
+        }
+      }
+      if (primary !== 0) return primary * dir;
+      return a.product.id.localeCompare(b.product.id);
+    });
+  }, [productStats, detailsModalProductSearch, detailsModalTableSort]);
 
   const handleDownloadCSV = async (productId: string) => {
     if (!selectedReseller) return;
@@ -1400,9 +1548,21 @@ export default function ResellersPage() {
     }
   };
 
-  /** Export all codes for the selected reseller (all products) as CSV. */
+  /**
+   * @brief Export all codes for the selected reseller (all products) as CSV.
+   * @note Order matches the details table: current search filter and column sort, then serial within each product
+   */
   const handleExportAllCodesCsv = async () => {
     if (!selectedReseller) return;
+    if (detailsModalProductStats.length === 0) {
+      showNotification(
+        "error",
+        productStats.length > 0
+          ? "No products match the current search. Clear the search to export, or adjust the filter."
+          : "No codes to export"
+      );
+      return;
+    }
     setExportingAllCodesCsv(true);
     try {
       const response = await fetch(
@@ -1418,11 +1578,22 @@ export default function ResellersPage() {
         showNotification("error", "No codes to export");
         return;
       }
-      const csv = buildCodesCsv(codes, { includeProductColumn: true });
+      const ordered = orderResellerCodesForTableExport(
+        codes,
+        detailsModalProductStats
+      );
+      if (ordered.length === 0) {
+        showNotification(
+          "error",
+          "No codes to export for the current table filter"
+        );
+        return;
+      }
+      const csv = buildCodesCsv(ordered, { includeProductColumn: true });
       const slug = (selectedReseller.name || "reseller").replace(/\s+/g, "-").replace(/[^a-zA-Z0-9-]/g, "");
       const date = new Date().toISOString().slice(0, 10);
       downloadCsv(csv, `redeem-codes-${slug}-${date}.csv`);
-      showNotification("success", `Exported ${codes.length} code(s) to CSV`);
+      showNotification("success", `Exported ${ordered.length} code(s) to CSV`);
     } catch (err) {
       console.error("Export all codes CSV:", err);
       showNotification("error", "Failed to export CSV");
@@ -1672,6 +1843,29 @@ export default function ResellersPage() {
   const showNotification = (type: "success" | "error", message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 3000);
+  };
+
+  /**
+   * @brief Copy a reseller serial to the clipboard (normalized: no spaces or hyphens for pasting)
+   * @param rawSerial - Value from the database
+   */
+  const handleCopySerialToClipboard = async (rawSerial: string) => {
+    const value = String(rawSerial ?? "").replace(/[-\s]/g, "");
+    if (!value) {
+      showNotification("error", "Nothing to copy");
+      return;
+    }
+    try {
+      if (!navigator?.clipboard?.writeText) {
+        showNotification("error", "Clipboard is not available in this context");
+        return;
+      }
+      await navigator.clipboard.writeText(value);
+      showNotification("success", "Code copied to clipboard");
+    } catch (e) {
+      console.error("Copy to clipboard failed:", e);
+      showNotification("error", "Could not copy to clipboard");
+    }
   };
 
   const filteredResellers = resellers
@@ -1943,7 +2137,7 @@ export default function ResellersPage() {
                     type="button"
                     onClick={handleExportAllCodesCsv}
                     disabled={exportingAllCodesCsv}
-                    title="Export all redeem codes for this reseller (all products) as CSV"
+                    title="Download CSV in the same order as the table (current search, column sort, then serials within each product)"
                   >
                     {exportingAllCodesCsv ? (
                       <SpinningIcon style={{ fontSize: "0.9rem" }} />
@@ -1979,19 +2173,199 @@ export default function ResellersPage() {
                     </p>
                   </div>
                 ) : (
+                  <>
+                    <div
+                      style={{
+                        marginBottom: "1rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <SearchContainer style={{ maxWidth: "100%" }}>
+                        <SearchIcon>
+                          <FaSearch />
+                        </SearchIcon>
+                        <SearchInput
+                          type="text"
+                          value={detailsModalProductSearch}
+                          onChange={(e) =>
+                            setDetailsModalProductSearch(e.target.value)
+                          }
+                          placeholder="Search products..."
+                          aria-label="Filter product rows by name"
+                        />
+                      </SearchContainer>
+                    </div>
+                    {detailsModalProductStats.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "2.5rem" }}>
+                        <p style={{ color: "var(--text-secondary)" }}>
+                          No products match your search.
+                        </p>
+                      </div>
+                    ) : (
                   <div style={{ overflowX: "auto" }}>
                     <Table>
                       <Thead>
                         <tr>
-                          <Th>Product</Th>
-                          <Th style={{ textAlign: "center" }}>Total</Th>
-                          <Th style={{ textAlign: "center" }}>Available</Th>
-                          <Th style={{ textAlign: "center" }}>Redeemed</Th>
-                          <Th style={{ textAlign: "center" }}>Actions</Th>
+                          <Th
+                            aria-sort={
+                              detailsModalTableSort.key === "name"
+                                ? detailsModalTableSort.direction === "asc"
+                                  ? "ascending"
+                                  : "descending"
+                                : "none"
+                            }
+                          >
+                            <SortThButton
+                              type="button"
+                              onClick={() => handleDetailsTableSort("name")}
+                              $align="left"
+                            >
+                              Product
+                              {detailsModalTableSort.key === "name" ? (
+                                detailsModalTableSort.direction === "asc" ? (
+                                  <FaSortUp size={12} aria-hidden />
+                                ) : (
+                                  <FaSortDown size={12} aria-hidden />
+                                )
+                              ) : (
+                                <FaSort
+                                  size={12}
+                                  style={{ opacity: 0.35 }}
+                                  aria-hidden
+                                />
+                              )}
+                            </SortThButton>
+                          </Th>
+                          <Th
+                            style={{ textAlign: "center" }}
+                            aria-sort={
+                              detailsModalTableSort.key === "total"
+                                ? detailsModalTableSort.direction === "asc"
+                                  ? "ascending"
+                                  : "descending"
+                                : "none"
+                            }
+                          >
+                            <SortThButton
+                              type="button"
+                              onClick={() => handleDetailsTableSort("total")}
+                              $align="center"
+                            >
+                              Total
+                              {detailsModalTableSort.key === "total" ? (
+                                detailsModalTableSort.direction === "asc" ? (
+                                  <FaSortUp size={12} aria-hidden />
+                                ) : (
+                                  <FaSortDown size={12} aria-hidden />
+                                )
+                              ) : (
+                                <FaSort
+                                  size={12}
+                                  style={{ opacity: 0.35 }}
+                                  aria-hidden
+                                />
+                              )}
+                            </SortThButton>
+                          </Th>
+                          <Th
+                            style={{ textAlign: "center" }}
+                            aria-sort={
+                              detailsModalTableSort.key === "available"
+                                ? detailsModalTableSort.direction === "asc"
+                                  ? "ascending"
+                                  : "descending"
+                                : "none"
+                            }
+                          >
+                            <SortThButton
+                              type="button"
+                              onClick={() => handleDetailsTableSort("available")}
+                              $align="center"
+                            >
+                              Available
+                              {detailsModalTableSort.key === "available" ? (
+                                detailsModalTableSort.direction === "asc" ? (
+                                  <FaSortUp size={12} aria-hidden />
+                                ) : (
+                                  <FaSortDown size={12} aria-hidden />
+                                )
+                              ) : (
+                                <FaSort
+                                  size={12}
+                                  style={{ opacity: 0.35 }}
+                                  aria-hidden
+                                />
+                              )}
+                            </SortThButton>
+                          </Th>
+                          <Th
+                            style={{ textAlign: "center" }}
+                            aria-sort={
+                              detailsModalTableSort.key === "redeemed"
+                                ? detailsModalTableSort.direction === "asc"
+                                  ? "ascending"
+                                  : "descending"
+                                : "none"
+                            }
+                          >
+                            <SortThButton
+                              type="button"
+                              onClick={() => handleDetailsTableSort("redeemed")}
+                              $align="center"
+                            >
+                              Redeemed
+                              {detailsModalTableSort.key === "redeemed" ? (
+                                detailsModalTableSort.direction === "asc" ? (
+                                  <FaSortUp size={12} aria-hidden />
+                                ) : (
+                                  <FaSortDown size={12} aria-hidden />
+                                )
+                              ) : (
+                                <FaSort
+                                  size={12}
+                                  style={{ opacity: 0.35 }}
+                                  aria-hidden
+                                />
+                              )}
+                            </SortThButton>
+                          </Th>
+                          <Th
+                            style={{ textAlign: "center" }}
+                            aria-sort={
+                              detailsModalTableSort.key === "actions"
+                                ? detailsModalTableSort.direction === "asc"
+                                  ? "ascending"
+                                  : "descending"
+                                : "none"
+                            }
+                          >
+                            <SortThButton
+                              type="button"
+                              onClick={() => handleDetailsTableSort("actions")}
+                              $align="center"
+                            >
+                              Actions
+                              {detailsModalTableSort.key === "actions" ? (
+                                detailsModalTableSort.direction === "asc" ? (
+                                  <FaSortUp size={12} aria-hidden />
+                                ) : (
+                                  <FaSortDown size={12} aria-hidden />
+                                )
+                              ) : (
+                                <FaSort
+                                  size={12}
+                                  style={{ opacity: 0.35 }}
+                                  aria-hidden
+                                />
+                              )}
+                            </SortThButton>
+                          </Th>
                         </tr>
                       </Thead>
                       <Tbody>
-                        {productStats.map((stat) => (
+                        {detailsModalProductStats.map((stat) => (
                           <Tr key={stat.product.id} style={{ cursor: "default" }}>
                             <Td>
                               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -2063,6 +2437,8 @@ export default function ResellersPage() {
                       </Tbody>
                     </Table>
                   </div>
+                    )}
+                  </>
                 )}
               </ModalBody>
             </ModalContent>
@@ -2201,7 +2577,7 @@ export default function ResellersPage() {
                     <Table>
                       <Thead>
                         <tr>
-                          <Th>Serial Code</Th>
+                          <Th>Serial code (click to copy)</Th>
                           <Th>Status</Th>
                           <Th>Created</Th>
                           <Th>Redeemed</Th>
@@ -2212,14 +2588,18 @@ export default function ResellersPage() {
                         {viewingCodes.map((code) => (
                           <Tr key={code.id}>
                             <Td>
-                              <div style={{ 
-                                fontFamily: "'Courier New', monospace", 
-                                fontWeight: "600",
-                                fontSize: "0.95rem",
-                                color: "#ffffff"
-                              }}>
+                              <CopyableSerialButton
+                                type="button"
+                                title="Click to copy code"
+                                aria-label="Copy serial code to clipboard"
+                                onClick={() =>
+                                  void handleCopySerialToClipboard(
+                                    code.serial_code
+                                  )
+                                }
+                              >
                                 {formatSerialCode(code.serial_code)}
-                              </div>
+                              </CopyableSerialButton>
                             </Td>
                             <Td>
                               {code.redeemed_at ? (

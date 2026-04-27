@@ -1551,7 +1551,14 @@ export async function updateSupportTicketStatusAdmin(
 }
 
 /**
- * Get all support tickets with user info (admin only)
+ * @brief Fast base list of support tickets for the admin table.
+ * @returns Tickets with display columns (user email/name, subscription) + reply state.
+ *
+ * @note Heavy per-user enrichment (Stripe order counts, accessible product counts, NFR
+ * flag, installer state) is intentionally NOT computed here. Those columns are loaded
+ * lazily for visible rows via {@link getSupportTicketsEnrichmentsAdmin}. This action
+ * issues a small fixed number of batched queries regardless of ticket count, so the
+ * table can render immediately even when there are many tickets.
  */
 export async function getSupportTicketsAdmin(): Promise<{
   tickets: Array<{
@@ -1565,13 +1572,8 @@ export async function getSupportTicketsAdmin(): Promise<{
     user_first_name: string | null;
     user_last_name: string | null;
     user_subscription?: string;
-    user_has_nfr?: boolean;
-    user_product_count?: number;
-    user_order_count?: number;
     last_reply_is_admin?: boolean;
     awaiting_admin_response?: boolean;
-    user_nnaudio_installer_macos_at?: string | null;
-    user_nnaudio_installer_windows_at?: string | null;
     created_at: string;
     updated_at: string;
     resolved_at: string | null;
@@ -1596,7 +1598,7 @@ export async function getSupportTicketsAdmin(): Promise<{
 
     const serviceSupabase = await createSupabaseServiceRole();
 
-    // Get tickets with user email from auth.users
+    // 1. Tickets (single query, ordered)
     const { data: tickets, error: ticketsError } = await serviceSupabase
       .from("support_tickets")
       .select(
@@ -1621,160 +1623,109 @@ export async function getSupportTicketsAdmin(): Promise<{
     }
 
     const ticketIds = tickets?.map((t) => t.id) || [];
-    const replyStateMap = await getSupportTicketReplyStateMapAdmin(
-      ticketIds,
-      adminUser.id,
-    );
-
-    // Get user emails, names, and subscription data for all tickets using service role client
     const userIds = [...new Set(tickets?.map((t) => t.user_id) || [])];
-    const userEmailsMap = new Map<string, string | null>();
-    const userNamesMap = new Map<
-      string,
-      { firstName: string | null; lastName: string | null }
-    >();
-    const userSubscriptionMap = new Map<
-      string,
-      { subscription: string; hasNfr: boolean }
-    >();
-    const userProductCountMap = new Map<string, number>();
-    const userOrderCountMap = new Map<string, number>();
-    const userNnaudioInstallerMacMap = new Map<string, string | null>();
-    const userNnaudioInstallerWinMap = new Map<string, string | null>();
 
-    for (const userId of userIds) {
+    // 2 + 3. Reply state and batched profile lookup in parallel
+    const [replyStateMap, profilesById, profileEmailFallbacks] =
+      await Promise.all([
+        getSupportTicketReplyStateMapAdmin(ticketIds, adminUser.id),
+        userIds.length === 0
+          ? Promise.resolve(
+              new Map<
+                string,
+                {
+                  email: string | null;
+                  first_name: string | null;
+                  last_name: string | null;
+                  subscription: string | null;
+                }
+              >(),
+            )
+          : (async () => {
+              const { data: rows, error: profilesError } = await (
+                serviceSupabase as any
+              )
+                .from("profiles")
+                .select("id, email, first_name, last_name, subscription")
+                .in("id", userIds);
+              if (profilesError) {
+                console.error(
+                  "Error fetching ticket owner profiles:",
+                  profilesError,
+                );
+                return new Map();
+              }
+              const map = new Map<
+                string,
+                {
+                  email: string | null;
+                  first_name: string | null;
+                  last_name: string | null;
+                  subscription: string | null;
+                }
+              >();
+              for (const row of rows || []) {
+                map.set(row.id as string, {
+                  email: (row.email as string | null) ?? null,
+                  first_name: (row.first_name as string | null) ?? null,
+                  last_name: (row.last_name as string | null) ?? null,
+                  subscription: (row.subscription as string | null) ?? null,
+                });
+              }
+              return map;
+            })(),
+        // Auth fallback: only used when a profile row is missing email.
+        // Single listUsers page is far cheaper than N getUserById calls; we
+        // ignore the result here and resolve missing emails below using a
+        // lazy helper.
+        Promise.resolve(null),
+      ]);
+
+    // Resolve email fallback for any user_id that does not have profiles.email
+    // (rare since profiles.email is synced from auth.users).
+    const missingEmailIds = userIds.filter((id) => {
+      const p = profilesById.get(id);
+      return !p || !p.email;
+    });
+    if (missingEmailIds.length > 0) {
       try {
-        const {
-          data: { user },
-        } = await serviceSupabase.auth.admin.getUserById(userId);
-        const email = user?.email || null;
-        userEmailsMap.set(userId, email);
-
-        // Get subscription, name, and customer_id from profiles table
-        const { data: profileRow } = await (serviceSupabase as any)
-          .from("profiles")
-          .select(
-            "subscription, first_name, last_name, customer_id, nnaudio_access_installer_macos_at, nnaudio_access_installer_windows_at",
-          )
-          .eq("id", userId)
-          .single();
-
-        const profile = profileRow as {
-          subscription?: string | null;
-          first_name?: string | null;
-          last_name?: string | null;
-          customer_id?: string | null;
-          nnaudio_access_installer_macos_at?: string | null;
-          nnaudio_access_installer_windows_at?: string | null;
-        } | null;
-
-        userNnaudioInstallerMacMap.set(
-          userId,
-          profile?.nnaudio_access_installer_macos_at ?? null,
+        const fallbackMap = await fetchAuthEmailsByUserIds(
+          serviceSupabase,
+          missingEmailIds,
         );
-        userNnaudioInstallerWinMap.set(
-          userId,
-          profile?.nnaudio_access_installer_windows_at ?? null,
-        );
-
-        // Store user name
-        userNamesMap.set(userId, {
-          firstName: profile?.first_name || null,
-          lastName: profile?.last_name || null,
-        });
-
-        // Check NFR status if email exists
-        let hasNfr = false;
-        if (email) {
-          const normalizedEmail = email.toLowerCase().trim();
-          const nfrRecord = await fetchUserManagementProByUserIdOrEmail(
-            serviceSupabase,
-            userId,
-            normalizedEmail,
-          );
-          hasNfr = nfrRecord?.pro ?? false;
-        }
-
-        userSubscriptionMap.set(userId, {
-          subscription: profile?.subscription || "none",
-          hasNfr,
-        });
-
-        // Product count (grants + Stripe purchases)
-        try {
-          const { productIds } = await getAccessibleProductIds(userId, {
-            customer_id: profile?.customer_id ?? null,
-            email: email ?? null,
-          });
-          userProductCountMap.set(userId, productIds.size);
-        } catch (productErr) {
-          console.error(`Error fetching product count for user ${userId}:`, productErr);
-          userProductCountMap.set(userId, 0);
-        }
-
-        // Order count (succeeded Stripe payment intents + product grants)
-        try {
-          let orderCount = 0;
-          if (profile?.customer_id) {
-            const { data: paymentIntents } = await stripe.paymentIntents.list({
-              customer: profile.customer_id,
-              limit: 100,
+        for (const [id, email] of fallbackMap.entries()) {
+          const existing = profilesById.get(id);
+          if (existing) {
+            existing.email = email;
+          } else {
+            profilesById.set(id, {
+              email,
+              first_name: null,
+              last_name: null,
+              subscription: null,
             });
-            orderCount += paymentIntents.filter((pi) => pi.status === "succeeded").length;
           }
-          if (email) {
-            const { count: grantCount } = await (serviceSupabase as any)
-              .from("product_grants")
-              .select("id", { count: "exact", head: true })
-              .eq("user_email", email.toLowerCase().trim());
-            orderCount += grantCount ?? 0;
-          }
-          userOrderCountMap.set(userId, orderCount);
-        } catch (orderErr) {
-          console.error(`Error fetching order count for user ${userId}:`, orderErr);
-          userOrderCountMap.set(userId, 0);
         }
-      } catch (error) {
-        console.error(`Error fetching user ${userId}:`, error);
-        userEmailsMap.set(userId, null);
-        userNamesMap.set(userId, { firstName: null, lastName: null });
-        userSubscriptionMap.set(userId, {
-          subscription: "none",
-          hasNfr: false,
-        });
-        userProductCountMap.set(userId, 0);
-        userOrderCountMap.set(userId, 0);
-        userNnaudioInstallerMacMap.set(userId, null);
-        userNnaudioInstallerWinMap.set(userId, null);
+      } catch (fallbackErr) {
+        console.error(
+          "Error resolving auth email fallbacks for ticket owners:",
+          fallbackErr,
+        );
       }
     }
+    void profileEmailFallbacks;
 
     const ticketsWithUsers = (tickets || []).map((ticket) => {
-      const subscriptionData = userSubscriptionMap.get(ticket.user_id) || {
-        subscription: "none",
-        hasNfr: false,
-      };
-      const userNameData = userNamesMap.get(ticket.user_id) || {
-        firstName: null,
-        lastName: null,
-      };
+      const profile = profilesById.get(ticket.user_id);
+      const replyState = replyStateMap.get(ticket.id);
       return {
         ...ticket,
-        user_email: userEmailsMap.get(ticket.user_id) || null,
-        user_first_name: userNameData.firstName,
-        user_last_name: userNameData.lastName,
-        user_subscription: subscriptionData.subscription,
-        user_has_nfr: subscriptionData.hasNfr,
-        user_product_count: userProductCountMap.get(ticket.user_id) ?? 0,
-        user_order_count: userOrderCountMap.get(ticket.user_id) ?? 0,
-        last_reply_is_admin:
-          replyStateMap.get(ticket.id)?.lastReplyIsAdmin ?? false,
-        awaiting_admin_response:
-          replyStateMap.get(ticket.id)?.awaitingAdminResponse ?? false,
-        user_nnaudio_installer_macos_at:
-          userNnaudioInstallerMacMap.get(ticket.user_id) ?? null,
-        user_nnaudio_installer_windows_at:
-          userNnaudioInstallerWinMap.get(ticket.user_id) ?? null,
+        user_email: profile?.email ?? null,
+        user_first_name: profile?.first_name ?? null,
+        user_last_name: profile?.last_name ?? null,
+        user_subscription: profile?.subscription ?? "none",
+        last_reply_is_admin: replyState?.lastReplyIsAdmin ?? false,
+        awaiting_admin_response: replyState?.awaitingAdminResponse ?? false,
       };
     });
 
@@ -1784,6 +1735,312 @@ export async function getSupportTicketsAdmin(): Promise<{
     return {
       tickets: [],
       error: error instanceof Error ? error.message : "Failed to fetch tickets",
+    };
+  }
+}
+
+/**
+ * @brief Resolves auth.users.email for a small set of user ids when profiles.email is missing.
+ * @param serviceSupabase Service-role client
+ * @param userIds Specific user ids that lacked an email on profiles
+ * @returns Map of userId -> email (null if not found)
+ *
+ * @note Uses parallel `auth.admin.getUserById` calls bounded by the input length.
+ * The expectation is that `missingEmailIds` is empty or near-empty in production
+ * because `profiles.email` is synced from `auth.users`.
+ */
+async function fetchAuthEmailsByUserIds(
+  serviceSupabase: ServiceRoleClientType,
+  userIds: string[],
+): Promise<Map<string, string | null>> {
+  const out = new Map<string, string | null>();
+  await Promise.all(
+    userIds.map(async (id) => {
+      try {
+        const {
+          data: { user },
+        } = await serviceSupabase.auth.admin.getUserById(id);
+        out.set(id, user?.email ?? null);
+      } catch {
+        out.set(id, null);
+      }
+    }),
+  );
+  return out;
+}
+
+/**
+ * @brief Per-user enrichment for the admin support tickets table.
+ *
+ * Returns lazily-loaded columns the base list intentionally omits: NFR flag, accessible
+ * product count, succeeded order count, and NNAudio Access installer timestamps.
+ *
+ * @param userIds Visible (paginated) ticket-owner ids to enrich.
+ * @returns `{ enrichments: Record<userId, Enrichment> }` for the given ids.
+ *
+ * @note
+ * - DB lookups (`profiles`, `user_management`, `product_grants`) are batched via `.in(...)`.
+ * - Stripe calls (per customer) run in parallel with a small concurrency cap to avoid
+ *   tripping rate limits.
+ * - Skip empty input fast-path returns an empty record so the page can call this with
+ *   no ids without paying any cost.
+ */
+export async function getSupportTicketsEnrichmentsAdmin(
+  userIds: string[],
+): Promise<{
+  enrichments: Record<
+    string,
+    {
+      product_count: number;
+      order_count: number;
+      has_nfr: boolean;
+      installer_macos_at: string | null;
+      installer_windows_at: string | null;
+    }
+  >;
+  error?: string;
+}> {
+  const empty: ReturnType<typeof Object> = {};
+  try {
+    const uniqueIds = [...new Set(userIds)].filter(Boolean);
+    if (uniqueIds.length === 0) {
+      return { enrichments: empty as Record<string, never> };
+    }
+
+    const supabase = await createClient();
+    if (!(await checkAdmin(supabase))) {
+      return { enrichments: empty as Record<string, never>, error: "Unauthorized" };
+    }
+
+    const serviceSupabase = await createSupabaseServiceRole();
+
+    /**
+     * 1) Profiles (one batched query): customer_id, email, installer timestamps.
+     */
+    const { data: profileRows, error: profilesError } = await (
+      serviceSupabase as any
+    )
+      .from("profiles")
+      .select(
+        "id, email, customer_id, nnaudio_access_installer_macos_at, nnaudio_access_installer_windows_at",
+      )
+      .in("id", uniqueIds);
+
+    if (profilesError) {
+      console.error(
+        "Error fetching profiles for ticket enrichment:",
+        profilesError,
+      );
+    }
+
+    type ProfileLite = {
+      id: string;
+      email: string | null;
+      customer_id: string | null;
+      nnaudio_access_installer_macos_at: string | null;
+      nnaudio_access_installer_windows_at: string | null;
+    };
+    const profilesById = new Map<string, ProfileLite>();
+    for (const row of (profileRows as ProfileLite[] | null) || []) {
+      profilesById.set(row.id, row);
+    }
+
+    // Resolve any missing emails via a small parallel auth fallback so downstream
+    // grants/NFR/Stripe-by-email logic still works.
+    const missingEmailIds = uniqueIds.filter(
+      (id) => !profilesById.get(id)?.email,
+    );
+    if (missingEmailIds.length > 0) {
+      const fallback = await fetchAuthEmailsByUserIds(
+        serviceSupabase,
+        missingEmailIds,
+      );
+      for (const [id, email] of fallback.entries()) {
+        const existing = profilesById.get(id);
+        if (existing) {
+          existing.email = email;
+        } else {
+          profilesById.set(id, {
+            id,
+            email,
+            customer_id: null,
+            nnaudio_access_installer_macos_at: null,
+            nnaudio_access_installer_windows_at: null,
+          });
+        }
+      }
+    }
+
+    const normalizedEmails = new Map<string, string>(); // userId -> email lower
+    for (const id of uniqueIds) {
+      const e = profilesById.get(id)?.email?.trim().toLowerCase();
+      if (e) normalizedEmails.set(id, e);
+    }
+    const allEmails = [...new Set(normalizedEmails.values())];
+
+    /**
+     * 2) NFR flag (`user_management.pro`): one query by user_id, one by email, then merge.
+     */
+    const hasNfrByUserId = new Map<string, boolean>();
+    const hasNfrByEmail = new Map<string, boolean>();
+    {
+      const userMgmtClient = serviceSupabase as any;
+      const [byIdRes, byEmailRes] = await Promise.all([
+        userMgmtClient
+          .from("user_management")
+          .select("user_id, pro")
+          .in("user_id", uniqueIds),
+        allEmails.length === 0
+          ? Promise.resolve({ data: [] })
+          : userMgmtClient
+              .from("user_management")
+              .select("user_email, pro")
+              .in("user_email", allEmails),
+      ]);
+      for (const row of (byIdRes.data as { user_id: string; pro: boolean }[] | null) ||
+        []) {
+        if (row.user_id) hasNfrByUserId.set(row.user_id, !!row.pro);
+      }
+      for (const row of (byEmailRes.data as
+        | { user_email: string; pro: boolean }[]
+        | null) || []) {
+        if (row.user_email) {
+          hasNfrByEmail.set(row.user_email.trim().toLowerCase(), !!row.pro);
+        }
+      }
+    }
+
+    /**
+     * 3) Order count - product_grants portion: one batched query, group counts in JS.
+     */
+    const grantOrderCountByEmail = new Map<string, number>();
+    if (allEmails.length > 0) {
+      const { data: grantRows, error: grantErr } = await (
+        serviceSupabase as any
+      )
+        .from("product_grants")
+        .select("user_email")
+        .in("user_email", allEmails);
+      if (grantErr) {
+        console.error(
+          "Error fetching product_grants for ticket enrichment:",
+          grantErr,
+        );
+      }
+      for (const row of (grantRows as { user_email: string | null }[] | null) ||
+        []) {
+        const e = row.user_email?.trim().toLowerCase();
+        if (!e) continue;
+        grantOrderCountByEmail.set(
+          e,
+          (grantOrderCountByEmail.get(e) ?? 0) + 1,
+        );
+      }
+    }
+
+    /**
+     * 4) Per-user accessible product count + Stripe order count, parallel with
+     *    bounded concurrency so we don't fan out and trip Stripe rate limits.
+     */
+    const productCountByUserId = new Map<string, number>();
+    const stripeOrderCountByUserId = new Map<string, number>();
+
+    const concurrency = 6;
+    let cursor = 0;
+    async function worker(): Promise<void> {
+      while (cursor < uniqueIds.length) {
+        const i = cursor++;
+        const id = uniqueIds[i];
+        const profile = profilesById.get(id);
+        const customerId = profile?.customer_id ?? null;
+        const email = profile?.email ?? null;
+
+        const [productResult, stripeResult] = await Promise.all([
+          (async () => {
+            try {
+              const { productIds } = await getAccessibleProductIds(id, {
+                customer_id: customerId,
+                email,
+              });
+              return productIds.size;
+            } catch (err) {
+              console.error(
+                `Enrichment: error fetching product count for ${id}:`,
+                err,
+              );
+              return 0;
+            }
+          })(),
+          (async () => {
+            if (!customerId) return 0;
+            try {
+              const { data: paymentIntents } = await stripe.paymentIntents.list(
+                {
+                  customer: customerId,
+                  limit: 100,
+                },
+              );
+              return paymentIntents.filter((pi) => pi.status === "succeeded")
+                .length;
+            } catch (err) {
+              console.error(
+                `Enrichment: error fetching Stripe order count for ${id}:`,
+                err,
+              );
+              return 0;
+            }
+          })(),
+        ]);
+
+        productCountByUserId.set(id, productResult);
+        stripeOrderCountByUserId.set(id, stripeResult);
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, uniqueIds.length) }, () =>
+        worker(),
+      ),
+    );
+
+    const enrichments: Record<
+      string,
+      {
+        product_count: number;
+        order_count: number;
+        has_nfr: boolean;
+        installer_macos_at: string | null;
+        installer_windows_at: string | null;
+      }
+    > = {};
+
+    for (const id of uniqueIds) {
+      const profile = profilesById.get(id);
+      const email = normalizedEmails.get(id) ?? null;
+      const grantOrders = email ? grantOrderCountByEmail.get(email) ?? 0 : 0;
+      const stripeOrders = stripeOrderCountByUserId.get(id) ?? 0;
+      const nfr =
+        hasNfrByUserId.get(id) ??
+        (email ? hasNfrByEmail.get(email) ?? false : false);
+      enrichments[id] = {
+        product_count: productCountByUserId.get(id) ?? 0,
+        order_count: grantOrders + stripeOrders,
+        has_nfr: nfr,
+        installer_macos_at:
+          profile?.nnaudio_access_installer_macos_at ?? null,
+        installer_windows_at:
+          profile?.nnaudio_access_installer_windows_at ?? null,
+      };
+    }
+
+    return { enrichments };
+  } catch (error) {
+    console.error("Error in getSupportTicketsEnrichmentsAdmin:", error);
+    return {
+      enrichments: empty as Record<string, never>,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch ticket enrichments",
     };
   }
 }
@@ -2006,21 +2263,32 @@ export async function getSupportTicketAdmin(ticketId: string): Promise<{
       }
     }
 
-    // Generate signed URLs for attachments that don't have valid URLs
+    // Generate signed URLs (service role: user JWT often cannot sign private objects)
     const bucketName = "support-attachments";
     const attachmentsWithUrls = await Promise.all(
       (attachments || []).map(async (att) => {
-        let url = att.url;
-        // If no URL or URL looks invalid, generate a signed URL
-        if (!url || !url.includes("supabase.co")) {
+        const needsSigned =
+          !att.url ||
+          (typeof att.url === "string" && att.url.includes("/object/public/")) ||
+          (typeof att.url === "string" &&
+            !att.url.includes("/object/sign/") &&
+            !att.url.includes("token="));
+        let url: string | null = att.url;
+        if (needsSigned) {
           try {
             const { data: signedUrlData, error: signedUrlError } =
               await serviceSupabase.storage
                 .from(bucketName)
-                .createSignedUrl(att.storage_path, 31536000); // 1 year expiry
+                .createSignedUrl(att.storage_path, 31536000);
 
-            if (!signedUrlError && signedUrlData) {
+            if (!signedUrlError && signedUrlData?.signedUrl) {
               url = signedUrlData.signedUrl;
+            } else {
+              console.error(
+                "Error generating signed URL for attachment:",
+                att.id,
+                signedUrlError,
+              );
             }
           } catch (error) {
             console.error(
@@ -3327,8 +3595,9 @@ export async function getUserSupportTicket(ticketId: string): Promise<{
       console.error("Error fetching attachments:", attachmentsError);
     }
 
-    // Get user emails for messages using service role client
     const serviceSupabase = await createSupabaseServiceRole();
+
+    // Get user emails for messages using service role client
     const messageUserIds = [...new Set(messages?.map((m) => m.user_id) || [])];
     const messageUserEmailsMap = new Map<string, string | null>();
 
@@ -3344,21 +3613,37 @@ export async function getUserSupportTicket(ticketId: string): Promise<{
       }
     }
 
-    // Generate signed URLs for attachments that don't have valid URLs
+    /**
+     * @note Signed URLs must be created with a client that can sign private objects. The
+     * end-user client often lacks storage.objects read rights; service role can always sign.
+     * We also re-sign if we previously stored a public object URL (does not work for a private bucket).
+     */
     const bucketName = "support-attachments";
+    const signStorage = serviceSupabase ?? supabase;
     const attachmentsWithUrls = await Promise.all(
       (attachments || []).map(async (att) => {
-        let url = att.url;
-        // If no URL or URL looks invalid, generate a signed URL
-        if (!url || !url.includes("supabase.co")) {
+        const needsSigned =
+          !att.url ||
+          (typeof att.url === "string" && att.url.includes("/object/public/")) ||
+          (typeof att.url === "string" &&
+            !att.url.includes("/object/sign/") &&
+            !att.url.includes("token="));
+        let url: string | null = att.url;
+        if (needsSigned) {
           try {
             const { data: signedUrlData, error: signedUrlError } =
-              await supabase.storage
+              await signStorage.storage
                 .from(bucketName)
-                .createSignedUrl(att.storage_path, 31536000); // 1 year expiry
+                .createSignedUrl(att.storage_path, 31536000);
 
-            if (!signedUrlError && signedUrlData) {
+            if (!signedUrlError && signedUrlData?.signedUrl) {
               url = signedUrlData.signedUrl;
+            } else {
+              console.error(
+                "Error generating signed URL for attachment:",
+                att.id,
+                signedUrlError,
+              );
             }
           } catch (error) {
             console.error(
@@ -3414,6 +3699,10 @@ export async function createSupportTicket(data: {
   ticket?: {
     id: string;
     ticket_number: string;
+    /**
+     * @brief ID of the initial user message (body = description) for linking uploads.
+     */
+    firstMessageId?: string;
   };
   error?: string;
 }> {
@@ -3496,16 +3785,20 @@ export async function createSupportTicket(data: {
           );
         }
       }
+
+      return {
+        success: true,
+        ticket: {
+          id: ticket.id,
+          ticket_number: ticket.ticket_number,
+          firstMessageId: message && !messageError ? message.id : undefined,
+        },
+      };
     }
 
     return {
       success: true,
-      ticket: ticket
-        ? {
-            id: ticket.id,
-            ticket_number: ticket.ticket_number,
-          }
-        : undefined,
+      ticket: undefined,
     };
   } catch (error) {
     console.error("Error in createSupportTicket:", error);
@@ -3670,6 +3963,9 @@ export async function uploadSupportTicketAttachment(
       file.name.endsWith(".txt")
     ) {
       attachmentType = "document";
+    } else if (/\.(heic|heif|avif)$/i.test(file.name)) {
+      /** Browsers / OS often omit image MIME; treat common photo extensions as images. */
+      attachmentType = "image";
     }
 
     // Generate unique filename
@@ -3682,6 +3978,32 @@ export async function uploadSupportTicketAttachment(
     // Convert file to buffer
     const fileBuffer = await file.arrayBuffer();
     const buffer = new Uint8Array(fileBuffer);
+    const contentType =
+      file.type && file.type.length > 0
+        ? file.type
+        : /\.heif$/i.test(file.name)
+          ? "image/heif"
+          : /\.heic$/i.test(file.name)
+            ? "image/heic"
+            : "application/octet-stream";
+    const fileTypeForDb = file.type && file.type.length > 0 ? file.type : contentType;
+
+    /**
+     * Storage RLS: the support-attachments bucket has no per-user object policies, so
+     * user-scoped clients often cannot INSERT or createSignedUrl. Use the service
+     * role for upload/signing only after we have verified the user may attach to
+     * this ticket (checks above). Same pattern as addSupportTicketMessageAdmin.
+     */
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return {
+        success: false,
+        error: "Server configuration error: service role not available for storage",
+      };
+    }
+    const storageClient = await createSupabaseServiceRole();
+    if (!storageClient) {
+      return { success: false, error: "Storage unavailable" };
+    }
 
     // Upload to Supabase storage (ensure bucket exists)
     const bucketName = "support-attachments";
@@ -3691,25 +4013,29 @@ export async function uploadSupportTicketAttachment(
     );
     console.log("[Attachment Upload] Storage path:", storagePath);
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from(bucketName)
-      .upload(storagePath, buffer, {
-        contentType: file.type,
-        cacheControl: "3600",
-        upsert: false,
-      });
+    const { data: _uploadData, error: uploadError } =
+      await storageClient.storage
+        .from(bucketName)
+        .upload(storagePath, buffer, {
+          contentType,
+          cacheControl: "3600",
+          upsert: false,
+        });
 
     if (uploadError) {
       console.error("[Attachment Upload] Storage upload error:", uploadError);
-      console.error("[Attachment Upload] Error code:", (uploadError as { statusCode?: number }).statusCode);
+      console.error(
+        "[Attachment Upload] Error code:",
+        (uploadError as { statusCode?: number }).statusCode,
+      );
       console.error("[Attachment Upload] Error message:", uploadError.message);
 
-      // If bucket doesn't exist, try to create it
+      // If bucket doesn't exist, try to create it (service role)
       if (uploadError.message.includes("Bucket not found")) {
         console.log(
           "[Attachment Upload] Bucket not found, attempting to create...",
         );
-        const { error: createError } = await supabase.storage.createBucket(
+        const { error: createError } = await storageClient.storage.createBucket(
           bucketName,
           {
             public: false,
@@ -3724,11 +4050,10 @@ export async function uploadSupportTicketAttachment(
           return { success: false, error: "Failed to create storage bucket" };
         }
         console.log("[Attachment Upload] Bucket created, retrying upload...");
-        // Retry upload
-        const { data: retryData, error: retryError } = await supabase.storage
+        const { error: retryError } = await storageClient.storage
           .from(bucketName)
           .upload(storagePath, buffer, {
-            contentType: file.type,
+            contentType,
             cacheControl: "3600",
             upsert: false,
           });
@@ -3757,13 +4082,13 @@ export async function uploadSupportTicketAttachment(
     // Generate signed URL for private bucket (valid for 1 year)
     let signedUrl: string | null = null;
     try {
-      console.log("[Attachment Upload] Generating signed URL...");
+      console.log("[Attachment Upload] Generating signed URL (service)...");
       const { data: signedUrlData, error: signedUrlError } =
-        await supabase.storage
+        await storageClient.storage
           .from(bucketName)
-          .createSignedUrl(storagePath, 31536000); // 1 year expiry
+          .createSignedUrl(storagePath, 31536000);
 
-      if (!signedUrlError && signedUrlData) {
+      if (!signedUrlError && signedUrlData?.signedUrl) {
         signedUrl = signedUrlData.signedUrl;
         console.log("[Attachment Upload] Signed URL generated successfully");
       } else {
@@ -3771,19 +4096,22 @@ export async function uploadSupportTicketAttachment(
           "[Attachment Upload] Error generating signed URL:",
           signedUrlError,
         );
-        // Fallback: try public URL (won't work for private bucket, but won't break)
-        const { data: urlData } = supabase.storage
-          .from(bucketName)
-          .getPublicUrl(storagePath);
-        signedUrl = urlData?.publicUrl || null;
+        await storageClient.storage.from(bucketName).remove([storagePath]);
+        return {
+          success: false,
+          error: signedUrlError?.message || "Failed to create signed file URL",
+        };
       }
     } catch (urlError) {
       console.error("[Attachment Upload] Error generating URL:", urlError);
-      // Fallback: try public URL
-      const { data: urlData } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(storagePath);
-      signedUrl = urlData?.publicUrl || null;
+      await storageClient.storage.from(bucketName).remove([storagePath]);
+      return {
+        success: false,
+        error:
+          urlError instanceof Error
+            ? urlError.message
+            : "Failed to create signed file URL",
+      };
     }
 
     // Create attachment record using service role client
@@ -3805,7 +4133,7 @@ export async function uploadSupportTicketAttachment(
         message_id: messageId,
         file_name: file.name,
         file_size: file.size,
-        file_type: file.type,
+        file_type: fileTypeForDb,
         attachment_type: attachmentType,
         storage_path: storagePath,
         url: signedUrl,
@@ -3830,7 +4158,7 @@ export async function uploadSupportTicketAttachment(
         console.error(
           "[Attachment Upload] SUPABASE_SERVICE_ROLE_KEY is not set! Cannot use service role fallback.",
         );
-        await supabase.storage.from(bucketName).remove([storagePath]);
+        await storageClient.storage.from(bucketName).remove([storagePath]);
         return {
           success: false,
           error: "Server configuration error: Service role key not available",
@@ -3852,7 +4180,7 @@ export async function uploadSupportTicketAttachment(
               message_id: messageId,
               file_name: file.name,
               file_size: file.size,
-              file_type: file.type,
+              file_type: fileTypeForDb,
               attachment_type: attachmentType,
               storage_path: storagePath,
               url: signedUrl ?? '',
@@ -3881,7 +4209,7 @@ export async function uploadSupportTicketAttachment(
     if (attachmentError) {
       console.error("[Attachment Upload] Final error:", attachmentError);
       // Try to delete uploaded file
-      await supabase.storage.from(bucketName).remove([storagePath]);
+      await storageClient.storage.from(bucketName).remove([storagePath]);
       return {
         success: false,
         error: attachmentError.message || "Failed to create attachment record",

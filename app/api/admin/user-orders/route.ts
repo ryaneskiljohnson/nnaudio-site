@@ -42,10 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     const serviceSupabase = await createSupabaseServiceRole();
-    const {
-      data: { user },
-    } = await serviceSupabase.auth.admin.getUserById(userId);
-    const email = user?.email ?? null;
+    await serviceSupabase.auth.admin.getUserById(userId);
 
     const { data: profile } = await serviceSupabase
       .from("profiles")
@@ -73,7 +70,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (email) {
+    {
       const { data: grants } = await (serviceSupabase as any)
         .from("product_grants")
         .select(
@@ -84,7 +81,7 @@ export async function GET(request: NextRequest) {
           products:product_id ( name )
         `
         )
-        .eq("user_email", email.toLowerCase().trim())
+        .eq("user_id", userId)
         .order("granted_at", { ascending: false });
 
       const grantList = (grants ?? []) as Array<{

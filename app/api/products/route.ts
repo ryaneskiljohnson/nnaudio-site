@@ -12,6 +12,7 @@ import {
   isShopProductIncluded,
   mergeManualAndPromotionalSalePrice,
 } from '@/utils/promotions/apply-promotion';
+import { excludeNnaudioAccessForCommerce } from '@/lib/shopProductFilters';
 
 // GET /api/products - List all products (with filters)
 export async function GET(request: NextRequest) {
@@ -22,6 +23,8 @@ export async function GET(request: NextRequest) {
     const statusParam = searchParams.get('status');
     const limitParam = searchParams.get('limit');
     const free = searchParams.get('free'); // Filter for free products (price = 0 or sale_price = 0)
+    /** Admin-only: include the free NNAudio Access app in this list (default: omit — not for sale) */
+    const includeNnaudioAccessProduct = searchParams.get('include_nnaudio_access_product') === 'true';
     // If limit is provided, use it; otherwise fetch all (Supabase default is 1000, but we'll set a high limit)
     const limit = limitParam ? parseInt(limitParam) : 10000;
 
@@ -103,6 +106,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    if (!includeNnaudioAccessProduct) {
+      productsWithRatings = excludeNnaudioAccessForCommerce(productsWithRatings) as any[];
+    }
+
     /**
      * @brief Applies highest-priority active promotion that includes shop products to catalog prices.
      */
@@ -162,7 +169,7 @@ export async function GET(request: NextRequest) {
       {
         success: true,
         products: productsWithRatings,
-        count: products?.length || 0,
+        count: productsWithRatings.length,
       },
       { headers: Object.keys(headers).length ? headers : undefined }
     );

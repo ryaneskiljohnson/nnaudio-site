@@ -43,35 +43,50 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    let query = (adminSupabase as any)
-      .from("reseller_codes")
-      .select(`
-        *,
-        products:product_id (
-          id,
-          name,
-          slug
-        ),
-        resellers:reseller_id (
-          id,
-          name
-        )
-      `)
-      .order("created_at", { ascending: false });
+    /**
+     * @note PostgREST returns at most 1000 rows per request. Page with `.range()` and merge
+     *   or the admin UI only sees a slice (usually newest 1000 codes per reseller).
+     */
+    const PAGE = 1000;
+    const codes: any[] = [];
+    for (let from = 0; ; from += PAGE) {
+      let pageQuery = (adminSupabase as any)
+        .from("reseller_codes")
+        .select(`
+          *,
+          products:product_id (
+            id,
+            name,
+            slug
+          ),
+          resellers:reseller_id (
+            id,
+            name
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE - 1);
 
-    if (resellerId) {
-      query = query.eq("reseller_id", resellerId);
-    }
+      if (resellerId) {
+        pageQuery = pageQuery.eq("reseller_id", resellerId);
+      }
 
-    if (productId) {
-      query = query.eq("product_id", productId);
-    }
+      if (productId) {
+        pageQuery = pageQuery.eq("product_id", productId);
+      }
 
-    const { data: codes, error } = await query;
-
-    if (error) {
-      console.error("[Reseller Codes GET] Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      const { data: page, error } = await pageQuery;
+      if (error) {
+        console.error("[Reseller Codes GET] Error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      if (!page?.length) {
+        break;
+      }
+      codes.push(...page);
+      if (page.length < PAGE) {
+        break;
+      }
     }
 
     // Fetch user information for redeemed codes

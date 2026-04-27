@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /**
    * @brief Reloads profile and subscription fields from the server using the latest `getUser()` result.
    * @returns Resolves when state is updated or on recoverable error (logs on failure).
-   * @note Uses `getUser()` instead of React `session` so auth fields like `new_email` stay in sync after `updateUser`.
+   * @note Uses `getUser()` instead of React `session` so auth fields like `new_email` stay in sync after `updateUser` (e.g. pending email change).
    */
   const refreshUser = useCallback(async () => {
     const {
