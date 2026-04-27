@@ -66,6 +66,10 @@ import UserProfileModal from "@/components/admin/UserProfileModal";
 import { NnaudioAccessInstallerBadges } from "@/components/admin/NnaudioAccessInstallerBadges";
 
 import TableLoadingRow from "@/components/common/TableLoadingRow";
+import {
+  isHeicOrHeifAttachment,
+  SUPPORT_TICKET_FILE_ACCEPT,
+} from "@/utils/support/is-heic-or-heif-attachment";
 
 const SUPPORT_TICKETS_UNREAD_UPDATED_EVENT =
   "admin-support-tickets-unread-updated";
@@ -3844,6 +3848,43 @@ function SupportTicketsPage() {
                                 {message.attachments?.map((att) => (
                                   <MessageAttachment key={att.id}>
                                     {att.attachment_type === 'image' && att.url ? (
+                                      isHeicOrHeifAttachment(att.file_type, att.file_name) ? (
+                                        <>
+                                          <AttachmentContainer
+                                            style={{ marginTop: '0.5rem', cursor: 'pointer' }}
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={() => att.url && window.open(att.url, '_blank', 'noopener,noreferrer')}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault();
+                                                if (att.url) window.open(att.url, '_blank', 'noopener,noreferrer');
+                                              }
+                                            }}
+                                          >
+                                            <AttachmentIcon>
+                                              <FaImage />
+                                            </AttachmentIcon>
+                                            <AttachmentInfo>
+                                              <AttachmentName>{att.file_name}</AttachmentName>
+                                              <AttachmentSize>{(att.file_size / 1024).toFixed(2)} KB</AttachmentSize>
+                                            </AttachmentInfo>
+                                            {att.url && (
+                                              <AttachmentLink
+                                                href={att.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                onClick={(ev) => ev.stopPropagation()}
+                                              >
+                                                {t('admin.supportTickets.openAttachment', 'Open')}
+                                              </AttachmentLink>
+                                            )}
+                                          </AttachmentContainer>
+                                          <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: '0.25rem 0 0 0', maxWidth: 'min(100%, 320px)' }}>
+                                            {t('admin.supportTickets.heicHint', 'HEIC/HEIF: use Open to view. Safari shows a preview; other browsers may download the file.')}
+                                          </p>
+                                        </>
+                                      ) : (
                                       <>
                                         <ImagePreview 
                                           src={att.url} 
@@ -3855,6 +3896,7 @@ function SupportTicketsPage() {
                                           <AttachmentSize>{(att.file_size / 1024).toFixed(2)} KB</AttachmentSize>
                                         </AttachmentInfo>
                                       </>
+                                      )
                                     ) : att.attachment_type === 'video' && att.url ? (
                                       <>
                                         <VideoPreview controls>
@@ -3988,7 +4030,7 @@ function SupportTicketsPage() {
                             }}
                             type="file"
                             multiple
-                            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+                            accept={SUPPORT_TICKET_FILE_ACCEPT}
                             onChange={(e) => handleFileUpload(selectedTicketId, e.target.files)}
                           />
                         </MessageInput>

@@ -3442,6 +3442,10 @@ export async function createSupportTicket(data: {
   ticket?: {
     id: string;
     ticket_number: string;
+    /**
+     * @brief ID of the initial user message (body = description) for linking uploads.
+     */
+    firstMessageId?: string;
   };
   error?: string;
 }> {
@@ -3524,16 +3528,20 @@ export async function createSupportTicket(data: {
           );
         }
       }
+
+      return {
+        success: true,
+        ticket: {
+          id: ticket.id,
+          ticket_number: ticket.ticket_number,
+          firstMessageId: message && !messageError ? message.id : undefined,
+        },
+      };
     }
 
     return {
       success: true,
-      ticket: ticket
-        ? {
-            id: ticket.id,
-            ticket_number: ticket.ticket_number,
-          }
-        : undefined,
+      ticket: undefined,
     };
   } catch (error) {
     console.error("Error in createSupportTicket:", error);
@@ -3716,9 +3724,11 @@ export async function uploadSupportTicketAttachment(
     const contentType =
       file.type && file.type.length > 0
         ? file.type
-        : /\.(heic|heif)$/i.test(file.name)
-          ? "image/heic"
-          : "application/octet-stream";
+        : /\.heif$/i.test(file.name)
+          ? "image/heif"
+          : /\.heic$/i.test(file.name)
+            ? "image/heic"
+            : "application/octet-stream";
     const fileTypeForDb = file.type && file.type.length > 0 ? file.type : contentType;
 
     /**
