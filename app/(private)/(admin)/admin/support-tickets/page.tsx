@@ -2973,7 +2973,7 @@ function SupportTicketsPage() {
         description={t("admin.supportTickets.subtitle", "Manage customer support requests and issues")}
       />
       
-      <TicketsContainer>
+      <TicketsContainer data-support-tickets-region="true">
         <TicketsTitle>
           <FaTicketAlt />
           {showContent ? t("admin.supportTickets.title", "Support Tickets") : "Support Tickets"}

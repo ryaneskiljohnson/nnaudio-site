@@ -1026,7 +1026,7 @@ function SupportPage() {
         )}
       />
 
-      <TicketsContainer>
+      <TicketsContainer data-support-tickets-region="true">
         <TicketsTitle>
           <FaTicketAlt />
           {t("dashboard.support.title", "Support")}
