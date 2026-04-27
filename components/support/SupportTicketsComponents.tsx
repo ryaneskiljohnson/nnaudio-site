@@ -588,6 +588,9 @@ export const MessageBubble = styled.div<{ $isAdmin?: boolean }>`
 export const MessageContent = styled.div`
   margin-bottom: 0.25rem;
   line-height: 1.4;
+  /* Preserve line breaks and spaces from the message body (Shift+Enter, paste, etc.) */
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 `;
 
 export const MessageTime = styled.div`

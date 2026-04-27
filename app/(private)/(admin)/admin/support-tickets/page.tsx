@@ -1019,6 +1019,8 @@ const MessageBubble = styled.div<{ $isAdmin?: boolean }>`
 const MessageContent = styled.div`
   margin-bottom: 0.25rem;
   line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 `;
 
 const MessageTime = styled.div`
