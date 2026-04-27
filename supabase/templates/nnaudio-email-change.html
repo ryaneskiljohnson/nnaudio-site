@@ -200,7 +200,7 @@
             
             <p class="message">You requested to change your email address to {{ .NewEmail }}. Click the button below to confirm this change.</p>
             
-            <a href="{{ .ConfirmationURL }}" class="verification-button">Confirm Email Change</a>
+            <a href="{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=email_change" class="verification-button">Confirm Email Change</a>
             
             <p class="message" style="margin-top: 30px; font-size: 14px;">
                 This link will expire in 24 hours. If you didn't request this change, please contact support immediately.
@@ -210,7 +210,7 @@
                 If the button doesn't work, copy and paste this link:
             </p>
             
-            <a href="{{ .ConfirmationURL }}" class="verification-link">{{ .ConfirmationURL }}</a>
+            <a href="{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=email_change" class="verification-link">{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=email_change</a>
         </div>
         
         <div class="footer">

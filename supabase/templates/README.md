@@ -64,3 +64,40 @@ All templates feature:
 - Purple-to-blue gradient accents (`#6c63ff` to `#8a2be2`) matching the Next.js site design
 - Responsive design for mobile devices
 
+## Custom callback URL (signup & email change)
+
+The **Confirmation (signup)** and **Email Change** templates must link directly to the
+app's `/api/auth/confirm` route with `token_hash` and `type` in the **query** instead of
+using the default `{{ .ConfirmationURL }}`. The default `ConfirmationURL` first hits
+Supabase's verify endpoint, which then redirects to the app *after* consuming the token.
+By the time the app receives that redirect, the query string no longer contains
+`token_hash`/`type`, so the callback cannot present a clear success/failure state and
+the user briefly sees the login error page before being bounced back.
+
+Use these `href` values in the templates:
+
+- **Confirmation (signup)**:
+  ```
+  {{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=signup
+  ```
+- **Email Change**:
+  ```
+  {{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=email_change
+  ```
+
+The other templates (Magic Link, Reset Password, Invite) continue to use
+`{{ .ConfirmationURL }}` because their downstream pages (`/reset-password`, etc.) handle
+post-verify redirects independently.
+
+After updating `nnaudio-email-change.html` (or `nnaudio-confirmation.html`), upload the
+new HTML to Supabase via the Dashboard or by running:
+
+```bash
+npx tsx scripts/update-supabase-email-templates.ts
+```
+
+Also ensure both production and local `/api/auth/confirm` URLs are present in
+**Authentication → URL Configuration → Redirect URLs**. See
+[../../docs/SUPABASE_INVITE_REDIRECT_SETUP.md](../../docs/SUPABASE_INVITE_REDIRECT_SETUP.md)
+and [../../docs/SUPABASE_CONFIRM_SIGNUP_EMAIL_TEMPLATE.md](../../docs/SUPABASE_CONFIRM_SIGNUP_EMAIL_TEMPLATE.md).
+

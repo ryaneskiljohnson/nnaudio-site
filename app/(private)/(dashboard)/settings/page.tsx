@@ -7,6 +7,7 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   FaGlobe,
   FaTrash,
@@ -235,6 +236,7 @@ function Settings() {
     resetPassword,
     requestEmailChange,
   } = useAuth();
+  const searchParams = useSearchParams();
   
   const [settings, setSettings] = useState<SettingsState>({
     // Remove the language: "en" entry
@@ -266,6 +268,50 @@ function Settings() {
       }));
     }
   }, [user]);
+
+  /**
+   * @brief Surfaces a confirmation banner when the user lands on settings via the
+   * email-change confirmation callback. Refreshes auth state so the displayed
+   * email reflects the new value, then strips the query param so the message
+   * does not re-appear on refresh.
+   */
+  useEffect(() => {
+    const status = searchParams.get("email_change");
+    if (status !== "success" && status !== "already_confirmed") {
+      return;
+    }
+
+    if (status === "success") {
+      setProfileMessage({
+        text: t(
+          "dashboard.settings.emailChangeSuccess",
+          "Your email address has been updated."
+        ),
+        type: "success",
+      });
+    } else {
+      setProfileMessage({
+        text: t(
+          "dashboard.settings.emailChangeAlreadyConfirmed",
+          "This email change link was already used. Your email is already up to date."
+        ),
+        type: "success",
+      });
+    }
+
+    refreshUser().catch(() => {});
+
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("email_change");
+      window.history.replaceState({}, "", url.toString());
+    }
+
+    const timer = setTimeout(() => {
+      setProfileMessage({ text: "", type: "" });
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [searchParams, t, refreshUser]);
 
   // Modal states
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);

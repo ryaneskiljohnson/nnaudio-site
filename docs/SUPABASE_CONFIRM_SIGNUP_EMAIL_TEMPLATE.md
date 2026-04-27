@@ -37,6 +37,20 @@ For account verification to work and redirect users to the dashboard, the **Conf
 2. User clicks the link → browser requests `GET /api/auth/confirm?token_hash=...&type=signup`.
 3. The app calls `verifyOtp({ type, token_hash })` and redirects to `/dashboard` (or `/reset-password` for recovery/invite).
 
+## Email change template
+
+The **Confirm email change** template needs the same direct-callback treatment so the
+app's `/api/auth/confirm` route receives the `token_hash`/`type` and can route the user
+to a contextual settings success state. Use:
+
+```
+https://nnaud.io/api/auth/confirm?token_hash={{ .TokenHash }}&type=email_change
+```
+
+The HTML for this template lives at
+[../supabase/templates/nnaudio-email-change.html](../supabase/templates/nnaudio-email-change.html);
+upload it via the Dashboard or `scripts/update-supabase-email-templates.ts`.
+
 ## Reference
 
 - [Supabase Auth email templates](https://supabase.com/docs/guides/auth/auth-email-templates)
