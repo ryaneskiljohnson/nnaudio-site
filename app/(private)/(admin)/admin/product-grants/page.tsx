@@ -354,7 +354,10 @@ export default function ProductGrantsPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("/api/products?status=active");
+      // Include free NNAudio Access (omitted from default /api/products for commerce).
+      const response = await fetch(
+        "/api/products?status=active&limit=10000&include_nnaudio_access_product=true"
+      );
       const data = await response.json();
 
       if (data.success && data.products) {

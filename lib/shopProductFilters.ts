@@ -4,7 +4,7 @@
  */
 
 /**
- * @brief Slug for the free NNAudio Access app — not sold; omit from resellers, grants, and shop grids.
+ * @brief Slug for the free NNAudio Access app — not sold; omit from default shop/reseller lists. Admin grant flows pass `include_nnaudio_access_product` on `/api/products` to include it.
  * @param row - Min product shape
  * @returns True if this is the NNAudio Access app product
  */

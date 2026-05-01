@@ -607,7 +607,9 @@ export default function UserManagementPage() {
     null,
   );
   const [showGrantForm, setShowGrantForm] = useState(false);
-  const [grantFormProductId, setGrantFormProductId] = useState('');
+  const [grantFormSelectedProductIds, setGrantFormSelectedProductIds] = useState<
+    string[]
+  >([]);
   const [grantFormNotes, setGrantFormNotes] = useState('');
   const [grantFormAmount, setGrantFormAmount] = useState<string>('0');
   const [grantLoading, setGrantLoading] = useState(false);
@@ -773,7 +775,10 @@ export default function UserManagementPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch("/api/products?limit=10000");
+      // Include free NNAudio Access (omitted from default /api/products for commerce).
+      const response = await fetch(
+        "/api/products?limit=10000&include_nnaudio_access_product=true"
+      );
       const data = await response.json();
 
       if (data.success && data.products) {
@@ -1888,7 +1893,7 @@ export default function UserManagementPage() {
             onClick={() => {
               setGrantModalRecordId(null);
               setShowGrantForm(false);
-              setGrantFormProductId('');
+              setGrantFormSelectedProductIds([]);
               setGrantFormNotes('');
               setGrantFormAmount('0');
               setProductSearchQuery('');
@@ -1909,7 +1914,7 @@ export default function UserManagementPage() {
                 <CloseButton onClick={() => {
                   setGrantModalRecordId(null);
                   setShowGrantForm(false);
-                  setGrantFormProductId('');
+                  setGrantFormSelectedProductIds([]);
                   setGrantFormNotes('');
                   setGrantFormAmount('0');
                   setProductSearchQuery('');
@@ -2048,8 +2053,8 @@ export default function UserManagementPage() {
               ) : (
                 <form onSubmit={async (e) => {
                   e.preventDefault();
-                  if (!grantFormProductId) {
-                    showNotification('error', 'Please select a product');
+                  if (grantFormSelectedProductIds.length === 0) {
+                    showNotification('error', 'Please select at least one product');
                     return;
                   }
                   const grantEmail = grantModalRecord?.user_email?.trim();
@@ -2057,29 +2062,77 @@ export default function UserManagementPage() {
                     showNotification('error', 'This NFR record needs an email before granting products.');
                     return;
                   }
+                  const notes = grantFormNotes.trim() || null;
+                  const amount = parseFloat(grantFormAmount) || 0;
                   try {
                     setGrantLoading(true);
-                    const result = await grantProduct(
-                      grantEmail,
-                      grantFormProductId,
-                      grantFormNotes.trim() || null,
-                      parseFloat(grantFormAmount) || 0
-                    );
-                    
-                    if (result.error) {
-                      throw new Error(result.error);
+                    const grantResults: Array<{
+                      success: boolean;
+                      productId: string;
+                      error?: string;
+                    }> = [];
+
+                    for (const productId of grantFormSelectedProductIds) {
+                      try {
+                        const result = await grantProduct(
+                          grantEmail,
+                          productId,
+                          notes,
+                          amount
+                        );
+                        if (result.error) {
+                          grantResults.push({
+                            success: false,
+                            productId,
+                            error: result.error,
+                          });
+                        } else {
+                          grantResults.push({ success: true, productId });
+                        }
+                      } catch (err: unknown) {
+                        const message =
+                          err instanceof Error ? err.message : "Network error";
+                        grantResults.push({
+                          success: false,
+                          productId,
+                          error: message,
+                        });
+                      }
                     }
-                    
-                    showNotification('success', 'Product granted successfully');
-                    setShowGrantForm(false);
-                    setGrantFormProductId('');
-                    setGrantFormNotes('');
-                    setGrantFormAmount('0');
-                    setProductSearchQuery('');
-                    void refreshGrantsForEmail(grantEmail);
-                  } catch (err: any) {
+
+                    const successCount = grantResults.filter((r) => r.success).length;
+                    const failCount = grantResults.filter((r) => !r.success).length;
+
+                    if (successCount > 0) {
+                      showNotification(
+                        "success",
+                        `Granted ${successCount} product${successCount !== 1 ? "s" : ""}`
+                      );
+                    }
+                    if (failCount > 0) {
+                      const errors = grantResults
+                        .filter((r) => !r.success)
+                        .map((r) => r.error)
+                        .join(", ");
+                      showNotification(
+                        "error",
+                        `Failed to grant ${failCount} product${failCount !== 1 ? "s" : ""}: ${errors}`
+                      );
+                    }
+
+                    if (successCount > 0) {
+                      setShowGrantForm(false);
+                      setGrantFormSelectedProductIds([]);
+                      setGrantFormNotes("");
+                      setGrantFormAmount("0");
+                      setProductSearchQuery("");
+                      void refreshGrantsForEmail(grantEmail);
+                    }
+                  } catch (err: unknown) {
                     console.error("[Grant Product] Exception:", err);
-                    showNotification('error', err.message || 'Failed to grant product');
+                    const message =
+                      err instanceof Error ? err.message : "Failed to grant products";
+                    showNotification("error", message);
                   } finally {
                     setGrantLoading(false);
                   }
@@ -2087,7 +2140,7 @@ export default function UserManagementPage() {
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text)', fontWeight: 500 }}>
                       <FaBox style={{ marginRight: '8px' }} />
-                      Product *
+                      Products *
                     </label>
                     <div style={{ position: 'relative' }}>
                       <FaSearch style={{
@@ -2130,7 +2183,8 @@ export default function UserManagementPage() {
                       overflowY: 'auto',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       borderRadius: '8px',
-                      background: 'rgba(0, 0, 0, 0.2)'
+                      background: 'rgba(0, 0, 0, 0.2)',
+                      padding: '0.5rem'
                     }}>
                       {products
                         .filter(p => {
@@ -2144,59 +2198,87 @@ export default function UserManagementPage() {
                           return p.name.toLowerCase().includes(query) || 
                                  (p.slug && p.slug.toLowerCase().includes(query));
                         })
-                        .map((product) => (
+                        .map((product) => {
+                          const isSelected = grantFormSelectedProductIds.includes(product.id);
+                          return (
                           <div
                             key={product.id}
                             onClick={() => {
-                              setGrantFormProductId(product.id);
-                              setProductSearchQuery(product.name);
-                              const price = product.sale_price != null && product.sale_price > 0
-                                ? product.sale_price
-                                : product.price ?? 0;
-                              setGrantFormAmount(String(price));
+                              if (isSelected) {
+                                setGrantFormSelectedProductIds((prev) => {
+                                  const next = prev.filter((id) => id !== product.id);
+                                  if (next.length === 0) {
+                                    setGrantFormAmount("0");
+                                  }
+                                  return next;
+                                });
+                              } else {
+                                setGrantFormSelectedProductIds((prev) => {
+                                  if (prev.length === 0) {
+                                    const price =
+                                      product.sale_price != null && product.sale_price > 0
+                                        ? product.sale_price
+                                        : product.price ?? 0;
+                                    setGrantFormAmount(String(price));
+                                  }
+                                  return [...prev, product.id];
+                                });
+                              }
                             }}
                             style={{
                               padding: '12px 16px',
                               cursor: 'pointer',
-                              borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                              borderRadius: '8px',
+                              marginBottom: '0.5rem',
                               transition: 'all 0.2s ease',
-                              background: grantFormProductId === product.id 
-                                ? 'rgba(108, 99, 255, 0.2)' 
-                                : 'transparent'
+                              background: isSelected
+                                ? 'rgba(108, 99, 255, 0.25)'
+                                : 'rgba(255, 255, 255, 0.03)',
+                              border: isSelected
+                                ? '1px solid rgba(108, 99, 255, 0.5)'
+                                : '1px solid rgba(255, 255, 255, 0.05)'
                             }}
                             onMouseEnter={(e) => {
-                              if (grantFormProductId !== product.id) {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                              if (!isSelected) {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
                               }
                             }}
                             onMouseLeave={(e) => {
-                              if (grantFormProductId !== product.id) {
-                                e.currentTarget.style.background = 'transparent';
+                              if (!isSelected) {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
                               }
                             }}
                           >
-                            <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '0.25rem' }}>
-                              {product.name}
-                            </div>
-                            {product.slug && (
-                              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                {product.slug}
-                              </div>
-                            )}
-                            {grantFormProductId === product.id && (
-                              <div style={{ 
-                                marginTop: '0.5rem', 
-                                fontSize: '0.8rem', 
-                                color: 'var(--primary)',
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <div style={{
+                                width: '22px',
+                                height: '22px',
+                                border: '2px solid rgba(255, 255, 255, 0.4)',
+                                borderRadius: '6px',
+                                background: isSelected ? 'var(--primary)' : 'transparent',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.5rem'
+                                justifyContent: 'center',
+                                flexShrink: 0
                               }}>
-                                <FaCheck /> Selected
+                                {isSelected && <FaCheck style={{ fontSize: '0.75rem', color: 'white' }} />}
                               </div>
-                            )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '0.25rem' }}>
+                                  {product.name}
+                                </div>
+                                {product.slug && (
+                                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                    {product.slug}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       {(!productSearchQuery.trim() || products.filter(p => {
                         if (productGrants[grantMapKey]?.some((g: any) => g.product_id === p.id)) {
                           return false;
@@ -2217,41 +2299,81 @@ export default function UserManagementPage() {
                         </div>
                       )}
                     </div>
-                    {grantFormProductId && (
+                    {grantFormSelectedProductIds.length > 0 && (
                       <div style={{
-                        marginTop: '0.75rem',
-                        padding: '0.75rem',
-                        background: 'rgba(108, 99, 255, 0.1)',
+                        marginTop: '1rem',
+                        padding: '1rem',
+                        background: 'linear-gradient(135deg, rgba(108, 99, 255, 0.15), rgba(138, 43, 226, 0.15))',
                         border: '1px solid rgba(108, 99, 255, 0.3)',
-                        borderRadius: '6px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
+                        borderRadius: '10px'
                       }}>
-                        <div>
-                          <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.9rem' }}>
-                            Selected: {products.find(p => p.id === grantFormProductId)?.name || 'Unknown'}
-                          </div>
+                        <div style={{
+                          fontSize: '0.95rem',
+                          color: 'var(--text)',
+                          marginBottom: '0.75rem',
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem'
+                        }}>
+                          <FaGift />
+                          {grantFormSelectedProductIds.length} product{grantFormSelectedProductIds.length !== 1 ? 's' : ''} selected
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setGrantFormProductId('');
-                            setProductSearchQuery('');
-                            setGrantFormAmount('0');
-                          }}
-                          style={{
-                            padding: '4px 8px',
-                            background: 'rgba(255, 255, 255, 0.1)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            borderRadius: '4px',
-                            color: 'var(--text)',
-                            cursor: 'pointer',
-                            fontSize: '0.8rem'
-                          }}
-                        >
-                          <FaTimes />
-                        </button>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {grantFormSelectedProductIds.map((productId) => {
+                            const product = products.find((p) => p.id === productId);
+                            return product ? (
+                              <div
+                                key={productId}
+                                style={{
+                                  padding: '6px 12px',
+                                  background: 'rgba(108, 99, 255, 0.25)',
+                                  border: '1px solid rgba(108, 99, 255, 0.4)',
+                                  borderRadius: '6px',
+                                  fontSize: '0.875rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  fontWeight: 500
+                                }}
+                              >
+                                <span>{product.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    setGrantFormSelectedProductIds((prev) => {
+                                      const next = prev.filter((id) => id !== productId);
+                                      if (next.length === 0) {
+                                        setGrantFormAmount('0');
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    color: 'var(--text)',
+                                    cursor: 'pointer',
+                                    padding: '2px 6px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                  onMouseEnter={(ev) => {
+                                    ev.currentTarget.style.background = 'rgba(255, 94, 98, 0.3)';
+                                  }}
+                                  onMouseLeave={(ev) => {
+                                    ev.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                  }}
+                                >
+                                  <FaTimes style={{ fontSize: '0.75rem' }} />
+                                </button>
+                              </div>
+                            ) : null;
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2307,7 +2429,7 @@ export default function UserManagementPage() {
                       variant="secondary"
                       onClick={() => {
                         setShowGrantForm(false);
-                        setGrantFormProductId('');
+                        setGrantFormSelectedProductIds([]);
                         setGrantFormNotes('');
                         setGrantFormAmount('0');
                         setProductSearchQuery('');
@@ -2315,7 +2437,7 @@ export default function UserManagementPage() {
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" variant="primary" disabled={grantLoading || !grantFormProductId}>
+                    <Button type="submit" variant="primary" disabled={grantLoading || grantFormSelectedProductIds.length === 0}>
                       {grantLoading ? (
                         <>
                           <NNAudioLoadingSpinner size={16} />
@@ -2323,7 +2445,10 @@ export default function UserManagementPage() {
                         </>
                       ) : (
                         <>
-                          <FaGift /> Grant Product
+                          <FaGift /> Grant
+                          {grantFormSelectedProductIds.length > 0
+                            ? ` ${grantFormSelectedProductIds.length} product${grantFormSelectedProductIds.length !== 1 ? "s" : ""}`
+                            : " products"}
                         </>
                       )}
                     </Button>
