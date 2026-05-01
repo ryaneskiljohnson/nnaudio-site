@@ -235,6 +235,7 @@ function Settings() {
     updateProfile,
     resetPassword,
     requestEmailChange,
+    supabase,
   } = useAuth();
   const searchParams = useSearchParams();
   
@@ -250,7 +251,7 @@ function Settings() {
 
   const [profileMessage, setProfileMessage] = useState<{
     text: string;
-    type: "error" | "success" | "";
+    type: "error" | "success" | "warning" | "";
   }>({ text: "", type: "" });
 
   // Refresh pro status on mount (same as login)
@@ -270,13 +271,56 @@ function Settings() {
   }, [user]);
 
   /**
-   * @brief Surfaces a confirmation banner when the user lands on settings via the
-   * email-change confirmation callback. Refreshes auth state so the displayed
-   * email reflects the new value, then strips the query param so the message
-   * does not re-appear on refresh.
+   * @brief Surfaces banners when the user lands on settings via the email-change
+   * confirmation callback. When secure email change is on, one confirmed link still
+   * leaves `new_email` set; we show a distinct message in that case. Refreshes
+   * auth state and strips the query param so the message does not re-appear on refresh.
    */
   useEffect(() => {
     const status = searchParams.get("email_change");
+    if (!status) {
+      return;
+    }
+
+    const stripEmailChangeParam = () => {
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("email_change");
+        window.history.replaceState({}, "", url.toString());
+      }
+    };
+
+    if (status === "awaiting_second") {
+      let cancelled = false;
+      void (async () => {
+        await refreshUser();
+        if (cancelled) return;
+        const {
+          data: { user: freshUser },
+        } = await supabase.auth.getUser();
+        if (cancelled) return;
+        setProfileMessage({
+          text: t(
+            "dashboard.settings.emailChangeAwaitingSecond",
+            "You confirmed one step. Secure email change requires you to open the confirmation links from both your current address ({{currentEmail}}) and your new address ({{newEmail}}). Finish the step in the other inbox to complete the change.",
+            {
+              currentEmail: freshUser?.email ?? "",
+              newEmail: freshUser?.new_email ?? "",
+            },
+          ),
+          type: "warning",
+        });
+        stripEmailChangeParam();
+      })();
+      const timer = setTimeout(() => {
+        setProfileMessage({ text: "", type: "" });
+      }, 14000);
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
+    }
+
     if (status !== "success" && status !== "already_confirmed") {
       return;
     }
@@ -301,17 +345,13 @@ function Settings() {
 
     refreshUser().catch(() => {});
 
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("email_change");
-      window.history.replaceState({}, "", url.toString());
-    }
+    stripEmailChangeParam();
 
     const timer = setTimeout(() => {
       setProfileMessage({ text: "", type: "" });
     }, 6000);
     return () => clearTimeout(timer);
-  }, [searchParams, t, refreshUser]);
+  }, [searchParams, t, refreshUser, supabase]);
 
   // Modal states
   const [showConfirmationModal, setShowConfirmationModal] = useState(false);
@@ -605,8 +645,22 @@ function Settings() {
 
       {/* Profile Settings */}
       {profileMessage.text && (
-        <Message type={profileMessage.type as "error" | "success"}>
-          {profileMessage.type === "error" ? <FaTimesCircle /> : <FaUser />}
+        <Message
+          type={
+            profileMessage.type === "warning"
+              ? "warning"
+              : profileMessage.type === "error"
+                ? "error"
+                : "success"
+          }
+        >
+          {profileMessage.type === "error" ? (
+            <FaTimesCircle />
+          ) : profileMessage.type === "warning" ? (
+            <FaExclamationTriangle aria-hidden />
+          ) : (
+            <FaUser />
+          )}
           {profileMessage.text}
         </Message>
       )}
@@ -671,8 +725,11 @@ function Settings() {
               <FaInfoCircle aria-hidden />
               {t(
                 "dashboard.settings.emailChangePending",
-                "Confirmation pending for {{email}}. Check that inbox and use the link we sent.",
-                { email: user.new_email }
+                "Changing your sign-in email to {{newEmail}} is not finished yet. We sent a link to your current address ({{currentEmail}}) and to {{newEmail}} — open both and confirm each one. Your login email stays {{currentEmail}} until that is done.",
+                {
+                  newEmail: user.new_email,
+                  currentEmail: user.email ?? "",
+                },
               )}
             </PendingEmailBanner>
           ) : null}
@@ -987,7 +1044,7 @@ const TwoColumnGrid = styled.div`
 `;
 
 interface MessageProps {
-  type: "error" | "success";
+  type: "error" | "success" | "warning";
   children: React.ReactNode;
 }
 
@@ -996,16 +1053,24 @@ const Message = styled.div<MessageProps>`
   border-radius: 6px;
   margin-bottom: 1.5rem;
   color: ${(props) =>
-    props.type === "error" ? "var(--error)" : "var(--success)"};
+    props.type === "error"
+      ? "var(--error)"
+      : props.type === "warning"
+        ? "var(--warning)"
+        : "var(--success)"};
   background-color: ${(props) =>
     props.type === "error"
       ? "rgba(255, 87, 51, 0.1)"
-      : "rgba(0, 201, 167, 0.1)"};
+      : props.type === "warning"
+        ? "rgba(255, 193, 7, 0.12)"
+        : "rgba(0, 201, 167, 0.1)"};
   border: 1px solid
     ${(props) =>
       props.type === "error"
         ? "rgba(255, 87, 51, 0.3)"
-        : "rgba(0, 201, 167, 0.3)"};
+        : props.type === "warning"
+          ? "rgba(255, 193, 7, 0.4)"
+          : "rgba(0, 201, 167, 0.3)"};
   display: flex;
   align-items: center;
 
