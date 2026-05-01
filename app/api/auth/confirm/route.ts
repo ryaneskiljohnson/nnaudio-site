@@ -7,9 +7,10 @@
  * here from email verification links. After verifying the OTP token, users are
  * redirected to the appropriate page (dashboard, settings, or reset-password).
  *
- * On successful `email_change` verification, the response is a 302 redirect to
- * `/settings?email_change=success` so the settings page can show a confirmation
- * message instead of the user landing on a generic dashboard with no feedback.
+ * On successful `email_change` verification: if `user.new_email` is still set
+ * (secure email change — one of two required confirmations done), redirect to
+ * `/settings?email_change=awaiting_second`. Otherwise the change is complete and
+ * we redirect to `/settings?email_change=success` after Stripe email sync.
  *
  * On failure (token already consumed, expired, etc.), if the visitor already has
  * a valid session we treat that as a benign re-click of a one-time link and send
@@ -36,9 +37,11 @@ import { redirect } from "next/navigation";
  *
  * Redirects (302):
  * - Success (recovery or invite): /reset-password
- * - Success (email_change): /settings?email_change=success
+ * - Success (email_change, still pending second inbox): /settings?email_change=awaiting_second
+ * - Success (email_change, fully confirmed): /settings?email_change=success
  * - Success (other types): /dashboard
- * - Failure with active session (email_change): /settings?email_change=already_confirmed
+ * - Failure with active session (email_change, new_email still set): /settings?email_change=awaiting_second
+ * - Failure with active session (email_change, no pending new_email): /settings?email_change=already_confirmed
  * - Failure with active session (other types): /dashboard
  * - Failure without session (email_change): /login?auth_error=email_change_failed
  * - Failure without session (other types): /login?auth_error=verification_failed
@@ -65,6 +68,9 @@ export async function GET(request: NextRequest) {
         const {
           data: { user },
         } = await supabase.auth.getUser();
+        if (user?.new_email) {
+          redirect("/settings?email_change=awaiting_second");
+        }
         if (user?.email) {
           const { syncStripeCustomerEmailFromProfile } = await import(
             "@/utils/stripe/sync-customer-email"
@@ -84,6 +90,9 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
     if (user) {
       if (type === "email_change") {
+        if (user.new_email) {
+          redirect("/settings?email_change=awaiting_second");
+        }
         redirect("/settings?email_change=already_confirmed");
       }
       redirect("/dashboard");
