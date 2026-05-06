@@ -10,6 +10,10 @@ import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import StorageFilePicker from "@/components/admin/StorageFilePicker";
 import { formatProductDownloadFileSize } from "@/utils/product-downloads";
+import {
+  PRODUCT_DOWNLOAD_TYPES,
+  PRODUCT_DOWNLOAD_TYPE_LABELS,
+} from "@/lib/product-download-types";
 import { DemoVideosManager } from "@/app/components/admin/DemoVideosManager";
 
 const Container = styled.div`
@@ -2410,12 +2414,11 @@ export default function EditProductPage() {
                           value={download.type}
                           onChange={(e) => handleDownloadChange(index, 'type', e.target.value)}
                         >
-                          <option value="plugin">Plugin</option>
-                          <option value="samples">Samples</option>
-                          <option value="docs">Documentation</option>
-                          <option value="midi">MIDI Pack</option>
-                          <option value="loops">Loops</option>
-                          <option value="kit">Construction Kit</option>
+                          {PRODUCT_DOWNLOAD_TYPES.map((t) => (
+                            <option key={t} value={t}>
+                              {PRODUCT_DOWNLOAD_TYPE_LABELS[t]}
+                            </option>
+                          ))}
                         </Select>
                       </FeatureItem>
                       <FeatureItem>

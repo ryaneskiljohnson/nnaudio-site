@@ -14,6 +14,8 @@ The system supports the following download types:
 4. **`midi`** - MIDI pack files
 5. **`loops`** - Loop files
 6. **`kit`** - Construction kit files
+7. **`application`** - Standalone application distribution (not a DAW plugin)
+8. **`installer`** - Platform installer package (`.pkg`, `.dmg`, `.msi`, `.exe`, etc.)
 
 ## 1. Plugin Downloads (`type: "plugin"`)
 

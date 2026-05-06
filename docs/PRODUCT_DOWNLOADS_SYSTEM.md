@@ -53,6 +53,8 @@ JSONB array of download objects:
 - `midi` - MIDI pack
 - `loops` - Loops
 - `kit` - Construction kit
+- `application` - Standalone application build (e.g. `.app` bundle in a zip, or platform-specific app archive)
+- `installer` - OS installer (e.g. `.pkg`, `.dmg`, `.msi`, `.exe`)
 
 ## Setup
 
