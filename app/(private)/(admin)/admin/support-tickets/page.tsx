@@ -1234,6 +1234,7 @@ const ModalOverlay = styled(motion.div)`
   justify-content: center;
   z-index: 10000;
   padding: 20px;
+  overscroll-behavior: none;
 
   @media (max-width: 768px) {
     padding: 10px;
@@ -1271,6 +1272,7 @@ const TicketModalContent = styled(motion.div)`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overscroll-behavior: contain;
 
   @media (max-width: 768px) {
     width: 100%;
@@ -2405,6 +2407,24 @@ function SupportTicketsPage() {
     }
     setSelectedTicketId(null);
   };
+
+  /**
+   * @brief Prevents the admin page (and ticket table) from scrolling while a ticket modal is open.
+   * @note Restores prior overflow styles on cleanup so nested modals or other routes are unaffected.
+   */
+  useEffect(() => {
+    if (!selectedTicketId) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+    };
+  }, [selectedTicketId]);
 
   // Handle scroll to detect if user is scrolled up
   const handleScroll = useCallback((ticketId: string, element: HTMLDivElement) => {
@@ -3968,6 +3988,7 @@ function SupportTicketsPage() {
                             flex: '1 1 auto',
                             overflowY: 'auto',
                             overflowX: 'hidden',
+                            overscrollBehavior: 'contain',
                             padding: '1rem',
                             minHeight: 0,
                             height: 0,

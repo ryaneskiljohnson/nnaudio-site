@@ -826,6 +826,7 @@ export const ModalOverlay = styled(motion.div)`
   justify-content: center;
   z-index: 10000;
   padding: 20px;
+  overscroll-behavior: none;
 
   @media (max-width: 768px) {
     padding: 10px;

@@ -348,6 +348,7 @@ const TicketModalContent = styled(motion.div)`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overscroll-behavior: contain;
 
   @media (max-width: 768px) {
     width: 100%;
@@ -961,6 +962,24 @@ function SupportPage() {
     }
     setSelectedTicketId(null);
   };
+
+  /**
+   * @brief Prevents the page behind the ticket modal from scrolling while a ticket is open.
+   * @note Restores prior overflow styles on cleanup.
+   */
+  useEffect(() => {
+    if (!selectedTicketId) return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+    };
+  }, [selectedTicketId]);
 
   const handleSendMessage = async (ticketId: string) => {
     const messageContent = newMessages[ticketId]?.trim();
@@ -1829,6 +1848,7 @@ function SupportPage() {
                               flex: "1 1 auto",
                               overflowY: "auto",
                               overflowX: "hidden",
+                              overscrollBehavior: "contain",
                               padding: "1rem",
                               minHeight: 0,
                               height: 0,
