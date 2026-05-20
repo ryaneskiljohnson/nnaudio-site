@@ -773,6 +773,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </MobileNavItem>
           </Link>
 
+          <Link href="/my-orders" onClick={() => setSidebarOpen(false)}>
+            <MobileNavItem
+              $active={pathname === "/my-orders" ? "true" : "false"}
+              variants={menuItemVariants}
+              custom={1.5}
+              initial="hidden"
+              animate="visible"
+            >
+              <FaShoppingBag /> {t("dashboard.layout.myOrders", "My Orders")}
+            </MobileNavItem>
+          </Link>
+
           <Link href="/profile" onClick={() => setSidebarOpen(false)}>
             <MobileNavItem
               $active={pathname === "/profile" ? "true" : "false"}

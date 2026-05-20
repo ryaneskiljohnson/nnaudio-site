@@ -1290,6 +1290,30 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </MobileNavItem>
 
             <MobileNavItem
+              $active={pathname === "/admin/nfr" ? "true" : "false"}
+              variants={menuItemVariants}
+              custom={1.1}
+              initial="hidden"
+              animate="visible"
+              onClick={(e) => handleNavigation(e, "/admin/nfr")}
+            >
+              <FaUserShield />
+              NFR Licenses
+            </MobileNavItem>
+
+            <MobileNavItem
+              $active={pathname === "/admin/orders" ? "true" : "false"}
+              variants={menuItemVariants}
+              custom={1.2}
+              initial="hidden"
+              animate="visible"
+              onClick={(e) => handleNavigation(e, "/admin/orders")}
+            >
+              <FaShoppingBag />
+              Orders
+            </MobileNavItem>
+
+            <MobileNavItem
               $active={pathname === "/admin/coupons" ? "true" : "false"}
               variants={menuItemVariants}
               custom={2}
@@ -1299,6 +1323,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <FaTag />
               Coupons
+            </MobileNavItem>
+
+            <MobileNavItem
+              $active={pathname === "/admin/resellers" ? "true" : "false"}
+              variants={menuItemVariants}
+              custom={2.1}
+              initial="hidden"
+              animate="visible"
+              onClick={(e) => handleNavigation(e, "/admin/resellers")}
+            >
+              <FaStore />
+              Resellers
             </MobileNavItem>
 
             <MobileNavItem
