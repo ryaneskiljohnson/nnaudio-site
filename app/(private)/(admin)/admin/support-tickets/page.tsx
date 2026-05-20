@@ -4015,6 +4015,12 @@ function SupportTicketsPage() {
                               <SupportMessageTranslate
                                 text={ticket.subject}
                                 cacheKey={`subject-${ticket.id}`}
+                                customerLanguage={
+                                  customerLanguageByTicket.get(ticket.id) ?? null
+                                }
+                                detectingCustomerLanguage={detectingCustomerLanguage.has(
+                                  ticket.id,
+                                )}
                               />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -4129,6 +4135,17 @@ function SupportTicketsPage() {
                                     text={message.content}
                                     cacheKey={message.id}
                                     isAdmin={message.is_admin}
+                                    customerLanguage={
+                                      selectedTicketId
+                                        ? customerLanguageByTicket.get(selectedTicketId) ??
+                                          null
+                                        : null
+                                    }
+                                    detectingCustomerLanguage={
+                                      selectedTicketId
+                                        ? detectingCustomerLanguage.has(selectedTicketId)
+                                        : false
+                                    }
                                   />
                                   <MessageTime>
                                     {message.is_admin ? "Support Team" : (message.user_email || "Unknown")} • {formatDateTime(message.created_at)}

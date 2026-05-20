@@ -138,34 +138,8 @@ export function SupportReplyTranslate({
     }
   }, [draftText, customerLanguage, onApplyTranslation, t]);
 
-  if (detectingLanguage) {
-    return (
-      <ReplyTranslateBar>
-        <Hint>
-          {t(
-            "admin.supportTickets.translate.detectingLanguage",
-            "Detecting customer language…",
-          )}
-        </Hint>
-      </ReplyTranslateBar>
-    );
-  }
-
-  if (!customerLanguage) {
+  if (detectingLanguage || !customerLanguage || customerLanguage.isEnglish) {
     return null;
-  }
-
-  if (customerLanguage.isEnglish) {
-    return (
-      <ReplyTranslateBar>
-        <Hint>
-          {t(
-            "admin.supportTickets.translate.customerWritesEnglish",
-            "Customer writes in English — no translation needed for replies.",
-          )}
-        </Hint>
-      </ReplyTranslateBar>
-    );
   }
 
   const langLabel = customerLanguage.detectedLanguageName;

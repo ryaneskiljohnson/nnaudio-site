@@ -1,20 +1,21 @@
 /**
  * @fileoverview Translate control for admin support ticket messages (auto-detect → English).
+ * Only shown for customer messages when the ticket language is not English.
  * @module components/admin/SupportMessageTranslate
  */
 
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import styled from "styled-components";
 import { useTranslation } from "react-i18next";
 import { FaGlobe, FaTimes } from "react-icons/fa";
+import type { CustomerLanguage } from "@/components/admin/SupportReplyTranslate";
 
-/** Cached translation for one message or field. */
+/** Cached English translation for one message or field. */
 type TranslationState = {
   detectedLanguage: string;
   detectedLanguageName: string;
-  isEnglish: boolean;
   translatedText: string;
 };
 
@@ -123,17 +124,23 @@ export type SupportMessageTranslateProps = {
   cacheKey: string;
   /** Bubble styling when shown inside admin vs customer message. */
   isAdmin?: boolean;
+  /** Ticket-level customer language from the admin support thread. */
+  customerLanguage: CustomerLanguage | null;
+  /** True while ticket-level language detection is in progress. */
+  detectingCustomerLanguage?: boolean;
 };
 
 /**
- * @brief Renders a translate-to-English control with optional translation panel.
- * @param props - Text and display options.
- * @returns Translate button and expandable English panel.
+ * @brief Renders a translate-to-English control when the customer writes in a non-English language.
+ * @param props - Text, ticket language, and display options.
+ * @returns Translate button and expandable English panel, or null when English / admin message.
  */
 export function SupportMessageTranslate({
   text,
   cacheKey,
   isAdmin = false,
+  customerLanguage,
+  detectingCustomerLanguage = false,
 }: SupportMessageTranslateProps) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
@@ -142,12 +149,6 @@ export function SupportMessageTranslate({
     null,
   );
   const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    setTranslation(null);
-    setExpanded(false);
-    setError(null);
-  }, [text, cacheKey]);
 
   const handleTranslate = useCallback(async () => {
     const trimmed = text.trim();
@@ -186,10 +187,13 @@ export function SupportMessageTranslate({
         return;
       }
 
+      if (data.isEnglish) {
+        return;
+      }
+
       const next: TranslationState = {
         detectedLanguage: data.detectedLanguage,
         detectedLanguageName: data.detectedLanguageName,
-        isEnglish: data.isEnglish,
         translatedText: data.translatedText,
       };
       setTranslation(next);
@@ -206,7 +210,13 @@ export function SupportMessageTranslate({
     }
   }, [text, translation, expanded, t]);
 
-  if (!text.trim()) {
+  if (
+    isAdmin ||
+    !text.trim() ||
+    detectingCustomerLanguage ||
+    !customerLanguage ||
+    customerLanguage.isEnglish
+  ) {
     return null;
   }
 
@@ -239,21 +249,11 @@ export function SupportMessageTranslate({
         <TranslationPanel $isAdmin={isAdmin}>
           <TranslationMeta $isAdmin={isAdmin}>
             <span>
-              {translation.isEnglish
-                ? t(
-                    "admin.supportTickets.translate.alreadyEnglish",
-                    "Already in English",
-                  )
-                : t("admin.supportTickets.translate.english", "English")}
-              {!translation.isEnglish && (
-                <>
-                  {" "}
-                  <LanguageBadge $isAdmin={isAdmin}>
-                    {translation.detectedLanguageName} (
-                    {translation.detectedLanguage})
-                  </LanguageBadge>
-                </>
-              )}
+              {t("admin.supportTickets.translate.english", "English")}
+              {" "}
+              <LanguageBadge $isAdmin={isAdmin}>
+                {translation.detectedLanguageName} ({translation.detectedLanguage})
+              </LanguageBadge>
             </span>
             <DismissButton
               type="button"
@@ -263,9 +263,7 @@ export function SupportMessageTranslate({
               <FaTimes />
             </DismissButton>
           </TranslationMeta>
-          {!translation.isEnglish && (
-            <div>{translation.translatedText}</div>
-          )}
+          <div>{translation.translatedText}</div>
         </TranslationPanel>
       )}
     </div>
