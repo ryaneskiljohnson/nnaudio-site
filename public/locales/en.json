@@ -1043,6 +1043,22 @@
         "changeStatus": "Change Status",
         "changePriority": "Change Priority",
         "close": "Close Ticket"
+      },
+      "translate": {
+        "button": "Translate",
+        "show": "Show translation",
+        "hide": "Hide translation",
+        "loading": "Translating…",
+        "tooltip": "Detect language and translate to English",
+        "english": "English",
+        "alreadyEnglish": "Already in English",
+        "error": "Translation failed. Please try again.",
+        "replyButton": "Translate to {{language}}",
+        "replyTooltip": "Translate your draft reply into the customer's language",
+        "replyHint": "Replaces your draft with a {{language}} version before you send.",
+        "replyError": "Could not translate reply. Please try again.",
+        "detectingLanguage": "Detecting customer language…",
+        "customerWritesEnglish": "Customer writes in English — no translation needed for replies."
       }
     },
     "users": "Users",

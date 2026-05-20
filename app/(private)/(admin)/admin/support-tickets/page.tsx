@@ -1,6 +1,6 @@
 /**
  * @fileoverview Admin support tickets page with ticket list, conversation view,
- * AI drafting, attachments, per-ticket awaiting-response indicators, and NFR admin deep link.
+ * AI drafting, translate-to-English, attachments, per-ticket awaiting-response indicators, and NFR admin deep link.
  * @module app/(private)/(admin)/admin/support-tickets/page
  */
 
@@ -65,6 +65,11 @@ import {
 import type { UserData } from "@/utils/stripe/admin-analytics";
 import UserProfileModal from "@/components/admin/UserProfileModal";
 import { NnaudioAccessInstallerBadges } from "@/components/admin/NnaudioAccessInstallerBadges";
+import { SupportMessageTranslate } from "@/components/admin/SupportMessageTranslate";
+import {
+  SupportReplyTranslate,
+  type CustomerLanguage,
+} from "@/components/admin/SupportReplyTranslate";
 
 import TableLoadingRow from "@/components/common/TableLoadingRow";
 import {
@@ -1954,6 +1959,13 @@ function SupportTicketsPage() {
   >(new Set());
   const [ticketDetails, setTicketDetails] = useState<Map<string, Ticket>>(new Map());
   const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
+  const [customerLanguageByTicket, setCustomerLanguageByTicket] = useState<
+    Map<string, CustomerLanguage>
+  >(new Map());
+  const [detectingCustomerLanguage, setDetectingCustomerLanguage] = useState<
+    Set<string>
+  >(new Set());
+  const customerLanguageInFlight = useRef<Set<string>>(new Set());
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiResponse, setAiResponse] = useState("");
@@ -2162,6 +2174,74 @@ function SupportTicketsPage() {
     [],
   );
 
+  /**
+   * @brief Infers the customer’s primary language from their messages on a ticket.
+   * @param ticketId - Ticket UUID.
+   * @param ticket - Loaded ticket with messages.
+   * @param listTicket - Optional list-row ticket for subject/description.
+   */
+  const detectCustomerLanguageForTicket = async (
+    ticketId: string,
+    ticket: Ticket,
+    listTicket?: Ticket,
+  ) => {
+    if (customerLanguageInFlight.current.has(ticketId)) {
+      return;
+    }
+
+    const row = listTicket ?? tickets.find((t) => t.id === ticketId);
+    const customerTexts: string[] = (ticket.messages ?? [])
+      .filter((m) => !m.is_admin)
+      .map((m) => m.content);
+    if (row?.description?.trim()) {
+      customerTexts.unshift(row.description);
+    }
+    if (row?.subject?.trim()) {
+      customerTexts.unshift(row.subject);
+    }
+
+    if (customerTexts.length === 0) {
+      setCustomerLanguageByTicket((prev) =>
+        new Map(prev).set(ticketId, {
+          detectedLanguage: "en",
+          detectedLanguageName: "English",
+          isEnglish: true,
+        }),
+      );
+      return;
+    }
+
+    customerLanguageInFlight.current.add(ticketId);
+    setDetectingCustomerLanguage((prev) => new Set(prev).add(ticketId));
+
+    try {
+      const response = await fetch("/api/admin/support-tickets/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "detect", texts: customerTexts }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setCustomerLanguageByTicket((prev) =>
+          new Map(prev).set(ticketId, {
+            detectedLanguage: data.detectedLanguage,
+            detectedLanguageName: data.detectedLanguageName,
+            isEnglish: data.isEnglish,
+          }),
+        );
+      }
+    } catch (error) {
+      console.error("Error detecting customer language:", error);
+    } finally {
+      customerLanguageInFlight.current.delete(ticketId);
+      setDetectingCustomerLanguage((prev) => {
+        const next = new Set(prev);
+        next.delete(ticketId);
+        return next;
+      });
+    }
+  };
+
   const fetchTicketDetails = async (ticketId: string, forceRefresh: boolean = false) => {
     // If already loading and not forcing refresh, skip
     if (!forceRefresh && loadingDetails.has(ticketId)) {
@@ -2173,13 +2253,28 @@ function SupportTicketsPage() {
       return;
     }
 
+    if (forceRefresh) {
+      setCustomerLanguageByTicket((prev) => {
+        const next = new Map(prev);
+        next.delete(ticketId);
+        return next;
+      });
+    }
+
     setLoadingDetails(prev => new Set(prev).add(ticketId));
 
     try {
       const result = await getSupportTicketAdmin(ticketId);
       if (result.ticket) {
         const t = result.ticket as Ticket;
-        setTicketDetails(prev => new Map(prev).set(ticketId, { ...t, user_first_name: t.user_first_name ?? null, user_last_name: t.user_last_name ?? null }));
+        const enriched: Ticket = {
+          ...t,
+          user_first_name: t.user_first_name ?? null,
+          user_last_name: t.user_last_name ?? null,
+        };
+        setTicketDetails((prev) => new Map(prev).set(ticketId, enriched));
+        const listRow = tickets.find((row) => row.id === ticketId);
+        await detectCustomerLanguageForTicket(ticketId, enriched, listRow);
       }
     } catch (error) {
       console.error("Error fetching ticket details:", error);
@@ -2537,6 +2632,23 @@ function SupportTicketsPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTicketId]);
+
+  // Detect customer language when details are cached but language is not
+  useEffect(() => {
+    if (!selectedTicketId) return;
+    const ticket = ticketDetails.get(selectedTicketId);
+    if (
+      !ticket ||
+      customerLanguageByTicket.has(selectedTicketId) ||
+      detectingCustomerLanguage.has(selectedTicketId) ||
+      customerLanguageInFlight.current.has(selectedTicketId)
+    ) {
+      return;
+    }
+    const listRow = tickets.find((t) => t.id === selectedTicketId);
+    void detectCustomerLanguageForTicket(selectedTicketId, ticket, listRow);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTicketId, ticketDetails, customerLanguageByTicket, detectingCustomerLanguage]);
 
   // Re-evaluate scroll position when ticket details change
   useEffect(() => {
@@ -3900,6 +4012,10 @@ function SupportTicketsPage() {
                               <TicketSubject style={{ cursor: 'default', textDecoration: 'none' }}>
                                 {ticket.subject}
                               </TicketSubject>
+                              <SupportMessageTranslate
+                                text={ticket.subject}
+                                cacheKey={`subject-${ticket.id}`}
+                              />
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
@@ -4009,6 +4125,11 @@ function SupportTicketsPage() {
                               }}>
                                 <MessageBubble $isAdmin={message.is_admin}>
                                   <MessageContent>{message.content}</MessageContent>
+                                  <SupportMessageTranslate
+                                    text={message.content}
+                                    cacheKey={message.id}
+                                    isAdmin={message.is_admin}
+                                  />
                                   <MessageTime>
                                     {message.is_admin ? "Support Team" : (message.user_email || "Unknown")} • {formatDateTime(message.created_at)}
                                     {message.edited_at && ` (edited ${formatDateTime(message.edited_at)})`}
@@ -4106,6 +4227,23 @@ function SupportTicketsPage() {
                         </div>
 
                         <MessageInputWrapper style={{ padding: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', flexShrink: 0 }}>
+                          {selectedTicketId && (
+                            <SupportReplyTranslate
+                              draftText={newMessages[selectedTicketId] || ""}
+                              customerLanguage={
+                                customerLanguageByTicket.get(selectedTicketId) ?? null
+                              }
+                              detectingLanguage={detectingCustomerLanguage.has(
+                                selectedTicketId,
+                              )}
+                              onApplyTranslation={(translated) => {
+                                setNewMessages((prev) => ({
+                                  ...prev,
+                                  [selectedTicketId]: translated,
+                                }));
+                              }}
+                            />
+                          )}
                           {selectedTicketId && (ticketDetails.get(selectedTicketId)?.messages?.length ?? 0) > 0 && (
                             <JumpToCurrentButton
                               $visible={!!isScrolledUp.get(selectedTicketId)}
