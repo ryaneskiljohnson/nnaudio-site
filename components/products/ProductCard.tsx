@@ -9,6 +9,7 @@ import { FaShoppingCart } from "react-icons/fa";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
 import { cleanHtmlText } from "@/utils/stringUtils";
+import ProductNewBadge from "@/components/products/ProductNewBadge";
 
 const ProductCardContainer = styled(motion.div)`
   position: relative;
@@ -183,6 +184,8 @@ interface ProductCardProps {
     hasMultiplePricing?: boolean;
     /** Compare-at price (e.g. bundle total value); shown strikethrough when present */
     compareAtPrice?: number;
+    /** When true, shows a "New" badge on the product card image. */
+    is_new?: boolean;
     // For landing page compatibility
     image?: string;
   };
@@ -294,6 +297,7 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
         style={{ textDecoration: 'none', color: 'inherit', display: 'block', width: '100%', height: '100%' }}
       >
         <ProductImageContainer>
+          <ProductNewBadge show={Boolean(product.is_new)} variant="card" />
           {shouldUseLogo ? (
             // Use regular img tag for logo to avoid Next.js placeholder
             <img

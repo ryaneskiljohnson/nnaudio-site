@@ -679,6 +679,7 @@ export default function EditProductPage() {
     category: 'audio-fx-plugin' as 'audio-fx-plugin' | 'instrument-plugin' | 'pack' | 'bundle' | 'preset' | 'template' | 'application',
     status: 'draft' as 'draft' | 'active' | 'inactive' | 'archived',
     is_featured: false,
+    is_new: false,
     featured_image_url: '',
     featured_image_url_png: '',
     logo_url: '',
@@ -779,6 +780,7 @@ export default function EditProductPage() {
           category: product.category || 'audio-fx-plugin',
           status: product.status || 'draft',
           is_featured: product.is_featured || false,
+          is_new: product.is_new || false,
           featured_image_url: product.featured_image_url || '',
           featured_image_url_png: product.featured_image_url_png || '',
           logo_url: product.logo_url || '',
@@ -2058,6 +2060,18 @@ export default function EditProductPage() {
                 onChange={handleChange}
               />
               Featured Product (Show on homepage)
+            </CheckboxLabel>
+          </FormGroup>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                name="is_new"
+                checked={formData.is_new}
+                onChange={handleChange}
+              />
+              New Product (Show &quot;New&quot; badge on catalog cards)
             </CheckboxLabel>
           </FormGroup>
         </FormSection>

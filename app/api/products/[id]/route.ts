@@ -216,6 +216,7 @@ export async function PUT(
       category: body.category !== undefined ? body.category : undefined,
       status: body.status !== undefined ? body.status : undefined,
       is_featured: body.is_featured !== undefined ? Boolean(body.is_featured) : undefined,
+      is_new: body.is_new !== undefined ? Boolean(body.is_new) : undefined,
       featured_image_url: body.featured_image_url !== undefined ? (body.featured_image_url == null ? null : String(body.featured_image_url).trim()) : undefined,
       featured_image_url_png: body.featured_image_url_png !== undefined ? (body.featured_image_url_png == null ? null : String(body.featured_image_url_png).trim()) : undefined,
       logo_url: body.logo_url !== undefined ? (body.logo_url == null ? null : String(body.logo_url).trim()) : undefined,

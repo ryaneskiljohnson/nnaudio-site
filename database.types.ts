@@ -3397,6 +3397,7 @@ export type Database = {
           gallery_images: Json | null
           id: string
           is_featured: boolean | null
+          is_new: boolean
           legacy_product_id: string | null
           logo_url: string | null
           meta_description: string | null
@@ -3439,6 +3440,7 @@ export type Database = {
           gallery_images?: Json | null
           id?: string
           is_featured?: boolean | null
+          is_new?: boolean
           legacy_product_id?: string | null
           logo_url?: string | null
           meta_description?: string | null
@@ -3481,6 +3483,7 @@ export type Database = {
           gallery_images?: Json | null
           id?: string
           is_featured?: boolean | null
+          is_new?: boolean
           legacy_product_id?: string | null
           logo_url?: string | null
           meta_description?: string | null

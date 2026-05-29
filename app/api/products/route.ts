@@ -251,6 +251,7 @@ export async function POST(request: NextRequest) {
         category: body.category,
         status: body.status || 'draft',
         is_featured: body.is_featured || false,
+        is_new: body.is_new || false,
         featured_image_url: body.featured_image_url,
         logo_url: body.logo_url,
         background_image_url: body.background_image_url,

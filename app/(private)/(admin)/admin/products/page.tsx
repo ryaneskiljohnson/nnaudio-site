@@ -9,6 +9,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import PrimaryButton from "@/components/common/PrimaryButton";
 import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
+import ProductNewBadge from "@/components/products/ProductNewBadge";
 
 const Container = styled.div`
   padding: 2rem;
@@ -633,6 +634,7 @@ interface Product {
   category: string;
   status: string;
   is_featured: boolean;
+  is_new: boolean;
   featured_image_url?: string;
   logo_url?: string;
   view_count: number;
@@ -1057,6 +1059,7 @@ export default function ProductsManagementPage() {
                     {product.is_featured && (
                       <FeaturedBadge>Featured</FeaturedBadge>
                     )}
+                    <ProductNewBadge show={product.is_new} variant="inline" />
                     {product.category !== 'bundle' &&
                       !(
                         (product.downloads && Array.isArray(product.downloads) && product.downloads.length > 0) ||
