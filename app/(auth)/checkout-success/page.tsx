@@ -479,7 +479,11 @@ function CheckoutSuccessContent() {
     } else if (isSignedUp) {
       router.push("/downloads");
     } else {
-      router.push("/signup");
+      const checkoutEmail = searchParams.get("email")?.trim();
+      const signupUrl = checkoutEmail
+        ? `/signup?checkout_complete=true&email=${encodeURIComponent(checkoutEmail)}`
+        : "/signup";
+      router.push(signupUrl);
     }
   };
 

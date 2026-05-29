@@ -10,6 +10,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { Profile } from "@/utils/supabase/types";
 import { findOrCreateCustomer } from "@/utils/stripe/actions";
+import { linkPurchasesToUserByEmail } from "@/utils/stripe/link-purchases-to-user";
 import {
   ATTRIBUTION_COOKIE_NAME,
   attributionToSubscriberMetadata,
@@ -59,6 +60,16 @@ export async function signUpWithStripe(
     // Create subscriber for the new user if signup was successful
     if (authResponse.data.user && !authResponse.error) {
       try {
+        await linkPurchasesToUserByEmail({
+          userId: authResponse.data.user.id,
+          email: authResponse.data.user.email || email,
+          preferredCustomerId: customer_id,
+        });
+      } catch (linkError) {
+        console.error("Failed to link purchases on signup:", linkError);
+      }
+
+      try {
         const { error: subscriberError } = await supabase
           .from("subscribers")
           .insert({
@@ -100,6 +111,36 @@ export async function signUpWithStripe(
   } catch (error) {
     console.error("Error in signUp:", error);
     throw error;
+  }
+}
+
+/**
+ * @brief Links prior Stripe purchases to the currently authenticated user (idempotent).
+ * @note Called after web sign-in / session restore; complements `/api/auth/login` for Cymasphere clients.
+ */
+export async function linkPurchasesForSessionUser(): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user?.email) {
+    return;
+  }
+
+  const preferredCustomerId =
+    typeof user.user_metadata?.customer_id === "string"
+      ? user.user_metadata.customer_id
+      : null;
+
+  try {
+    await linkPurchasesToUserByEmail({
+      userId: user.id,
+      email: user.email,
+      preferredCustomerId,
+    });
+  } catch (error) {
+    console.error("[linkPurchasesForSessionUser] Failed to link purchases:", error);
   }
 }
 

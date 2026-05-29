@@ -682,6 +682,7 @@ function PaymentForm({
             items,
             promotionCodeId: appliedPromo ? appliedPromo.promotionCodeId : undefined,
             savePaymentMethod: savePaymentMethod,
+            ...(email.trim() && { customerEmail: email.trim() }),
           }),
         });
 
@@ -726,6 +727,7 @@ function PaymentForm({
             items,
             promotionCodeId: appliedPromo ? appliedPromo.promotionCodeId : undefined,
             savePaymentMethod: false,
+            ...(email.trim() && { customerEmail: email.trim() }),
           }),
         });
         const piData = await piResponse.json();
@@ -738,7 +740,9 @@ function PaymentForm({
         clearCart();
         onOrderComplete();
         setTimeout(() => {
-          router.push(`/checkout-success?session_id=free-order`);
+          router.push(
+            `/checkout-success?session_id=free-order${email.trim() ? `&email=${encodeURIComponent(email.trim())}` : ""}`
+          );
         }, 800);
       } catch (err: any) {
         setError(err.message || 'Something went wrong.');
@@ -802,6 +806,7 @@ function PaymentForm({
         items,
         promotionCodeId: appliedPromo ? appliedPromo.promotionCodeId : undefined,
         savePaymentMethod: showBillingAndCard ? savePaymentMethod : false,
+        ...(email.trim() && { customerEmail: email.trim() }),
       };
       if (payingWithSavedCard && selectedSavedPmId) {
         piBody.paymentMethodId = selectedSavedPmId;
@@ -830,7 +835,9 @@ function PaymentForm({
         clearCart();
         onOrderComplete();
         setTimeout(() => {
-          router.push(`/checkout-success?session_id=free-order`);
+          router.push(
+            `/checkout-success?session_id=free-order${email.trim() ? `&email=${encodeURIComponent(email.trim())}` : ""}`
+          );
         }, 800);
         return;
       }
@@ -933,7 +940,12 @@ function PaymentForm({
         
         // Redirect to success page after a short delay
         setTimeout(() => {
-          router.push(`/checkout-success?session_id=${paymentIntent.id}`);
+          const emailParam = email.trim()
+            ? `&email=${encodeURIComponent(email.trim())}`
+            : "";
+          router.push(
+            `/checkout-success?session_id=${paymentIntent.id}${emailParam}`
+          );
         }, 2000);
       }
     } catch (err: any) {

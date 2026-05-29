@@ -16,6 +16,8 @@ import {
   getSubscriberSource,
   parseAttributionCookie,
 } from "@/utils/marketing/attribution";
+import { findOrCreateCustomer } from "@/utils/stripe/actions";
+import { linkPurchasesToUserByEmail } from "@/utils/stripe/link-purchases-to-user";
 
 /**
  * @brief Handles account registration and initial subscriber creation.
@@ -68,6 +70,8 @@ export async function POST(request: NextRequest) {
       request.cookies.get(ATTRIBUTION_COOKIE_NAME)?.value
     );
 
+    const customer_id = await findOrCreateCustomer(email);
+
     // Register the user
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -75,6 +79,7 @@ export async function POST(request: NextRequest) {
       options: {
         data: {
           name: name || email.split("@")[0],
+          customer_id,
         },
         emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/confirm`,
       },
@@ -92,6 +97,18 @@ export async function POST(request: NextRequest) {
 
     // Create subscriber for the new user
     if (authData.user) {
+      try {
+        await linkPurchasesToUserByEmail({
+          userId: authData.user.id,
+          email: authData.user.email || email,
+          preferredCustomerId: customer_id,
+        });
+      } catch (linkError) {
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Failed to link purchases on register:", linkError);
+        }
+      }
+
       try {
         const { error: subscriberError } = await supabase
           .from('subscribers')

@@ -20,6 +20,8 @@ import {
   type OrderLineItem as ConfirmationLineItem,
 } from "@/utils/order-confirmation-email";
 import { getAdminEmailsForOrderCopy } from "@/lib/admin-order-email-copy";
+import { findOrCreateCustomer } from "@/utils/stripe/actions";
+import { normalizePurchaseEmail } from "@/utils/stripe/link-purchases-to-user";
 
 interface CartItem {
   id: string;
@@ -42,7 +44,13 @@ export async function POST(request: NextRequest) {
       );
     }
     const body = await request.json();
-    const { items, promotionCodeId, savePaymentMethod, paymentMethodId } = body;
+    const {
+      items,
+      promotionCodeId,
+      savePaymentMethod,
+      paymentMethodId,
+      customerEmail: rawCustomerEmail,
+    } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -57,6 +65,9 @@ export async function POST(request: NextRequest) {
 
     // Get or create Stripe customer
     let stripeCustomerId: string | undefined;
+    const guestCheckoutEmail = !user?.email
+      ? normalizePurchaseEmail(String(rawCustomerEmail ?? ""))
+      : "";
 
     if (user?.email) {
       // Try to find existing customer by email
@@ -93,6 +104,8 @@ export async function POST(request: NextRequest) {
             .eq("id", user.id);
         }
       }
+    } else if (guestCheckoutEmail) {
+      stripeCustomerId = await findOrCreateCustomer(guestCheckoutEmail);
     }
 
     // Calculate total amount
@@ -397,6 +410,7 @@ export async function POST(request: NextRequest) {
         discount_amount: discountAmount.toFixed(2),
         total_amount: totalAmount.toFixed(2),
         user_id: user?.id || 'anonymous',
+        ...(guestCheckoutEmail && { checkout_email: guestCheckoutEmail }),
         ...(appliedPromotionCodeMetadata && {
           promotion_code: appliedPromotionCodeMetadata,
         }),

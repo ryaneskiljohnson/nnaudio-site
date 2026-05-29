@@ -149,10 +149,7 @@ async function mergePaymentIntentsFromTrustedStripeCustomersByEmail(
   ).catch(() => ({ data: [] as Stripe.Customer[] }));
 
   const trusted = list.data.filter(
-    (c) =>
-      c.email?.trim().toLowerCase() === grantEmail &&
-      (c.metadata?.user_id === userId ||
-        (!profileHasCustomerId && list.data.length === 1))
+    (c) => c.email?.trim().toLowerCase() === grantEmail
   );
 
   if (trusted.length === 0) {

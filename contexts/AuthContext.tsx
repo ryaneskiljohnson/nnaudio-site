@@ -18,6 +18,7 @@ import { Profile, UserProfile } from "@/utils/supabase/types";
 import {
   fetchIsAdmin,
   fetchProfile,
+  linkPurchasesForSessionUser,
   signUpWithStripe,
 } from "@/utils/supabase/actions";
 import { createClient } from "@/utils/supabase/client";
@@ -140,6 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } = await supabase.auth.getUser();
 
         if (logged_in_user) {
+          void linkPurchasesForSessionUser();
           const { profile, error } = await fetchProfile(logged_in_user.id);
           
           // Always check admin status, even if profile fetch fails

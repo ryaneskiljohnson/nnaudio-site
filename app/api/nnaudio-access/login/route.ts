@@ -3,6 +3,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { Database } from "@/database.types";
+import { linkPurchasesToUserByEmail } from "@/utils/stripe/link-purchases-to-user";
 
 /**
  * @fileoverview Login endpoint for NNAudio Access desktop app
@@ -74,9 +75,27 @@ export async function POST(request: NextRequest) {
     // Get user profile for username
     const { data: profile } = await supabase
       .from("profiles")
-      .select("first_name, last_name")
+      .select("first_name, last_name, customer_id")
       .eq("id", user.id)
       .single();
+
+    if (user.email) {
+      const preferredCustomerId =
+        profile?.customer_id ||
+        (typeof user.user_metadata?.customer_id === "string"
+          ? user.user_metadata.customer_id
+          : null);
+
+      try {
+        await linkPurchasesToUserByEmail({
+          userId: user.id,
+          email: user.email,
+          preferredCustomerId,
+        });
+      } catch (linkError) {
+        console.error("[NNAudio Access Login] Failed to link purchases:", linkError);
+      }
+    }
 
     // Format response to match WordPress JWT format expected by desktop app
     const response = {

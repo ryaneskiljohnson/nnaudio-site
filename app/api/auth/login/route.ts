@@ -7,6 +7,7 @@ import { createServerClient } from "@supabase/ssr";
 import { Database } from "@/database.types";
 import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
 import { validateCsrfToken } from "@/utils/csrf";
+import { linkPurchasesToUserByEmail } from "@/utils/stripe/link-purchases-to-user";
 
 interface ProfileWithEmail extends Profile {
   email: string;
@@ -183,6 +184,24 @@ export async function POST(
       }
 
       if (profile) {
+        const preferredCustomerId =
+          profile.customer_id ||
+          (typeof user.user_metadata?.customer_id === "string"
+            ? user.user_metadata.customer_id
+            : null);
+
+        try {
+          await linkPurchasesToUserByEmail({
+            userId: user.id,
+            email: user.email,
+            preferredCustomerId,
+          });
+        } catch (linkError) {
+          if (process.env.NODE_ENV !== "production") {
+            console.error("[Login] Failed to link purchases:", linkError);
+          }
+        }
+
         // Check and update subscription status (NFR, Stripe, and iOS)
         try {
           // Use centralized function that handles NFR, Stripe, and iOS

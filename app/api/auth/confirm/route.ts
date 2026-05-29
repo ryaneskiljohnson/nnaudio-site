@@ -25,6 +25,35 @@ import { type NextRequest } from "next/server";
 
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { linkPurchasesToUserByEmail } from "@/utils/stripe/link-purchases-to-user";
+
+/**
+ * @brief Links prior Stripe purchases to the user after email verification.
+ * @param supabase Authenticated Supabase server client.
+ */
+async function linkPurchasesAfterAuthConfirm(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return;
+
+  const preferredCustomerId =
+    typeof user.user_metadata?.customer_id === "string"
+      ? user.user_metadata.customer_id
+      : null;
+
+  try {
+    await linkPurchasesToUserByEmail({
+      userId: user.id,
+      email: user.email,
+      preferredCustomerId,
+    });
+  } catch (error) {
+    console.error("[auth/confirm] Failed to link purchases:", error);
+  }
+}
 
 /**
  * @brief GET endpoint to confirm email verification or password recovery OTP.
@@ -81,6 +110,9 @@ export async function GET(request: NextRequest) {
       }
       if (type === "recovery" || type === "invite") {
         redirect("/reset-password");
+      }
+      if (type === "signup" || type === "email") {
+        await linkPurchasesAfterAuthConfirm(supabase);
       }
       redirect("/dashboard");
     }

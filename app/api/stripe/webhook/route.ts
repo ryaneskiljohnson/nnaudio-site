@@ -29,6 +29,11 @@ import {
   queueReviewFollowupForCheckoutSession,
   queueReviewFollowupForPaymentIntent,
 } from "@/utils/reviews/review-system";
+import { findOrCreateCustomer } from "@/utils/stripe/actions";
+import {
+  linkPurchasesToUserByEmail,
+  normalizePurchaseEmail,
+} from "@/utils/stripe/link-purchases-to-user";
 
 /**
  * Extracts customer ID from any Stripe event
@@ -284,6 +289,68 @@ async function resolvePaymentIntentCustomer(paymentIntent: Stripe.PaymentIntent)
   }
 
   return { email, name, receiptUrl };
+}
+
+/**
+ * @brief Attaches a Stripe customer to guest cart PaymentIntents and links purchases when a profile exists.
+ * @param paymentIntent Succeeded cart PaymentIntent.
+ * @returns Normalized customer id when attached or already present.
+ */
+async function normalizeGuestPaymentIntentCustomer(
+  paymentIntent: Stripe.PaymentIntent
+): Promise<string | null> {
+  if (!paymentIntent.metadata?.cart_items) {
+    return typeof paymentIntent.customer === "string"
+      ? paymentIntent.customer
+      : paymentIntent.customer?.id ?? null;
+  }
+
+  const existingCustomerId =
+    typeof paymentIntent.customer === "string"
+      ? paymentIntent.customer
+      : paymentIntent.customer?.id ?? null;
+
+  if (existingCustomerId) {
+    return existingCustomerId;
+  }
+
+  const { email } = await resolvePaymentIntentCustomer(paymentIntent);
+  const metadataEmail = paymentIntent.metadata?.checkout_email
+    ? normalizePurchaseEmail(paymentIntent.metadata.checkout_email)
+    : "";
+  const normalizedEmail = normalizePurchaseEmail(email ?? "") || metadataEmail;
+
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const customerId = await findOrCreateCustomer(normalizedEmail);
+
+  await stripe.paymentIntents.update(paymentIntent.id, {
+    customer: customerId,
+    metadata: {
+      ...paymentIntent.metadata,
+      checkout_email: normalizedEmail,
+    },
+  });
+
+  const supabase = await createSupabaseServiceRole();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .ilike("email", normalizedEmail)
+    .maybeSingle();
+
+  if (profile?.id) {
+    await linkPurchasesToUserByEmail({
+      userId: profile.id,
+      email: normalizedEmail,
+      preferredCustomerId: customerId,
+    });
+    return customerId;
+  }
+
+  return customerId;
 }
 
 /**
@@ -563,6 +630,8 @@ export async function POST(request: NextRequest) {
   try {
     console.log("Processing Stripe event:", event.type, "at", dateTime);
 
+    let normalizedPaymentIntentCustomerId: string | null = null;
+
     // Send branded order confirmation email for completed checkouts
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -581,6 +650,15 @@ export async function POST(request: NextRequest) {
 
     if (event.type === "payment_intent.succeeded") {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      try {
+        normalizedPaymentIntentCustomerId =
+          await normalizeGuestPaymentIntentCustomer(paymentIntent);
+      } catch (normalizeError) {
+        console.error(
+          "[webhook] Failed to normalize guest payment intent customer:",
+          normalizeError
+        );
+      }
       try {
         await sendPaymentIntentOrderConfirmationEmail(paymentIntent);
       } catch (emailError) {
@@ -615,8 +693,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Extract customer ID from event
-    const customerId = extractCustomerId(event);
+    // Extract customer ID from event (guest cart PIs may only have customer after normalization)
+    let customerId = extractCustomerId(event) ?? normalizedPaymentIntentCustomerId;
 
     if (!customerId) {
       return NextResponse.json({ status: "success", event: event.type });
