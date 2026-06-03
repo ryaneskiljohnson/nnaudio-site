@@ -77,7 +77,7 @@ export default function PrivacyPolicyPage() {
       <Container>
         <motion.div initial="hidden" animate="visible" variants={fadeIn}>
           <Title>{t("legal.privacyPolicy", "Privacy Policy")}</Title>
-          <LastUpdated>{t("legal.lastUpdated")}: {t("legal.lastUpdatedDate")}</LastUpdated>
+          <LastUpdated>{t("legal.lastUpdated", "Last Updated")}: {t("legal.lastUpdatedDate", "May 28, 2025")}</LastUpdated>
 
           <Section>
             <SectionTitle>{t("legal.privacy.intro.title", "1. Introduction")}</SectionTitle>
@@ -150,8 +150,8 @@ export default function PrivacyPolicyPage() {
           </Section>
 
           <ContactInfo>
-            <strong>{t("legal.contactInformation")}</strong><br />
-            {t("legal.email")}: support@newnationllc.com
+            <strong>{t("legal.contactInformation", "Contact Information")}</strong><br />
+            {t("legal.email", "Email")}: support@newnationllc.com
           </ContactInfo>
         </motion.div>
       </Container>
