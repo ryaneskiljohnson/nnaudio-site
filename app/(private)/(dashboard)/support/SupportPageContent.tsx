@@ -43,6 +43,7 @@ import {
   isHeicOrHeifAttachment,
   SUPPORT_TICKET_FILE_ACCEPT,
 } from "@/utils/support/is-heic-or-heif-attachment";
+import { isInlinePlayableVideoAttachment } from "@/utils/support/is-inline-playable-video-attachment";
 
 // Use shared components
 import styled from "styled-components";
@@ -2010,6 +2011,10 @@ function SupportPage() {
                                             )
                                           ) : att.attachment_type === "video" &&
                                             att.url ? (
+                                            isInlinePlayableVideoAttachment(
+                                              att.file_type,
+                                              att.file_name,
+                                            ) ? (
                                             <>
                                               <VideoPreview controls>
                                                 <source
@@ -2035,6 +2040,82 @@ function SupportPage() {
                                                 </AttachmentSize>
                                               </AttachmentInfo>
                                             </>
+                                            ) : (
+                                            <>
+                                              <AttachmentContainer
+                                                style={{
+                                                  marginTop: "0.5rem",
+                                                  cursor: "pointer",
+                                                }}
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={() =>
+                                                  att.url &&
+                                                  window.open(
+                                                    att.url,
+                                                    "_blank",
+                                                    "noopener,noreferrer",
+                                                  )
+                                                }
+                                                onKeyDown={(e) => {
+                                                  if (
+                                                    e.key === "Enter" ||
+                                                    e.key === " "
+                                                  ) {
+                                                    e.preventDefault();
+                                                    if (att.url) {
+                                                      window.open(
+                                                        att.url,
+                                                        "_blank",
+                                                        "noopener,noreferrer",
+                                                      );
+                                                    }
+                                                  }
+                                                }}
+                                              >
+                                                <AttachmentIcon>
+                                                  <FaVideo />
+                                                </AttachmentIcon>
+                                                <AttachmentInfo>
+                                                  <AttachmentName>
+                                                    {att.file_name}
+                                                  </AttachmentName>
+                                                  <AttachmentSize>
+                                                    {(
+                                                      att.file_size / 1024
+                                                    ).toFixed(2)}{" "}
+                                                    KB
+                                                  </AttachmentSize>
+                                                </AttachmentInfo>
+                                                <AttachmentLink
+                                                  href={att.url}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  onClick={(ev) =>
+                                                    ev.stopPropagation()
+                                                  }
+                                                >
+                                                  {t(
+                                                    "dashboard.support.openAttachment",
+                                                    "Open",
+                                                  )}
+                                                </AttachmentLink>
+                                              </AttachmentContainer>
+                                              <p
+                                                style={{
+                                                  fontSize: "0.7rem",
+                                                  color: "var(--text-secondary)",
+                                                  margin: "0.25rem 0 0 0",
+                                                  maxWidth: "min(100%, 320px)",
+                                                }}
+                                              >
+                                                {t(
+                                                  "dashboard.support.movVideoHint",
+                                                  "MOV/QuickTime: use Open to download or play in QuickTime/VLC. Inline preview works in Safari for some files; Chrome and Firefox cannot play this format in the browser.",
+                                                )}
+                                              </p>
+                                            </>
+                                            )
                                           ) : (
                                             <AttachmentContainer>
                                               <AttachmentIcon>
