@@ -139,9 +139,7 @@ export async function POST(request: NextRequest) {
     type ProductsClient = {
       from: (t: string) => {
         select: (s: string) => {
-          in: (c: string, v: string[]) => {
-            eq: (c: string, v: string) => Promise<ProductsQueryResult>;
-          };
+          in: (c: string, v: string[]) => Promise<ProductsQueryResult>;
         };
       };
     };
