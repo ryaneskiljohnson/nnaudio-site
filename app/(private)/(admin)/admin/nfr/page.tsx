@@ -775,14 +775,14 @@ export default function UserManagementPage() {
 
   const fetchProducts = async () => {
     try {
-      // Include free NNAudio Access (omitted from default /api/products for commerce).
+      // Include all products (active and inactive) plus free NNAudio Access for NFR grants.
       const response = await fetch(
-        "/api/products?limit=10000&include_nnaudio_access_product=true"
+        "/api/products?status=all&limit=10000&include_nnaudio_access_product=true"
       );
       const data = await response.json();
 
       if (data.success && data.products) {
-        setProducts(data.products.filter((p: any) => p.status === "active"));
+        setProducts(data.products);
       }
     } catch (err) {
       console.error("Error fetching products:", err);
