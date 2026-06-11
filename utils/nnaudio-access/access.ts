@@ -349,8 +349,7 @@ export async function getAccessibleProductIds(
   const { data: allProductsCheck } = await (adminSupabase as any)
     .from("products")
     .select("id, slug, category")
-    .in("id", productIdsArray)
-    .eq("status", "active");
+    .in("id", productIdsArray);
 
   const bundleProductIdsToExclude = new Set<string>();
   const bundleSlugs = new Set<string>();
@@ -368,8 +367,7 @@ export async function getAccessibleProductIds(
     const { data: bundles } = await (adminSupabase as any)
       .from("bundles")
       .select("id, slug, name")
-      .in("slug", Array.from(bundleSlugs))
-      .eq("status", "active");
+      .in("slug", Array.from(bundleSlugs));
 
     if (bundles?.length) {
       const bundleIds = bundles.map((b: { id: string }) => b.id);
@@ -421,7 +419,6 @@ export async function resolveProductId(
     .from("products")
     .select("id")
     .eq("id", productId)
-    .eq("status", "active")
     .single();
 
   if (byId?.id) return byId.id;
@@ -430,7 +427,6 @@ export async function resolveProductId(
     .from("products")
     .select("id")
     .eq("legacy_product_id", productId)
-    .eq("status", "active")
     .single();
 
   return byLegacy?.id ?? null;

@@ -12,6 +12,10 @@ import { escapeIlikeExactPattern } from "@/utils/supabase/ilike-escape";
 import { normalizeEmailForGrantLookup } from "@/utils/supabase/email-grant-normalize";
 import { resolveProfileUserIdByEmail } from "@/utils/supabase/resolve-profile-user-id";
 import { stripe } from "@/utils/stripe/client";
+import {
+  invalidateUserProductCache,
+  invalidateUserProductCacheByEmail,
+} from "@/lib/product-cache";
 
 /** Descriptor for batch grant loads (admin NFR / profile modal). */
 export type ProductGrantUserDescriptor = {
@@ -561,6 +565,11 @@ export async function grantProduct(
       return { data: null, error: error.message };
     }
 
+    if (resolvedUserId) {
+      invalidateUserProductCache(resolvedUserId);
+    }
+    await invalidateUserProductCacheByEmail(normalizedEmail);
+
     return { data: grant as ProductGrant, error: null };
   } catch (error: any) {
     console.error("[Product Grants] Unexpected error:", error);
@@ -584,6 +593,12 @@ export async function revokeProductGrant(grantId: string): Promise<{
 
     const adminSupabase = await createSupabaseServiceRole();
 
+    const { data: grantRow } = await (adminSupabase as any)
+      .from("product_grants")
+      .select("user_email, user_id")
+      .eq("id", grantId)
+      .maybeSingle();
+
     const { error } = await (adminSupabase as any)
       .from("product_grants")
       .delete()
@@ -592,6 +607,13 @@ export async function revokeProductGrant(grantId: string): Promise<{
     if (error) {
       console.error("[Product Grants] Error revoking grant:", error);
       return { success: false, error: error.message };
+    }
+
+    if (grantRow?.user_id) {
+      invalidateUserProductCache(grantRow.user_id);
+    }
+    if (grantRow?.user_email) {
+      await invalidateUserProductCacheByEmail(grantRow.user_email);
     }
 
     return { success: true, error: null };

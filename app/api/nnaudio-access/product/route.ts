@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
       .from("products")
       .select("*")
       .eq("id", productId)
-      .eq("status", "active")
       .single();
 
     if (productByUuid && !uuidError) {
@@ -72,7 +71,6 @@ export async function POST(request: NextRequest) {
         .from("products")
         .select("*")
         .eq("legacy_product_id", productId)
-        .eq("status", "active")
         .single();
 
       if (productByLegacyId && !legacyError) {

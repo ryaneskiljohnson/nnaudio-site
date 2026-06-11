@@ -565,6 +565,137 @@ const Notification = styled(motion.div)<{ type: 'success' | 'error' }>`
   }
 `;
 
+const GrantListToolbar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  gap: 0.75rem;
+`;
+
+const GrantListCount = styled.span`
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+`;
+
+const GrantListTableWrap = styled.div`
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+`;
+
+const GrantListTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+`;
+
+const GrantListHead = styled.thead`
+  background: rgba(255, 255, 255, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+`;
+
+const GrantListTh = styled.th`
+  padding: 6px 10px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+
+  &:last-child {
+    width: 36px;
+    text-align: center;
+  }
+`;
+
+const GrantListRow = styled.tr`
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+`;
+
+const GrantListTd = styled.td`
+  padding: 5px 10px;
+  color: var(--text);
+  vertical-align: middle;
+`;
+
+const GrantProductName = styled.div`
+  font-weight: 600;
+  line-height: 1.25;
+`;
+
+const GrantProductSlug = styled.span`
+  color: var(--text-secondary);
+  font-weight: 400;
+  font-size: 0.75rem;
+`;
+
+const GrantNotes = styled.span`
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+`;
+
+const GrantDate = styled.span`
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  white-space: nowrap;
+`;
+
+const GrantRevokeButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 94, 98, 0.15);
+    border-color: rgba(255, 94, 98, 0.35);
+    color: #ff5e62;
+  }
+`;
+
+const GrantEmptyState = styled.div`
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  font-size: 0.875rem;
+
+  svg {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.45;
+  }
+`;
+
 export default function UserManagementPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -1925,129 +2056,94 @@ export default function UserManagementPage() {
 
               {!showGrantForm ? (
                 <div>
-                  <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                  <GrantListToolbar>
+                    <GrantListCount>
                       {productGrants[grantMapKey]?.length || 0} product{(productGrants[grantMapKey]?.length || 0) !== 1 ? 's' : ''} granted
-                    </div>
+                    </GrantListCount>
                     <Button
                       variant="primary"
                       onClick={() => setShowGrantForm(true)}
                       disabled={!grantModalRecord?.user_email?.trim()}
-                      style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+                      style={{ padding: '6px 12px', fontSize: '0.8125rem' }}
                     >
-                      <FaPlus /> Grant New Product
+                      <FaPlus /> Grant Product
                     </Button>
-                  </div>
+                  </GrantListToolbar>
 
                   {(productGrants[grantMapKey]?.length ?? 0) > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '400px', overflowY: 'auto' }}>
-                      {(productGrants[grantMapKey] ?? []).map((grant: any) => (
-                        <div
-                          key={grant.id}
-                          style={{
-                            padding: '1.25rem',
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            borderRadius: '12px',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            transition: 'all 0.2s ease',
-                            position: 'relative'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                          }}
-                        >
-                          <div style={{ marginBottom: '1rem' }}>
-                            <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '0.5rem', fontSize: '1rem' }}>
-                              {grant.products?.name || 'Unknown Product'}
-                            </div>
-                            {grant.products?.slug && (
-                              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
-                                {grant.products.slug}
-                              </div>
-                            )}
-                            {grant.notes && (
-                              <div style={{ 
-                                fontSize: '0.85rem', 
-                                color: 'var(--text-secondary)', 
-                                fontStyle: 'italic',
-                                padding: '0.5rem',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                borderRadius: '6px',
-                                marginTop: '0.5rem'
-                              }}>
-                                {grant.notes}
-                              </div>
-                            )}
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem' }}>
-                              Granted: {new Date(grant.granted_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <button
-                            onClick={async () => {
-                              if (!confirm(`Revoke "${grant.products?.name || 'this product'}" from ${grantDisplayLabel}?`)) return;
-                              try {
-                                const result = await revokeProductGrant(grant.id);
-                                if (result.success) {
-                                  showNotification('success', 'Product grant revoked');
-                                  const em = grantModalRecord?.user_email?.trim();
-                                  if (em) void refreshGrantsForEmail(em);
-                                  if ((productGrants[grantMapKey]?.length ?? 0) === 1) {
-                                    setGrantModalRecordId(null);
-                                  }
-                                } else {
-                                  throw new Error(result.error || 'Failed to revoke');
-                                }
-                              } catch (err: any) {
-                                showNotification('error', err.message || 'Failed to revoke grant');
-                              }
-                            }}
-                            style={{
-                              width: '100%',
-                              padding: '10px 16px',
-                              background: 'rgba(255, 94, 98, 0.15)',
-                              border: '1px solid rgba(255, 94, 98, 0.3)',
-                              borderRadius: '8px',
-                              color: '#ff5e62',
-                              cursor: 'pointer',
-                              fontSize: '0.9rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '0.5rem',
-                              fontWeight: 600,
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = 'rgba(255, 94, 98, 0.25)';
-                              e.currentTarget.style.borderColor = 'rgba(255, 94, 98, 0.5)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'rgba(255, 94, 98, 0.15)';
-                              e.currentTarget.style.borderColor = 'rgba(255, 94, 98, 0.3)';
-                            }}
-                          >
-                            <FaTrash /> Revoke
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                    <GrantListTableWrap>
+                      <GrantListTable>
+                        <GrantListHead>
+                          <tr>
+                            <GrantListTh>Product</GrantListTh>
+                            <GrantListTh>Granted</GrantListTh>
+                            <GrantListTh>Notes</GrantListTh>
+                            <GrantListTh aria-label="Actions" />
+                          </tr>
+                        </GrantListHead>
+                        <tbody>
+                          {(productGrants[grantMapKey] ?? []).map((grant: ProductGrant) => (
+                            <GrantListRow key={grant.id}>
+                              <GrantListTd>
+                                <GrantProductName>
+                                  {grant.products?.name || 'Unknown Product'}
+                                  {grant.products?.slug ? (
+                                    <>
+                                      {' '}
+                                      <GrantProductSlug>({grant.products.slug})</GrantProductSlug>
+                                    </>
+                                  ) : null}
+                                </GrantProductName>
+                              </GrantListTd>
+                              <GrantListTd>
+                                <GrantDate>
+                                  {new Date(grant.granted_at).toLocaleDateString()}
+                                </GrantDate>
+                              </GrantListTd>
+                              <GrantListTd>
+                                {grant.notes ? (
+                                  <GrantNotes title={grant.notes}>{grant.notes}</GrantNotes>
+                                ) : (
+                                  <GrantNotes style={{ opacity: 0.45 }}>—</GrantNotes>
+                                )}
+                              </GrantListTd>
+                              <GrantListTd>
+                                <GrantRevokeButton
+                                  type="button"
+                                  title={`Revoke ${grant.products?.name || 'product'}`}
+                                  onClick={async () => {
+                                    if (!confirm(`Revoke "${grant.products?.name || 'this product'}" from ${grantDisplayLabel}?`)) return;
+                                    try {
+                                      const result = await revokeProductGrant(grant.id);
+                                      if (result.success) {
+                                        showNotification('success', 'Product grant revoked');
+                                        const em = grantModalRecord?.user_email?.trim();
+                                        if (em) void refreshGrantsForEmail(em);
+                                        if ((productGrants[grantMapKey]?.length ?? 0) === 1) {
+                                          setGrantModalRecordId(null);
+                                        }
+                                      } else {
+                                        throw new Error(result.error || 'Failed to revoke');
+                                      }
+                                    } catch (err: unknown) {
+                                      const message = err instanceof Error ? err.message : 'Failed to revoke grant';
+                                      showNotification('error', message);
+                                    }
+                                  }}
+                                >
+                                  <FaTrash size={12} />
+                                </GrantRevokeButton>
+                              </GrantListTd>
+                            </GrantListRow>
+                          ))}
+                        </tbody>
+                      </GrantListTable>
+                    </GrantListTableWrap>
                   ) : (
-                    <div style={{
-                      padding: '3rem',
-                      textAlign: 'center',
-                      color: 'var(--text-secondary)',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      borderRadius: '8px'
-                    }}>
-                      <FaGift style={{ fontSize: '2rem', marginBottom: '1rem', opacity: 0.5 }} />
-                      <div style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No products granted</div>
-                      <div style={{ fontSize: '0.9rem' }}>Click "Grant New Product" to add one</div>
-                    </div>
+                    <GrantEmptyState>
+                      <FaGift />
+                      <div>No products granted</div>
+                    </GrantEmptyState>
                   )}
                 </div>
               ) : (

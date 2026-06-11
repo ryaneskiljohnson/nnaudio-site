@@ -113,45 +113,60 @@ const TableRow = styled.tr`
 `;
 
 const TableHeaderCell = styled.th`
-  padding: 16px;
+  padding: 8px 10px;
   text-align: left;
   font-weight: 600;
-  color: var(--text);
-  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
 `;
 
 const TableCell = styled.td`
-  padding: 16px;
+  padding: 6px 10px;
   color: var(--text);
+  font-size: 0.8125rem;
+  vertical-align: middle;
 `;
 
-const ProductImage = styled.img`
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-  object-fit: cover;
-  margin-right: 12px;
+const ProductName = styled.span`
+  font-weight: 600;
 `;
 
-const ProductInfo = styled.div`
-  display: flex;
-  align-items: center;
+const ProductSlug = styled.span`
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  margin-left: 0.35rem;
+`;
+
+const NotesCell = styled.span`
+  display: block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
 `;
 
 const DeleteButton = styled.button`
-  padding: 8px 12px;
-  background: rgba(255, 94, 98, 0.2);
-  border: 1px solid rgba(255, 94, 98, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: 6px;
-  color: #ff5e62;
+  color: var(--text-secondary);
   cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 
   &:hover {
-    background: rgba(255, 94, 98, 0.3);
+    background: rgba(255, 94, 98, 0.15);
+    border-color: rgba(255, 94, 98, 0.35);
+    color: #ff5e62;
   }
 `;
 
@@ -512,32 +527,15 @@ export default function ProductGrantsPage() {
               filteredGrants.map((grant) => (
                 <TableRow key={grant.id}>
                   <TableCell>
-                    <FaEnvelope style={{ marginRight: "8px", opacity: 0.7 }} />
+                    <FaEnvelope style={{ marginRight: "6px", opacity: 0.5, fontSize: "0.75rem" }} />
                     {grant.user_email}
                   </TableCell>
                   <TableCell>
                     {grant.products ? (
-                      <ProductInfo>
-                        {grant.products.featured_image_url && (
-                          <ProductImage
-                            src={grant.products.featured_image_url}
-                            alt={grant.products.name}
-                          />
-                        )}
-                        <div>
-                          <div style={{ fontWeight: 600 }}>
-                            {grant.products.name}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "0.85rem",
-                              color: "var(--text-secondary)",
-                            }}
-                          >
-                            {grant.products.slug}
-                          </div>
-                        </div>
-                      </ProductInfo>
+                      <>
+                        <ProductName>{grant.products.name}</ProductName>
+                        <ProductSlug>({grant.products.slug})</ProductSlug>
+                      </>
                     ) : (
                       <span style={{ color: "var(--text-secondary)" }}>
                         Product not found
@@ -551,15 +549,19 @@ export default function ProductGrantsPage() {
                     {new Date(grant.granted_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    {grant.notes || (
-                      <span style={{ color: "var(--text-secondary)" }}>
-                        No notes
-                      </span>
+                    {grant.notes ? (
+                      <NotesCell title={grant.notes}>{grant.notes}</NotesCell>
+                    ) : (
+                      <span style={{ color: "var(--text-secondary)", opacity: 0.45 }}>—</span>
                     )}
                   </TableCell>
                   <TableCell>
-                    <DeleteButton onClick={() => handleDelete(grant.id)}>
-                      <FaTrash /> Revoke
+                    <DeleteButton
+                      type="button"
+                      title="Revoke grant"
+                      onClick={() => handleDelete(grant.id)}
+                    >
+                      <FaTrash size={12} />
                     </DeleteButton>
                   </TableCell>
                 </TableRow>

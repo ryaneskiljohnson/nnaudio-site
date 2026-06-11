@@ -234,8 +234,7 @@ export async function POST(request: NextRequest) {
     const { data: allProductsCheck, error: productsCheckError } = await (adminSupabase as any)
       .from("products")
       .select("id, slug, category")
-      .in("id", productIdsArray)
-      .eq("status", "active");
+      .in("id", productIdsArray);
 
     if (productsCheckError) {
       console.error("[NNAudio Access Products] Error checking products:", productsCheckError);
@@ -265,8 +264,7 @@ export async function POST(request: NextRequest) {
       const { data: bundles, error: bundlesError } = await (adminSupabase as any)
         .from("bundles")
         .select("id, slug, name")
-        .in("slug", Array.from(bundleSlugs))
-        .eq("status", "active");
+        .in("slug", Array.from(bundleSlugs));
 
       if (bundlesError) {
         console.error("[NNAudio Access Products] Error checking bundles table:", bundlesError);
@@ -320,8 +318,7 @@ export async function POST(request: NextRequest) {
     const { data: allProducts, error: allProductsError } = await (adminSupabase as any)
       .from("products")
       .select("id, name, slug, featured_image_url, featured_image_url_png, legacy_product_id, tagline")
-      .in("id", allProductIds)
-      .eq("status", "active");
+      .in("id", allProductIds);
 
     if (allProductsError) {
       console.error("Error fetching all products:", allProductsError);

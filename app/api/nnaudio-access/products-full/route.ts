@@ -152,8 +152,7 @@ export async function POST(request: NextRequest) {
       .select(
         "id, name, slug, featured_image_url, featured_image_url_png, legacy_product_id, downloads, download_version, category, tagline, short_description, plugin_bundle_name"
       )
-      .in("id", productIdsArray)
-      .eq("status", "active");
+      .in("id", productIdsArray);
 
     if (productsError || !products) {
       if (process.env.NODE_ENV !== "production") {
