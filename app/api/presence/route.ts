@@ -20,7 +20,7 @@ import {
  */
 export async function POST(request: NextRequest) {
   const clientIp = getClientIp(request);
-  if (!checkRateLimit(`presence:${clientIp}`, 20, 60)) {
+  if (!checkRateLimit(`presence:${clientIp}`, 60, 60)) {
     return NextResponse.json(
       { error: "Too many requests" },
       { status: 429 },

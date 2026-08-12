@@ -217,11 +217,18 @@ const MobileHeaderLeft = styled.div`
   min-width: 0;
 `;
 
+const SidebarFooter = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  margin-top: auto;
+  width: 100%;
+`;
+
 const UserInfo = styled.div`
   display: flex;
   flex-direction: column;
   padding: 1rem 1.5rem;
-  margin-top: auto;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 `;
 
@@ -1220,21 +1227,23 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         </nav>
 
-        <LiveVisitorCount
-          variant="sidebar"
-          snapshot={liveVisitorSnapshot}
-          loading={liveVisitorLoading}
-        />
+        <SidebarFooter>
+          <LiveVisitorCount
+            variant="sidebar"
+            snapshot={liveVisitorSnapshot}
+            loading={liveVisitorLoading}
+          />
 
-        <UserInfo>
-          <UserName>
-            <h4>{user_display_name}</h4>
-            <p>{user.email}</p>
-          </UserName>
-          <LogoutButton onClick={handleLogout}>
-            <FaSignOutAlt /> Logout
-          </LogoutButton>
-        </UserInfo>
+          <UserInfo>
+            <UserName>
+              <h4>{user_display_name}</h4>
+              <p>{user.email}</p>
+            </UserName>
+            <LogoutButton onClick={handleLogout}>
+              <FaSignOutAlt /> Logout
+            </LogoutButton>
+          </UserInfo>
+        </SidebarFooter>
       </Sidebar>
           <MobileOverlay $isOpen={sidebarOpen} aria-hidden="true" />
           <MobileHeader>
