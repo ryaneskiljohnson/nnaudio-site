@@ -44,6 +44,7 @@ import {
   SUPPORT_TICKET_FILE_ACCEPT,
 } from "@/utils/support/is-heic-or-heif-attachment";
 import { isInlinePlayableVideoAttachment } from "@/utils/support/is-inline-playable-video-attachment";
+import { SupportMessageMarkdown } from "@/components/support/SupportMessageMarkdown";
 
 // Use shared components
 import styled from "styled-components";
@@ -1886,7 +1887,13 @@ function SupportPage() {
                                     >
                                       <MessageBubble $isAdmin={isCurrentUser}>
                                         <MessageContent>
-                                          {message.content}
+                                          {message.is_admin ? (
+                                            <SupportMessageMarkdown>
+                                              {message.content}
+                                            </SupportMessageMarkdown>
+                                          ) : (
+                                            message.content
+                                          )}
                                         </MessageContent>
                                         <MessageTime>
                                           {message.is_admin

@@ -5,6 +5,7 @@ import { SubscriptionType } from "@/utils/supabase/types";
 import { PlanType, PriceData } from "@/types/stripe";
 import { createClient } from "@/utils/supabase/server";
 import { stripe } from "@/utils/stripe/client";
+import { subscriptionPeriodUnix } from "@/utils/stripe/subscription-period";
 
 /**
  * Server action to initiate checkout process
@@ -1414,6 +1415,7 @@ export async function cancelSubscriptionAdmin(
       prorate: false,
     });
     const subscription = response as unknown as Stripe.Subscription;
+    const period = subscriptionPeriodUnix(subscription);
 
     // Serialize the subscription object
     const serializedSubscription = {
@@ -1423,8 +1425,8 @@ export async function cancelSubscriptionAdmin(
       cancel_at_period_end: subscription.cancel_at_period_end,
       canceled_at: subscription.canceled_at,
       created: subscription.created,
-      current_period_end: (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
-      current_period_start: (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
+      current_period_end: period.current_period_end,
+      current_period_start: period.current_period_start,
       customer:
         typeof subscription.customer === "string"
           ? subscription.customer
@@ -1467,6 +1469,7 @@ export async function reactivateSubscription(
     const subscription = await stripe.subscriptions.update(subscriptionId, {
       cancel_at_period_end: false,
     });
+    const period = subscriptionPeriodUnix(subscription);
 
     // Serialize the subscription object
     const serializedSubscription = {
@@ -1476,8 +1479,8 @@ export async function reactivateSubscription(
       cancel_at_period_end: subscription.cancel_at_period_end,
       canceled_at: subscription.canceled_at,
       created: subscription.created,
-      current_period_end: (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
-      current_period_start: (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
+      current_period_end: period.current_period_end,
+      current_period_start: period.current_period_start,
       customer:
         typeof subscription.customer === "string"
           ? subscription.customer
@@ -1542,6 +1545,7 @@ export async function changeSubscriptionPlan(
       proration_behavior: "none", // No prorations - just change the plan
       billing_cycle_anchor: "now", // Keep the current billing cycle end date
     });
+    const period = subscriptionPeriodUnix(subscription);
 
     // Serialize the subscription object
     const serializedSubscription = {
@@ -1551,8 +1555,8 @@ export async function changeSubscriptionPlan(
       cancel_at_period_end: subscription.cancel_at_period_end,
       canceled_at: subscription.canceled_at,
       created: subscription.created,
-      current_period_end: (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
-      current_period_start: (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
+      current_period_end: period.current_period_end,
+      current_period_start: period.current_period_start,
       customer:
         typeof subscription.customer === "string"
           ? subscription.customer
@@ -1604,6 +1608,7 @@ export async function getSubscriptionDetails(
     const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
       expand: ["items.data.price", "customer"],
     });
+    const period = subscriptionPeriodUnix(subscription);
 
     // Serialize the subscription object
     const serializedSubscription = {
@@ -1613,8 +1618,8 @@ export async function getSubscriptionDetails(
       cancel_at_period_end: subscription.cancel_at_period_end,
       canceled_at: subscription.canceled_at,
       created: subscription.created,
-      current_period_end: (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
-      current_period_start: (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
+      current_period_end: period.current_period_end,
+      current_period_start: period.current_period_start,
       customer:
         typeof subscription.customer === "string"
           ? subscription.customer
@@ -1637,6 +1642,8 @@ export async function getSubscriptionDetails(
           nickname: item.price.nickname,
         },
         quantity: item.quantity,
+        current_period_end: item.current_period_end,
+        current_period_start: item.current_period_start,
       })),
       trial_end: subscription.trial_end,
       trial_start: subscription.trial_start,
@@ -1673,41 +1680,46 @@ export async function getCustomerSubscriptions(
     });
 
     // Serialize the subscriptions
-    const serializedSubscriptions = subscriptions.data.map((subscription) => ({
-      id: subscription.id,
-      object: subscription.object,
-      cancel_at: subscription.cancel_at,
-      cancel_at_period_end: subscription.cancel_at_period_end,
-      canceled_at: subscription.canceled_at,
-      created: subscription.created,
-      current_period_end: (subscription as Stripe.Subscription & { current_period_end?: number }).current_period_end,
-      current_period_start: (subscription as Stripe.Subscription & { current_period_start?: number }).current_period_start,
-      customer:
-        typeof subscription.customer === "string"
-          ? subscription.customer
-          : {
-              id: subscription.customer.id,
-              email:
-                "email" in subscription.customer
-                  ? subscription.customer.email
-                  : null,
-            },
-      status: subscription.status,
-      metadata: subscription.metadata,
-      items: subscription.items.data.map((item) => ({
-        id: item.id,
-        price: {
-          id: item.price.id,
-          unit_amount: item.price.unit_amount,
-          currency: item.price.currency,
-          recurring: item.price.recurring,
-          nickname: item.price.nickname,
-        },
-        quantity: item.quantity,
-      })),
-      trial_end: subscription.trial_end,
-      trial_start: subscription.trial_start,
-    }));
+    const serializedSubscriptions = subscriptions.data.map((subscription) => {
+      const period = subscriptionPeriodUnix(subscription);
+      return {
+        id: subscription.id,
+        object: subscription.object,
+        cancel_at: subscription.cancel_at,
+        cancel_at_period_end: subscription.cancel_at_period_end,
+        canceled_at: subscription.canceled_at,
+        created: subscription.created,
+        current_period_end: period.current_period_end,
+        current_period_start: period.current_period_start,
+        customer:
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : {
+                id: subscription.customer.id,
+                email:
+                  "email" in subscription.customer
+                    ? subscription.customer.email
+                    : null,
+              },
+        status: subscription.status,
+        metadata: subscription.metadata,
+        items: subscription.items.data.map((item) => ({
+          id: item.id,
+          price: {
+            id: item.price.id,
+            unit_amount: item.price.unit_amount,
+            currency: item.price.currency,
+            recurring: item.price.recurring,
+            nickname: item.price.nickname,
+          },
+          quantity: item.quantity,
+          current_period_end: item.current_period_end,
+          current_period_start: item.current_period_start,
+        })),
+        trial_end: subscription.trial_end,
+        trial_start: subscription.trial_start,
+      };
+    });
 
     return {
       success: true,

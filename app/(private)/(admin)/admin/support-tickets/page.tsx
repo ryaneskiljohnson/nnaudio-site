@@ -66,6 +66,7 @@ import type { UserData } from "@/utils/stripe/admin-analytics";
 import UserProfileModal from "@/components/admin/UserProfileModal";
 import { NnaudioAccessInstallerBadges } from "@/components/admin/NnaudioAccessInstallerBadges";
 import { SupportMessageTranslate } from "@/components/admin/SupportMessageTranslate";
+import { SupportMessageMarkdown, SupportMessageMarkdownEditor } from "@/components/support/SupportMessageMarkdown";
 import {
   SupportReplyTranslate,
   type CustomerLanguage,
@@ -4141,7 +4142,15 @@ function SupportTicketsPage() {
                                 alignItems: message.is_admin ? 'flex-end' : 'flex-start'
                               }}>
                                 <MessageBubble $isAdmin={message.is_admin}>
-                                  <MessageContent>{message.content}</MessageContent>
+                                  <MessageContent>
+                                    {message.is_admin ? (
+                                      <SupportMessageMarkdown>
+                                        {message.content}
+                                      </SupportMessageMarkdown>
+                                    ) : (
+                                      message.content
+                                    )}
+                                  </MessageContent>
                                   <SupportMessageTranslate
                                     text={message.content}
                                     cacheKey={message.id}
@@ -4452,12 +4461,15 @@ function SupportTicketsPage() {
 
                 <AIModalSection>
                   <AIModalLabel>Generated Response</AIModalLabel>
-                  <AIModalTextArea
-                    placeholder={aiLoading ? "Generating response..." : "Response will appear here..."}
+                  <SupportMessageMarkdownEditor
                     value={aiResponse}
-                    onChange={(e) => setAiResponse(e.target.value)}
-                    rows={10}
+                    onChange={setAiResponse}
                     disabled={aiLoading}
+                    placeholder={
+                      aiLoading
+                        ? "Generating response..."
+                        : "Response will appear here..."
+                    }
                   />
                 </AIModalSection>
 

@@ -120,8 +120,8 @@ const Button = styled.button`
 interface SubscriptionItem {
   id: string;
   status: string;
-  current_period_end: number;
-  current_period_start: number;
+  current_period_end?: number;
+  current_period_start?: number;
   cancel_at_period_end?: boolean;
   product_thumbnail?: string | null;
   metadata?: { bundle_slug?: string; bundle_id?: string; tier?: string };
@@ -1003,8 +1003,15 @@ export default function BillingPage() {
     }
   };
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+  const formatDate = (timestamp: number | null | undefined) => {
+    if (typeof timestamp !== "number" || !Number.isFinite(timestamp)) {
+      return "—";
+    }
+    const date = new Date(timestamp * 1000);
+    if (Number.isNaN(date.getTime())) {
+      return "—";
+    }
+    return date.toLocaleDateString(undefined, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -1216,11 +1223,9 @@ export default function BillingPage() {
                 <SubscriptionBody>
                   <SubscriptionName>{subscriptionLabel(sub)}</SubscriptionName>
                   <SubscriptionMeta>
-                    {t("dashboard.billing.renewsOn", "Renews")}{" "}
-                    {formatDate(sub.current_period_end)}
                     {sub.cancel_at_period_end
-                      ? ` · ${t("dashboard.billing.cancelsAtPeriodEnd", "Cancels at period end")}`
-                      : ""}
+                      ? `${t("dashboard.billing.endsOn", "Ends")} ${formatDate(sub.current_period_end)} · ${t("dashboard.billing.cancelsAtPeriodEnd", "Cancels at period end")}`
+                      : `${t("dashboard.billing.renewsOn", "Renews")} ${formatDate(sub.current_period_end)}`}
                   </SubscriptionMeta>
                 </SubscriptionBody>
                 {hasCustomerId && (

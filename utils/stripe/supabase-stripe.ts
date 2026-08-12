@@ -27,7 +27,13 @@ type StripeSubscriptionAttrs = {
     | "canceled"
     | "unpaid"
     | "paused";
-  items?: { data?: Array<{ price?: { id?: string } }> };
+  items?: {
+    data?: Array<{
+      price?: { id?: string };
+      current_period_end?: number;
+      current_period_start?: number;
+    }>;
+  };
   trial_end?: number;
 };
 
@@ -243,11 +249,18 @@ export async function customerPurchasedProFromSupabase(
             priceId === monthlyPriceId ? "monthly" : "annual";
           activeSubscriptionId = (subscription as any).id || undefined;
 
-          // Set expiration date
-          if ((subscription as any).current_period_end) {
-            current_period_end = new Date(
-              (subscription as any).current_period_end
-            );
+          // Set expiration date (subscription-level on older Stripe APIs; item-level on 2025+)
+          const periodEnd =
+            (subscription as any).current_period_end ??
+            item.current_period_end;
+          if (periodEnd) {
+            const ms =
+              typeof periodEnd === "number"
+                ? periodEnd > 1_000_000_000_000
+                  ? periodEnd
+                  : periodEnd * 1000
+                : new Date(periodEnd).getTime();
+            current_period_end = new Date(ms);
           }
 
           // Check for trial end date

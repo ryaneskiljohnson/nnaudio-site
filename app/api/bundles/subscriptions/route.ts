@@ -115,8 +115,8 @@ export async function GET(request: NextRequest) {
           bundleSubscriptions.push({
             subscriptionId: sub.id,
             status: sub.status,
-            currentPeriodStart: sub.current_period_start,
-            currentPeriodEnd: sub.current_period_end,
+            currentPeriodStart: sub.current_period_start ?? item.current_period_start,
+            currentPeriodEnd: sub.current_period_end ?? item.current_period_end,
             cancelAtPeriodEnd: sub.cancel_at_period_end,
             canceledAt: sub.canceled_at,
             bundle: {
