@@ -169,7 +169,7 @@ function CheckoutSuccessContent() {
   // Refresh subscription status by customer ID (works even if not logged in)
   useEffect(() => {
     const refreshByCustomerId = async () => {
-      if (!sessionId) return;
+      if (!sessionId || sessionId === "free-order") return;
 
       try {
         // Fetch session details to get customer ID
@@ -416,7 +416,7 @@ function CheckoutSuccessContent() {
         itemId: "subscription",
         itemName: "Subscription",
       });
-    } else if (sessionId && !isTrial) {
+    } else if (sessionId && sessionId !== "free-order" && !isTrial) {
       // If we have session_id but no value, fetch it from API
       fetch(`/api/checkout-session-details?session_id=${sessionId}`)
         .then((res) => res.json())

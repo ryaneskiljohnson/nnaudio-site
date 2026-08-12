@@ -1,7 +1,6 @@
 "use server";
 
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { stripe } from "@/utils/stripe/client";
 
 /**
@@ -17,6 +16,22 @@ export async function GET(request: NextRequest) {
       { error: "Missing session_id parameter" },
       { status: 400 }
     );
+  }
+
+  // Free $0 checkout redirects with a synthetic id — not a Stripe session.
+  if (sessionId === "free-order") {
+    return NextResponse.json({
+      success: true,
+      value: 0,
+      currency: "USD",
+      isTrial: false,
+      mode: "payment",
+      customerId: null,
+      tier: null,
+      promotion_id: null,
+      contentId: "free-order",
+      contentName: "Free order",
+    });
   }
 
   try {
