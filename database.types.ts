@@ -3848,6 +3848,27 @@ export type Database = {
           },
         ]
       }
+      site_presence: {
+        Row: {
+          created_at: string
+          last_seen: string
+          path: string
+          visitor_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_seen?: string
+          path?: string
+          visitor_id: string
+        }
+        Update: {
+          created_at?: string
+          last_seen?: string
+          path?: string
+          visitor_id?: string
+        }
+        Relationships: []
+      }
       subscriber_imports: {
         Row: {
           created_at: string | null

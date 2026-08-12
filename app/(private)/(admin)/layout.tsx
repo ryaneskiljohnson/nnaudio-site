@@ -1,6 +1,6 @@
 /**
  * @fileoverview Shared admin layout with sidebar navigation, access guard,
- * support-ticket unread badge, and reviews-pending badge refresh behavior.
+ * support-ticket unread badge, reviews-pending badge, and live on-site visitor count.
  * @module app/(private)/(admin)/layout
  */
 
@@ -50,6 +50,8 @@ const SUPPORT_TICKETS_UNREAD_UPDATED_EVENT =
   "admin-support-tickets-unread-updated";
 const REVIEWS_PENDING_UPDATED_EVENT = "admin-reviews-pending-updated";
 import NNAudioLogo from "@/components/common/NNAudioLogo";
+import LiveVisitorCount from "@/components/admin/LiveVisitorCount";
+import { useLiveVisitorCount } from "@/hooks/useLiveVisitorCount";
 
 import NextLanguageSelector from "@/components/i18n/NextLanguageSelector";
 
@@ -663,6 +665,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return "Guest";
   }, [user]);
 
+  const { snapshot: liveVisitorSnapshot, loading: liveVisitorLoading } =
+    useLiveVisitorCount(Boolean(user?.is_admin));
+
   const handleNavigation = (e: React.MouseEvent<HTMLElement>, href: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1215,6 +1220,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         </nav>
 
+        <LiveVisitorCount
+          variant="sidebar"
+          snapshot={liveVisitorSnapshot}
+          loading={liveVisitorLoading}
+        />
+
         <UserInfo>
           <UserName>
             <h4>{user_display_name}</h4>
@@ -1238,6 +1249,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           >
             <NNAudioLogo size="44px" fontSize="1.5rem" />
           </MobileLogoContent>
+          <LiveVisitorCount
+            variant="compact"
+            snapshot={liveVisitorSnapshot}
+            loading={liveVisitorLoading}
+          />
         </MobileHeaderLeft>
 
         <MenuButton onClick={() => setSidebarOpen(!sidebarOpen)}>
@@ -1591,6 +1607,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </MobileMenuColumn>
 
           <MobileFooterSection>
+            <LiveVisitorCount
+              variant="sidebar"
+              snapshot={liveVisitorSnapshot}
+              loading={liveVisitorLoading}
+            />
             <MobileLanguageWrapper>
               <NextLanguageSelector />
             </MobileLanguageWrapper>

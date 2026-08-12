@@ -37,6 +37,7 @@ import {
   AdminActivity,
 } from "@/utils/stripe/admin-analytics";
 import StatLoadingSpinner from "@/components/common/StatLoadingSpinner";
+import { useLiveVisitorCount } from "@/hooks/useLiveVisitorCount";
 import { getRecentSupportTicketMessagesAdmin } from "@/app/actions/user-management";
 import {
   getRecentPendingProductReviewsForNotificationsAdmin,
@@ -549,6 +550,8 @@ const NotificationBadge = styled.span<{ $status: string }>`
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const { snapshot: liveVisitorSnapshot, loading: liveVisitorLoading } =
+    useLiveVisitorCount(Boolean(user?.is_admin));
   const [activeTab, setActiveTab] = useState<'summaries' | 'analytics' | 'notifications'>('summaries');
   
   // Individual stat states
@@ -1004,6 +1007,22 @@ export default function AdminDashboard() {
               ) : (
                 <StatValue>{formatCurrency(revenueSummaries?.last30Days ?? 0)}</StatValue>
               )}
+            </StatContent>
+          </StatCard>
+          <StatCard variants={fadeIn}>
+            <StatIcon><FaUsers /></StatIcon>
+            <StatContent>
+              <StatLabel>On site now</StatLabel>
+              {liveVisitorLoading && !liveVisitorSnapshot ? (
+                <StatValue><StatLoadingSpinner /></StatValue>
+              ) : (
+                <StatValue>{liveVisitorSnapshot?.count ?? 0}</StatValue>
+              )}
+              <StatDetail>
+                {liveVisitorSnapshot?.pages?.[0]
+                  ? `Most on ${liveVisitorSnapshot.pages[0].path}`
+                  : "Live visitor count"}
+              </StatDetail>
             </StatContent>
           </StatCard>
         </StatsGrid>

@@ -19,6 +19,11 @@ const ChatWidget = dynamic(() => import("@/components/chat/ChatWidget"), {
   loading: () => null,
 });
 
+const SitePresenceTracker = dynamic(
+  () => import("@/components/analytics/SitePresenceTracker"),
+  { ssr: false, loading: () => null },
+);
+
 // Theme configuration
 const theme = {
   colors: {
@@ -258,6 +263,7 @@ function LayoutContent({
       <Main>{children}</Main>
       {!shouldHideHeaderFooter && <Footer />}
       {!shouldHideChatFinal && <ChatWidget />}
+      <SitePresenceTracker />
     </LayoutWrapper>
   );
 }
