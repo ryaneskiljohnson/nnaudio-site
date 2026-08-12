@@ -313,7 +313,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (typeof window !== "undefined" ? window.location.origin : "")
     ).replace(/\/$/, "");
     return await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${baseUrl}/reset-password`,
+      redirectTo: `${baseUrl}/auth/callback?next=/reset-password`,
     });
   };
 

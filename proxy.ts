@@ -102,6 +102,20 @@ export async function proxy(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type");
+  const authCode = searchParams.get("code");
+
+  // PKCE recovery/invite: exchange the code on the server, not in the reset page.
+  if (
+    authCode &&
+    path.startsWith("/reset-password") &&
+    !searchParams.get("error")
+  ) {
+    const callbackUrl = request.nextUrl.clone();
+    callbackUrl.pathname = "/auth/callback";
+    callbackUrl.searchParams.set("code", authCode);
+    callbackUrl.searchParams.set("next", "/reset-password");
+    return NextResponse.redirect(callbackUrl);
+  }
 
   // Email verification / signup / recovery: if link landed on any page with token_hash + type in query,
   // send to the confirm route so we verify OTP and redirect to dashboard (or reset-password).
