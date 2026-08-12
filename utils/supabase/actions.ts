@@ -17,6 +17,7 @@ import {
   getSubscriberSource,
   parseAttributionCookie,
 } from "@/utils/marketing/attribution";
+import { ensureSubscriberForUser } from "@/utils/email-campaigns/ensure-subscriber-for-user";
 
 /**
  * @brief Signs up a user, creates a Stripe customer, and stores subscriber and
@@ -70,40 +71,31 @@ export async function signUpWithStripe(
       }
 
       try {
-        const { error: subscriberError } = await supabase
-          .from("subscribers")
-          .insert({
-            id: authResponse.data.user.id, // Use user ID as subscriber ID
-            user_id: authResponse.data.user.id,
-            email: authResponse.data.user.email || email, // Use fallback email
-            source: getSubscriberSource(attribution),
-            status: "active",
-            tags: [
-              "free-user",
-              ...(attribution?.utm_source ? [`source:${attribution.utm_source}`] : []),
-            ],
-            metadata: {
-              first_name: first_name || "",
-              last_name: last_name || "",
-              subscription: "none",
-              auth_created_at: authResponse.data.user.created_at,
-              profile_updated_at: new Date().toISOString(),
-              ...attributionToSubscriberMetadata(attribution),
-            },
-          });
+        const subscriberError = await ensureSubscriberForUser({
+          userId: authResponse.data.user.id,
+          email: authResponse.data.user.email || email,
+          source: getSubscriberSource(attribution),
+          tags: [
+            "free-user",
+            ...(attribution?.utm_source
+              ? [`source:${attribution.utm_source}`]
+              : []),
+          ],
+          metadata: {
+            first_name: first_name || "",
+            last_name: last_name || "",
+            subscription: "none",
+            auth_created_at: authResponse.data.user.created_at,
+            profile_updated_at: new Date().toISOString(),
+            ...attributionToSubscriberMetadata(attribution),
+          },
+        });
 
         if (subscriberError) {
           console.error("Failed to create subscriber:", subscriberError);
-          // Don't fail the signup if subscriber creation fails
-        } else {
-          console.log(
-            "Subscriber created successfully for user:",
-            authResponse.data.user.id
-          );
         }
       } catch (subscriberError) {
         console.error("Error creating subscriber:", subscriberError);
-        // Don't fail the signup if subscriber creation fails
       }
     }
 

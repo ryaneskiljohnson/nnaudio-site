@@ -18,6 +18,7 @@ import {
 } from "@/utils/marketing/attribution";
 import { findOrCreateCustomer } from "@/utils/stripe/actions";
 import { linkPurchasesToUserByEmail } from "@/utils/stripe/link-purchases-to-user";
+import { ensureSubscriberForUser } from "@/utils/email-campaigns/ensure-subscriber-for-user";
 
 /**
  * @brief Handles account registration and initial subscriber creation.
@@ -110,41 +111,31 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const { error: subscriberError } = await supabase
-          .from('subscribers')
-          .insert({
-            id: authData.user.id,
-            user_id: authData.user.id,
-            email: authData.user.email,
-            source: getSubscriberSource(attribution),
-            status: 'active',
-            tags: [
-              'free-user',
-              ...(attribution?.utm_source ? [`source:${attribution.utm_source}`] : []),
-            ],
-            metadata: {
-              first_name: name?.split(' ')[0] || '',
-              last_name: name?.split(' ').slice(1).join(' ') || '',
-              subscription: 'none',
-              auth_created_at: authData.user.created_at,
-              profile_updated_at: new Date().toISOString(),
-              ...attributionToSubscriberMetadata(attribution),
-            }
-          });
+        const subscriberError = await ensureSubscriberForUser({
+          userId: authData.user.id,
+          email: authData.user.email || email,
+          source: getSubscriberSource(attribution),
+          tags: [
+            "free-user",
+            ...(attribution?.utm_source
+              ? [`source:${attribution.utm_source}`]
+              : []),
+          ],
+          metadata: {
+            first_name: name?.split(" ")[0] || "",
+            last_name: name?.split(" ").slice(1).join(" ") || "",
+            subscription: "none",
+            auth_created_at: authData.user.created_at,
+            profile_updated_at: new Date().toISOString(),
+            ...attributionToSubscriberMetadata(attribution),
+          },
+        });
 
         if (subscriberError) {
-          if (process.env.NODE_ENV !== "production") {
-            console.error("Failed to create subscriber:", subscriberError);
-          }
-          // Don't fail the signup if subscriber creation fails
-        } else if (process.env.NODE_ENV !== "production") {
-          console.log("Subscriber created successfully");
+          console.error("Failed to create subscriber:", subscriberError);
         }
       } catch (subscriberError) {
-        if (process.env.NODE_ENV !== "production") {
-          console.error("Error creating subscriber:", subscriberError);
-        }
-        // Don't fail the signup if subscriber creation fails
+        console.error("Error creating subscriber:", subscriberError);
       }
     }
 
