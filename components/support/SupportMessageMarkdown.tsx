@@ -85,7 +85,7 @@ const markdownComponents = {
   ),
 };
 
-const EditorRoot = styled(MarkdownBody)<{ $disabled?: boolean; $empty?: boolean }>`
+const EditorRoot = styled(MarkdownBody)<{ $disabled?: boolean }>`
   min-height: 160px;
   max-height: 360px;
   overflow-y: auto;
@@ -103,16 +103,11 @@ const EditorRoot = styled(MarkdownBody)<{ $disabled?: boolean; $empty?: boolean 
     border-color: var(--primary);
   }
 
-  ${(props) =>
-    props.$empty
-      ? `
-    &:before {
-      content: attr(data-placeholder);
-      color: var(--text-secondary);
-      pointer-events: none;
-    }
-  `
-      : ""}
+  &[data-empty="true"]:before {
+    content: attr(data-placeholder);
+    color: var(--text-secondary);
+    pointer-events: none;
+  }
 `;
 
 const HiddenMarkdown = styled.div`
@@ -123,6 +118,19 @@ const HiddenMarkdown = styled.div`
   overflow: hidden;
   pointer-events: none;
 `;
+
+/**
+ * @brief Wraps serialized text in markdown emphasis without stacking markers.
+ * @param inner Already-serialized inner markdown.
+ * @param marker `**` for bold or `*` for italic.
+ */
+function wrapEmphasis(inner: string, marker: string): string {
+  const stripped = inner.split(marker).join("");
+  if (!stripped.trim()) {
+    return inner;
+  }
+  return `${marker}${stripped}${marker}`;
+}
 
 /**
  * @brief Converts contentEditable HTML back to markdown for ticket replies.
@@ -144,10 +152,10 @@ function htmlToMarkdown(root: HTMLElement): string {
     switch (tag) {
       case "strong":
       case "b":
-        return `**${inner}**`;
+        return wrapEmphasis(inner, "**");
       case "em":
       case "i":
-        return `*${inner}*`;
+        return wrapEmphasis(inner, "*");
       case "code":
         if (el.parentElement?.tagName.toLowerCase() === "pre") {
           return inner;
@@ -231,10 +239,14 @@ export function SupportMessageMarkdownEditor({
 }: SupportMessageMarkdownEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const hiddenRef = useRef<HTMLDivElement>(null);
-  const focusedRef = useRef(false);
+  const skipSyncRef = useRef(false);
 
   useLayoutEffect(() => {
-    if (focusedRef.current || !editorRef.current || !hiddenRef.current) {
+    if (skipSyncRef.current) {
+      skipSyncRef.current = false;
+      return;
+    }
+    if (!editorRef.current || !hiddenRef.current) {
       return;
     }
     editorRef.current.innerHTML = hiddenRef.current.innerHTML;
@@ -244,7 +256,7 @@ export function SupportMessageMarkdownEditor({
     if (!disabled) {
       return;
     }
-    focusedRef.current = false;
+    skipSyncRef.current = false;
   }, [disabled]);
 
   return (
@@ -259,22 +271,19 @@ export function SupportMessageMarkdownEditor({
         contentEditable={!disabled}
         suppressContentEditableWarning
         $disabled={disabled}
-        $empty={!value.trim()}
+        data-empty={!value.trim() ? "true" : "false"}
         data-placeholder={placeholder}
         role="textbox"
         aria-multiline="true"
         aria-label={placeholder || "Generated response"}
         onFocus={() => {
-          focusedRef.current = true;
           document.execCommand("defaultParagraphSeparator", false, "p");
-        }}
-        onBlur={() => {
-          focusedRef.current = false;
         }}
         onInput={() => {
           if (!editorRef.current) {
             return;
           }
+          skipSyncRef.current = true;
           onChange(htmlToMarkdown(editorRef.current));
         }}
       />
