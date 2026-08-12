@@ -1227,7 +1227,7 @@ const FileInput = styled.input`
 `;
 
 // Create Ticket Modal Components
-const ModalOverlay = styled(motion.div)`
+const ModalOverlay = styled(motion.div)<{ $zIndex?: number }>`
   position: fixed;
   top: 0;
   left: 0;
@@ -1238,7 +1238,7 @@ const ModalOverlay = styled(motion.div)`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: ${props => props.$zIndex ?? 10000};
   padding: 20px;
   overscroll-behavior: none;
 
@@ -3825,6 +3825,7 @@ function SupportTicketsPage() {
         <AnimatePresence>
           {productsDialogUserId && (
             <ModalOverlay
+              $zIndex={10500}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -3878,6 +3879,7 @@ function SupportTicketsPage() {
         <AnimatePresence>
           {ordersDialogUserId && (
             <ModalOverlay
+              $zIndex={10500}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
