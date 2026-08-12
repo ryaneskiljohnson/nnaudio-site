@@ -1,174 +1,84 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import "server-only";
 
-// Force Node.js runtime (not Edge) since we use fs and path APIs
-export const runtime = 'nodejs';
+// Import locale JSON so it is bundled into the serverless function.
+// `public/**` is excluded from output file tracing (see next.config.js), so
+// runtime fs reads of public/locales fail on Vercel with ENOENT.
+import de from "@/public/locales/de.json";
+import en from "@/public/locales/en.json";
+import es from "@/public/locales/es.json";
+import fr from "@/public/locales/fr.json";
+import it from "@/public/locales/it.json";
+import ja from "@/public/locales/ja.json";
+import pt from "@/public/locales/pt.json";
+import tr from "@/public/locales/tr.json";
+import zh from "@/public/locales/zh.json";
 
-// Languages we support - duplicated here to avoid importing from client component
-const languages = ["en", "es", "fr", "it", "de", "pt", "tr", "zh", "ja"];
+export const runtime = "nodejs";
+
 const defaultLanguage = "en";
 
-// Deep merge of objects
-const deepMerge = (target: any, source: any) => {
-  const output = Object.assign({}, target);
-  if (isObject(target) && isObject(source)) {
-    Object.keys(source).forEach((key) => {
-      if (isObject(source[key])) {
-        if (!(key in target)) Object.assign(output, { [key]: source[key] });
-        else output[key] = deepMerge(target[key], source[key]);
-      } else {
-        Object.assign(output, { [key]: source[key] });
-      }
-    });
+const localeCatalog: Record<string, Record<string, unknown>> = {
+  en: en as Record<string, unknown>,
+  es: es as Record<string, unknown>,
+  fr: fr as Record<string, unknown>,
+  it: it as Record<string, unknown>,
+  de: de as Record<string, unknown>,
+  pt: pt as Record<string, unknown>,
+  tr: tr as Record<string, unknown>,
+  zh: zh as Record<string, unknown>,
+  ja: ja as Record<string, unknown>,
+};
+
+const languages = Object.keys(localeCatalog);
+
+const deepMerge = (
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): Record<string, unknown> => {
+  const output: Record<string, unknown> = { ...target };
+  for (const key of Object.keys(source)) {
+    const sourceValue = source[key];
+    const targetValue = target[key];
+    if (isObject(targetValue) && isObject(sourceValue)) {
+      output[key] = deepMerge(targetValue, sourceValue);
+    } else {
+      output[key] = sourceValue;
+    }
   }
   return output;
 };
 
-const isObject = (item: any) =>
-  item && typeof item === "object" && !Array.isArray(item);
-
-// Fallback translations for when file system access fails
-const getFallbackTranslations = (locale: string) => {
-  const fallbacks: { [key: string]: any } = {
-    en: {
-      common: {
-        loading: "Loading...",
-        error: "Error",
-        save: "Save",
-        cancel: "Cancel",
-        edit: "Edit",
-        delete: "Delete",
-        back: "Back",
-        search: "Search",
-        add: "Add",
-        remove: "Remove"
-      },
-      subscriber: {
-        details: "Subscriber Details",
-        information: "Subscriber Information",
-        audienceMemberships: "Audience Memberships",
-        name: "Name",
-        email: "Email",
-        status: "Status",
-        location: "Location",
-        engagement: "Engagement Level",
-        active: "Active",
-        unsubscribed: "Unsubscribed",
-        bounced: "Bounced",
-        pending: "Pending",
-        high: "High",
-        medium: "Medium",
-        low: "Low"
-      }
-    }
-  };
-  
-  return fallbacks[locale] || fallbacks.en;
-};
+const isObject = (item: unknown): item is Record<string, unknown> =>
+  Boolean(item) && typeof item === "object" && !Array.isArray(item);
 
 export async function GET(request: NextRequest) {
   try {
-    // Add CORS headers for cross-origin requests
     const headers = {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400', // 1h fresh, 24h revalidate
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
     };
-    
-    // Get the locale from the query parameter
+
     const { searchParams } = new URL(request.url);
     let locale = searchParams.get("locale") || defaultLanguage;
 
-    console.log(`[translations-api] Request for locale: ${locale}`);
-
-    // Validate the locale
     if (!languages.includes(locale)) {
-      console.log(
-        `[translations-api] Invalid locale requested: ${locale}, falling back to ${defaultLanguage}`
-      );
       locale = defaultLanguage;
     }
 
-    // Build the path to the locales directory using process.cwd() as fallback
-    // For Vercel/production, use process.cwd() which points to the project root
-    // For local dev, this also works correctly
-    const localesDir = path.join(
-      process.cwd(),
-      "public",
-      "locales"
-    );
-    
-    console.log(`[translations-api] Locales directory: ${localesDir}`);
-
-    // Try to load English translations as the base (fallback)
-    let engData: any = {};
-    try {
-      const engFilePath = path.join(localesDir, `${defaultLanguage}.json`);
-      console.log(`[translations-api] Looking for English translations at: ${engFilePath}`);
-      const engFileContents = await fs.readFile(engFilePath, "utf8");
-      engData = JSON.parse(engFileContents);
-
-      console.log(
-        `[translations-api] Loaded English base translations with ${
-          Object.keys(engData).length
-        } top-level keys`
-      );
-    } catch (engError) {
-      console.error(`[translations-api] Failed to load English translations:`, engError);
-      // Use fallback translations
-      engData = getFallbackTranslations(defaultLanguage);
-      console.log(`[translations-api] Using fallback English translations`);
-    }
-
-    // If locale is English, just return English translations
+    const engData = localeCatalog[defaultLanguage];
     if (locale === defaultLanguage) {
       return NextResponse.json(engData, { headers, status: 200 });
     }
 
-    // Otherwise, try to load requested locale and merge with English for fallback
-    try {
-      const filePath = path.join(localesDir, `${locale}.json`);
-      console.log(`[translations-api] Looking for locale file at: ${filePath}`);
-
-      const fileContents = await fs.readFile(filePath, "utf8");
-      const localeData = JSON.parse(fileContents);
-
-      console.log(
-        `[translations-api] Loaded ${locale} translations with ${
-          Object.keys(localeData).length
-        } top-level keys`
-      );
-
-      // Deep merge with English data, so English is used for missing keys
-      const mergedData = deepMerge(engData, localeData);
-
-      console.log(
-        `[translations-api] Merged translations for ${locale} (using English fallbacks)`
-      );
-
-      return NextResponse.json(mergedData, { headers, status: 200 });
-    } catch (localeError) {
-      console.error(
-        `[translations-api] Error loading locale ${locale}, falling back to English:`,
-        localeError
-      );
-      
-      // Try to get fallback translations for the requested locale
-      const fallbackData = getFallbackTranslations(locale);
-      const mergedData = deepMerge(engData, fallbackData);
-      
-      console.log(`[translations-api] Using fallback translations for ${locale}`);
-      return NextResponse.json(mergedData, { headers, status: 200 });
-    }
+    const localeData = localeCatalog[locale] ?? {};
+    const mergedData = deepMerge(engData, localeData);
+    return NextResponse.json(mergedData, { headers, status: 200 });
   } catch (error) {
     console.error("[translations-api] Error loading translations:", error);
-    
-    // Return basic fallback translations to prevent complete failure
-    const fallbackData = getFallbackTranslations(defaultLanguage);
-    return NextResponse.json(fallbackData, { 
+    return NextResponse.json(localeCatalog[defaultLanguage] ?? {}, {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { "Content-Type": "application/json" },
     });
   }
 }

@@ -8,9 +8,9 @@ export const languages = ['en', 'es', 'fr', 'it', 'de', 'pt', 'tr', 'zh', 'ja'];
 export const defaultLanguage = 'en';
 
 // Synchronously initialize i18next with empty resources so useTranslation has consistent
-// hook behavior before async loadTranslations completes. Prevents "change in order of Hooks"
-// error in LegalModal and other components that use useTranslation from react-i18next.
-if (typeof window !== 'undefined' && !i18n.isInitialized) {
+// hook behavior before async loadTranslations completes (SSR + client). Avoids
+// NO_I18NEXT_INSTANCE warnings and "change in order of Hooks" errors.
+if (!i18n.isInitialized) {
   void i18n.use(initReactI18next).init({
     lng: defaultLanguage,
     fallbackLng: defaultLanguage,
