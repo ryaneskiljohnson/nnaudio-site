@@ -48,6 +48,8 @@ const nextConfig = {
       { source: '/faq', destination: '/#faq', permanent: false },
       // Preserve legacy ad/marketing links that used the plural product path.
       { source: '/products/:slug', destination: '/product/:slug', permanent: true },
+      // Desktop app and older emails linked here; the live page is /reset-password.
+      { source: '/password-reset', destination: '/reset-password', permanent: false },
     ];
   },
   async headers() {

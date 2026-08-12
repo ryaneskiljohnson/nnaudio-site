@@ -69,9 +69,11 @@ async function linkPurchasesAfterAuthConfirm(
  * - Success (email_change, still pending second inbox): /settings?email_change=awaiting_second
  * - Success (email_change, fully confirmed): /settings?email_change=success
  * - Success (other types): /dashboard
+ * - Failure with active session (recovery or invite): /reset-password
  * - Failure with active session (email_change, new_email still set): /settings?email_change=awaiting_second
  * - Failure with active session (email_change, no pending new_email): /settings?email_change=already_confirmed
  * - Failure with active session (other types): /dashboard
+ * - Failure without session (recovery or invite): /reset-password?error=invalid_link
  * - Failure without session (email_change): /login?auth_error=email_change_failed
  * - Failure without session (other types): /login?auth_error=verification_failed
  * - No token params with active session: /dashboard (treat as already-done)
@@ -121,6 +123,9 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
     if (user) {
+      if (type === "recovery" || type === "invite") {
+        redirect("/reset-password");
+      }
       if (type === "email_change") {
         if (user.new_email) {
           redirect("/settings?email_change=awaiting_second");
@@ -130,6 +135,9 @@ export async function GET(request: NextRequest) {
       redirect("/dashboard");
     }
 
+    if (type === "recovery" || type === "invite") {
+      redirect("/reset-password?error=invalid_link");
+    }
     if (type === "email_change") {
       redirect("/login?auth_error=email_change_failed");
     }

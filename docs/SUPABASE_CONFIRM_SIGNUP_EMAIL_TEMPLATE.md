@@ -51,6 +51,18 @@ The HTML for this template lives at
 [../supabase/templates/nnaudio-email-change.html](../supabase/templates/nnaudio-email-change.html);
 upload it via the Dashboard or `scripts/update-supabase-email-templates.ts`.
 
+## Password reset template
+
+The **Reset password** template needs the same direct-callback treatment. Use:
+
+```
+https://nnaud.io/api/auth/confirm?token_hash={{ .TokenHash }}&type=recovery
+```
+
+`GET /api/auth/confirm` verifies the recovery OTP and redirects to `/reset-password`,
+where the user sets a new password. The HTML lives at
+[../supabase/templates/nnaudio-reset-password.html](../supabase/templates/nnaudio-reset-password.html).
+
 ## Reference
 
 - [Supabase Auth email templates](https://supabase.com/docs/guides/auth/auth-email-templates)

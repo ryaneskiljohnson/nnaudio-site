@@ -8,7 +8,7 @@ LoginComponent::LoginComponent(AuthManager& auth)
                                                      BinaryData::background_03_pngSize))
     , logoImage(juce::ImageCache::getFromMemory(BinaryData::logo_png, 
                                                BinaryData::logo_pngSize))
-    , forgotPasswordLink("Forgot Password?", juce::URL("https://nnaud.io/password-reset/"))
+    , forgotPasswordLink("Forgot Password?", juce::URL("https://nnaud.io/reset-password"))
 {
     // Email/Username field
     emailLabel.setText("Email or Username", juce::dontSendNotification);

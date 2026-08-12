@@ -12,6 +12,7 @@ import PrimaryButton from "@/components/common/PrimaryButton";
 import { useTranslation } from "react-i18next";
 import useLanguage from "@/hooks/useLanguage";
 import LoadingComponent from "@/components/common/LoadingComponent";
+import { inspectPasswordResetCallback } from "@/utils/auth/password-reset-callback";
 
 const AuthContainer = styled.div`
   min-height: 100vh;
@@ -275,6 +276,7 @@ function ResetPasswordClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isReset, setIsReset] = useState(false);
+  const [checkingLink, setCheckingLink] = useState(true);
   const [translationsLoaded, setTranslationsLoaded] = useState(false);
 
   const router = useRouter();
@@ -287,87 +289,145 @@ function ResetPasswordClient() {
 
   // Check if this is a password reset (has valid session) or password request
   useEffect(() => {
-    const checkSessionAndTokens = async () => {
-      // First, check if user already has a valid session
-      const {
-        data: { session: existingSession },
-      } = await supabase.auth.getSession();
-      if (existingSession) {
+    let cancelled = false;
+
+    const clearCallbackFromUrl = () => {
+      if (typeof window === "undefined") return;
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.delete("code");
+      nextUrl.searchParams.delete("error");
+      nextUrl.searchParams.delete("error_code");
+      nextUrl.searchParams.delete("error_description");
+      nextUrl.hash = "";
+      window.history.replaceState({}, "", nextUrl.toString());
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) return;
+      if (event === "PASSWORD_RECOVERY") {
         setIsReset(true);
+      }
+    });
+
+    const checkSessionAndTokens = async () => {
+      const hash = typeof window !== "undefined" ? window.location.hash : "";
+      const callback = inspectPasswordResetCallback(searchParams, hash);
+
+      if (callback.kind === "error") {
+        if (!cancelled) {
+          setError(callback.message);
+          setCheckingLink(false);
+        }
         return;
       }
 
-      // Check for code query parameter (password reset link - PKCE flow)
-      const code = searchParams.get("code");
-      if (code) {
+      // getSession waits for client initialize, which may already have
+      // exchanged a PKCE `code` via detectSessionInUrl.
+      const {
+        data: { session: existingSession },
+      } = await supabase.auth.getSession();
+      if (cancelled) return;
+
+      if (existingSession && callback.kind === "none") {
+        setIsReset(true);
+        setCheckingLink(false);
+        return;
+      }
+
+      if (callback.kind === "pkce") {
         try {
-          console.log("[Reset Password] Exchanging code for session...");
-          // Exchange the code for a session
-          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-          
+          const { data, error: exchangeError } =
+            await supabase.auth.exchangeCodeForSession(callback.code);
+
+          if (cancelled) return;
+
           if (exchangeError) {
-            console.error("[Reset Password] Error exchanging code:", exchangeError);
-            setError("Invalid or expired reset link. Please request a new password reset.");
+            const {
+              data: { session: sessionAfterError },
+            } = await supabase.auth.getSession();
+            if (sessionAfterError) {
+              clearCallbackFromUrl();
+              setIsReset(true);
+              setCheckingLink(false);
+              return;
+            }
+            console.error(
+              "[Reset Password] Error exchanging code:",
+              exchangeError
+            );
+            setError(
+              "Invalid or expired reset link. Please request a new password reset."
+            );
+            setCheckingLink(false);
             return;
           }
 
           if (data.session) {
-            console.log("[Reset Password] Session established successfully");
-            // Clear the code from URL
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.delete("code");
-            window.history.replaceState({}, "", newUrl.toString());
+            clearCallbackFromUrl();
             setIsReset(true);
-          } else {
-            setError("Failed to establish session. Please request a new password reset.");
-          }
-        } catch (err) {
-          console.error("[Reset Password] Error processing reset code:", err);
-          setError("An error occurred while processing the reset link.");
-        }
-        return;
-      }
-
-      // Check for hash fragment tokens (invite or recovery)
-      if (typeof window === "undefined") return;
-
-      const hash = window.location.hash.substring(1); // Remove the #
-      if (!hash) return;
-
-      // Parse hash parameters
-      const params = new URLSearchParams(hash);
-      const accessToken = params.get("access_token");
-      const refreshToken = params.get("refresh_token");
-      const type = params.get("type");
-
-      // Handle invite tokens
-      if (type === "invite" && accessToken && refreshToken) {
-        try {
-          // Set the session using the tokens from the hash
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-
-          if (sessionError) {
-            console.error("Error setting session from invite:", sessionError);
-            setError("Invalid or expired invite link");
+            setCheckingLink(false);
             return;
           }
 
-          // Clear the hash from URL
-          window.history.replaceState(null, "", window.location.pathname);
+          setError(
+            "Failed to establish session. Please request a new password reset."
+          );
+        } catch (err) {
+          console.error("[Reset Password] Error processing reset code:", err);
+          if (!cancelled) {
+            setError("An error occurred while processing the reset link.");
+          }
+        }
+        if (!cancelled) setCheckingLink(false);
+        return;
+      }
 
-          // Set to reset mode to show password form
+      if (callback.kind === "hash-session") {
+        try {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: callback.accessToken,
+            refresh_token: callback.refreshToken,
+          });
+
+          if (cancelled) return;
+
+          if (sessionError) {
+            console.error(
+              "Error setting session from reset link:",
+              sessionError
+            );
+            setError(
+              callback.type === "invite"
+                ? "Invalid or expired invite link"
+                : "Invalid or expired reset link. Please request a new password reset."
+            );
+            setCheckingLink(false);
+            return;
+          }
+
+          clearCallbackFromUrl();
           setIsReset(true);
         } catch (err) {
-          console.error("Error handling invite tokens:", err);
-          setError("Failed to process invite link");
+          console.error("Error handling reset hash tokens:", err);
+          if (!cancelled) {
+            setError("Failed to process reset link");
+          }
         }
+        if (!cancelled) setCheckingLink(false);
+        return;
       }
+
+      if (!cancelled) setCheckingLink(false);
     };
 
-    checkSessionAndTokens();
+    void checkSessionAndTokens();
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, [searchParams, supabase]);
 
   // Wait for translations to load
@@ -447,7 +507,7 @@ function ResetPasswordClient() {
   };
 
   // If translations are still loading, show loading component
-  if (!translationsLoaded) {
+  if (!translationsLoaded || checkingLink) {
     return (
       <AuthContainer>
         <div

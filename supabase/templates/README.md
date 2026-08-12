@@ -64,15 +64,15 @@ All templates feature:
 - Purple-to-blue gradient accents (`#6c63ff` to `#8a2be2`) matching the Next.js site design
 - Responsive design for mobile devices
 
-## Custom callback URL (signup & email change)
+## Custom callback URL (signup, email change, and password reset)
 
-The **Confirmation (signup)** and **Email Change** templates must link directly to the
-app's `/api/auth/confirm` route with `token_hash` and `type` in the **query** instead of
-using the default `{{ .ConfirmationURL }}`. The default `ConfirmationURL` first hits
-Supabase's verify endpoint, which then redirects to the app *after* consuming the token.
-By the time the app receives that redirect, the query string no longer contains
-`token_hash`/`type`, so the callback cannot present a clear success/failure state and
-the user briefly sees the login error page before being bounced back.
+The **Confirmation (signup)**, **Email Change**, and **Reset Password** templates must
+link directly to the app's `/api/auth/confirm` route with `token_hash` and `type` in
+the **query** instead of using the default `{{ .ConfirmationURL }}`. The default
+`ConfirmationURL` first hits Supabase's verify endpoint, which then redirects to the
+app *after* consuming the token. By the time the app receives that redirect, the query
+string no longer contains `token_hash`/`type`, and PKCE recovery also requires a
+code verifier that only exists in the browser that requested the email.
 
 Use these `href` values in the templates:
 
@@ -84,12 +84,15 @@ Use these `href` values in the templates:
   ```
   {{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=email_change
   ```
+- **Password Reset**:
+  ```
+  {{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=recovery
+  ```
 
-The other templates (Magic Link, Reset Password, Invite) continue to use
-`{{ .ConfirmationURL }}` because their downstream pages (`/reset-password`, etc.) handle
-post-verify redirects independently.
+Magic Link and Invite continue to use `{{ .ConfirmationURL }}` unless you switch them
+to the same confirm-route pattern.
 
-After updating `nnaudio-email-change.html` (or `nnaudio-confirmation.html`), upload the
+After updating `nnaudio-reset-password.html` (or the other templates above), upload the
 new HTML to Supabase via the Dashboard or by running:
 
 ```bash
