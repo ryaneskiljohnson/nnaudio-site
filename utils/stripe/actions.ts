@@ -6,6 +6,8 @@ import { PlanType, PriceData } from "@/types/stripe";
 import { createClient } from "@/utils/supabase/server";
 import { stripe } from "@/utils/stripe/client";
 import { subscriptionPeriodUnix } from "@/utils/stripe/subscription-period";
+import { requireAdminAction, isCurrentUserAdmin } from "@/utils/auth/action-guards";
+import { isStripeCheckoutSessionId } from "@/utils/stripe/ids";
 
 /**
  * Server action to initiate checkout process
@@ -421,6 +423,14 @@ export async function getCheckoutSessionResult(sessionId: string): Promise<{
   currency?: string | null;
   error?: string;
 }> {
+  if (!isStripeCheckoutSessionId(sessionId)) {
+    return {
+      success: false,
+      status: "unknown",
+      error: "Invalid session ID",
+    };
+  }
+
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId, {
       expand: ["customer", "subscription", "payment_intent"],
@@ -776,6 +786,7 @@ export async function refundPaymentIntent(
   amount?: number,
   reason?: "duplicate" | "fraudulent" | "requested_by_customer"
 ): Promise<{ success: boolean; refund?: any; error?: string }> {
+  await requireAdminAction();
   try {
     const refundData: Stripe.RefundCreateParams = {
       payment_intent: paymentIntentId,
@@ -831,6 +842,7 @@ export async function refundInvoice(
   amount?: number,
   reason?: Stripe.CreditNoteCreateParams.Reason
 ): Promise<{ success: boolean; creditNote?: any; error?: string }> {
+  await requireAdminAction();
   try {
     // First, get the invoice to check its status and amount
     const invoice = await stripe.invoices.retrieve(invoiceId);
@@ -1409,6 +1421,7 @@ export async function cancelSubscriptionAdmin(
   subscriptionId: string,
   reason?: string
 ): Promise<{ success: boolean; subscription?: any; error?: string }> {
+  await requireAdminAction();
   try {
     const response = await stripe.subscriptions.cancel(subscriptionId, {
       invoice_now: false,
@@ -1464,6 +1477,36 @@ export async function cancelSubscriptionAdmin(
 export async function reactivateSubscription(
   subscriptionId: string
 ): Promise<{ success: boolean; subscription?: any; error?: string }> {
+  // Allow if the caller is an admin, or owns the subscription's Stripe customer.
+  {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized" };
+    }
+    const admin = await isCurrentUserAdmin();
+    if (!admin) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("customer_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      const callerCustomerId = (profile as { customer_id?: string } | null)?.customer_id;
+      let subCustomerId: string | null = null;
+      try {
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        subCustomerId =
+          typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? null;
+      } catch {
+        return { success: false, error: "Subscription not found" };
+      }
+      if (!callerCustomerId || callerCustomerId !== subCustomerId) {
+        return { success: false, error: "Forbidden" };
+      }
+    }
+  }
   try {
     // Update the subscription to remove the cancellation
     const subscription = await stripe.subscriptions.update(subscriptionId, {
@@ -1520,6 +1563,7 @@ export async function changeSubscriptionPlan(
   subscriptionId: string,
   newPriceId: string
 ): Promise<{ success: boolean; subscription?: any; error?: string }> {
+  await requireAdminAction();
   try {
     // Get the current subscription
     const currentSubscription = await stripe.subscriptions.retrieve(

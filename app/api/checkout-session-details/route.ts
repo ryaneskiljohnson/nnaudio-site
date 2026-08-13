@@ -2,10 +2,14 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/utils/stripe/client";
+import {
+  isStripeCheckoutSessionId,
+  isStripePaymentIntentId,
+} from "@/utils/stripe/ids";
 
 /**
- * API endpoint to get checkout session details for dataLayer tracking
- * Returns JSON instead of redirecting
+ * Public analytics helper for the checkout-success page.
+ * Returns amount/mode/metadata only — never Stripe customer ids.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -26,7 +30,6 @@ export async function GET(request: NextRequest) {
       currency: "USD",
       isTrial: false,
       mode: "payment",
-      customerId: null,
       tier: null,
       promotion_id: null,
       contentId: "free-order",
@@ -35,27 +38,23 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Embedded checkout (bundle) passes payment_intent id (pi_xxx) instead of session id
-    if (sessionId.startsWith("pi_")) {
+    if (isStripePaymentIntentId(sessionId)) {
       const paymentIntent = await stripe.paymentIntents.retrieve(sessionId, {
         expand: ["invoice"],
       });
-      const customerId =
-        typeof paymentIntent.customer === "string"
-          ? paymentIntent.customer
-          : paymentIntent.customer?.id ?? null;
       const value = (paymentIntent.amount_received || paymentIntent.amount)
         ? (paymentIntent.amount_received || paymentIntent.amount) / 100
         : null;
       const currency = (paymentIntent.currency ?? "usd").toUpperCase();
       let mode: "payment" | "subscription" = "payment";
       try {
-        // Detect whether this PI came from a subscription invoice.
         const invoiceSearch = await stripe.invoices.search({
           query: `payment_intent:'${sessionId}'`,
           limit: 1,
         });
-        const matchedInvoice = invoiceSearch.data?.[0] as any;
+        const matchedInvoice = invoiceSearch.data?.[0] as {
+          subscription?: unknown;
+        };
         if (matchedInvoice?.subscription) {
           mode = "subscription";
         }
@@ -84,7 +83,6 @@ export async function GET(request: NextRequest) {
         currency,
         isTrial: false,
         mode,
-        customerId,
         tier,
         promotion_id: promotionId,
         contentId,
@@ -92,21 +90,17 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Retrieve the session directly to get amount_total for one-time payments
-    const session = await stripe.checkout.sessions.retrieve(sessionId, {
-      expand: ["subscription", "payment_intent", "customer"],
-    });
-
-    // Extract customer ID
-    let customerId: string | null = null;
-    if (session.customer) {
-      customerId =
-        typeof session.customer === "string"
-          ? session.customer
-          : session.customer.id;
+    if (!isStripeCheckoutSessionId(sessionId)) {
+      return NextResponse.json(
+        { error: "Invalid session_id parameter" },
+        { status: 400 }
+      );
     }
 
-    // Extract value and currency
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["subscription", "payment_intent"],
+    });
+
     let value: number | null = null;
     let currency: string = "USD";
     let isTrial = false;
@@ -115,7 +109,6 @@ export async function GET(request: NextRequest) {
     let tier: string | null = null;
 
     if (session.mode === "subscription") {
-      // Use what was actually charged today (includes promotions/discounts) when available.
       if (session.amount_total !== null && session.amount_total !== undefined) {
         value = session.amount_total / 100;
       }
@@ -125,25 +118,23 @@ export async function GET(request: NextRequest) {
       tier = (session.metadata?.plan_type as string) || null;
 
       if (session.subscription) {
-      const subscription =
-        typeof session.subscription === "string"
-          ? await stripe.subscriptions.retrieve(session.subscription)
-          : session.subscription;
+        const subscription =
+          typeof session.subscription === "string"
+            ? await stripe.subscriptions.retrieve(session.subscription)
+            : session.subscription;
 
-      isTrial = !!subscription.trial_end;
+        isTrial = !!subscription.trial_end;
 
-      // Fallback only if amount_total was not present.
-      if (
-        value === null &&
-        !isTrial &&
-        subscription.items?.data?.[0]?.price
-      ) {
-        value = (subscription.items.data[0].price.unit_amount || 0) / 100;
-      }
+        if (
+          value === null &&
+          !isTrial &&
+          subscription.items?.data?.[0]?.price
+        ) {
+          value = (subscription.items.data[0].price.unit_amount || 0) / 100;
+        }
       }
     } else if (session.mode === "payment" && session.amount_total) {
-      // For one-time payments (lifetime), use amount_total
-      value = session.amount_total / 100; // Convert cents to dollars
+      value = session.amount_total / 100;
       currency = session.currency?.toUpperCase() || "USD";
       contentId = (session.metadata?.plan_type as string) || null;
       contentName = (session.metadata?.plan_name as string) || null;
@@ -158,8 +149,7 @@ export async function GET(request: NextRequest) {
       value,
       currency,
       isTrial,
-      mode: session.mode, // 'payment' for lifetime, 'subscription' for recurring
-      customerId, // Customer ID from the checkout session
+      mode: session.mode,
       contentId,
       contentName,
       tier,

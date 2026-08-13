@@ -36,6 +36,54 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const CART_STORAGE_KEY = 'nnaudio_cart';
+const MAX_CART_QUANTITY = 99;
+
+/**
+ * @brief Parses localStorage cart JSON. Rejects non-arrays and malformed rows
+ * so poisoned storage cannot crash checkout or inject bogus prices into the UI.
+ */
+export function parseStoredCartItems(raw: string): CartItem[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+
+  const items: CartItem[] = [];
+  for (const row of parsed) {
+    if (!row || typeof row !== "object") continue;
+    const rec = row as Record<string, unknown>;
+    if (typeof rec.id !== "string" || !rec.id.trim()) continue;
+    if (typeof rec.name !== "string" || !rec.name.trim()) continue;
+    const price = Number(rec.price);
+    if (!Number.isFinite(price) || price < 0) continue;
+    const quantity = Math.max(
+      1,
+      Math.min(MAX_CART_QUANTITY, Math.floor(Number(rec.quantity) || 1))
+    );
+    const item: CartItem = {
+      id: rec.id,
+      name: rec.name,
+      slug: typeof rec.slug === "string" ? rec.slug : "",
+      price,
+      quantity,
+    };
+    if (rec.sale_price != null) {
+      const sale = Number(rec.sale_price);
+      if (Number.isFinite(sale) && sale >= 0) item.sale_price = sale;
+    }
+    if (typeof rec.featured_image_url === "string") {
+      item.featured_image_url = rec.featured_image_url;
+    }
+    if (typeof rec.logo_url === "string") {
+      item.logo_url = rec.logo_url;
+    }
+    items.push(item);
+  }
+  return items;
+}
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -48,7 +96,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       try {
         const savedCart = localStorage.getItem(CART_STORAGE_KEY);
         if (savedCart) {
-          setItems(JSON.parse(savedCart));
+          setItems(parseStoredCartItems(savedCart));
         }
       } catch (error) {
         console.error('Error loading cart from localStorage:', error);
@@ -90,7 +138,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const existingItem = prevItems.find((i) => i.id === item.id);
       if (existingItem) {
         return prevItems.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.id === item.id
+            ? { ...i, quantity: Math.min(MAX_CART_QUANTITY, i.quantity + 1) }
+            : i
         );
       } else {
         return [...prevItems, { ...item, quantity: 1 }];
@@ -110,7 +160,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setItems((prevItems) =>
-      prevItems.map((i) => (i.id === id ? { ...i, quantity } : i))
+      prevItems.map((i) =>
+        i.id === id
+          ? { ...i, quantity: Math.min(MAX_CART_QUANTITY, quantity) }
+          : i
+      )
     );
   }, [removeItem]);
 

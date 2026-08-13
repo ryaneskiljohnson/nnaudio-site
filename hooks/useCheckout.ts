@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { PlanType } from "@/types/stripe";
@@ -33,6 +33,7 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inFlightRef = useRef(false);
 
   const initiateCheckout = useCallback(
     async (
@@ -45,6 +46,12 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
         isPlanChange?: boolean;
       }
     ): Promise<{ success: boolean; error?: string }> => {
+      if (inFlightRef.current) {
+        return { success: false, error: "Checkout already in progress" };
+      }
+      inFlightRef.current = true;
+      let navigatedAway = false;
+
       // Reset error state
       setError(null);
       setIsLoading(true);
@@ -103,6 +110,7 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
             new URL(result.url);
             // Redirect to Stripe Checkout
             window.location.href = result.url;
+            navigatedAway = true;
             return { success: true };
           } catch (urlError) {
             const errorMsg = "Invalid checkout URL received from server";
@@ -135,7 +143,10 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
         }
         return { success: false, error: errorMsg };
       } finally {
-        setIsLoading(false);
+        if (!navigatedAway) {
+          inFlightRef.current = false;
+          setIsLoading(false);
+        }
       }
     },
     [user, router, options]

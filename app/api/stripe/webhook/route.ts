@@ -35,6 +35,47 @@ import {
   normalizePurchaseEmail,
 } from "@/utils/stripe/link-purchases-to-user";
 
+const WEBHOOK_UNIQUE_VIOLATION = "23505";
+
+/**
+ * @brief Claims a Stripe event id for processing. Duplicate deliveries return
+ * `"duplicate"`. Other insert failures throw so Stripe retries instead of
+ * double-processing.
+ */
+async function claimStripeWebhookEvent(
+  eventId: string,
+  eventType: string
+): Promise<"claimed" | "duplicate"> {
+  const supabase = await createSupabaseServiceRole();
+  const { error } = await (supabase as any)
+    .from("stripe_webhook_events")
+    .insert({ id: eventId, event_type: eventType, status: "processing" });
+  if (!error) return "claimed";
+  if (error.code === WEBHOOK_UNIQUE_VIOLATION) return "duplicate";
+  throw error;
+}
+
+async function completeStripeWebhookEvent(eventId: string): Promise<void> {
+  try {
+    const supabase = await createSupabaseServiceRole();
+    await (supabase as any)
+      .from("stripe_webhook_events")
+      .update({ status: "complete", completed_at: new Date().toISOString() })
+      .eq("id", eventId);
+  } catch (error) {
+    console.warn("[stripe webhook] idempotency complete failed", error);
+  }
+}
+
+async function releaseStripeWebhookEvent(eventId: string): Promise<void> {
+  try {
+    const supabase = await createSupabaseServiceRole();
+    await (supabase as any).from("stripe_webhook_events").delete().eq("id", eventId);
+  } catch (error) {
+    console.warn("[stripe webhook] idempotency release failed", error);
+  }
+}
+
 /**
  * Extracts customer ID from any Stripe event
  */
@@ -627,6 +668,20 @@ export async function POST(request: NextRequest) {
 
   const dateTime = new Date(event.created * 1000).toISOString();
 
+  let claim: "claimed" | "duplicate";
+  try {
+    claim = await claimStripeWebhookEvent(event.id, event.type);
+  } catch (error) {
+    console.error("[stripe webhook] idempotency claim failed", error);
+    return NextResponse.json(
+      { error: "Webhook processing unavailable" },
+      { status: 500 }
+    );
+  }
+  if (claim === "duplicate") {
+    return NextResponse.json({ status: "duplicate", event: event.type });
+  }
+
   try {
     console.log("Processing Stripe event:", event.type, "at", dateTime);
 
@@ -697,6 +752,7 @@ export async function POST(request: NextRequest) {
     let customerId = extractCustomerId(event) ?? normalizedPaymentIntentCustomerId;
 
     if (!customerId) {
+      await completeStripeWebhookEvent(event.id);
       return NextResponse.json({ status: "success", event: event.type });
     }
 
@@ -708,9 +764,14 @@ export async function POST(request: NextRequest) {
       invalidateUserProductCache(userId);
     }
 
+    await completeStripeWebhookEvent(event.id);
     return NextResponse.json({ status: "success", event: event.type });
   } catch (error) {
     console.error("Webhook error:", error);
-    return NextResponse.json({ status: "error", error });
+    await releaseStripeWebhookEvent(event.id);
+    return NextResponse.json(
+      { status: "error", error: "Webhook processing failed" },
+      { status: 500 }
+    );
   }
 }

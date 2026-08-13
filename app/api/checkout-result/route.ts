@@ -3,6 +3,10 @@
 import { type NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getCheckoutSessionResult } from "@/utils/stripe/actions";
+import { isStripeCheckoutSessionId } from "@/utils/stripe/ids";
+
+const USER_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -12,6 +16,12 @@ export async function GET(request: NextRequest) {
   if (!sessionId) {
     return NextResponse.redirect(
       new URL("/checkout-canceled?error=missing_session_id", request.url)
+    );
+  }
+
+  if (!isStripeCheckoutSessionId(sessionId)) {
+    return NextResponse.redirect(
+      new URL("/checkout-canceled?error=invalid_session_id", request.url)
     );
   }
 
@@ -95,7 +105,7 @@ export async function GET(request: NextRequest) {
         const subscription = sessionResult.subscription;
         const userId = sessionResult.metadata?.user_id;
 
-        if (userId) {
+        if (userId && USER_ID_RE.test(userId)) {
           // Import and call subscription check to update profile immediately
           const { updateUserProStatus } = await import(
             "@/utils/subscriptions/check-subscription"

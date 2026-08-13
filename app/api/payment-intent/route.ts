@@ -12,6 +12,7 @@ import { resolveActivePromotionCode } from "@/utils/stripe/checkout-discount";
 import {
   discountAmountForEligibleSubtotal,
   eligibleSubtotalForPromotion,
+  STRIPE_ONLY_COUPON_SCOPE,
   type PromotionPricingRow,
 } from '@/utils/promotions/apply-promotion';
 import {
@@ -22,15 +23,7 @@ import {
 import { getAdminEmailsForOrderCopy } from "@/lib/admin-order-email-copy";
 import { findOrCreateCustomer } from "@/utils/stripe/actions";
 import { normalizePurchaseEmail } from "@/utils/stripe/link-purchases-to-user";
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  sale_price?: number;
-  quantity: number;
-  stripe_price_id?: string | null;
-}
+import { repriceShopCartLines, RepriceError, type PricedLine } from "@/utils/checkout/reprice-cart";
 
 const STRIPE_UNAVAILABLE_MSG =
   'Payment service is temporarily unavailable. Please try again later.';
@@ -58,6 +51,21 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // SECURITY: never trust client-supplied prices. Reprice every line from the
+    // products table (with the same active catalog promotion the storefront
+    // shows) and reject unknown/inactive products.
+    let repriced;
+    try {
+      repriced = await repriceShopCartLines(items);
+    } catch (err) {
+      if (err instanceof RepriceError) {
+        return NextResponse.json({ success: false, error: err.message }, { status: err.status });
+      }
+      throw err;
+    }
+    const lines: PricedLine[] = repriced.lines;
+    const catalogPromotionId = repriced.catalogPromotionId;
 
     // Get user session
     const supabase = await createClient();
@@ -108,12 +116,9 @@ export async function POST(request: NextRequest) {
       stripeCustomerId = await findOrCreateCustomer(guestCheckoutEmail);
     }
 
-    // Calculate total amount
-    let totalAmount = items.reduce((sum: number, item: CartItem) => {
-      // Use sale_price if it exists (including 0), otherwise use regular price
-      const price = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
-      return sum + price * item.quantity;
-    }, 0);
+    // Server-computed subtotal (authoritative)
+    const serverSubtotal = repriced.subtotal;
+    let totalAmount = serverSubtotal;
 
     // Apply promotion code discount if provided
     // promotionCodeId can be either a Stripe promotion code ID (promo_xxxxx) or a code string
@@ -121,6 +126,9 @@ export async function POST(request: NextRequest) {
     let appliedPromotionCodeDisplay: string | null = null;
     let appliedPromotionCodeMetadata: string | null = null;
     if (promotionCodeId) {
+      // Service-role client so the promotion row can be resolved even for guests
+      // (RLS restricts anon reads of `promotions`).
+      const adminForPromo = await createSupabaseServiceRole();
       try {
         let promotionCode: Stripe.PromotionCode | null = null;
         
@@ -149,7 +157,7 @@ export async function POST(request: NextRequest) {
           promotionCode = await resolveActivePromotionCode(promotionCodeId);
         }
 
-        if (promotionCode) {
+        if (promotionCode && promotionCode.active !== false) {
           appliedPromotionCodeDisplay = (
             promotionCode.code || String(promotionCodeId)
           ).toUpperCase();
@@ -164,58 +172,81 @@ export async function POST(request: NextRequest) {
                 : couponRef;
 
           if (coupon?.valid) {
-            let dbPromotion: PromotionPricingRow | null = null;
+            let dbPromotion: (PromotionPricingRow & { id?: string }) | null = null;
             try {
-              const { data } = await (supabase as any)
+              // Match on the Stripe coupon id OR the human-facing code column;
+              // the previous single `stripe_coupon_code = coupon.id` lookup
+              // missed rows (fail-open discount on selected-target promos).
+              const codeUpper = (promotionCode.code || "").toUpperCase();
+              const { data } = await (adminForPromo as any)
                 .from('promotions')
-                .select('promotion_target_mode, included_targets, discount_type, discount_value')
-                .eq('stripe_coupon_code', coupon.id)
+                .select('id, promotion_target_mode, included_targets, discount_type, discount_value')
+                .or(
+                  `stripe_coupon_id.eq.${coupon.id},stripe_coupon_code.eq.${coupon.id}` +
+                    (codeUpper ? `,stripe_coupon_code.eq.${codeUpper}` : "")
+                )
                 .maybeSingle();
               if (data) {
-                dbPromotion = data as PromotionPricingRow;
+                dbPromotion = data as PromotionPricingRow & { id?: string };
               }
             } catch (lookupErr) {
               console.warn('[payment-intent] promotions lookup failed', lookupErr);
             }
 
-            const lineItemsForPromo = items.map((item: CartItem) => {
-              const price =
-                item.sale_price !== null && item.sale_price !== undefined
-                  ? item.sale_price
-                  : item.price;
-              return { id: item.id, lineTotal: price * item.quantity };
-            });
+            // Anti-stack: if this coupon corresponds to the same catalog
+            // promotion already merged into unit prices, do not discount again.
+            const alreadyBaked =
+              !!catalogPromotionId &&
+              !!dbPromotion?.id &&
+              dbPromotion.id === catalogPromotionId;
 
-            const eligibleSubtotal = eligibleSubtotalForPromotion(
-              lineItemsForPromo,
-              dbPromotion
-            );
+            if (!alreadyBaked) {
+              const lineItemsForPromo = lines.map((l) => ({
+                id: l.id,
+                lineTotal: l.lineTotal,
+              }));
 
-            if (eligibleSubtotal <= 0) {
-              return NextResponse.json(
-                {
-                  success: false,
-                  error:
-                    'This promotion does not apply to any items in your cart.',
-                },
-                { status: 400 }
+              const eligibleSubtotal = eligibleSubtotalForPromotion(
+                lineItemsForPromo,
+                dbPromotion ?? STRIPE_ONLY_COUPON_SCOPE
               );
+
+              if (eligibleSubtotal <= 0) {
+                return NextResponse.json(
+                  {
+                    success: false,
+                    error:
+                      'This promotion does not apply to any items in your cart.',
+                  },
+                  { status: 400 }
+                );
+              }
+
+              discountAmount = discountAmountForEligibleSubtotal(eligibleSubtotal, coupon);
+              totalAmount = Math.max(0, totalAmount - discountAmount);
             }
-
-            discountAmount = discountAmountForEligibleSubtotal(eligibleSubtotal, coupon);
-            totalAmount = Math.max(0, totalAmount - discountAmount);
-
-            console.log(`✅ Applied discount: $${discountAmount.toFixed(2)} (${coupon.percent_off ? coupon.percent_off + '%' : 'fixed'})`);
-            console.log(`💰 Original total: $${(totalAmount + discountAmount).toFixed(2)}, Final total: $${totalAmount.toFixed(2)}`);
           } else {
-            console.warn('⚠️ Coupon is not valid');
+            // Fail closed: a supplied-but-invalid promo code is an error.
+            return NextResponse.json(
+              { success: false, error: 'Promotion code is invalid or expired.' },
+              { status: 400 }
+            );
           }
         } else {
-          console.warn(`⚠️ Promotion code not found: ${promotionCodeId}`);
+          // Fail closed: a supplied-but-unresolvable promo code is an error.
+          return NextResponse.json(
+            { success: false, error: 'Promotion code is invalid or expired.' },
+            { status: 400 }
+          );
         }
       } catch (error) {
+        // Treat promo failures as hard errors so we never charge the wrong
+        // amount silently (fail closed).
         console.error('Error applying promotion code:', error);
-        // Continue without discount if promo code validation fails
+        return NextResponse.json(
+          { success: false, error: 'Failed to apply promotion code. Please try again.' },
+          { status: 400 }
+        );
       }
     }
 
@@ -230,7 +261,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const productIds = [...new Set((items as CartItem[]).map((i) => i.id).filter(Boolean))] as string[];
+      const productIds = [...new Set(lines.map((i) => i.id).filter(Boolean))] as string[];
       if (productIds.length > 0) {
         const adminSupabase = await createSupabaseServiceRole();
         const normalizedEmail = user.email!.toLowerCase();
@@ -282,7 +313,7 @@ export async function POST(request: NextRequest) {
 
       // Send order confirmation email (same as Stripe webhook for paid orders)
       const email = user.email!;
-      const lineItems: ConfirmationLineItem[] = (items as CartItem[]).map((i) => ({
+      const lineItems: ConfirmationLineItem[] = lines.map((i) => ({
         name: i.name,
         quantity: i.quantity,
         amount: '$0.00',
@@ -355,12 +386,8 @@ export async function POST(request: NextRequest) {
     if (totalAmount > 0 && totalAmount < STRIPE_MINIMUM_AMOUNT) {
       console.log(`⚠️ Order total ($${totalAmount.toFixed(2)}) is below Stripe's minimum of $${STRIPE_MINIMUM_AMOUNT.toFixed(2)}. Charging minimum amount.`);
       totalAmount = STRIPE_MINIMUM_AMOUNT;
-      // Adjust discount amount to reflect the minimum charge
-      discountAmount = Math.max(0, (items.reduce((sum: number, item: CartItem) => {
-        // Use sale_price if it exists (including 0), otherwise use regular price
-        const price = (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price;
-        return sum + price * item.quantity;
-      }, 0)) - totalAmount);
+      // Adjust discount amount to reflect the minimum charge (server subtotal).
+      discountAmount = Math.max(0, serverSubtotal - totalAmount);
     }
 
     // If paymentMethodId provided (saved card), verify it belongs to the customer
@@ -388,13 +415,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Build line items for metadata
-    const lineItems = items.map((item: CartItem) => ({
-      id: item.id,
-      name: item.name,
-      quantity: item.quantity,
-      // Use sale_price if it exists (including 0), otherwise use regular price
-      price: (item.sale_price !== null && item.sale_price !== undefined) ? item.sale_price : item.price,
+    // Build line items for metadata from SERVER-priced lines (entitlements are
+    // later derived from metadata.cart_items, so these must be authoritative).
+    const lineItems = lines.map((l) => ({
+      id: l.id,
+      name: l.name,
+      quantity: l.quantity,
+      price: l.unitPrice,
     }));
 
     // Create Payment Intent with discounted amount

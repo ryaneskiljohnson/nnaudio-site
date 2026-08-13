@@ -2,6 +2,7 @@
 
 import { SubscriptionType } from "@/utils/supabase/types";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { requireSelfOrAdmin } from "@/utils/auth/action-guards";
 import { cancelSubscription } from "./actions";
 import Stripe from "stripe";
 import { stripe } from "./client";
@@ -406,6 +407,9 @@ export async function deleteUserAccount(
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
   "use server";
+
+  // Only the account owner or an admin may delete an account.
+  await requireSelfOrAdmin(userId);
 
   try {
     // Get the Stripe customer ID for this user

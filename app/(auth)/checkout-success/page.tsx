@@ -14,7 +14,7 @@ import {
   shouldFireEvent,
   trackMetaConversion,
 } from "@/utils/analytics";
-import { refreshSubscriptionByCustomerId } from "@/app/actions/checkout";
+import { refreshSubscriptionByCheckoutSession } from "@/app/actions/checkout";
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -166,50 +166,39 @@ function CheckoutSuccessContent() {
     refreshUser();
   }, [refreshUser]); // Run on mount and when refreshUser changes
 
-  // Refresh subscription status by customer ID (works even if not logged in)
+  // Refresh subscription from the Stripe session (works even if not logged in)
   useEffect(() => {
-    const refreshByCustomerId = async () => {
+    const refreshFromSession = async () => {
       if (!sessionId || sessionId === "free-order") return;
 
       try {
-        // Fetch session details to get customer ID
-        const response = await fetch(
-          `/api/checkout-session-details?session_id=${sessionId}`
-        );
-        const data = await response.json();
+        const result = await refreshSubscriptionByCheckoutSession(sessionId);
 
-        if (data.success && data.customerId) {
-          // Call server action to refresh subscription status
-          const result = await refreshSubscriptionByCustomerId(data.customerId);
+        if (result.success) {
+          console.log(
+            "[Checkout Success] Refreshed subscription status",
+            "subscription:",
+            result.subscription
+          );
 
-          if (result.success) {
-            console.log(
-              "[Checkout Success] Refreshed subscription status for customer:",
-              data.customerId,
-              "subscription:",
-              result.subscription
-            );
-
-            // If user is logged in, also refresh their context
-            if (isLoggedIn && refreshUser) {
-              await refreshUser();
-            }
-          } else {
-            console.error(
-              "[Checkout Success] Failed to refresh subscription:",
-              result.error
-            );
+          if (isLoggedIn && refreshUser) {
+            await refreshUser();
           }
+        } else {
+          console.error(
+            "[Checkout Success] Failed to refresh subscription:",
+            result.error
+          );
         }
       } catch (error) {
         console.error(
-          "[Checkout Success] Error refreshing subscription by customer ID:",
+          "[Checkout Success] Error refreshing subscription from session:",
           error
         );
       }
     };
 
-    refreshByCustomerId();
+    refreshFromSession();
   }, [sessionId, isLoggedIn, refreshUser]);
 
   /**
@@ -418,7 +407,7 @@ function CheckoutSuccessContent() {
       });
     } else if (sessionId && sessionId !== "free-order" && !isTrial) {
       // If we have session_id but no value, fetch it from API
-      fetch(`/api/checkout-session-details?session_id=${sessionId}`)
+      fetch(`/api/checkout-session-details?session_id=${encodeURIComponent(sessionId)}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success && data.value !== null) {

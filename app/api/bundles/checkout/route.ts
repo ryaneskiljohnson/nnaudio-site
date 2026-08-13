@@ -9,6 +9,7 @@ import Stripe from "stripe";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { stripe } from "@/utils/stripe/client";
+import { loadTrustedCheckoutIdentity } from "@/utils/stripe/trusted-checkout-identity";
 import { buildStripeCheckoutDiscountFromPromotionRow } from "@/utils/stripe/checkout-discount";
 import {
   ATTRIBUTION_COOKIE_NAME,
@@ -64,7 +65,6 @@ export async function POST(request: NextRequest) {
       bundle_slug,
       tier,
       email,
-      customerId,
     }: {
       bundle_slug: string;
       tier: BundleTier;
@@ -141,16 +141,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const identity = await loadTrustedCheckoutIdentity({
+      email,
+      customerId: typeof body.customerId === "string" ? body.customerId : undefined,
+    });
+
     let resolvedCustomerId: string | undefined;
     let needsDatabaseUpdate = false;
 
-    if (customerId) {
+    if (identity.customerId) {
       try {
-        await stripe.customers.retrieve(customerId);
-        resolvedCustomerId = customerId;
+        await stripe.customers.retrieve(identity.customerId);
+        resolvedCustomerId = identity.customerId;
       } catch {
-        if (email) {
-          resolvedCustomerId = await findOrCreateCustomer(email);
+        if (identity.email) {
+          resolvedCustomerId = await findOrCreateCustomer(identity.email);
           needsDatabaseUpdate = true;
         } else {
           return NextResponse.json(
@@ -162,22 +167,23 @@ export async function POST(request: NextRequest) {
           );
         }
       }
-    } else if (email) {
-      resolvedCustomerId = await findOrCreateCustomer(email);
+    } else if (identity.email) {
+      resolvedCustomerId = await findOrCreateCustomer(identity.email);
+      needsDatabaseUpdate = Boolean(identity.userId);
     } else {
       return NextResponse.json(
-        { error: "Email or customerId is required" },
+        { error: "Email is required" },
         { status: 400 }
       );
     }
 
-    if (needsDatabaseUpdate && resolvedCustomerId && customerId) {
+    if (needsDatabaseUpdate && resolvedCustomerId && identity.userId) {
       try {
         const serviceSupabase = await createSupabaseServiceRole();
         await serviceSupabase
           .from("profiles")
           .update({ customer_id: resolvedCustomerId })
-          .eq("customer_id", customerId);
+          .eq("id", identity.userId);
       } catch (e) {
         console.error("Error updating profile customer_id:", e);
       }

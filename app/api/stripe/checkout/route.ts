@@ -22,6 +22,7 @@ import {
   attributionToStripeMetadata,
   parseAttributionCookie,
 } from "@/utils/marketing/attribution";
+import { loadTrustedCheckoutIdentity } from "@/utils/stripe/trusted-checkout-identity";
 
 /**
  * Map price_id to plan name for Meta tracking
@@ -105,7 +106,6 @@ export async function POST(request: NextRequest) {
     const {
       planType,
       email,
-      customerId,
       collectPaymentMethod = false,
       isPlanChange = false,
     }: {
@@ -116,47 +116,43 @@ export async function POST(request: NextRequest) {
       isPlanChange?: boolean;
     } = body;
 
+    const identity = await loadTrustedCheckoutIdentity({
+      email,
+      customerId: typeof body.customerId === "string" ? body.customerId : undefined,
+    });
+
     let resolved_customer_id: string | undefined;
     let needsDatabaseUpdate = false;
 
-    // If email is provided, find or create customer
-    if (!customerId && email) {
-      resolved_customer_id = await findOrCreateCustomer(email);
-    } else if (customerId) {
-      // Validate that the customer exists in Stripe
+    if (identity.customerId) {
       try {
-        await stripe.customers.retrieve(customerId);
-      resolved_customer_id = customerId;
-      } catch (error: any) {
-        // Customer doesn't exist in Stripe, try to find/create using email
-        console.warn(`Customer ${customerId} not found in Stripe, attempting to find/create using email`);
-        if (email) {
-          resolved_customer_id = await findOrCreateCustomer(email);
-          console.log(`Found/created customer using email: ${resolved_customer_id}`);
-          // Mark that we need to update the database with the new customer_id
+        await stripe.customers.retrieve(identity.customerId);
+        resolved_customer_id = identity.customerId;
+      } catch {
+        if (identity.email) {
+          resolved_customer_id = await findOrCreateCustomer(identity.email);
           needsDatabaseUpdate = true;
         } else {
-          // No email available, return error
           return NextResponse.json({
             url: null,
-            error: `No such customer: '${customerId}'. Please provide an email address.`,
+            error: "Invalid customer. Please provide an email address.",
           }, { status: 400 });
         }
       }
+    } else if (identity.email) {
+      resolved_customer_id = await findOrCreateCustomer(identity.email);
+      needsDatabaseUpdate = Boolean(identity.userId);
     }
 
-    // Update database with new customer_id if needed (for logged-in users)
-    if (needsDatabaseUpdate && resolved_customer_id && customerId) {
+    if (needsDatabaseUpdate && resolved_customer_id && identity.userId) {
       try {
         const supabase = await createSupabaseServiceRole();
         await supabase
           .from("profiles")
           .update({ customer_id: resolved_customer_id })
-          .eq("customer_id", customerId);
-        console.log(`Updated database: replaced ${customerId} with ${resolved_customer_id}`);
+          .eq("id", identity.userId);
       } catch (error) {
         console.error("Error updating customer_id in database:", error);
-        // Continue with checkout even if database update fails
       }
     }
 
@@ -211,8 +207,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Determine if user is signed up (has a customerId, meaning they're logged in)
-    const isSignedUp = !!customerId;
+    const isSignedUp = Boolean(identity.userId);
 
     // Create checkout session with or without customer ID
     const result = await createCheckoutSession(

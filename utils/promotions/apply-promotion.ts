@@ -18,6 +18,19 @@ export type PromotionPricingRow = {
 export const PLAN_TYPES = ["monthly", "annual", "lifetime"] as const;
 export type PlanTypeKey = (typeof PLAN_TYPES)[number];
 
+/**
+ * Synthetic scope for a valid Stripe coupon that is not linked to a
+ * `promotions` row. Callers must pass this explicitly — a `null` promotion
+ * fails closed (eligible subtotal 0) so a missed DB lookup cannot discount
+ * the whole cart.
+ */
+export const STRIPE_ONLY_COUPON_SCOPE: PromotionPricingRow = {
+  promotion_target_mode: "all",
+  included_targets: null,
+  discount_type: "percent",
+  discount_value: 0,
+};
+
 /** @brief Validates UUID in target keys. */
 export const PRODUCT_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -358,7 +371,7 @@ export function eligibleSubtotalForPromotion(
 ): number {
   if (!items.length) return 0;
   if (!promotion) {
-    return items.reduce((s, i) => s + i.lineTotal, 0);
+    return 0;
   }
   if (isAllMode(promotion)) {
     return items.reduce((s, i) => s + i.lineTotal, 0);

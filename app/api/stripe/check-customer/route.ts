@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/utils/stripe/client";
+import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
 
 export async function POST(request: NextRequest) {
   try {
+    // Throttle to limit email/account enumeration.
+    const ip = getClientIp(request);
+    if (!checkRateLimit(`check-customer:${ip}`, 15, 60)) {
+      return NextResponse.json(
+        {
+          exists: false,
+          hasPriorTransactions: false,
+          hasActiveSubscription: false,
+          error: "Too many requests",
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { email }: { email: string } = body;
 
