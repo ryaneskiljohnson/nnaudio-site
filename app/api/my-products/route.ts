@@ -98,10 +98,10 @@ export async function GET(request: NextRequest) {
       (pi) => pi.status === "succeeded"
     );
 
-    // Extract product IDs from order items, excluding refunded orders
+    // Extract product IDs from order items, excluding refunded orders.
+    // Fail closed: missing charge or a charge-lookup error is treated as refunded.
     for (const pi of successfulPayments) {
-      // Check if order is refunded
-      let isRefunded = false;
+      let isRefunded = true;
       if (pi.latest_charge) {
         try {
           const charge = await stripe.charges.retrieve(
@@ -109,13 +109,14 @@ export async function GET(request: NextRequest) {
               ? pi.latest_charge
               : pi.latest_charge.id
           );
-          isRefunded = charge.refunded || charge.amount_refunded === charge.amount;
+          isRefunded =
+            charge.refunded || charge.amount_refunded === charge.amount;
         } catch (error) {
           console.error("Error checking refund status:", error);
+          isRefunded = true;
         }
       }
 
-      // Skip refunded orders
       if (isRefunded) {
         continue;
       }

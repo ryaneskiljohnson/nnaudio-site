@@ -4,7 +4,6 @@ import { createClient } from "@/utils/supabase/server";
 export async function GET() {
   const supabase = await createClient();
 
-  // Get the authenticated user using proper authentication
   const {
     data: { user },
     error: authError,
@@ -19,22 +18,22 @@ export async function GET() {
     );
   }
 
-  // Get user profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select(
+      "id, first_name, last_name, full_name, username, website, avatar_url, subscription, subscription_expiration, subscription_source"
+    )
     .eq("id", user.id)
     .single();
 
-  // Check if user is admin
   const { data: adminCheck, error: adminError } = await supabase
     .from("admins")
-    .select("*")
+    .select("id")
     .eq("user", user.id)
-    .single();
+    .maybeSingle();
 
-  // Handle case where no admin record exists (PGRST116 = no rows returned)
-  const isAdmin = adminError && adminError.code === 'PGRST116' ? false : !!adminCheck;
+  const isAdmin =
+    adminError && adminError.code === "PGRST116" ? false : !!adminCheck;
 
   return NextResponse.json({
     user: {
@@ -42,7 +41,6 @@ export async function GET() {
       email: user.email,
       profile,
       isAdmin,
-      adminRecord: adminCheck,
     },
   });
 }

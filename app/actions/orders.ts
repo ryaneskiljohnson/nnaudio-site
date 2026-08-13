@@ -123,11 +123,14 @@ export async function getOrders(): Promise<{
       console.log("[Orders] Search API not available");
     }
 
-    // Method 3: If we have an email, find customers by email and get their payment intents
-    if (profile?.email) {
+    // Method 3: Search Stripe customers by the auth email (not the writable
+    // profiles.email column) so a forged profile email cannot fan-out another
+    // customer's payment intents into this account.
+    const grantEmail = user.email || undefined;
+    if (grantEmail) {
       try {
         const customers = await stripe.customers.list({
-          email: profile.email,
+          email: grantEmail,
           limit: 10,
         });
         

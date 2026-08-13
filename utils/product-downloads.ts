@@ -12,6 +12,48 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const PRODUCT_DOWNLOADS_BUCKET = "product-downloads";
 
 /**
+ * @brief Whether a URL is safe for the server to issue an outbound HEAD to.
+ * Only https URLs whose host is the Supabase project host, the site host, or a
+ * configured allowlisted host are permitted — this blocks SSRF to internal
+ * IPs / cloud metadata endpoints from admin-supplied download URLs.
+ */
+export function isAllowedFetchUrl(rawUrl: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:") {
+    return false;
+  }
+
+  const allowed = new Set<string>();
+  for (const candidate of [
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+  ]) {
+    if (candidate) {
+      try {
+        allowed.add(new URL(candidate).host.toLowerCase());
+      } catch {
+        // ignore
+      }
+    }
+  }
+  (process.env.PRODUCT_DOWNLOAD_ALLOWED_HOSTS ?? "")
+    .split(",")
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean)
+    .forEach((h) => allowed.add(h));
+
+  const host = parsed.host.toLowerCase();
+  return [...allowed].some(
+    (a) => host === a || host.endsWith(`.${a}`) || host.endsWith(".supabase.co")
+  );
+}
+
+/**
  * @brief Format product download file size for display (KB or MB, or GB if large).
  * @param bytes Size in bytes, or null/undefined
  * @returns Human-readable string e.g. "512 KB", "36.07 MB", or "" when no size
@@ -66,8 +108,9 @@ export async function getFileSizeFromStorage(
  * @returns File size in bytes or null if HEAD fails or no Content-Length
  */
 export async function getFileSizeFromUrl(url: string): Promise<number | null> {
+  if (!isAllowedFetchUrl(url)) return null;
   try {
-    const res = await fetch(url, { method: "HEAD" });
+    const res = await fetch(url, { method: "HEAD", redirect: "error" });
     if (!res.ok) return null;
     const contentLength = res.headers.get("content-length");
     if (contentLength == null) return null;
@@ -87,8 +130,9 @@ export async function getFileMetadataFromUrl(url: string): Promise<{
   size: number | null;
   lastModified: string | null;
 }> {
+  if (!isAllowedFetchUrl(url)) return { size: null, lastModified: null };
   try {
-    const res = await fetch(url, { method: "HEAD" });
+    const res = await fetch(url, { method: "HEAD", redirect: "error" });
     if (!res.ok) return { size: null, lastModified: null };
     const contentLength = res.headers.get("content-length");
     const lastModified = res.headers.get("last-modified");

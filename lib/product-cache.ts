@@ -81,12 +81,15 @@ export async function invalidateUserProductCacheByEmail(
   email: string
 ): Promise<void> {
   const { createSupabaseServiceRole } = await import("@/utils/supabase/service");
+  const { escapeIlikeExactPattern } = await import(
+    "@/utils/supabase/ilike-escape"
+  );
   const supabase = await createSupabaseServiceRole();
   const { data } = await supabase
     .from("profiles")
     .select("id")
-    .eq("email", email.toLowerCase())
-    .single();
+    .ilike("email", escapeIlikeExactPattern(email.toLowerCase().trim()))
+    .maybeSingle();
   if (data?.id) {
     invalidateUserProductCache(data.id);
   }

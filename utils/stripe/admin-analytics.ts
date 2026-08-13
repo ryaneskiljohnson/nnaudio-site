@@ -1,5 +1,6 @@
 "use server";
 
+import { requireAdminAction } from "@/utils/auth/action-guards";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { getNormalizedEmailsWithUltimateBundleProductGrants } from "@/lib/ultimate-elite-bundles";
 import { SubscriptionType } from "@/utils/supabase/types";
@@ -90,6 +91,7 @@ export interface DetailedUserData extends UserData {
  * @deprecated Use individual stat functions instead for better performance
  */
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
+  await requireAdminAction();
   try {
     const supabase = await createSupabaseServiceRole();
 
@@ -181,6 +183,7 @@ export async function getTotalUsers(): Promise<{
   freeUsers: number;
   activeSubscriptions: number;
 }> {
+  await requireAdminAction();
   try {
     const supabase = await createSupabaseServiceRole();
 
@@ -226,6 +229,7 @@ export async function getActiveSubscriptions(): Promise<{
   monthlySubscribers: number;
   annualSubscribers: number;
 }> {
+  await requireAdminAction();
   try {
     const supabase = await createSupabaseServiceRole();
 
@@ -264,6 +268,7 @@ export async function getActiveSubscriptions(): Promise<{
  * Fetches lifetime customers count
  */
 export async function getLifetimeCustomers(): Promise<number> {
+  await requireAdminAction();
   try {
     const supabase = await createSupabaseServiceRole();
 
@@ -290,6 +295,7 @@ export async function getLifetimeCustomers(): Promise<number> {
  * For annual subscriptions: (annual price / 12) to get monthly equivalent
  */
 export async function getMRR(): Promise<number> {
+  await requireAdminAction();
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       console.warn("STRIPE_SECRET_KEY not set, returning 0 for MRR");
@@ -354,6 +360,7 @@ export async function getMRR(): Promise<number> {
  * Calculates revenue from January 1st of the current year to today
  */
 export async function getYTDSales(): Promise<number> {
+  await requireAdminAction();
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       console.warn("STRIPE_SECRET_KEY not set, returning 0 for YTD sales");
@@ -410,6 +417,7 @@ export async function getYTDSales(): Promise<number> {
  * This is much more efficient than querying invoices and charges separately
  */
 export async function getMonthlyRevenue(): Promise<number> {
+  await requireAdminAction();
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       console.warn(
@@ -474,6 +482,7 @@ export interface RevenueSummaries {
 }
 
 export async function getRevenueSummaries(): Promise<RevenueSummaries> {
+  await requireAdminAction();
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       return { today: 0, last7Days: 0, last30Days: 0 };
@@ -534,6 +543,7 @@ export async function getRevenueSummaries(): Promise<RevenueSummaries> {
  * This is much more efficient than querying invoices and charges separately
  */
 export async function getLifetimeRevenue(): Promise<number> {
+  await requireAdminAction();
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       console.warn(
@@ -585,6 +595,7 @@ export async function getLifetimeRevenue(): Promise<number> {
  * Fetches trial users count
  */
 export async function getTrialUsers(): Promise<number> {
+  await requireAdminAction();
   try {
     const supabase = await createSupabaseServiceRole();
 
@@ -621,6 +632,7 @@ export async function getTrialUsersByType(): Promise<{
   sevenDayConversionRate: number;
   fourteenDayConversionRate: number;
 }> {
+  await requireAdminAction();
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       console.warn("STRIPE_SECRET_KEY not set, returning 0 for trial breakdown");
@@ -840,6 +852,7 @@ export async function getTrialUsersByType(): Promise<{
  * Returns the average in days
  */
 export async function getAverageSubscriptionLifespan(): Promise<number> {
+  await requireAdminAction();
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       console.warn("STRIPE_SECRET_KEY not set, returning 0 for average subscription lifespan");
@@ -924,6 +937,7 @@ export async function getAverageSubscriptionLifespan(): Promise<number> {
  * Where Total = Active + Canceled
  */
 export async function getChurnRate(): Promise<number> {
+  await requireAdminAction();
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       console.warn("STRIPE_SECRET_KEY not set, returning 0 for churn rate");
@@ -987,6 +1001,7 @@ export async function getChurnRate(): Promise<number> {
  * Fetches admin users count
  */
 export async function getAdminUsers(): Promise<number> {
+  await requireAdminAction();
   try {
     const supabase = await createSupabaseServiceRole();
 
@@ -1013,6 +1028,7 @@ export async function getAdminUsers(): Promise<number> {
 export async function getRecentActivity(
   limit: number = 10
 ): Promise<AdminActivity[]> {
+  await requireAdminAction();
   try {
     const activities: AdminActivity[] = [];
 
@@ -1198,6 +1214,7 @@ export async function getUsersForCRMCount(
   searchTerm?: string,
   subscriptionFilter?: string
 ): Promise<number> {
+  await requireAdminAction();
   try {
     const supabase = await createSupabaseServiceRole();
 
@@ -1316,6 +1333,7 @@ export async function getAllUsersForCRM(
 ): Promise<{
   users: UserData[];
 }> {
+  await requireAdminAction();
   try {
     const supabase = await createSupabaseServiceRole();
 
@@ -1655,6 +1673,7 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
   totalSpent: Record<string, number>;
   orderCount: Record<string, number>;
 }> {
+  await requireAdminAction();
   const lastActiveMap: Record<string, string> = {};
   const totalSpentMap: Record<string, number> = {};
   const orderCountMap: Record<string, number> = {};
@@ -1863,6 +1882,7 @@ export async function getMonthlyRevenueTrend(months: number = 12): Promise<{
   labels: string[];
   data: number[];
 }> {
+  await requireAdminAction();
   try {
     const supabase = await createSupabaseServiceRole();
 
@@ -1996,6 +2016,7 @@ export async function getAnalyticsTimeSeries(
   sevenDayTrials: number;
   fourteenDayTrials: number;
 }>> {
+  await requireAdminAction();
   try {
     if (!process.env.STRIPE_SECRET_KEY) {
       console.warn("STRIPE_SECRET_KEY not set, returning empty analytics data");

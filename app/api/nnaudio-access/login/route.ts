@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { Database } from "@/database.types";
 import { linkPurchasesToUserByEmail } from "@/utils/stripe/link-purchases-to-user";
+import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
 
 /**
  * @fileoverview Login endpoint for NNAudio Access desktop app
@@ -26,6 +27,15 @@ function formatError(code: string, message: string): string {
 
 export async function POST(request: NextRequest) {
   try {
+    // Throttle credential-stuffing / brute-force attempts (per IP).
+    const ip = getClientIp(request);
+    if (!checkRateLimit(`nnaudio-login:${ip}`, 10, 60)) {
+      return new Response(
+        formatError("too_many_requests", "Too many login attempts. Please try again later."),
+        { status: 429 }
+      );
+    }
+
     const body = await request.formData();
     const username = body.get("username")?.toString() || "";
     const password = body.get("password")?.toString() || "";

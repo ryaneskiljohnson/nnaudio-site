@@ -3,6 +3,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { Profile } from "@/utils/supabase/types";
+import { Database } from "@/database.types";
+import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
 
 interface ProfileWithEmail extends Profile {
   email: string;
@@ -41,24 +43,47 @@ const err = (code: string, message: string): NextResponse<UserResponse> => {
   });
 };
 
-const supabase = createServerClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  {
-    cookies: {
-      getAll() {
-        return [];
+/**
+ * Per-request client. A module-level client plus `setSession` can leak
+ * one caller's tokens into a concurrent refresh.
+ */
+function createTokenClient() {
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return [];
+        },
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        setAll(_cookiesToSet) {},
       },
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      setAll(_cookiesToSet) {},
-    },
-  }
-);
+    }
+  );
+}
 
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<UserResponse>> {
   try {
+    const clientIp = getClientIp(request);
+    if (!checkRateLimit(`auth-refresh:${clientIp}`, 30, 60)) {
+      return NextResponse.json(
+        {
+          user: null,
+          access_token: null,
+          refresh_token: null,
+          expires_at: null,
+          error: {
+            code: "rate_limited",
+            message: "Too many requests. Please try again later.",
+          },
+        },
+        { status: 429 }
+      );
+    }
+
     const body = await request.formData();
     const access_token = body.get("access_token")?.toString();
     const refresh_token = body.get("refresh_token")?.toString();
@@ -68,6 +93,8 @@ export async function POST(
         "invalid_token",
         "access_token and refresh_token are required"
       );
+
+    const supabase = createTokenClient();
 
     // First try to use the existing session
     let session;

@@ -91,13 +91,17 @@ export async function resolveGrantEmail(
   userId: string,
   profileEmail: string | null | undefined
 ): Promise<string | null> {
-  const fromProfile = profileEmail?.trim().toLowerCase();
-  if (fromProfile) return fromProfile;
-
+  // Prefer the authoritative auth.users email over profiles.email, which is
+  // user-writable and therefore must not be trusted for entitlement lookups.
   const { data, error } = await adminSupabase.auth.admin.getUserById(userId);
-  if (error || !data.user?.email) return null;
-  const e = data.user.email.trim().toLowerCase();
-  return e.length > 0 ? e : null;
+  if (!error && data.user?.email) {
+    const e = data.user.email.trim().toLowerCase();
+    if (e.length > 0) return e;
+  }
+
+  // Fall back to profile email only if the auth lookup failed.
+  const fromProfile = profileEmail?.trim().toLowerCase();
+  return fromProfile && fromProfile.length > 0 ? fromProfile : null;
 }
 
 /**
@@ -294,7 +298,9 @@ export async function getAccessibleProductIds(
   t0 = Date.now();
   const refundChecks = successfulPayments.map(async (pi) => {
     const charge = pi.latest_charge;
-    if (!charge) return { pi, isRefunded: false };
+    // Fail closed: if we cannot determine refund status, deny access rather
+    // than grant it (a refunded/unknown charge must not unlock downloads).
+    if (!charge) return { pi, isRefunded: true };
     const chargeObj =
       typeof charge === "object" && charge !== null ? charge : null;
     if (chargeObj) {
@@ -315,7 +321,8 @@ export async function getAccessibleProductIds(
           retrieved.refunded || retrieved.amount_refunded === retrieved.amount,
       };
     } catch {
-      return { pi, isRefunded: false };
+      // Could not verify refund status → fail closed (deny).
+      return { pi, isRefunded: true };
     }
   });
   const refundResults = await Promise.allSettled(refundChecks);

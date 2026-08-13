@@ -2,7 +2,7 @@
  * @fileoverview Returns NFR (user_management.pro) and elite (notes) for the authenticated user.
  * @module app/api/user/nfr-status
  *
- * @returns JSON `{ hasNfr, hasElite, notes, error }`
+ * @returns JSON `{ hasNfr, hasElite, error }` — never returns admin `notes`.
  * @status 200 Success
  * @status 401 Not authenticated
  * @status 400 No email on session
@@ -46,14 +46,14 @@ export async function GET() {
 
     let { data, error } = await (serviceSupabase as any)
       .from("user_management")
-      .select("pro, notes, user_email")
+      .select("pro, notes")
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (!data && (error?.code === "PGRST116" || !error)) {
       const emailMatch = await (serviceSupabase as any)
         .from("user_management")
-        .select("pro, notes, user_email")
+        .select("pro, notes")
         .eq("user_email", normalizedEmail)
         .maybeSingle();
       data = emailMatch.data;
@@ -86,16 +86,9 @@ export async function GET() {
     const notes = data.notes?.toLowerCase() || "";
     const hasEliteAccess = notes.includes("elite");
 
-    console.log(`[NFR Status] Found record for ${data.user_email}:`, {
-      hasPro: data.pro,
-      hasElite: hasEliteAccess,
-      notes: data.notes,
-    });
-
     return NextResponse.json({
       hasNfr: data.pro ?? false,
       hasElite: hasEliteAccess,
-      notes: data.notes ?? null,
       error: null,
     });
   } catch (error) {

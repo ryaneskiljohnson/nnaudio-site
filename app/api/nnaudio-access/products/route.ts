@@ -44,11 +44,13 @@ export async function POST(request: NextRequest) {
       profile?.email
     );
 
-    console.log(`[NNAudio Access Products] User ${userId} profile:`, {
-      customer_id: profile?.customer_id,
-      email: profile?.email,
-      grantEmail,
-    });
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[NNAudio Access Products] User ${userId} profile:`, {
+        customer_id: profile?.customer_id,
+        email: profile?.email,
+        grantEmail,
+      });
+    }
 
     let productIds = new Set<string>();
 
@@ -173,10 +175,13 @@ export async function POST(request: NextRequest) {
     );
     console.log(`[NNAudio Access Products] Successful payments: ${successfulPayments.length}`);
 
-    // Check refund status for all payments in parallel with timeouts
+    // Check refund status for all payments in parallel with timeouts.
+    // Fail CLOSED: if refund status cannot be determined, treat the payment as
+    // refunded so it never unlocks downloads (a refunded/unknown charge must
+    // not grant access).
     const refundChecks = successfulPayments.map(async (pi) => {
-      if (!pi.latest_charge) return { pi, isRefunded: false };
-      
+      if (!pi.latest_charge) return { pi, isRefunded: true };
+
       try {
         const charge = await withTimeout(
           stripe.charges.retrieve(
@@ -189,7 +194,7 @@ export async function POST(request: NextRequest) {
         return { pi, isRefunded: charge.refunded || charge.amount_refunded === charge.amount };
       } catch (error) {
         console.error("[NNAudio Access Products] Error/timeout checking refund status:", error);
-        return { pi, isRefunded: false }; // Assume not refunded on error
+        return { pi, isRefunded: true }; // Could not verify → deny (fail closed)
       }
     });
 

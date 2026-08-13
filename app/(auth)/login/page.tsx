@@ -236,8 +236,9 @@ function Login() {
   const auth = useAuth() || {};
   const router = useRouter();
 
-  // Get redirect parameter from URL
-  const redirectTo = searchParams.get("redirect");
+  // Proxy sets `redirectTo`; the private layout sets `redirect`. Accept both.
+  const redirectTo =
+    searchParams.get("redirectTo") || searchParams.get("redirect");
 
   // Initialize translations
   const { t } = useTranslation();

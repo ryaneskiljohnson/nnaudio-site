@@ -18,6 +18,7 @@ import {
   parseAttributionCookie,
 } from "@/utils/marketing/attribution";
 import { ensureSubscriberForUser } from "@/utils/email-campaigns/ensure-subscriber-for-user";
+import { requireSelfOrAdmin } from "@/utils/auth/action-guards";
 
 /**
  * @brief Signs up a user, creates a Stripe customer, and stores subscriber and
@@ -58,12 +59,23 @@ export async function signUpWithStripe(
       },
     });
 
-    // Create subscriber for the new user if signup was successful
-    if (authResponse.data.user && !authResponse.error) {
+    // On projects with email confirmation, Supabase returns a user object with
+    // an EMPTY `identities` array (and no error) when the email is ALREADY
+    // registered. Running purchase-linking / subscriber side effects for that
+    // obfuscated user lets an attacker rebind another account's Stripe metadata
+    // and marketing subscriber. Only run side effects for a genuinely new user.
+    const signedUpUser = authResponse.data.user;
+    const isNewUser =
+      !!signedUpUser &&
+      !authResponse.error &&
+      Array.isArray(signedUpUser.identities) &&
+      signedUpUser.identities.length > 0;
+
+    if (isNewUser && signedUpUser) {
       try {
         await linkPurchasesToUserByEmail({
-          userId: authResponse.data.user.id,
-          email: authResponse.data.user.email || email,
+          userId: signedUpUser.id,
+          email: signedUpUser.email || email,
           preferredCustomerId: customer_id,
         });
       } catch (linkError) {
@@ -72,8 +84,8 @@ export async function signUpWithStripe(
 
       try {
         const subscriberError = await ensureSubscriberForUser({
-          userId: authResponse.data.user.id,
-          email: authResponse.data.user.email || email,
+          userId: signedUpUser.id,
+          email: signedUpUser.email || email,
           source: getSubscriberSource(attribution),
           tags: [
             "free-user",
@@ -85,7 +97,7 @@ export async function signUpWithStripe(
             first_name: first_name || "",
             last_name: last_name || "",
             subscription: "none",
-            auth_created_at: authResponse.data.user.created_at,
+            auth_created_at: signedUpUser.created_at,
             profile_updated_at: new Date().toISOString(),
             ...attributionToSubscriberMetadata(attribution),
           },
@@ -139,6 +151,7 @@ export async function linkPurchasesForSessionUser(): Promise<void> {
 export async function fetchProfile(
   id: string
 ): Promise<{ profile: Profile | null; error: PostgrestError | null }> {
+  await requireSelfOrAdmin(id);
   const supabase = await createClient();
 
   const { data: profile, error } = await supabase
@@ -153,6 +166,7 @@ export async function fetchProfile(
 export async function fetchIsAdmin(
   id: string
 ): Promise<{ is_admin: boolean; error: PostgrestError | null }> {
+  await requireSelfOrAdmin(id);
   const supabase = await createClient();
 
   const { data, error } = await supabase

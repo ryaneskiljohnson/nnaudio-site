@@ -28,7 +28,7 @@ import { ensureSubscriberForUser } from "@/utils/email-campaigns/ensure-subscrib
 export async function POST(request: NextRequest) {
   try {
     const clientIp = getClientIp(request);
-    if (!checkRateLimit(clientIp, 10, 60)) {
+    if (!checkRateLimit(`auth-register:${clientIp}`, 10, 60)) {
       return NextResponse.json(
         { success: false, error: "Too many registration attempts. Please try again later." },
         { status: 429 }
@@ -96,12 +96,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create subscriber for the new user
-    if (authData.user) {
+    // Only run side effects for a genuinely new user. A duplicate signup for an
+    // already-registered email returns a user with an empty `identities` array
+    // (and no error); running link/subscriber side effects for it would let an
+    // attacker rebind another account's purchases/subscriber.
+    const isNewUser =
+      !!authData.user &&
+      Array.isArray(authData.user.identities) &&
+      authData.user.identities.length > 0;
+
+    if (isNewUser) {
       try {
         await linkPurchasesToUserByEmail({
-          userId: authData.user.id,
-          email: authData.user.email || email,
+          userId: authData.user!.id,
+          email: authData.user!.email || email,
           preferredCustomerId: customer_id,
         });
       } catch (linkError) {
@@ -112,8 +120,8 @@ export async function POST(request: NextRequest) {
 
       try {
         const subscriberError = await ensureSubscriberForUser({
-          userId: authData.user.id,
-          email: authData.user.email || email,
+          userId: authData.user!.id,
+          email: authData.user!.email || email,
           source: getSubscriberSource(attribution),
           tags: [
             "free-user",
@@ -125,7 +133,7 @@ export async function POST(request: NextRequest) {
             first_name: name?.split(" ")[0] || "",
             last_name: name?.split(" ").slice(1).join(" ") || "",
             subscription: "none",
-            auth_created_at: authData.user.created_at,
+            auth_created_at: authData.user!.created_at,
             profile_updated_at: new Date().toISOString(),
             ...attributionToSubscriberMetadata(attribution),
           },
@@ -144,7 +152,9 @@ export async function POST(request: NextRequest) {
       success: true,
       message:
         "Registration successful! Please check your email to verify your account.",
-      user: authData.user,
+      user: authData.user
+        ? { id: authData.user.id, email: authData.user.email }
+        : null,
     });
   } catch {
     return NextResponse.json(

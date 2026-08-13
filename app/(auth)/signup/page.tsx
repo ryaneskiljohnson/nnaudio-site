@@ -307,7 +307,8 @@ function SearchParamsHandler({
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const redirect = searchParams?.get("redirect");
+    const redirect =
+      searchParams?.get("redirectTo") || searchParams?.get("redirect");
     if (redirect) {
       const safeRedirect = getSafeRedirectUrl(redirect);
       if (safeRedirect) setRedirectAfterLogin(safeRedirect);

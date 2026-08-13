@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from '@/utils/supabase/server';
+import { escapeIlikeContainsForOr } from '@/utils/supabase/ilike-escape';
 
 export interface GetVideosParams {
   category?: string;
@@ -75,7 +76,8 @@ export async function getVideos(
     }
 
     if (params?.search) {
-      query = query.or(`title.ilike.%${params.search}%,description.ilike.%${params.search}%`);
+      const safeSearch = escapeIlikeContainsForOr(params.search);
+      query = query.or(`title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`);
     }
 
     const { data: videos, error } = await query;

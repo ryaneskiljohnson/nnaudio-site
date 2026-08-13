@@ -51,7 +51,7 @@ export async function POST(
 ): Promise<NextResponse<LoginResponse>> {
   try {
     const clientIp = getClientIp(request);
-    if (!checkRateLimit(clientIp, 10, 60)) {
+    if (!checkRateLimit(`auth-login:${clientIp}`, 10, 60)) {
       return NextResponse.json(
         {
           user: null,

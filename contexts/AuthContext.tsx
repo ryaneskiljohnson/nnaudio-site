@@ -367,15 +367,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateProfile = async (profile: Profile) => {
     if (user) {
+      // SECURITY: only allow the user to update non-privileged, self-editable
+      // columns. Never forward entitlement/billing columns (subscription,
+      // subscription_expiration, customer_id, trial_expiration, installer
+      // timestamps, email, etc.) — those are managed by Stripe webhooks /
+      // service-role code, and profiles RLS also enforces this at the DB.
+      const ALLOWED_PROFILE_COLUMNS = [
+        "first_name",
+        "last_name",
+        "full_name",
+        "username",
+        "website",
+        "avatar_url",
+      ] as const;
+
+      const safeUpdate: Record<string, unknown> = {};
+      for (const key of ALLOWED_PROFILE_COLUMNS) {
+        if (key in (profile as Record<string, unknown>)) {
+          safeUpdate[key] = (profile as Record<string, unknown>)[key];
+        }
+      }
+
       const { error } = await supabase
         .from("profiles")
-        .update(profile)
+        .update(safeUpdate)
         .eq("id", profile.id!);
       if (error) {
         return { error: error.message };
       }
 
-      setUser({ ...user, profile });
+      // Reflect only the fields we actually persisted.
+      setUser({ ...user, profile: { ...user.profile, ...safeUpdate } as Profile });
       return { error: null };
     }
 

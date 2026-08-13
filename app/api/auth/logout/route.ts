@@ -2,6 +2,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { Database } from "@/database.types";
 
 type LogoutResponse = {
   success: boolean;
@@ -22,19 +23,25 @@ const err = (code: string, message: string): NextResponse<LogoutResponse> => {
   });
 };
 
-const supabase = createServerClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  {
-    cookies: {
-      getAll() {
-        return [];
+/**
+ * Per-request client. A module-level client plus `setSession` can leak
+ * one caller's tokens into a concurrent logout.
+ */
+function createTokenClient() {
+  return createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return [];
+        },
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        setAll(_cookiesToSet) {},
       },
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      setAll(_cookiesToSet) {},
-    },
-  }
-);
+    }
+  );
+}
 
 export async function POST(
   request: NextRequest
@@ -53,6 +60,8 @@ export async function POST(
         "invalid_token",
         "access_token and refresh_token are required"
       );
+
+    const supabase = createTokenClient();
 
     // Set the session in supabase first
     const { error: setSessionError } = await supabase.auth.setSession({
