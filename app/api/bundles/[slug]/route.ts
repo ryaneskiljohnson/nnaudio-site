@@ -211,7 +211,7 @@ export async function GET(
         bundle: {
           ...bundle,
           products: validProducts,
-          bundleProducts: bundleProducts || [],
+          ...(restrictActive ? {} : { bundleProducts: bundleProducts || [] }),
           totalValue,
           pricing,
           isSubscriptionBundle,
@@ -224,7 +224,9 @@ export async function GET(
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          "Cache-Control": restrictActive
+            ? "public, s-maxage=60, stale-while-revalidate=300"
+            : "private, no-store",
         },
       }
     );

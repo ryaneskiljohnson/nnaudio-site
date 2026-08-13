@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isAuthorizedCronRequest } from "@/utils/auth/require-cron";
 import { sendEmail, sendBatchEmail } from "@/utils/email";
 import { injectEmailTracking, createSendRecord } from "@/utils/email-tracking";
 import { personalizeContent } from "@/utils/email-campaigns/email-generation";
@@ -157,37 +158,15 @@ export async function POST(request: NextRequest) {
   lastCronExecution = executionTime;
 
   try {
-    // Verify the request is authorized (Vercel cron, AWS cron, or manual with secret)
-    const authHeader = request.headers.get("authorization")?.trim() ?? null;
-    const vercelSecret = request.headers.get("x-vercel-cron-signature")?.trim() ?? null;
-    const envCron = (process.env.CRON_SECRET ?? "").trim();
-    const cronSecret =
-      envCron ||
-      (process.env.NODE_ENV === "production" ? "" : "your-secret-key");
-
-    // Allow Vercel cron jobs, AWS cron jobs with API key, or manual calls with API key
-    const isVercelCron = Boolean(vercelSecret);
-    const isApiKeyCron =
-      Boolean(cronSecret) &&
-      authHeader === `Bearer ${cronSecret}`;
-    const isAuthorized = isVercelCron || isApiKeyCron;
-
-    if (!isAuthorized) {
-      console.log(
-        "❌ Unauthorized cron job request - missing vercel cron signature or API key"
-      );
-      console.log(
-        "❌ Expected Authorization header:",
-        cronSecret ? `Bearer ${cronSecret.slice(0, 8)}...` : "(none — set CRON_SECRET in production)"
-      );
-      console.log("❌ Received Authorization header:", authHeader || "none");
+    // Authorized ONLY via a constant-time match of `Authorization: Bearer ${CRON_SECRET}`.
+    // Vercel Cron and internal callers both send this header. Header-presence checks
+    // (x-vercel-cron-signature) and hardcoded fallback secrets are not accepted.
+    if (!isAuthorizedCronRequest(request)) {
+      console.log("❌ Unauthorized cron job request - invalid or missing bearer secret");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log(
-      "✅ Authorized request:",
-      isVercelCron ? "Vercel Cron" : "API Key Cron"
-    );
+    console.log("✅ Authorized scheduled-campaign request");
 
     // Use admin client for cron jobs (bypasses RLS and doesn't need user authentication)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -991,32 +970,8 @@ async function getSubscribersForAudiences(
   }
 }
 
-// Allow GET requests for testing purposes and showing status
-export async function GET() {
-  const now = new Date().toISOString();
-
-  // Calculate time since last execution
-  let timeSinceLastExecution = null;
-  if (lastCronExecution) {
-    const lastTime = new Date(lastCronExecution);
-    const currentTime = new Date();
-    const diffMs = currentTime.getTime() - lastTime.getTime();
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    timeSinceLastExecution = diffMinutes;
-  }
-
-  return NextResponse.json({
-    message: "Scheduled campaign processor status",
-    currentTime: now,
-    lastExecutionTime: lastCronExecution,
-    timeSinceLastExecution: timeSinceLastExecution
-      ? `${timeSinceLastExecution} minutes ago`
-      : "Never executed",
-    cronSchedule: "Every minute",
-    nextExpectedExecution: lastCronExecution
-      ? new Date(
-          new Date(lastCronExecution).getTime() + 1 * 60 * 1000
-        ).toISOString()
-      : "Unknown",
-  });
+// Vercel Cron invokes scheduled routes via GET; process the queue rather than
+// returning a status-only payload that never sends mail.
+export async function GET(request: NextRequest) {
+  return POST(request);
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAuthorizedCronRequest } from '@/utils/auth/require-cron';
 
 // Initialize Supabase with service role for automation processing
 const supabase = createClient(
@@ -39,11 +40,8 @@ export async function POST(request: NextRequest) {
   console.log('🤖 Automation Engine: Processing events...');
   
   try {
-    // Verify request authorization
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET || 'automation-engine-secret';
-    
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    // Authorized only via a constant-time match of `Authorization: Bearer ${CRON_SECRET}`.
+    if (!isAuthorizedCronRequest(request)) {
       console.log('❌ Unauthorized automation engine request');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -425,4 +423,9 @@ async function enrollSubscriberInAutomation(
       error: error instanceof Error ? error.message : 'Unknown enrollment error'
     };
   }
+}
+
+/** Vercel Cron invokes scheduled routes via GET. */
+export async function GET(request: NextRequest) {
+  return POST(request);
 } 

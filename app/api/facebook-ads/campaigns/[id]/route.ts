@@ -3,6 +3,7 @@ import { createFacebookAPI, CAMPAIGN_OBJECTIVES, FACEBOOK_TOKEN_COOKIE_NAME, FAC
 import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 import type { FacebookCampaign } from '@/utils/facebook/api';
 import { applyDailyBudgetGuardrails, getGrowthGuardrailsFromEnv } from '@/utils/growth/guardrails';
+import { requireAdminResponse } from "@/utils/auth/require-admin";
 
 function resolveFacebookContext(request: NextRequest) {
   const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
@@ -91,6 +92,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const { id: campaignId } = await params;
     
     if (isFacebookAdsMockEnabled()) {
@@ -235,6 +241,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const { id: campaignId } = await params;
     const body = await request.json();
     
@@ -381,6 +392,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const { id: campaignId } = await params;
     
     if (isFacebookAdsMockEnabled()) {

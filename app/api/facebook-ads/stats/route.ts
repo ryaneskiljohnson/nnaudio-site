@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
 import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
+import { requireAdminResponse } from "@/utils/auth/require-admin";
 
 function parseNum(s: string | undefined): number {
   if (s == null || s === '') return 0;
@@ -15,6 +16,11 @@ function parseNum(s: string | undefined): number {
 
 export async function GET(request: NextRequest) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     if (isFacebookAdsMockEnabled()) {
       const mockStats = {
         totalCampaigns: 8,

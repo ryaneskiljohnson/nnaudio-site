@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCronRequest } from "@/utils/auth/require-cron";
 
 // Force Node.js runtime (not Edge) since scheduler uses node-cron which requires Node.js APIs
 export const runtime = 'nodejs';
@@ -17,7 +18,10 @@ function ensureStarted() {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!isAuthorizedCronRequest(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     ensureStarted();
     const status = emailScheduler.getStatus();
@@ -42,6 +46,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isAuthorizedCronRequest(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     ensureStarted();
     const body = await request.json();

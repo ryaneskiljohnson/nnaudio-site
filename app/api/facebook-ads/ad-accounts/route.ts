@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPITokenOnly, FACEBOOK_TOKEN_COOKIE_NAME } from '@/utils/facebook/api';
+import { requireAdminResponse } from "@/utils/auth/require-admin";
 
 /**
  * GET /api/facebook-ads/ad-accounts
@@ -12,6 +13,11 @@ import { createFacebookAPITokenOnly, FACEBOOK_TOKEN_COOKIE_NAME } from '@/utils/
  */
 export async function GET(request: NextRequest) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
     const envToken = process.env.FACEBOOK_SYSTEM_USER_TOKEN?.trim() ?? null;
     const token = cookieToken || envToken;

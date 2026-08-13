@@ -31,6 +31,26 @@ export async function GET(
       );
     }
 
+    // Admin gating: only admins may see non-active products and sensitive fields.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    let isAdmin = false;
+    if (user) {
+      const { data: adminRow } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('user', user.id)
+        .maybeSingle();
+      isAdmin = !!adminRow;
+    }
+    if (!isAdmin && product.status !== 'active') {
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
     // Fetch related products separately (tables may not be in generated DB types)
     const { data: relationships, error: relError } = await (supabase as any)
       .from('product_relationships')
@@ -64,11 +84,20 @@ export async function GET(
       ? approvedReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / approvedReviews.length
       : 0;
 
+    const sanitizedProduct = { ...product };
+    if (!isAdmin) {
+      delete sanitizedProduct.download_url;
+      delete sanitizedProduct.downloads;
+      delete sanitizedProduct.stripe_product_id;
+      delete sanitizedProduct.stripe_price_id;
+      delete sanitizedProduct.stripe_sale_price_id;
+    }
+
     return NextResponse.json(
       {
         success: true,
         product: {
-          ...product,
+          ...sanitizedProduct,
           average_rating: avgRating,
           review_count: approvedReviews.length,
           reviews: approvedReviews,
@@ -78,7 +107,10 @@ export async function GET(
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          // Do not let a shared CDN cache admin/private responses.
+          "Cache-Control": isAdmin
+            ? "private, no-store"
+            : "public, s-maxage=60, stale-while-revalidate=300",
         },
       }
     );

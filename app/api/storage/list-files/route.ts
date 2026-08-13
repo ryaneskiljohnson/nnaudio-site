@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServiceRole } from '@/utils/supabase/service';
+import { requireAdmin } from '@/utils/auth/require-admin';
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const bucket = searchParams.get('bucket');
     const folder = searchParams.get('folder') || '';

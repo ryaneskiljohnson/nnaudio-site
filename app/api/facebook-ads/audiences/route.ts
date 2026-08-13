@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
 import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
+import { requireAdminResponse } from "@/utils/auth/require-admin";
 
 interface AudienceCreateBody {
   name: string;
@@ -15,6 +16,11 @@ interface AudienceCreateBody {
 
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const body: AudienceCreateBody = await request.json();
     const name = body.name?.trim();
     if (!name) {
@@ -68,6 +74,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     if (isFacebookAdsMockEnabled()) {
       const mockAudiences = [
         { id: '1', name: 'Music Producers 25-35', description: 'Producers 25-35', approximate_count: 45000 },

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
 import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
+import { requireAdminResponse } from "@/utils/auth/require-admin";
 
 /**
  * @brief Detects Meta's "app in development mode" creative restriction.
@@ -45,6 +46,11 @@ async function buildFallbackCreativePayload(
  */
 export async function GET(request: NextRequest) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const url = new URL(request.url);
     const adSetId = url.searchParams.get('adSetId');
     const campaignId = url.searchParams.get('campaignId');
@@ -169,6 +175,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     if (isFacebookAdsMockEnabled()) {
       const body = await request.json();
       

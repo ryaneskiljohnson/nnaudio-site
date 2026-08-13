@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/service';
 import { syncProductToStripe } from '@/utils/stripe/product-sync';
 import { stripe, type Stripe } from "@/utils/stripe/client";
+import { requireAdmin } from '@/utils/auth/require-admin';
 
 /**
  * POST /api/bundles/create-products
@@ -10,6 +11,11 @@ import { stripe, type Stripe } from "@/utils/stripe/client";
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const adminSupabase = await createAdminClient();
 
     // Fetch all active bundles with their subscription tiers (tables may not be in generated DB types)

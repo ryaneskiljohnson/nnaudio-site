@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { requireAdminResponse } from "@/utils/auth/require-admin";
 
 const COOKIE_MAX_AGE_DAYS = 60;
 
@@ -15,6 +16,11 @@ const COOKIE_MAX_AGE_DAYS = 60;
  */
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const body = await request.json();
     const raw = body?.adAccountId ?? body?.ad_account_id;
     if (!raw || typeof raw !== 'string') {

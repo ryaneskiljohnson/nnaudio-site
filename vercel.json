@@ -12,6 +12,18 @@
     {
       "path": "/api/admin/growth-ops/process-actions",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/email-campaigns/process-scheduled",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/automation-engine/process-jobs",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/automation-engine/process-events",
+      "schedule": "* * * * *"
     }
   ],
   "functions": {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { requireAdminResponse } from "@/utils/auth/require-admin";
 
 const COOKIE_NAME = FACEBOOK_TOKEN_COOKIE_NAME;
 const COOKIE_MAX_AGE_DAYS = 60;
@@ -8,6 +9,11 @@ const REDIRECT_URL = `${BASE_URL}/admin/ad-manager`;
 
 export async function GET(request: NextRequest) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');

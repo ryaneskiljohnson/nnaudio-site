@@ -3,8 +3,25 @@
  * @module api/facebook-ads/__tests__/campaigns.test
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+
+// Routes now require an authenticated admin; simulate an authorized admin.
+vi.mock('@/utils/supabase/server', () => {
+  const builder: any = {
+    select: () => builder,
+    eq: () => builder,
+    single: async () => ({ data: { id: 'admin-1' }, error: null }),
+    maybeSingle: async () => ({ data: { id: 'admin-1' }, error: null }),
+  };
+  return {
+    createClient: vi.fn(async () => ({
+      auth: { getUser: async () => ({ data: { user: { id: 'admin-test' } }, error: null }) },
+      from: () => builder,
+    })),
+  };
+});
+
 import { POST } from '../campaigns/route';
 
 describe('POST /api/facebook-ads/campaigns', () => {

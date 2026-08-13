@@ -32,6 +32,29 @@ export async function GET(
       );
     }
 
+    // Determine admin status (only admins may view non-active products and
+    // sensitive fields like download URLs / Stripe IDs).
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    let isAdmin = false;
+    if (user) {
+      const { data: adminRow } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('user', user.id)
+        .maybeSingle();
+      isAdmin = !!adminRow;
+    }
+
+    // Draft / inactive / archived products are not public.
+    if (!isAdmin && product.status !== 'active') {
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
     // Fetch related products separately
     const { data: relationships, error: relError } = await (supabase as any)
       .from('product_relationships')
@@ -69,10 +92,21 @@ export async function GET(
       .then(() => console.log(`Incremented view count for product: ${slug}`))
       .catch((err: unknown) => console.error('Error incrementing view count:', err));
 
+    // Strip fields that must never reach the public (asset URLs enable
+    // unauthenticated downloads; Stripe IDs are internal). Admins keep them.
+    const sanitizedProduct = { ...product };
+    if (!isAdmin) {
+      delete sanitizedProduct.download_url;
+      delete sanitizedProduct.downloads;
+      delete sanitizedProduct.stripe_product_id;
+      delete sanitizedProduct.stripe_price_id;
+      delete sanitizedProduct.stripe_sale_price_id;
+    }
+
     return NextResponse.json({
       success: true,
       product: {
-        ...product,
+        ...sanitizedProduct,
         average_rating: avgRating,
         review_count: approvedReviews.length,
         reviews: approvedReviews,

@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/utils/supabase/service";
 import { syncProductToStripe } from "@/utils/stripe/product-sync";
+import { requireAdmin } from "@/utils/auth/require-admin";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const { id } = await params;
     const adminSupabase = await createAdminClient();
 

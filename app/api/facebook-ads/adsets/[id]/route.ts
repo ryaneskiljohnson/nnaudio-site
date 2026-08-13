@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createFacebookAPI, FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME, type UpdateAdSetParams } from '@/utils/facebook/api';
 import { isFacebookAdsMockEnabled } from '@/utils/facebook/mock-mode';
 import { applyDailyBudgetGuardrails, getGrowthGuardrailsFromEnv } from '@/utils/growth/guardrails';
+import { requireAdminResponse } from "@/utils/auth/require-admin";
 
 function resolveFacebookContext(request: NextRequest) {
   const cookieToken = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim() ?? null;
@@ -52,6 +53,11 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const { id: adSetId } = await context.params;
     if (!adSetId) {
       return NextResponse.json({ success: false, error: 'Ad set ID required' }, { status: 400 });
@@ -91,6 +97,11 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const { id: adSetId } = await context.params;
     if (!adSetId) {
       return NextResponse.json({ success: false, error: 'Ad set ID required' }, { status: 400 });
@@ -183,6 +194,11 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const { id: adSetId } = await context.params;
     if (!adSetId) {
       return NextResponse.json({ success: false, error: 'Ad set ID required' }, { status: 400 });

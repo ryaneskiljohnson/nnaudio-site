@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getPublicSiteUrlForEmail } from '@/utils/public-site-url';
+import { isAuthorizedCronRequest } from '@/utils/auth/require-cron';
 
 // Initialize Supabase with service role for automation processing
 const supabase = createClient(
@@ -31,11 +32,8 @@ export async function POST(request: NextRequest) {
   console.log('🚀 Automation job processor started');
   
   try {
-    // Verify request authorization (for cron jobs)
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET || 'automation-engine-secret';
-    
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    // Authorized only via a constant-time match of `Authorization: Bearer ${CRON_SECRET}`.
+    if (!isAuthorizedCronRequest(request)) {
       console.log('❌ Unauthorized automation job processor request');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -679,4 +677,9 @@ async function sendAutomationEmail(subscriber: any, content: any, automationId: 
       subject: content.subject
     };
   }
+}
+
+/** Vercel Cron invokes scheduled routes via GET. */
+export async function GET(request: NextRequest) {
+  return POST(request);
 } 

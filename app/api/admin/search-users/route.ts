@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { requireAdmin } from "@/utils/auth/require-admin";
+import { escapeIlikeExactPattern } from "@/utils/supabase/ilike-escape";
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("q");
     const exact = searchParams.get("exact") === "true"; // For exact email matching
@@ -13,6 +20,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createSupabaseServiceRole();
     const normalizedQuery = query.trim().toLowerCase();
+    const escapedQuery = escapeIlikeExactPattern(normalizedQuery);
     const usersMap = new Map<string, { id: string; email: string }>();
 
     // Search in auth.users directly (most reliable source)
@@ -53,7 +61,7 @@ export async function GET(request: NextRequest) {
         .from("profiles")
         .select("id, email")
         .not("email", "is", null)
-        .ilike("email", exact ? normalizedQuery : `%${normalizedQuery}%`)
+        .ilike("email", exact ? escapedQuery : `%${escapedQuery}%`)
         .limit(exact ? 1 : 20);
 
       if (profilesError) {

@@ -5,12 +5,18 @@
 
 import { NextResponse } from "next/server";
 import { FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from "@/utils/facebook/api";
+import { requireAdminResponse } from "@/utils/auth/require-admin";
 
 /**
  * POST /api/facebook-ads/disconnect
  * Clears the Facebook token and ad account cookies so user can reconnect with a different account.
  */
 export async function POST() {
+  const authError = await requireAdminResponse();
+  if (authError) {
+    return authError;
+  }
+
   const response = NextResponse.json({ success: true });
   response.cookies.set(FACEBOOK_TOKEN_COOKIE_NAME, "", {
     httpOnly: true,

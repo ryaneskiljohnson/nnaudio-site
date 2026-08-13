@@ -6,9 +6,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from "@/utils/stripe/client";
 import { createClient } from '@/utils/supabase/server';
+import { checkRateLimit, getClientIp } from '@/utils/rateLimit';
 import {
   discountAmountForEligibleSubtotal,
   eligibleSubtotalForPromotion,
+  STRIPE_ONLY_COUPON_SCOPE,
   type PromotionPricingRow,
 } from '@/utils/promotions/apply-promotion';
 
@@ -20,6 +22,15 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Throttle to prevent Stripe promo-code enumeration / API abuse.
+    const ip = getClientIp(request);
+    if (!checkRateLimit(`promo-validate:${ip}`, 20, 60)) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const { code, amount } = body;
 
@@ -126,7 +137,10 @@ export async function POST(request: NextRequest) {
     }
 
     const eligibleSubtotal = lineItems?.length
-      ? eligibleSubtotalForPromotion(lineItems, dbPromotion)
+      ? eligibleSubtotalForPromotion(
+          lineItems,
+          dbPromotion ?? STRIPE_ONLY_COUPON_SCOPE
+        )
       : baseAmount;
 
     if (lineItems?.length && eligibleSubtotal <= 0) {

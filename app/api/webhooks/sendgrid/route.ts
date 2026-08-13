@@ -105,7 +105,19 @@ export async function POST(request: NextRequest) {
     const verificationKey = process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY;
     const signature = request.headers.get("x-twilio-email-event-webhook-signature");
     const timestamp = request.headers.get("x-twilio-email-event-webhook-timestamp");
-    if (verificationKey && signature && timestamp) {
+
+    // Fail closed in production: a verification key and a valid signature are required.
+    if (process.env.NODE_ENV === "production" && !verificationKey) {
+      console.error(
+        "❌ SENDGRID_WEBHOOK_VERIFICATION_KEY is not set; refusing unsigned webhook in production"
+      );
+      return NextResponse.json({ error: "Webhook verification not configured" }, { status: 401 });
+    }
+
+    if (verificationKey) {
+      if (!signature || !timestamp) {
+        return NextResponse.json({ error: "Missing signature headers" }, { status: 401 });
+      }
       try {
         const { EventWebhook } = await import("@sendgrid/eventwebhook");
         const ew = new EventWebhook();
@@ -118,8 +130,6 @@ export async function POST(request: NextRequest) {
         console.error("❌ SendGrid webhook verification error:", e);
         return NextResponse.json({ error: "Verification failed" }, { status: 401 });
       }
-    } else if (process.env.NODE_ENV === "production" && verificationKey) {
-      return NextResponse.json({ error: "Missing signature headers" }, { status: 401 });
     }
 
     for (const evt of events) {

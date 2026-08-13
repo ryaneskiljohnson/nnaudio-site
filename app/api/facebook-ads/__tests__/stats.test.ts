@@ -3,8 +3,27 @@
  * @module api/facebook-ads/__tests__/stats.test
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+
+// These routes now require an authenticated admin. Simulate an authorized admin
+// session so the tests exercise the intended behavior (cookies() is unavailable
+// in the test environment, so the real createClient cannot run here).
+vi.mock('@/utils/supabase/server', () => {
+  const builder: any = {
+    select: () => builder,
+    eq: () => builder,
+    single: async () => ({ data: { id: 'admin-1' }, error: null }),
+    maybeSingle: async () => ({ data: { id: 'admin-1' }, error: null }),
+  };
+  return {
+    createClient: vi.fn(async () => ({
+      auth: { getUser: async () => ({ data: { user: { id: 'admin-test' } }, error: null }) },
+      from: () => builder,
+    })),
+  };
+});
+
 import { GET } from '../stats/route';
 
 function setNodeEnv(value: string) {

@@ -9,11 +9,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { FACEBOOK_TOKEN_COOKIE_NAME, FACEBOOK_AD_ACCOUNT_COOKIE_NAME } from '@/utils/facebook/api';
+import { requireAdminResponse } from "@/utils/auth/require-admin";
 
 const FACEBOOK_BASE = 'https://graph.facebook.com/v20.0';
 
 export async function GET(request: NextRequest) {
   try {
+    const authError = await requireAdminResponse();
+    if (authError) {
+      return authError;
+    }
+
     const token = request.cookies.get(FACEBOOK_TOKEN_COOKIE_NAME)?.value?.trim();
     const adAccountIdRaw =
       process.env.FACEBOOK_AD_ACCOUNT_ID ?? request.cookies.get(FACEBOOK_AD_ACCOUNT_COOKIE_NAME)?.value ?? null;

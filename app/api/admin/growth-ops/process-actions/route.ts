@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/service";
+import { isAuthorizedCronRequest } from "@/utils/auth/require-cron";
 import { executeGrowthAction, type GrowthActionQueueRow } from "@/utils/growth/action-queue";
 import {
   FACEBOOK_AD_ACCOUNT_COOKIE_NAME,
@@ -18,6 +19,8 @@ const MAX_BATCH_SIZE = 50;
 const DEFAULT_AUTO_ENQUEUE_BASELINE = true;
 const DEFAULT_AUTO_ENQUEUE_GUARDRAIL_SWEEP = true;
 const DEFAULT_GUARDRAIL_SWEEP_INTERVAL_MINUTES = 15;
+/** Stuck `running` rows older than this are returned to `pending`. */
+const STALE_RUNNING_LEASE_MS = 15 * 60 * 1000;
 
 /**
  * @brief Checks if request is authorized (admin session OR cron secret).
@@ -25,13 +28,8 @@ const DEFAULT_GUARDRAIL_SWEEP_INTERVAL_MINUTES = 15;
  * @returns Authorization result and mode.
  */
 async function authorizeProcessor(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const vercelCronSignature = request.headers.get("x-vercel-cron-signature");
-  const cronSecret = process.env.CRON_SECRET;
-  if (vercelCronSignature) {
-    return { ok: true as const, mode: "cron" as const };
-  }
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+  // Cron path: only a constant-time match of the bearer secret (Vercel Cron sends it).
+  if (isAuthorizedCronRequest(request)) {
     return { ok: true as const, mode: "cron" as const };
   }
 
@@ -198,7 +196,33 @@ async function enqueueBaselineActionsIfEnabled(): Promise<number> {
 }
 
 /**
- * @brief Picks ready pending queue actions.
+ * @brief Returns stuck `running` rows to `pending` after the lease expires.
+ * @returns Number of rows reclaimed.
+ */
+async function reclaimStaleRunningActions(): Promise<number> {
+  const adminClient = await createAdminClient();
+  const staleBefore = new Date(Date.now() - STALE_RUNNING_LEASE_MS).toISOString();
+  const { data, error } = await (adminClient as any)
+    .from("growth_action_queue")
+    .update({
+      status: "pending",
+      locked_at: null,
+      locked_by: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("status", "running")
+    .lt("locked_at", staleBefore)
+    .select("id");
+
+  if (error) {
+    throw error;
+  }
+
+  return Array.isArray(data) ? data.length : 0;
+}
+
+/**
+ * @brief Picks ready pending or retryable-failed queue actions.
  * @param batchSize - Max actions to fetch.
  * @returns Pending queue rows.
  */
@@ -208,7 +232,7 @@ async function fetchReadyActions(batchSize: number): Promise<GrowthActionQueueRo
   const { data, error } = await (adminClient as any)
     .from("growth_action_queue")
     .select("id, action_type, payload, attempt_count, max_attempts")
-    .eq("status", "pending")
+    .in("status", ["pending", "failed"])
     .lte("run_after", now)
     .order("priority", { ascending: true })
     .order("created_at", { ascending: true })
@@ -237,7 +261,7 @@ async function claimAction(actionId: string): Promise<boolean> {
       updated_at: new Date().toISOString(),
     })
     .eq("id", actionId)
-    .eq("status", "pending")
+    .in("status", ["pending", "failed"])
     .select("id")
     .maybeSingle();
 
@@ -352,6 +376,7 @@ export async function POST(request: NextRequest) {
       vercelCronSignature,
     };
 
+    await reclaimStaleRunningActions();
     const readyActions = await fetchReadyActions(batchSize);
     if (readyActions.length === 0) {
       return NextResponse.json({
@@ -425,5 +450,12 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * @brief Vercel Cron invokes scheduled routes via GET; delegate to POST logic.
+ */
+export async function GET(request: NextRequest) {
+  return POST(request);
 }
 

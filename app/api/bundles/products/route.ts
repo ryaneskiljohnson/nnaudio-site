@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/utils/supabase/service';
+import { requireAdmin } from '@/utils/auth/require-admin';
 
 // GET /api/bundles/products?bundle_id=xxx - Get all products in a bundle
 export async function GET(request: NextRequest) {
@@ -60,6 +61,10 @@ export async function GET(request: NextRequest) {
 // POST /api/bundles/products - Add a product to a bundle
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+      return auth.response;
+    }
     const body = await request.json();
     const { bundle_id, product_id } = body;
 
@@ -133,6 +138,10 @@ export async function POST(request: NextRequest) {
 // PATCH /api/bundles/products - Reorder products in a bundle
 export async function PATCH(request: NextRequest) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+      return auth.response;
+    }
     const body = await request.json();
     const { bundle_id, order } = body;
 
@@ -169,6 +178,10 @@ export async function PATCH(request: NextRequest) {
 // DELETE /api/bundles/products?bundle_id=xxx&product_id=xxx - Remove a product from a bundle
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+      return auth.response;
+    }
     const { searchParams } = new URL(request.url);
     const bundleId = searchParams.get('bundle_id');
     const productId = searchParams.get('product_id');

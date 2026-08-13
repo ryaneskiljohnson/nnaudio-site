@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
 
 /**
  * @brief Redeem a reseller code
@@ -44,6 +45,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "You must be logged in to redeem a code" },
         { status: 401 }
+      );
+    }
+
+    // Throttle code-guessing / brute force, per user and per IP.
+    const ip = getClientIp(request);
+    if (
+      !checkRateLimit(`redeem-user:${user.id}`, 10, 60) ||
+      !checkRateLimit(`redeem-ip:${ip}`, 20, 60)
+    ) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        { status: 429 }
       );
     }
 
@@ -148,20 +161,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Redeem the code
-    const { error: redeemError } = await (adminSupabase as any)
+    // Atomically claim the code: only succeeds if it is still unredeemed.
+    // This closes the check-then-act race where two users could both pass the
+    // `code.redeemed_at` check above and both receive a grant.
+    const { data: claimedRows, error: redeemError } = await (adminSupabase as any)
       .from("reseller_codes")
       .update({
         redeemed_at: new Date().toISOString(),
         redeemed_by_user_id: user.id,
       })
-      .eq("id", code.id);
+      .eq("id", code.id)
+      .is("redeemed_at", null)
+      .select("id");
 
     if (redeemError) {
       console.error("[Redeem] Error updating code:", redeemError);
       return NextResponse.json(
         { error: "Failed to redeem code" },
         { status: 500 }
+      );
+    }
+
+    // Zero rows updated => another request claimed it first (concurrent redeem).
+    if (!claimedRows || claimedRows.length === 0) {
+      return NextResponse.json(
+        { error: "This code has already been redeemed" },
+        { status: 400 }
       );
     }
 

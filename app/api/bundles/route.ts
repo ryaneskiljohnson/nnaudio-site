@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/service';
+import { requireAdmin } from '@/utils/auth/require-admin';
 import { getCanonicalImageKey } from '@/utils/canonicalImageKey';
 import { isPSTDateAfterNow, isPSTDateBeforeNow } from '@/utils/timezoneUtils';
 import {
@@ -28,6 +29,14 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || 'active';
     const bundleType = searchParams.get('type');
     const featured = searchParams.get('featured');
+
+    const isAdminCatalogRequest = status !== 'active';
+    if (isAdminCatalogRequest) {
+      const auth = await requireAdmin();
+      if (!auth.ok) {
+        return auth.response;
+      }
+    }
 
     const supabase = await createClient();
     const adminSupabase = await createAdminClient();
@@ -216,7 +225,9 @@ export async function GET(request: NextRequest) {
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          "Cache-Control": isAdminCatalogRequest
+            ? "private, no-store"
+            : "public, s-maxage=60, stale-while-revalidate=300",
         },
       }
     );
@@ -232,6 +243,11 @@ export async function GET(request: NextRequest) {
 // POST /api/bundles - Create a new bundle (admin only)
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin();
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const adminSupabase = await createAdminClient();
     const body = await request.json();
 

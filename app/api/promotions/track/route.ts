@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
 
 const PROMOTION_ID_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -19,6 +20,12 @@ const PROMOTION_ID_UUID_RE =
  */
 export async function POST(request: NextRequest) {
   try {
+    // Throttle anonymous metric writes to limit view/conversion inflation.
+    const ip = getClientIp(request);
+    if (!checkRateLimit(`promo-track:${ip}`, 30, 60)) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
       console.error("[promotions/track] SUPABASE_SERVICE_ROLE_KEY is not set");
       return NextResponse.json(

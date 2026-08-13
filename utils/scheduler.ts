@@ -32,7 +32,7 @@ class EmailCampaignScheduler {
         process.env.ENABLE_SCHEDULER === "true",
       cronExpression: process.env.SCHEDULER_CRON || "* * * * *", // Every minute by default
       endpoint: `${baseUrl}/api/email-campaigns/process-scheduled`,
-      cronSecret: process.env.CRON_SECRET || "your-secret-key",
+      cronSecret: process.env.CRON_SECRET || "",
     };
 
     // Don't log here - will log when actually starting
@@ -94,6 +94,15 @@ class EmailCampaignScheduler {
   }
 
   async start(): Promise<void> {
+    // Vercel serverless instances are ephemeral; in-process node-cron never
+    // ticks reliably there. Production scheduling is vercel.json crons.
+    if (process.env.VERCEL) {
+      console.log(
+        "📅 Scheduler skipped on Vercel — use vercel.json crons for /api/email-campaigns/process-scheduled"
+      );
+      return;
+    }
+
     if (!this.config.enabled) {
       console.log(
         "📅 Scheduler disabled (NODE_ENV not production and ENABLE_SCHEDULER not true)"
@@ -147,12 +156,14 @@ class EmailCampaignScheduler {
   getStatus(): {
     isEnabled: boolean;
     isRunning: boolean;
-    config: SchedulerConfig;
+    config: Omit<SchedulerConfig, "cronSecret">;
   } {
+    // Never expose cronSecret in status output.
+    const { cronSecret: _cronSecret, ...safeConfig } = this.config;
     return {
       isEnabled: this.config.enabled,
       isRunning: !!this.scheduledTask,
-      config: this.config,
+      config: safeConfig,
     };
   }
 

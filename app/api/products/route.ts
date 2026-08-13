@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/service';
+import { requireAdmin } from '@/utils/auth/require-admin';
 import { isPSTDateAfterNow, isPSTDateBeforeNow } from '@/utils/timezoneUtils';
 import {
   computePromotionalUnitPrice,
@@ -30,7 +31,17 @@ export async function GET(request: NextRequest) {
 
     // Use service role for admin requests (status=all, inactive, draft, archived) to bypass RLS.
     // RLS restricts non-admins to status='active' only, so regular client would hide inactive/draft/archived.
-    const isAdminRequest = statusParam === 'all' || ['inactive', 'draft', 'archived'].includes(statusParam || '');
+    // These requests expose non-public catalog data, so they MUST be admin-authorized.
+    const isAdminRequest =
+      statusParam === 'all' ||
+      ['inactive', 'draft', 'archived'].includes(statusParam || '') ||
+      includeNnaudioAccessProduct;
+    if (isAdminRequest) {
+      const auth = await requireAdmin();
+      if (!auth.ok) {
+        return auth.response;
+      }
+    }
     const supabase = isAdminRequest ? await createAdminClient() : await createClient();
     
     let query = (supabase as any)
