@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { requireAdminAction } from "@/utils/auth/action-guards";
 
 export interface GetCampaignsParams {
   limit?: number;
@@ -46,6 +47,7 @@ export interface GetCampaignResponse {
 export async function getCampaigns(
   params?: GetCampaignsParams
 ): Promise<GetCampaignsResponse> {
+  await requireAdminAction();
   try {
     const supabase = await createClient();
 
@@ -150,6 +152,7 @@ export async function getCampaigns(
 export async function getCampaign(
   campaignId: string
 ): Promise<GetCampaignResponse> {
+  await requireAdminAction();
   try {
     const supabase = await createClient();
 

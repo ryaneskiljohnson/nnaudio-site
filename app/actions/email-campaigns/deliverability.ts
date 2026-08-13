@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { requireAdminAction } from "@/utils/auth/action-guards";
 
 interface CampaignDeliverabilityRow {
   id: string;
@@ -89,8 +90,9 @@ export interface DeliverabilityData {
  * Get email deliverability data (admin only)
  */
 export async function getDeliverability(): Promise<DeliverabilityData> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     const { data: campaigns, error: campaignsError } = await supabase
       .from("email_campaigns")

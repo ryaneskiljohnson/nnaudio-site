@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from '@/utils/supabase/server';
+import { createSupabaseServiceRole } from '@/utils/supabase/service';
+import { requireAdminAction } from '@/utils/auth/action-guards';
 import { calculateSubscriberCount } from '@/utils/email-campaigns/calculate-subscriber-count';
 
 const EMAIL_DEBUG = process.env.EMAIL_DEBUG === "1";
@@ -34,8 +35,9 @@ export interface GetAudiencesResponse {
 export async function getAudiences(
   params?: GetAudiencesParams
 ): Promise<GetAudiencesResponse> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
     const limit = params?.limit || 50;
@@ -256,8 +258,9 @@ export interface CreateAudienceResponse {
 export async function createAudience(
   params: CreateAudienceParams
 ): Promise<CreateAudienceResponse> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
     const { name, description, filters } = params;
@@ -321,8 +324,9 @@ export interface GetAudienceResponse {
 export async function getAudience(
   audienceId: string
 ): Promise<GetAudienceResponse> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
     const { data: audience, error } = await supabase
@@ -366,8 +370,9 @@ export async function updateAudience(
   audienceId: string,
   params: UpdateAudienceParams
 ): Promise<UpdateAudienceResponse> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
     const { name, description, filters, subscriber_count } = params;
@@ -410,8 +415,9 @@ export async function updateAudience(
 export async function deleteAudience(
   audienceId: string
 ): Promise<{ message: string }> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
     const { error } = await supabase

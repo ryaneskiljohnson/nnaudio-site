@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const clientIp = getClientIp(request);
 
     // Rate limiting check (10 requests per minute per IP)
-    if (!checkRateLimit(clientIp, 10, 60)) {
+    if (!checkRateLimit(`unsubscribe:${clientIp}`, 10, 60)) {
       console.warn(`[Unsubscribe API] Rate limit exceeded for IP: ${clientIp}`);
       return NextResponse.json(
         { success: false, error: 'Too many requests. Please try again later.' },
@@ -59,38 +59,26 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'unsubscribe') {
-      // Verify token if provided (required for security)
-      let verifiedEmail: string | null = null;
-      if (token) {
-        verifiedEmail = verifyUnsubscribeToken(token);
-        if (!verifiedEmail) {
-          console.warn(`[Unsubscribe API] Invalid or expired token for email: ${email}`);
-          // Return generic success to prevent email enumeration
-          return NextResponse.json({
-            success: true,
-            message: 'Successfully unsubscribed from emails',
-            email: email.toLowerCase(),
-            status: 'unsubscribed'
-          });
-        }
-        
-        // Verify token email matches request email
-        if (verifiedEmail !== email.toLowerCase()) {
-          console.warn(`[Unsubscribe API] Token email mismatch: ${verifiedEmail} vs ${email}`);
-          return NextResponse.json({
-            success: true,
-            message: 'Successfully unsubscribed from emails',
-            email: email.toLowerCase(),
-            status: 'unsubscribed'
-          });
-        }
-      } else {
-        // Token is recommended but not strictly required for backward compatibility
-        // Log missing token for security monitoring
-        console.warn(`[Unsubscribe API] Unsubscribe request without token for email: ${email} from IP: ${clientIp}`);
+      // A valid, signed, email-matching token is REQUIRED to mutate. Missing,
+      // invalid, or mismatched tokens return a generic success (no DB change)
+      // so the endpoint cannot be used to unsubscribe arbitrary addresses or
+      // to enumerate subscribers.
+      const genericSuccess = {
+        success: true,
+        message: 'Successfully unsubscribed from emails',
+        email: email.toLowerCase(),
+        status: 'unsubscribed' as const,
+      };
+
+      const verifiedEmail = token ? verifyUnsubscribeToken(token) : null;
+      if (!token || !verifiedEmail || verifiedEmail !== email.toLowerCase()) {
+        console.warn(
+          `[Unsubscribe API] Rejected tokenless/invalid unsubscribe for ${email} from IP ${clientIp}`
+        );
+        return NextResponse.json(genericSuccess);
       }
 
-      // Handle unsubscribe
+      // Handle unsubscribe (token verified)
       const { data: subscriber, error: fetchError } = await supabase
         .from('subscribers')
         .select('id, email, status, unsubscribe_date')

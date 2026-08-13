@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from '@/utils/supabase/server';
+import { createSupabaseServiceRole } from '@/utils/supabase/service';
+import { requireAdminAction } from '@/utils/auth/action-guards';
 import { calculateSubscriberCount } from '@/utils/email-campaigns/calculate-subscriber-count';
 
 const EMAIL_DEBUG = process.env.EMAIL_DEBUG === "1";
@@ -41,8 +42,9 @@ export async function getAudienceSubscribers(
   audienceId: string,
   params?: GetAudienceSubscribersParams
 ): Promise<GetAudienceSubscribersResponse> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
 
@@ -168,8 +170,9 @@ export async function addAudienceSubscriber(
   audienceId: string,
   params: AddAudienceSubscriberParams
 ): Promise<AddAudienceSubscriberResponse> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
 
@@ -271,8 +274,9 @@ export async function removeAudienceSubscriber(
   audienceId: string,
   subscriberId: string
 ): Promise<{ message: string }> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
 
@@ -310,8 +314,9 @@ export interface GetSubscriberAudienceMembershipsResponse {
 export async function getSubscriberAudienceMemberships(
   subscriberId: string
 ): Promise<GetSubscriberAudienceMembershipsResponse> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
 

@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient } from '@/utils/supabase/server';
+import { createSupabaseServiceRole } from '@/utils/supabase/service';
+import { requireAdminAction } from '@/utils/auth/action-guards';
 
 export interface CalculateReachParams {
   audienceIds: string[];
@@ -206,8 +207,9 @@ async function calculateUniqueReach(
 export async function calculateReach(
   params: CalculateReachParams
 ): Promise<CalculateReachResponse> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
 
@@ -242,8 +244,9 @@ export interface CalculateBatchReachResponse {
 export async function calculateBatchReach(
   params: CalculateBatchReachParams
 ): Promise<CalculateBatchReachResponse> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
 

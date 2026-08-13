@@ -4596,6 +4596,7 @@ function CreateCampaignPage() {
                         }}>
                           <iframe
                             key={`small-preview-${emailElements.length}-${JSON.stringify(emailElements.map(el => ({ id: el.id, fullWidth: el.fullWidth })))}`}
+                            sandbox="allow-same-origin"
                             srcDoc={generatePreviewHtml()}
                             style={{
                               width: '100%',
@@ -5240,6 +5241,7 @@ function CreateCampaignPage() {
                               return (
                                 <iframe
                                   key={`preview-${Date.now()}-${html.length}`}
+                                  sandbox="allow-same-origin"
                                   srcDoc={html}
                                   style={{
                                     width: '100%',

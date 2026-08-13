@@ -38,7 +38,7 @@ export async function ensureSubscriberForUser(
 
   const { data: existing, error: selectError } = await admin
     .from("subscribers")
-    .select("id, metadata, tags")
+    .select("id, metadata, tags, user_id, status")
     .ilike("email", email)
     .maybeSingle();
 
@@ -47,6 +47,14 @@ export async function ensureSubscriberForUser(
   }
 
   if (existing) {
+    // If this subscriber is already bound to a DIFFERENT user, refuse to
+    // rebind it (prevents a duplicate-signup from hijacking another account's
+    // marketing record).
+    const existingUserId = (existing as { user_id?: string | null }).user_id ?? null;
+    if (existingUserId && existingUserId !== input.userId) {
+      return "Subscriber already linked to a different user";
+    }
+
     const prevMeta =
       existing.metadata &&
       typeof existing.metadata === "object" &&
@@ -57,16 +65,31 @@ export async function ensureSubscriberForUser(
       new Set([...(existing.tags ?? []), ...tags]),
     );
 
+    // Do NOT silently reactivate someone who previously unsubscribed / bounced /
+    // complained — that would violate their consent (CAN-SPAM). Preserve status.
+    const existingStatus = (existing as { status?: string | null }).status ?? null;
+    const preserveStatus =
+      existingStatus === "unsubscribed" ||
+      existingStatus === "bounced" ||
+      existingStatus === "complained";
+
+    const updatePayload: Record<string, unknown> = {
+      source: input.source,
+      tags: mergedTags,
+      metadata: { ...prevMeta, ...input.metadata } as Json,
+      updated_at: new Date().toISOString(),
+    };
+    // Only fill user_id when it is currently null.
+    if (!existingUserId) {
+      updatePayload.user_id = input.userId;
+    }
+    if (!preserveStatus) {
+      updatePayload.status = "active";
+    }
+
     const { error: updateError } = await admin
       .from("subscribers")
-      .update({
-        user_id: input.userId,
-        source: input.source,
-        status: "active",
-        tags: mergedTags,
-        metadata: { ...prevMeta, ...input.metadata } as Json,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("id", existing.id);
 
     return updateError?.message ?? null;

@@ -1,6 +1,8 @@
 "use server";
 
 import { createClient } from '@/utils/supabase/server';
+import { requireAdminAction } from '@/utils/auth/action-guards';
+import { escapeIlikeContainsForOr } from '@/utils/supabase/ilike-escape';
 
 export interface GetTemplatesParams {
   search?: string;
@@ -37,6 +39,7 @@ export interface GetTemplatesResponse {
 export async function getTemplates(
   params?: GetTemplatesParams
 ): Promise<GetTemplatesResponse> {
+  await requireAdminAction();
   try {
     const supabase = await createClient();
 
@@ -50,7 +53,8 @@ export async function getTemplates(
 
     // Apply filters
     if (params?.search) {
-      query = query.or(`name.ilike.%${params.search}%,description.ilike.%${params.search}%,subject.ilike.%${params.search}%`);
+      const s = escapeIlikeContainsForOr(params.search);
+      query = query.or(`name.ilike.%${s}%,description.ilike.%${s}%,subject.ilike.%${s}%`);
     }
 
     if (params?.type && ['welcome', 'newsletter', 'promotional', 'transactional', 'custom'].includes(params.type)) {
@@ -141,6 +145,7 @@ export interface GetTemplateResponse {
  * Get a single email template by ID (admin only)
  */
 export async function getTemplate(templateId: string): Promise<GetTemplateResponse> {
+  await requireAdminAction();
   try {
     const supabase = await createClient();
 

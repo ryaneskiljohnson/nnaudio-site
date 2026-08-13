@@ -1,7 +1,8 @@
 "use server";
 
 import { sendEmail } from "@/utils/email";
-import { createClient } from "@/utils/supabase/server";
+import { requireAdminAction } from "@/utils/auth/action-guards";
+import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { generateHtmlFromElements, generateTextFromElements, personalizeContent } from "@/utils/email-campaigns/email-generation";
 
 // 🔒 SAFETY CONFIGURATION - CRITICAL FOR PREVENTING ACCIDENTAL SENDS
@@ -540,9 +541,10 @@ async function getSubscribersForAudiences(
 export async function sendCampaign(
   params: SendCampaignParams
 ): Promise<SendCampaignResponse> {
+  await requireAdminAction();
   try {
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     const {
       campaignId,

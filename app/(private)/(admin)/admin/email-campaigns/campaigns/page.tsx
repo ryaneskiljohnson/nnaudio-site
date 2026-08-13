@@ -2187,6 +2187,7 @@ function CampaignsPage() {
                         <TableCell colSpan={activeTab === 'scheduled' ? 7 : 8} style={{ padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.02)', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
                           <EmailPreviewFrame>
                             <EmailPreviewIframe
+                              sandbox="allow-same-origin"
                               srcDoc={campaign.html_content}
                               title={`Email preview for ${campaign.name || 'campaign'}`}
                             />
@@ -2367,6 +2368,7 @@ function CampaignsPage() {
                         position: 'relative'
                       }}>
                         <iframe
+                          sandbox="allow-same-origin"
                           srcDoc={generatePreviewHtml(selectedCampaign)}
                           style={{
                             width: '100%',
@@ -2588,6 +2590,7 @@ function CampaignsPage() {
                         border: '1px solid rgba(255, 255, 255, 0.1)'
                       }}>
                         <iframe
+                          sandbox="allow-same-origin"
                           srcDoc={generatePreviewHtml(selectedCampaign)}
                           style={{
                             width: '100%',

@@ -1,6 +1,8 @@
 "use server";
 
-import { createClient } from '@/utils/supabase/server';
+import { createSupabaseServiceRole } from '@/utils/supabase/service';
+import { requireAdminAction } from '@/utils/auth/action-guards';
+import { escapeIlikeContainsForOr, escapeIlikeExactPattern } from '@/utils/supabase/ilike-escape';
 
 export interface GetSubscribersParams {
   search?: string;
@@ -92,8 +94,9 @@ function evaluateDynamicAudienceMembership(subscriber: any, profile: any, filter
 export async function getSubscribers(
   params?: GetSubscribersParams
 ): Promise<GetSubscribersResponse> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
 
@@ -116,11 +119,12 @@ export async function getSubscribers(
     // For search, we need to handle it differently since we need to search across users and profiles
     if (search && search.length >= 2) {
       try {
+        const safeSearch = escapeIlikeContainsForOr(search);
         // First get all subscribers that match email directly
         const { data: emailMatches, error: emailError } = await supabase
         .from('subscribers')
         .select('id')
-        .ilike('email', `%${search}%`);
+        .ilike('email', `%${escapeIlikeExactPattern(search)}%`);
 
         if (emailError) {
           console.error('Error searching subscribers by email:', emailError);
@@ -131,7 +135,7 @@ export async function getSubscribers(
         const { data: profileMatches, error: profileError } = await supabase
         .from('profiles')
         .select('id')
-          .or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`);
+          .or(`first_name.ilike.%${safeSearch}%,last_name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`);
 
         if (profileError) {
           console.error('Error searching profiles:', profileError);
@@ -319,8 +323,9 @@ export async function getSubscribers(
  * Get a single subscriber by ID (admin only)
  */
 export async function getSubscriber(subscriberId: string): Promise<GetSubscriberResponse> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     // Note: RLS will enforce admin access - if user is not admin, queries will fail
 

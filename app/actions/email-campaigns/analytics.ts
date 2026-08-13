@@ -6,7 +6,8 @@
 
 "use server";
 
-import { createClient } from "@/utils/supabase/server";
+import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { requireAdminAction } from "@/utils/auth/action-guards";
 
 interface CampaignAnalyticsRow {
   id: string;
@@ -144,8 +145,9 @@ function rateChange(current: number, previous: number): number {
 export async function getAnalytics(
   params?: GetAnalyticsParams
 ): Promise<AnalyticsData> {
+  await requireAdminAction();
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServiceRole();
 
     const timeRange = params?.timeRange || "30d";
     const days = getRangeDays(timeRange);

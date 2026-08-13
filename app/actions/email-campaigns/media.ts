@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from '@/utils/supabase/server';
+import { requireAdminAction } from '@/utils/auth/action-guards';
 import { createSupabaseServiceRole } from '@/utils/supabase/service';
 import sharp from 'sharp';
 
@@ -354,6 +355,7 @@ export interface ListMediaResponse {
  * Matches logic from app/api/email-campaigns/list-media/route.ts (GET) exactly
  */
 export async function listMedia(): Promise<ListMediaResponse> {
+  await requireAdminAction();
   try {
     // Use service role client for admin storage operations to bypass RLS
     const supabase = await createSupabaseServiceRole();
@@ -445,6 +447,7 @@ export interface UploadImageResponse {
 export async function uploadImage(
   params: UploadImageParams
 ): Promise<UploadImageResponse> {
+  await requireAdminAction();
   try {
     const supabase = await createClient();
 
@@ -591,6 +594,7 @@ export interface UploadMediaResponse {
 export async function uploadMedia(
   params: UploadMediaParams
 ): Promise<UploadMediaResponse> {
+  await requireAdminAction();
   try {
     // Use service role client for bucket operations (requires admin permissions)
     const adminSupabase = await createSupabaseServiceRole();

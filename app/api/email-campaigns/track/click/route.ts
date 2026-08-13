@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
+import { resolveSafeClickTarget } from "@/utils/email-campaigns/safe-click-target";
 
 // Helper function to validate UUID format
 function isValidUUID(uuid: string): boolean {
@@ -19,16 +20,14 @@ export async function GET(request: NextRequest) {
 
     if (!sendId || !campaignId || !subscriberId || !targetUrl) {
       console.log('❌ Missing required tracking parameters');
-      // Redirect to a safe fallback if URL is missing
-      const fallbackUrl = targetUrl || 'https://nnaud.io';
-      return NextResponse.redirect(fallbackUrl);
+      return NextResponse.redirect(resolveSafeClickTarget(targetUrl));
     }
 
     // Validate UUID formats to prevent PostgreSQL errors
     if (!isValidUUID(sendId) || !isValidUUID(campaignId) || !isValidUUID(subscriberId)) {
       console.log('❌ Invalid UUID format in tracking parameters:', { sendId, campaignId, subscriberId });
-      // Still redirect to target URL but don't try to record in database
-      return NextResponse.redirect(targetUrl);
+      // Still redirect (validated) but don't try to record in database
+      return NextResponse.redirect(resolveSafeClickTarget(targetUrl));
     }
 
     // Use service role client for anonymous tracking click access
@@ -122,14 +121,14 @@ export async function GET(request: NextRequest) {
       console.log('🔗 Duplicate click ignored (already recorded for this email send and URL)');
     }
 
-    // Always redirect to the target URL
-    return NextResponse.redirect(targetUrl);
+    // Always redirect to the validated target URL
+    return NextResponse.redirect(resolveSafeClickTarget(targetUrl));
 
   } catch (error) {
     console.error('❌ Error in click tracking:', error);
-    
-    // Redirect to target URL even on error, or fallback
-    const targetUrl = new URL(request.url).searchParams.get('url') || 'https://nnaud.io';
-    return NextResponse.redirect(targetUrl);
+
+    // Redirect to a validated target even on error, or safe fallback
+    const rawTarget = new URL(request.url).searchParams.get('url');
+    return NextResponse.redirect(resolveSafeClickTarget(rawTarget));
   }
 } 

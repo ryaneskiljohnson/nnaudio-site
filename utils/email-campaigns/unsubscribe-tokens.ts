@@ -42,19 +42,24 @@ export function verifyUnsubscribeToken(token: string, maxAgeDays: number = 30): 
     
     // Decode base64url token
     const decoded = Buffer.from(token, 'base64url').toString('utf-8');
-    const [payload, signature] = decoded.split('.');
-    
-    if (!payload || !signature) {
+    const lastDot = decoded.lastIndexOf('.');
+    if (lastDot <= 0 || lastDot === decoded.length - 1) {
       return null;
     }
+    const payload = decoded.slice(0, lastDot);
+    const signature = decoded.slice(lastDot + 1);
     
     // Verify signature
     const hmac = crypto.createHmac('sha256', secret);
     hmac.update(payload);
     const expectedSignature = hmac.digest('hex');
-    
-    // Use timing-safe comparison to prevent timing attacks
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+
+    const sigBuf = Buffer.from(signature);
+    const expectedBuf = Buffer.from(expectedSignature);
+    if (sigBuf.length !== expectedBuf.length) {
+      return null;
+    }
+    if (!crypto.timingSafeEqual(sigBuf, expectedBuf)) {
       return null;
     }
     

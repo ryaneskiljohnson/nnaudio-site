@@ -1705,6 +1705,7 @@ function EditTemplatePage() {
                         position: 'relative'
                       }}>
                         <iframe
+                          sandbox="allow-same-origin"
                           srcDoc={generatePreviewHtml()}
                           style={{
                             width: '100%',
@@ -2058,6 +2059,7 @@ function EditTemplatePage() {
                       border: '1px solid rgba(255, 255, 255, 0.1)'
                     }}>
                       <iframe
+                        sandbox="allow-same-origin"
                         srcDoc={generatePreviewHtml()}
                         style={{
                           width: '100%',
