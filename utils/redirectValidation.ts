@@ -17,8 +17,18 @@ export function isValidLocalRedirect(redirectUrl: string): boolean {
     return false;
   }
 
-  // Trim whitespace and normalize
-  decodedUrl = decodedUrl.trim();
+  // Reject control characters (CR/LF/NUL/etc.) BEFORE trimming, so header
+  // injection / smuggling payloads like "/path%0d%0aLocation:..." are rejected
+  // rather than silently normalized.
+  if (/[\u0000-\u001F\u007F]/.test(decodedUrl)) {
+    return false;
+  }
+
+  // The decoded value must not contain leading/trailing whitespace (a trim
+  // asymmetry between validation and return would otherwise let " /evil" pass).
+  if (decodedUrl !== decodedUrl.trim()) {
+    return false;
+  }
 
   // Must start with a single forward slash (local path)
   if (!decodedUrl.startsWith("/")) {
@@ -84,5 +94,6 @@ export function getSafeRedirectUrl(redirectUrl: string | null): string | null {
     return null;
   }
 
-  return decodeURIComponent(redirectUrl);
+  // Return the normalized (decoded + trimmed) value that passed validation.
+  return decodeURIComponent(redirectUrl).trim();
 }

@@ -24,12 +24,18 @@ export const contactSchema = z.object({
 /** Schema for POST /api/chat (JSON body). */
 export const chatSchema = z.object({
   message: z.string().min(1, "Message is required").max(4000),
-  conversationHistory: z.array(z.object({
-    id: z.string(),
-    text: z.string(),
-    isUser: z.boolean(),
-    timestamp: z.coerce.date(),
-  })).optional().default([]),
+  conversationHistory: z
+    .array(
+      z.object({
+        id: z.string().max(128),
+        text: z.string().max(4000),
+        isUser: z.boolean(),
+        timestamp: z.coerce.date(),
+      })
+    )
+    .max(50)
+    .optional()
+    .default([]),
   language: z.string().max(10).optional(),
 });
 

@@ -45,9 +45,12 @@ export function checkRateLimit(
  * @returns IP string, or '127.0.0.1' if unavailable
  */
 export function getClientIp(request: { headers: { get: (name: string) => string | null } }): string {
+  // Prefer Vercel's platform-trusted header (it cannot be spoofed by the client
+  // on Vercel), then fall back to standard proxy headers for other hosts.
   return (
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
     request.headers.get("x-real-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     "127.0.0.1"
   );
 }

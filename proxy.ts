@@ -90,7 +90,17 @@ function applyAttributionCookie(
 }
 
 /** Paths that require an authenticated user (server-side enforcement). */
-const PROTECTED_PREFIXES = ["/dashboard", "/admin"];
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/admin",
+  "/settings",
+  "/billing",
+  "/downloads",
+  "/my-products",
+  "/my-orders",
+  "/profile",
+  "/support",
+];
 
 /**
  * Proxy entry: refreshes Supabase session, enforces auth for protected paths, applies security headers.
