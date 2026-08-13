@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "supabase-gen-types": "bun x supabase gen types typescript --project-id \"znecvzfogwkzinkduyuq\" --schema public,stripe_tables > database.types.ts",
     "supabase-migrate": "bun x supabase db push",
     "migrate:admin-support-ticket-state": "bash scripts/run-admin-support-ticket-state-migration.sh",
