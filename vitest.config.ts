@@ -13,6 +13,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './'),
+      // `server-only` throws when bundled for the client; stub it so server
+      // modules that import it can be unit-tested under node.
+      'server-only': path.resolve(__dirname, './vitest.server-only-stub.ts'),
     },
   },
 });
