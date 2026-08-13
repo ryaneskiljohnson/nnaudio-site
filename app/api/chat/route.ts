@@ -479,9 +479,11 @@ async function generateAIResponse(message: string, conversationHistory: ChatMess
     const { nnaudioRAG } = await import('@/lib/rag');
     // Layer 1: RAG - Retrieve relevant context from knowledge base
     const context = await nnaudioRAG.retrieveRelevantContext(message);
-    
-    // Layer 2: Generate response with retrieved context
-    const response = await nnaudioRAG.generateResponse(message, conversationHistory);
+    const response = await nnaudioRAG.generateResponse(
+      message,
+      conversationHistory,
+      context
+    );
     
     // Layer 3: Verification - Fact-check the response against context
     const isVerified = await nnaudioRAG.verifyResponse(response, context);
@@ -584,7 +586,7 @@ function generateFallbackResponse(message: string, language: string = 'en'): str
 export async function POST(request: NextRequest) {
   try {
     const clientIp = getClientIp(request);
-    if (!checkRateLimit(clientIp, 30, 60)) {
+    if (!checkRateLimit(`chat:${clientIp}`, 30, 60)) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
         { status: 429 }
@@ -604,10 +606,11 @@ export async function POST(request: NextRequest) {
 
     const { message, conversationHistory, language } = parsed.data;
     const chatLanguage = language || 'en';
+    const recentHistory = conversationHistory.slice(-20);
     console.log(`[chat-api] Processing message in language: ${chatLanguage}`);
     
     // Generate AI response
-    const response = await generateAIResponse(message, conversationHistory, chatLanguage);
+    const response = await generateAIResponse(message, recentHistory, chatLanguage);
     
     return NextResponse.json({
       response,

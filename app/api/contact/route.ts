@@ -38,7 +38,7 @@ function contactFormSendErrorForClient(providerError: string): string {
 export async function POST(request: NextRequest) {
   try {
     const clientIp = getClientIp(request);
-    if (!checkRateLimit(clientIp, 10, 60)) {
+    if (!checkRateLimit(`contact:${clientIp}`, 10, 60)) {
       return NextResponse.json(
         { success: false, error: "Too many requests. Please try again later." },
         { status: 429 }

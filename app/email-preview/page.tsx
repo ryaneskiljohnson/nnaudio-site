@@ -35,35 +35,20 @@ function EmailPreviewContent() {
       const parser = new DOMParser();
       const doc = parser.parseFromString(emailHtml, 'text/html');
 
-      // Clean previously injected nodes
-      document.querySelectorAll('head [data-preview-head="true"]').forEach((el) => el.parentElement?.removeChild(el));
-
-      const nodesToInject: HTMLElement[] = [];
-      doc.head.querySelectorAll('style, link[rel="stylesheet"], link[rel="preconnect"], link[rel="icon"], meta').forEach((node) => {
-        const clone = node.cloneNode(true) as HTMLElement;
-        clone.setAttribute('data-preview-head', 'true');
-        nodesToInject.push(clone);
-      });
-
-      nodesToInject.forEach((n) => document.head.appendChild(n));
-
+      // NOTE: We intentionally do NOT inject the campaign's <head> nodes
+      // (style/link/meta) into the parent document — doing so would let
+      // untrusted campaign HTML run styles/trackers in our origin. The
+      // full HTML is rendered inside a sandboxed iframe instead.
       const extracted = doc.body ? doc.body.innerHTML : '';
       setBodyHtml(extracted);
       // Default to iframe unless explicitly disabled via ?noframe=1
-      const shouldIframe = !doc.body || extracted.length < 50;
-      const finalIframe = disableIframe ? false : (forceIframe || true);
+      const finalIframe = disableIframe ? false : true;
       setUseIframe(finalIframe);
-      console.log('[EmailPreview] Extracted body length:', extracted.length, 'Injected head nodes:', nodesToInject.length, 'useIframe:', finalIframe, 'force:', forceIframe, 'disable:', disableIframe);
     } catch (e) {
       console.error('[EmailPreview] HTML parse error:', e);
       setBodyHtml('');
       setUseIframe(true);
     }
-
-    return () => {
-      // Cleanup injected nodes on unmount or when HTML changes
-      document.querySelectorAll('head [data-preview-head="true"]').forEach((el) => el.parentElement?.removeChild(el));
-    };
   }, [emailHtml, forceIframe, disableIframe]);
 
   useEffect(() => {
@@ -126,9 +111,12 @@ function EmailPreviewContent() {
         <iframe
           key={`preview-${campaignId}`}
           ref={iframeRef}
+          // Sandbox without allow-scripts: email HTML never needs to execute JS,
+          // so this neutralizes stored-XSS in campaign content while still
+          // rendering styles/images.
+          sandbox="allow-same-origin"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', background: '#ffffff' }}
           srcDoc={emailHtml}
-          onLoad={() => console.log('[EmailPreview] iframe loaded')}
         />
       ) : (
         <div

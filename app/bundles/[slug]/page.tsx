@@ -992,7 +992,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
               >
                 <PricingType>Monthly</PricingType>
                 <PriceContainer>
-                {bundle.pricing.monthly.sale_price ? (
+                {bundle.pricing.monthly.sale_price != null ? (
                   <>
                     <SalePrice>{formatPrice(bundle.pricing.monthly.sale_price)}</SalePrice>
                     <OriginalPrice>{formatPrice(bundle.pricing.monthly.price)}</OriginalPrice>
@@ -1015,7 +1015,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
               >
                 <PricingType>Annual</PricingType>
                 <PriceContainer>
-                {bundle.pricing.annual.sale_price ? (
+                {bundle.pricing.annual.sale_price != null ? (
                   <>
                     <SalePrice>{formatPrice(bundle.pricing.annual.sale_price)}</SalePrice>
                     <OriginalPrice>{formatPrice(bundle.pricing.annual.price)}</OriginalPrice>
@@ -1042,7 +1042,7 @@ export default function BundleDetailPage({ params }: { params: Promise<{ slug: s
               >
                 <PricingType>Lifetime</PricingType>
                 <PriceContainer>
-                {bundle.pricing.lifetime.sale_price ? (
+                {bundle.pricing.lifetime.sale_price != null ? (
                   <>
                     <SalePrice>{formatPrice(bundle.pricing.lifetime.sale_price)}</SalePrice>
                     <OriginalPrice>{formatPrice(bundle.pricing.lifetime.price)}</OriginalPrice>

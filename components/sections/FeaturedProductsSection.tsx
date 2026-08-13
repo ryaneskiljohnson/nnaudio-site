@@ -557,6 +557,10 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
   const maxIndex = Math.max(0, sliderProducts.length - cardsPerView);
 
   useEffect(() => {
+    setCurrentIndex((prev) => Math.min(prev, maxIndex));
+  }, [maxIndex]);
+
+  useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);

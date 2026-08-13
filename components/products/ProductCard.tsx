@@ -352,7 +352,7 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
                       </span>
                       {product.sale_price === 0 ? 'FREE' : (product.sale_price != null && product.sale_price > 0 ? `$${product.sale_price}` : `$${product.price}`)}
                     </>
-                  ) : (product.sale_price !== null && product.sale_price !== undefined && product.sale_price > 0) ? (
+                  ) : (product.sale_price !== null && product.sale_price !== undefined && product.sale_price >= 0 && product.sale_price < product.price) ? (
                     <>
                       <span style={{
                         textDecoration: 'line-through',

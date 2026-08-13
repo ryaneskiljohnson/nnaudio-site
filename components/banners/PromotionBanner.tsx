@@ -348,13 +348,6 @@ interface Promotion {
 
 export default function PromotionBanner({ showCountdown = true, dismissible = true, variant = 'sticky' }: PromotionBannerProps) {
   const { user } = useAuth();
-  
-  // CRITICAL: Check for lifetime FIRST before any other logic
-  // Hide banner immediately for lifetime users - they don't need promotions
-  if (user?.profile?.subscription === 'lifetime') {
-    return null;
-  }
-
   const { t } = useTranslation();
   const [sale, setSale] = React.useState<Promotion | null>(null);
   const [loading, setLoading] = useState(false);
@@ -362,11 +355,17 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
   const [isClosed, setIsClosed] = useState(false);
   const { initiateCheckout } = useCheckout();
   const router = useRouter();
+  const [timeLeft, setTimeLeft] = React.useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+  const isLifetime = user?.profile?.subscription === 'lifetime';
 
   // Fetch active promotion - Skip for lifetime users
   React.useEffect(() => {
-    // Don't fetch promotions for lifetime users
-    if (user?.profile?.subscription === 'lifetime') {
+    if (isLifetime) {
       setSale(null);
       return;
     }
@@ -405,13 +404,7 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
     };
 
     fetchPromotion();
-  }, [dismissible, user?.profile?.subscription]);
-  const [timeLeft, setTimeLeft] = React.useState({
-    days: 0,
-    hours: 0,
-    minutes: 0,
-    seconds: 0,
-  });
+  }, [dismissible, isLifetime]);
 
   React.useEffect(() => {
     if (!showCountdown || !sale?.end_date) return;
@@ -430,6 +423,8 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
         });
       } else {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        setSale(null);
+        setIsClosed(true);
       }
     };
 
@@ -438,6 +433,10 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
 
     return () => clearInterval(interval);
   }, [showCountdown, sale?.end_date]);
+
+  if (isLifetime) {
+    return null;
+  }
 
   if (!sale) return null;
 

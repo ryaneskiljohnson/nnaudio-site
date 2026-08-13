@@ -424,6 +424,10 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({
   const maxIndex = Math.max(0, displayedProducts.length - cardsPerView);
 
   useEffect(() => {
+    setCurrentIndex((prev) => Math.min(prev, maxIndex));
+  }, [maxIndex]);
+
+  useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 768);
     };

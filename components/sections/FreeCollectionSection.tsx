@@ -412,6 +412,10 @@ export default function FreeCollectionSection({
   const allCardsFit = displayedProducts.length <= cardsPerView;
 
   useEffect(() => {
+    setCurrentIndex((prev) => Math.min(prev, maxIndex));
+  }, [maxIndex]);
+
+  useEffect(() => {
     const checkMobile = () => setIsMobile(typeof window !== "undefined" && window.innerWidth <= 768);
     checkMobile();
     window.addEventListener("resize", checkMobile);

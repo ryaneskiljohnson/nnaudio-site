@@ -506,7 +506,7 @@ export default function BundlesPage() {
         {!(bundle.pricing?.monthly || bundle.pricing?.annual) && bundle.pricing?.lifetime ? (
           <BundleCardFooter>
             <SalePriceContainer>
-              {bundle.pricing.lifetime.sale_price ? (
+              {bundle.pricing.lifetime.sale_price != null ? (
                 <>
                   <OriginalPrice>{formatPrice(bundle.pricing.lifetime.price)}</OriginalPrice>
                   <SalePrice>{formatPrice(bundle.pricing.lifetime.sale_price)}</SalePrice>

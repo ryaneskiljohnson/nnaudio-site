@@ -112,7 +112,7 @@ export function normalizeMetaUserData(rawData: {
     st: hashPII(rawData.state),
     zp: hashPII(rawData.zip),
     country: rawData.country?.length === 2 ? rawData.country.toLowerCase() : undefined,
-    external_id: rawData.userId,
+    external_id: hashPII(rawData.userId),
     client_ip_address: rawData.clientIp,
     client_user_agent: rawData.clientUserAgent,
     fbc: rawData.fbcId,

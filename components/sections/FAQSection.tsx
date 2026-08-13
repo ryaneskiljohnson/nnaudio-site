@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import useLanguage from "@/hooks/useLanguage";
 import Link from "next/link";
+import DOMPurify from "isomorphic-dompurify";
 import {
   FaDesktop,
   FaBoxOpen,
@@ -287,7 +288,14 @@ const FAQSection = () => {
                 }}
                 transition={{ duration: 0.3 }}
               >
-                <p dangerouslySetInnerHTML={{ __html: faq.answer }} />
+                <p
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(faq.answer, {
+                      ALLOWED_TAGS: ["a", "strong", "em", "br", "p", "span", "ul", "ol", "li"],
+                      ALLOWED_ATTR: ["href", "target", "rel"],
+                    }),
+                  }}
+                />
               </Answer>
             </FAQItem>
           </motion.div>

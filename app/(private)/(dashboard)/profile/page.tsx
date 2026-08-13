@@ -250,6 +250,7 @@ function Profile() {
     first_name: user?.profile?.first_name || "",
     last_name: user?.profile?.last_name || "",
   });
+  const [profileDirty, setProfileDirty] = useState(false);
   const [translationsLoaded, setTranslationsLoaded] = useState(false);
 
   // Initialize translations
@@ -264,13 +265,13 @@ function Profile() {
   }, [languageLoading]);
 
   useEffect(() => {
-    if (user?.profile) {
+    if (user?.profile && !profileDirty) {
       setProfileData({
         first_name: user.profile.first_name || "",
         last_name: user.profile.last_name || "",
       });
     }
-  }, [user]);
+  }, [user, profileDirty]);
 
   const handleProfileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -280,6 +281,7 @@ function Profile() {
       ...prev,
       [key]: e.target.value,
     }));
+    setProfileDirty(true);
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -310,6 +312,7 @@ function Profile() {
           ),
           type: "success",
         });
+        setProfileDirty(false);
       }
     } catch (error) {
       setMessage({

@@ -38,6 +38,7 @@ import {
 } from "@/app/actions/user-management";
 
 import TableLoadingRow from "@/components/common/TableLoadingRow";
+import LoadingComponent from "@/components/common/LoadingComponent";
 import * as SupportComponents from "@/components/support/SupportTicketsComponents";
 import {
   isHeicOrHeifAttachment,
@@ -1125,7 +1126,7 @@ function SupportPage() {
   };
 
   if (!showContent) {
-    return null;
+    return <LoadingComponent fullScreen text="Loading..." />;
   }
 
   return (

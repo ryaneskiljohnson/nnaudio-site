@@ -95,7 +95,7 @@ class ErrorBoundary extends React.Component<
         <ErrorContainer>
           <ErrorTitle>Something went wrong</ErrorTitle>
           <p>We&apos;ve encountered an error and are working to fix it.</p>
-          {this.state.error && (
+          {this.state.error && process.env.NODE_ENV !== "production" && (
             <ErrorMessage>
               {this.state.error.toString()}
               <br />

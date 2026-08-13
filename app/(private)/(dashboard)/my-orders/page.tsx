@@ -520,7 +520,7 @@ export default function MyOrdersPage() {
         </Subtitle>
       </Header>
 
-      {orders.length === 0 && productGrants.length === 0 ? (
+      {orders.length === 0 && productGrants.length === 0 && productRedemptions.length === 0 ? (
         <EmptyState>
           <EmptyStateIcon>
             <FaShoppingBag />
@@ -771,7 +771,7 @@ export default function MyOrdersPage() {
 
                       {order.receiptUrl && (
                         <ActionButton
-                          onClick={() => window.open(order.receiptUrl!, "_blank")}
+                          onClick={() => window.open(order.receiptUrl!, "_blank", "noopener,noreferrer")}
                         >
                           <FaExternalLinkAlt />
                           {t("dashboard.orders.viewReceipt", "View Receipt")}
@@ -1021,7 +1021,7 @@ export default function MyOrdersPage() {
 
                             {order.receiptUrl && (
                               <ActionButton
-                                onClick={() => window.open(order.receiptUrl!, "_blank")}
+                                onClick={() => window.open(order.receiptUrl!, "_blank", "noopener,noreferrer")}
                               >
                                 <FaExternalLinkAlt />
                                 {t("dashboard.orders.viewReceipt", "View Receipt")}

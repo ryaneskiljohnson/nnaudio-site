@@ -96,8 +96,8 @@ class NNAudioRAG {
     query: string
   ) => { needs: string[]; pains: string[]; currentTools: string[]; experienceLevel: string; budget: string; decisionContext: string };
 
-  async generateResponse(query: string, conversationHistory: any[] = []): Promise<string> {
-    const context = await this.retrieveRelevantContext(query);
+  async generateResponse(query: string, conversationHistory: any[] = [], prefetchedContext?: string): Promise<string> {
+    const context = prefetchedContext ?? await this.retrieveRelevantContext(query);
     const nepqState = this.extractNEPQState(conversationHistory, query);
 
     const systemPrompt = `You are a helpful support and sales assistant for NNAudio (nnaud.io). You help with products, NNAudio Access, downloads, redemption, purchases, subscriptions, and account management. You strictly follow NEPQ.

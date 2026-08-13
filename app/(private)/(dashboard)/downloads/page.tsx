@@ -22,8 +22,10 @@ import {
 /** API that returns installer metadata using service-role (reliable size/date). */
 const INSTALLER_INFO_API = "/api/nnaudio-access/installer-info";
 /** Public URLs for HEAD fallback when API is unavailable. */
-const NNAUDIO_ACCESS_MACOS_INSTALLER_URL =
-  "https://znecvzfogwkzinkduyuq.supabase.co/storage/v1/object/public/builds/nnaudio-access/NNAudioAccess_Installer.pkg";
+function macosInstallerUrl(): string {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") || "";
+  return `${base}/storage/v1/object/public/builds/nnaudio-access/NNAudioAccess_Installer.pkg`;
+}
 
 function windowsInstallerUrl(): string {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") || "";
@@ -267,7 +269,7 @@ function Downloads() {
       e.preventDefault();
       if (fileInfo.macos.size === "Loading...") return;
       await trackInstallerDownload("macos");
-      window.location.href = NNAUDIO_ACCESS_MACOS_INSTALLER_URL;
+      window.location.href = macosInstallerUrl();
     },
     [fileInfo.macos.size, trackInstallerDownload],
   );
@@ -354,7 +356,7 @@ function Downloads() {
         const setFromHead = async () => {
           const [winMeta, macMeta] = await Promise.all([
             getFileMetadataFromUrl(windowsUrl),
-            getFileMetadataFromUrl(NNAUDIO_ACCESS_MACOS_INSTALLER_URL),
+            getFileMetadataFromUrl(macosInstallerUrl()),
           ]);
           setFileInfo({
             windows: {
@@ -395,7 +397,7 @@ function Downloads() {
           if (meta.lastModified) winDateStr = formatDate(meta.lastModified);
         }
         if (macSizeStr === "—" || macDateStr === "—") {
-          const meta = await getFileMetadataFromUrl(NNAUDIO_ACCESS_MACOS_INSTALLER_URL);
+          const meta = await getFileMetadataFromUrl(macosInstallerUrl());
           if (meta.size != null) macSizeStr = formatFileSize(meta.size);
           if (meta.lastModified) macDateStr = formatDate(meta.lastModified);
         }

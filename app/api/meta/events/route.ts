@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
   const clientIp = getClientIp(request);
 
   // Rate limiting: 100 requests per minute per IP
-  if (!checkRateLimit(clientIp, 100, 60)) {
+  if (!checkRateLimit(`meta-events:${clientIp}`, 100, 60)) {
     console.warn(`⚠️ Rate limit exceeded for IP: ${clientIp}`);
     return NextResponse.json(
       { error: 'Too many requests' },

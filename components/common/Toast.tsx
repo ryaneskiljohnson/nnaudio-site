@@ -137,18 +137,29 @@ const Toast = ({
 }) => {
   const [isClosing, setIsClosing] = React.useState(false);
 
-  const handleClose = () => {};
+  const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(() => {
+      onClose();
+    }, 300);
+  };
 
   // Auto close after duration
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsClosing(true);
-      setTimeout(() => {
+      closeTimerRef.current = setTimeout(() => {
         onClose();
-      }, 300); // Match the animation duration
+      }, 300);
     }, duration);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
   }, [duration, onClose]);
 
   // Get the appropriate icon based on type

@@ -467,7 +467,12 @@ async function executeFacebookGuardrailSweep(
     }
 
     const hasScaleHeadroom = currentDailyBudgetUsd < guardrails.maxDailyBudgetPerCampaignUsd;
-    if (autoScaleEnabled && scaleEligibility.eligible && hasScaleHeadroom) {
+    if (
+      autoScaleEnabled &&
+      scaleEligibility.eligible &&
+      hasScaleHeadroom &&
+      currentDailyBudgetUsd > 0
+    ) {
       const requestedScaleBudgetUsd =
         (currentDailyBudgetUsd > 0
           ? currentDailyBudgetUsd
@@ -726,9 +731,21 @@ async function executeFacebookScaleCampaignBudget(
 
   const currentDailyBudgetUsd = parseMetaBudgetUsd(campaign.daily_budget);
   const guardrails = getGrowthGuardrailsFromEnv();
+  if (currentDailyBudgetUsd <= 0) {
+    return {
+      success: true,
+      output: {
+        campaignId,
+        skipped: true,
+        reason:
+          "Campaign has no daily budget (lifetime-budget campaigns are not auto-scaled).",
+        currentDailyBudgetUsd,
+      },
+    };
+  }
   const requestedDailyBudgetUsd = parseFiniteNumber(
     payload?.requestedDailyBudgetUsd,
-    currentDailyBudgetUsd > 0 ? currentDailyBudgetUsd : guardrails.launchDailyBudgetUsd
+    currentDailyBudgetUsd
   );
   const guardedBudget = applyDailyBudgetGuardrails(requestedDailyBudgetUsd, guardrails, {
     mode: "update",

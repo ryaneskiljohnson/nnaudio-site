@@ -414,11 +414,26 @@ function DashboardPage() {
     setIsContactSubmitting(true);
 
     try {
-      // TODO: Implement actual contact form submission
-      // Simulate an API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: contactForm.name,
+          email: contactForm.email,
+          subject: "Dashboard support",
+          message: contactForm.message,
+          userId: userAuth?.id ?? null,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          typeof data.error === "string"
+            ? data.error
+            : "Failed to send message"
+        );
+      }
 
-      // Show success message
       setContactForm({
         name: "",
         email: "",
