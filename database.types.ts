@@ -3869,6 +3869,30 @@ export type Database = {
         }
         Relationships: []
       }
+      stripe_webhook_events: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          event_type: string
+          id: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          event_type: string
+          id: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       subscriber_imports: {
         Row: {
           created_at: string | null
