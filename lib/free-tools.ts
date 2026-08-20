@@ -3,6 +3,34 @@
  * @module lib/free-tools
  */
 
+export const NNAUD_FREE_PLUGINS = [
+  {
+    name: "FreeQ",
+    kind: "EQ",
+    href: "/product/freeq-free-eq-module-plugin",
+  },
+  {
+    name: "Freelay",
+    kind: "Delay",
+    href: "/product/freelay-free-delay-module-plugin",
+  },
+  {
+    name: "Freeverb",
+    kind: "Reverb",
+    href: "/product/freeverb-free-reverb-module-plugin",
+  },
+  {
+    name: "Sterfreeo",
+    kind: "Stereo",
+    href: "/product/sterfreeo-free-stereo-module-plugin",
+  },
+  {
+    name: "Cowboy Harp",
+    kind: "Harp",
+    href: "/product/cowboy-harp-free-jaw-harp-plugin",
+  },
+] as const;
+
 export const NNAUD_FREE_PLUGIN_NAMES = [
   "FreeQ",
   "Freelay",
@@ -27,6 +55,13 @@ export interface NamedCatalogItem {
   slug?: string | null;
   featured_image_url?: string | null;
   logo_url?: string | null;
+}
+
+export function freePluginLabel(plugin: {
+  name: string;
+  kind: string;
+}): string {
+  return `${plugin.name} ${plugin.kind}`;
 }
 
 export function matchNamedFreeProduct(

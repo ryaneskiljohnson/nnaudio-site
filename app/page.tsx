@@ -1,6 +1,6 @@
 /**
- * @fileoverview NN Audio homepage. Short product storefront: Cymasphere,
- * named free plugins, live catalog SKUs, quiet Access line.
+ * @fileoverview NN Audio homepage. Product tiles only: Cymasphere, named free
+ * plugins, paid catalog SKUs. Access is nav/footer, not a homepage block.
  * @module app/page
  */
 
@@ -12,7 +12,7 @@ import {
   NNAUD_FREE_PLUGIN_HREFS,
   NNAUD_FREE_PLUGIN_NAMES,
 } from "@/lib/free-tools";
-import { PLUGIN_CATEGORIES } from "@/utils/catalog-taxonomy";
+import { ALL_CATEGORIES } from "@/utils/catalog-taxonomy";
 import {
   getActiveProductsByCategories,
   getFreeProducts,
@@ -30,8 +30,6 @@ const NAMED_FREE_SLUGS = new Set(
   )
 );
 
-const SHOP_LIMIT = 8;
-
 function isNamedFreeProduct(product: CatalogProduct): boolean {
   if (product.slug && NAMED_FREE_SLUGS.has(product.slug)) return true;
   const name = product.name.toLowerCase();
@@ -44,6 +42,7 @@ function toShopItems(products: CatalogProduct[]): StorefrontCatalogItem[] {
   const items: StorefrontCatalogItem[] = [];
   for (const product of products) {
     if (!product.slug || isCymasphereSlug(product.slug)) continue;
+    if (product.slug === "nnaudio-access") continue;
     if (isNamedFreeProduct(product)) continue;
     const offer = getPublicOfferDisplay(applyCymasphereOfferPrices(product));
     if (offer.isFree || offer.amount <= 0) continue;
@@ -53,7 +52,6 @@ function toShopItems(products: CatalogProduct[]): StorefrontCatalogItem[] {
       imageUrl: product.featured_image_url || product.logo_url,
       priceLabel: `$${offer.amount}`,
     });
-    if (items.length >= SHOP_LIMIT) break;
   }
   return items;
 }
@@ -70,7 +68,7 @@ export default async function Home() {
     const [cymasphere, free, shopSource] = await Promise.all([
       getPublicProductBySlug("cymasphere"),
       getFreeProducts(),
-      getActiveProductsByCategories([...PLUGIN_CATEGORIES, "pack"]),
+      getActiveProductsByCategories(ALL_CATEGORIES),
     ]);
     cymasphereImageUrl =
       cymasphere?.featured_image_url || cymasphere?.logo_url || undefined;

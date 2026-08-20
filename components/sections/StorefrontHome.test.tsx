@@ -1,5 +1,5 @@
 /**
- * @fileoverview Homepage is a product storefront, not door cards or a lander.
+ * @fileoverview Homepage is a product-tile storefront, not door cards or a lander.
  * @module components/sections/StorefrontHome.test
  */
 
@@ -27,30 +27,26 @@ vi.mock("next/link", () => ({
 import { StorefrontHome } from "./StorefrontHome";
 
 describe("StorefrontHome", () => {
-  it("opens as a short product storefront, not door cards or a lander", () => {
+  it("opens as product tiles, not door cards or a lander", () => {
     const html = renderToStaticMarkup(<StorefrontHome />);
 
     expect(html).toContain(">Cymasphere<");
     expect(html).toContain(
-      "MIDI harmony engine. Progressions, voicings, voice leading."
+      "MIDI harmony engine · $199 one-time · Progressions, voicings, voice leading."
     );
-    expect(html).toContain("$199 one-time");
     expect(html).toContain("Get Cymasphere");
     expect(html).toContain('href="/product/cymasphere"');
     expect(html).toContain('src="/images/cymasphere-logo.png"');
-    expect(html).toContain("FreeQ");
-    expect(html).toContain("Freelay");
-    expect(html).toContain("Freeverb");
-    expect(html).toContain("Sterfreeo");
-    expect(html).toContain("Cowboy Harp");
+    expect(html).toContain("FreeQ EQ");
+    expect(html).toContain("Freelay Delay");
+    expect(html).toContain("Freeverb Reverb");
+    expect(html).toContain("Sterfreeo Stereo");
+    expect(html).toContain("Cowboy Harp Harp");
     expect(html).toContain('href="/product/freeq-free-eq-module-plugin"');
-    expect(html).toContain('href="/free-tools"');
     expect(html).toContain('href="/plugins"');
     expect(html).toContain('href="/packs"');
     expect(html).toContain('href="/bundles"');
     expect(html).toContain('href="/products"');
-    expect(html).toContain('href="/product/nnaudio-access"');
-    expect(html).toContain("download, install, update, library");
 
     expect(html).not.toContain("Start here");
     expect(html).not.toContain("Unstick the progression.");
@@ -61,12 +57,17 @@ describe("StorefrontHome", () => {
     expect(html).not.toContain("Get the free tools");
     expect(html).not.toContain("The rest of the shop");
     expect(html).not.toContain("Loading pricing");
+    expect(html).not.toContain("Sound On Sound");
+    expect(html).not.toContain("Attack");
+    expect(html).not.toContain("Serum 2");
+    expect(html).not.toContain("CymaSynth");
+    expect(html).not.toContain("nnaudio-access");
+    expect(html).not.toContain("download, install, update, library");
     expect(html).not.toContain("$149");
     expect(html).not.toContain("$499");
-    expect(html).not.toContain("Michigan");
   });
 
-  it("uses live product art and slugs when the catalog is available", () => {
+  it("uses live product art and keeps CymaSynth as a catalog card only", () => {
     const html = renderToStaticMarkup(
       <StorefrontHome
         cymasphereImageUrl="https://cdn.example.com/cymasphere.webp"
@@ -93,5 +94,7 @@ describe("StorefrontHome", () => {
     expect(html).toContain("CymaSynth");
     expect(html).toContain('href="/product/cymasynth"');
     expect(html).toContain("$149");
+    expect(html).not.toContain("Serum 2");
+    expect(html).not.toContain("nnaudio-access");
   });
 });
