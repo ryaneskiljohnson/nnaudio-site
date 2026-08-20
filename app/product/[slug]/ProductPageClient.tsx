@@ -23,6 +23,7 @@ import RelatedProductsSlider from "@/components/RelatedProductsSlider";
 import { MultiVideoPlayer } from "@/app/components/MultiVideoPlayer";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import { trackViewContent } from "@/utils/analytics";
+import { getPublicOfferDisplay } from "@/utils/products/public-offer-display";
 
 const Container = styled.div`
   min-height: 100vh;
@@ -1892,11 +1893,14 @@ export default function ProductPageClient({
     return <LoadingContainer>Product not found</LoadingContainer>;
   }
 
-  // Use sale_price if it exists (including 0), otherwise use regular price
-  const displayPrice = (product.sale_price !== null && product.sale_price !== undefined) ? product.sale_price : product.price;
-  const hasDiscount = product.sale_price !== null && product.sale_price !== undefined && product.sale_price > 0 && product.sale_price < product.price;
-  // Product is free if sale_price is 0, or if both price and sale_price are 0/null
-  const isFree = product.sale_price === 0 || (product.price === 0 && (product.sale_price === null || product.sale_price === undefined));
+  const offer = getPublicOfferDisplay({
+    slug,
+    price: product.price,
+    sale_price: product.sale_price,
+  });
+  const displayPrice = offer.amount;
+  const hasDiscount = offer.compareAt != null && !offer.isFree;
+  const isFree = offer.isFree;
 
   // Resolve hero background: use product fields, or Cymasphere default when slug is cymasphere
   const heroBgImage =
@@ -2003,16 +2007,16 @@ export default function ProductPageClient({
             <PriceContainer>
               {isFree ? (
                 <>
-                  {(product.sale_price === 0 && product.price > 0) && (
-                    <OriginalPrice>${product.price}</OriginalPrice>
+                  {offer.compareAt != null && (
+                    <OriginalPrice>${offer.compareAt}</OriginalPrice>
                   )}
                   <FreeBadge>FREE</FreeBadge>
                 </>
               ) : (
                 <>
                   <Price>${displayPrice}</Price>
-                  {hasDiscount && (
-                    <OriginalPrice>${product.price}</OriginalPrice>
+                  {hasDiscount && offer.compareAt != null && (
+                    <OriginalPrice>${offer.compareAt}</OriginalPrice>
                   )}
                 </>
               )}
@@ -2667,8 +2671,8 @@ export default function ProductPageClient({
             <StickyProductInfo>
               <StickyProductName>{product.name}</StickyProductName>
               <StickyPrice>
-                {(product.sale_price === 0 && product.price > 0) && (
-                  <StickyPriceOriginal>${product.price}</StickyPriceOriginal>
+                {isFree && offer.compareAt != null && (
+                  <StickyPriceOriginal>${offer.compareAt}</StickyPriceOriginal>
                 )}
                 <StickyPriceMain>
                   {isFree ? (
@@ -2691,8 +2695,8 @@ export default function ProductPageClient({
                     `$${displayPrice}`
                   )}
                 </StickyPriceMain>
-                {hasDiscount && !isFree && (
-                  <StickyPriceOriginal>${product.price}</StickyPriceOriginal>
+                {hasDiscount && !isFree && offer.compareAt != null && (
+                  <StickyPriceOriginal>${offer.compareAt}</StickyPriceOriginal>
                 )}
               </StickyPrice>
             </StickyProductInfo>

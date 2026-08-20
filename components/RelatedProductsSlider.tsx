@@ -20,6 +20,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { FaChevronLeft, FaChevronRight, FaStar } from 'react-icons/fa';
+import { getPublicOfferDisplay } from '@/utils/products/public-offer-display';
 
 interface RelatedProduct {
   id: string;
@@ -295,9 +296,7 @@ export default function RelatedProductsSlider({ products }: RelatedProductsSlide
       <SliderWrapper ref={scrollRef}>
         <SliderTrack>
           {products.map((product, index) => {
-            const displayPrice = product.sale_price !== null ? product.sale_price : product.price;
-            const hasDiscount = product.sale_price !== null && product.sale_price > 0 && product.sale_price < product.price;
-            const isFree = product.sale_price === 0 || (product.price === 0 && product.sale_price === null);
+            const offer = getPublicOfferDisplay(product);
 
             return (
               <Link key={product.id} href={`/product/${product.slug}`} style={{ textDecoration: 'none' }}>
@@ -357,13 +356,13 @@ export default function RelatedProductsSlider({ products }: RelatedProductsSlide
                     )}
                     
                     <PriceContainer>
-                      {isFree ? (
+                      {offer.isFree ? (
                         <FreeBadge>FREE</FreeBadge>
                       ) : (
                         <>
-                          <Price>${displayPrice}</Price>
-                          {hasDiscount && (
-                            <OriginalPrice>${product.price}</OriginalPrice>
+                          <Price>${offer.amount}</Price>
+                          {offer.compareAt != null && (
+                            <OriginalPrice>${offer.compareAt}</OriginalPrice>
                           )}
                         </>
                       )}

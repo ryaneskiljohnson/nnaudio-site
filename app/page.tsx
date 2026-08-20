@@ -13,6 +13,10 @@ import StartHereSection from "@/components/sections/StartHereSection";
 import ProofPointsSection from "@/components/sections/ProofPointsSection";
 import ConversionCtaSection from "@/components/sections/ConversionCtaSection";
 import PremiumSpotlightSection from "@/components/sections/PremiumSpotlightSection";
+import {
+  CYMASPHERE_PRICE_USD,
+  isCymasphereSlug,
+} from "@/lib/cymasphere-sales";
 import FreeCollectionSection from "@/components/sections/FreeCollectionSection";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import ProductsSectionSkeleton from "@/components/sections/ProductsSectionSkeleton";
@@ -288,7 +292,11 @@ export default function Home() {
                 logo: useProductImageOnly ? productImage : logoOrProduct,
                 thumbnail: useProductImageOnly ? productImage : (productImage || p.logo_url || ''),
                 backgroundImage: p.background_image_url || p.background_video_url || '',
-                price: `$${p.sale_price || p.price}`,
+                price: `$${
+                  isCymasphereSlug(p.slug)
+                    ? CYMASPHERE_PRICE_USD
+                    : p.sale_price || p.price
+                }`,
                 hasMultiplePricing: isBundle || p.category === 'bundle',
               };
             });
