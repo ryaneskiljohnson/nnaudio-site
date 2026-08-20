@@ -1,7 +1,7 @@
 /**
  * @fileoverview Locked $149 one-time Cymasphere sales copy for /product/cymasphere.
- * Press quotes are from the SOS and Attack pieces named here. CymaSynth is a
- * separate catalog SKU — do not claim it ships with this purchase.
+ * Press quotes are the locked SOS and Attack lines named here only.
+ * CymaSynth is a separate catalog SKU — do not claim it ships with this purchase.
  * @module lib/cymasphere-sales
  */
 
