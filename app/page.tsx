@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * @fileoverview Public homepage that merchandises the NNAud.io growth ladder:
- * free tools, bundles, flagship products, pricing, and FAQ.
+ * @fileoverview Short NNAud.io storefront. Cymasphere’s long $199 page lives
+ * at /product/cymasphere. Free tools live at /free-tools.
  * @module app/page
  */
 
@@ -11,14 +11,11 @@ import dynamic from "next/dynamic";
 import NNAudHeroSection from "@/components/sections/NNAudHeroSection";
 import StartHereSection from "@/components/sections/StartHereSection";
 import ProofPointsSection from "@/components/sections/ProofPointsSection";
-import ConversionCtaSection from "@/components/sections/ConversionCtaSection";
-import PremiumSpotlightSection from "@/components/sections/PremiumSpotlightSection";
 import {
   CYMASPHERE_PRICE_USD,
   isCymasphereSlug,
 } from "@/lib/cymasphere-sales";
 import { applyCymasphereOfferPrices } from "@/utils/products/public-offer-display";
-import FreeCollectionSection from "@/components/sections/FreeCollectionSection";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import ProductsSectionSkeleton from "@/components/sections/ProductsSectionSkeleton";
 import FeaturedProductsSectionSkeleton from "@/components/sections/FeaturedProductsSectionSkeleton";
@@ -248,7 +245,6 @@ export default function Home() {
   const [instrumentPlugins, setInstrumentPlugins] = useState<any[]>([]);
   const [audioFxPlugins, setAudioFxPlugins] = useState<any[]>([]);
   const [packs, setPacks] = useState<any[]>([]);
-  const [freeProducts, setFreeProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -256,22 +252,20 @@ export default function Home() {
       try {
         // Fetch ALL products in parallel for better performance.
         // Bundles come from /api/bundles for correct pricing and subscription vs one-time.
-        const [featuredResponse, bundlesResponse, fxResponse, instrumentResponse, packsResponse, freeResponse] = await Promise.all([
+        const [featuredResponse, bundlesResponse, fxResponse, instrumentResponse, packsResponse] = await Promise.all([
           fetch('/api/products?featured=true&status=active&limit=6'),
           fetch('/api/bundles?status=active'),
           fetch('/api/products?category=audio-fx-plugin&status=active&limit=10000'),
           fetch('/api/products?category=instrument-plugin&status=active&limit=10000'),
           fetch('/api/products?category=pack&status=active&limit=10000'),
-          fetch('/api/products?free=true&status=active&limit=10000'),
         ]);
 
-        const [featuredData, bundlesData, fxData, instrumentData, packsData, freeData] = await Promise.all([
+        const [featuredData, bundlesData, fxData, instrumentData, packsData] = await Promise.all([
           featuredResponse.json(),
           bundlesResponse.json(),
           fxResponse.json(),
           instrumentResponse.json(),
           packsResponse.json(),
-          freeResponse.json(),
         ]);
         
         // Map featured products
@@ -419,25 +413,6 @@ export default function Home() {
           setPacks(mappedPacks);
         }
 
-        // Map free products
-        if (freeData.success) {
-          const mappedFree = freeData.products.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            slug: p.slug,
-            tagline: p.tagline || p.short_description || '',
-            short_description: p.short_description,
-            description: p.description,
-            category: p.category,
-            image: p.logo_url || p.featured_image_url || '',
-            featured_image_url: p.featured_image_url,
-            logo_url: p.logo_url,
-            backgroundImage: p.background_image_url || p.background_video_url || '',
-            price: typeof p.price === 'number' ? p.price : 0, // Preserve original price
-            sale_price: p.sale_price,
-          })).map(applyCymasphereOfferPrices);
-          setFreeProducts(mappedFree);
-        }
       } catch (error) {
         console.error('Error fetching products:', error);
         // Fall back to hardcoded products if API fails
@@ -446,7 +421,6 @@ export default function Home() {
         setInstrumentPlugins(staticPlugins.filter((p: any) => p.name.includes('Curio') || p.name.includes('Weaknd')));
         setAudioFxPlugins(staticPlugins.filter((p: any) => !p.name.includes('Curio') && !p.name.includes('Weaknd')));
         setPacks(staticPacks);
-        setFreeProducts([]);
       } finally {
         setLoading(false);
       }
@@ -469,19 +443,6 @@ export default function Home() {
 
       <ProofPointsSection />
       <StartHereSection />
-
-      {!loading && freeProducts.length > 0 ? (
-        <FreeCollectionSection products={freeProducts} />
-      ) : (
-        <ProductsSectionSkeleton 
-          title="Free Tools"
-          subtitle="High-quality plugins and samples available at no cost"
-          cardCount={4}
-        />
-      )}
-      {!loading && <WaveformTransition barCount={150} topColor="#0a0a0a" bottomColor="#06070f" />}
-
-      <PremiumSpotlightSection />
 
       {/* Featured Products section */}
       <div style={{ position: 'relative', overflow: 'visible' }}>
@@ -608,8 +569,6 @@ export default function Home() {
 
       {/* NNAudio Access highlight - after the catalog story */}
       <NNAudioAccessHighlightSection />
-
-      <ConversionCtaSection />
 
       {/* Pricing section - Always render */}
       <PricingSection />
