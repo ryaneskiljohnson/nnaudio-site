@@ -13,15 +13,8 @@ import {
   CYMASPHERE_PRICE_LABEL,
   CYMASPHERE_SALES,
 } from "@/lib/cymasphere-sales";
+import { NNAUD_FREE_PLUGIN_NAMES } from "@/lib/free-tools";
 import type { CatalogProduct } from "@/utils/catalog";
-
-const FEATURED_FREE_NAMES = [
-  "FreeQ",
-  "Freelay",
-  "Freeverb",
-  "Sterfreeo",
-  "Cowboy Harp",
-] as const;
 
 const Page = styled.div`
   min-height: 100vh;
@@ -150,7 +143,7 @@ function mapCardProduct(product: CatalogProduct) {
 
 function featuredNameIndex(name: string): number {
   const lower = name.toLowerCase();
-  return FEATURED_FREE_NAMES.findIndex((item) =>
+  return NNAUD_FREE_PLUGIN_NAMES.findIndex((item) =>
     lower.includes(item.toLowerCase())
   );
 }
@@ -164,7 +157,7 @@ export default function FreeToolsLandingPage({
   const extras = products
     .filter((product) => featuredNameIndex(product.name) === -1)
     .sort((a, b) => a.name.localeCompare(b.name));
-  const featured = FEATURED_FREE_NAMES.map((name) =>
+  const featured = NNAUD_FREE_PLUGIN_NAMES.map((name) =>
     products.find((product) =>
       product.name.toLowerCase().includes(name.toLowerCase())
     )
@@ -178,7 +171,7 @@ export default function FreeToolsLandingPage({
           <Title>Free tools. In the session today.</Title>
           <Lead>No card.</Lead>
           <NameList>
-            {FEATURED_FREE_NAMES.join(", ")}
+            {NNAUD_FREE_PLUGIN_NAMES.join(", ")}
             {extras.length > 0
               ? `. Also shipping: ${extras.map((item) => item.name).join(", ")}.`
               : "."}
