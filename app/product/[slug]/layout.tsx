@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { CYMASPHERE_META, isCymasphereSlug } from "@/lib/cymasphere-sales";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 
 type ProductSeoRow = {
@@ -35,12 +36,15 @@ export async function generateMetadata({
     return { title: "Product not found | NNAudio", robots: { index: false } };
   }
 
-  const title = product.meta_title || product.name || "NNAudio";
-  const description =
-    product.meta_description ||
-    product.short_description ||
-    product.tagline ||
-    "NNAudio plugins, packs, and tools.";
+  const title = isCymasphereSlug(slug)
+    ? CYMASPHERE_META.title
+    : product.meta_title || product.name || "NNAudio";
+  const description = isCymasphereSlug(slug)
+    ? CYMASPHERE_META.description
+    : product.meta_description ||
+      product.short_description ||
+      product.tagline ||
+      "NNAudio plugins, packs, and tools.";
 
   return {
     title: `${title} | NNAudio`,
