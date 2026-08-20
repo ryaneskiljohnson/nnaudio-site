@@ -9,13 +9,13 @@ import FreeToolsLandingPage from "@/components/pages/FreeToolsLandingPage";
 import { getFreeProducts } from "@/utils/catalog";
 
 export const metadata: Metadata = {
-  title: "Free Tools | NNAud.io",
+  title: "Free tools. In the session today. | NN Audio",
   description:
-    "Claim free plugins, free MIDI packs, and NNAudio Access from NNAud.io. Start with free tools, then grow into bundles and premium products.",
+    "FreeQ, Freelay, Freeverb, Sterfreeo, Cowboy Harp. No card. NNAudio Access: download, install, update, library.",
   openGraph: {
-    title: "Free Tools | NNAud.io",
+    title: "Free tools. In the session today. | NN Audio",
     description:
-      "Claim free plugins, free MIDI packs, and NNAudio Access. Start with free tools, then grow into bundles and premium products.",
+      "FreeQ, Freelay, Freeverb, Sterfreeo, Cowboy Harp. No card. NNAudio Access: download, install, update, library.",
   },
 };
 
