@@ -40,7 +40,7 @@ export default function CymasphereBuyButton({
   if (!product?.id) {
     return (
       <p>
-        Cymasphere is {CYMASPHERE_PRICE_LABEL} one-time. Add to Cart needs the
+        Cymasphere is {CYMASPHERE_PRICE_LABEL} one-time. Get Cymasphere needs the
         live catalog product record.
       </p>
     );
@@ -80,7 +80,7 @@ export default function CymasphereBuyButton({
       }}
     >
       <FaShoppingCart aria-hidden />
-      {CYMASPHERE_SALES.ctaLabel} — {CYMASPHERE_PRICE_LABEL}
+      {CYMASPHERE_SALES.ctaLabel}
     </button>
   );
 }

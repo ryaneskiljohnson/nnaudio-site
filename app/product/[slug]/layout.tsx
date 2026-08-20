@@ -36,15 +36,27 @@ export async function generateMetadata({
     return { title: "Product not found | NNAudio", robots: { index: false } };
   }
 
-  const title = isCymasphereSlug(slug)
-    ? CYMASPHERE_META.title
-    : product.meta_title || product.name || "NNAudio";
-  const description = isCymasphereSlug(slug)
-    ? CYMASPHERE_META.description
-    : product.meta_description ||
-      product.short_description ||
-      product.tagline ||
-      "NNAudio plugins, packs, and tools.";
+  if (isCymasphereSlug(slug)) {
+    return {
+      title: { absolute: CYMASPHERE_META.title },
+      description: CYMASPHERE_META.description,
+      openGraph: {
+        title: CYMASPHERE_META.title,
+        description: CYMASPHERE_META.description,
+        type: "website",
+        ...(product.featured_image_url
+          ? { images: [{ url: product.featured_image_url }] }
+          : {}),
+      },
+    };
+  }
+
+  const title = product.meta_title || product.name || "NNAudio";
+  const description =
+    product.meta_description ||
+    product.short_description ||
+    product.tagline ||
+    "NNAudio plugins, packs, and tools.";
 
   return {
     title: `${title} | NNAudio`,

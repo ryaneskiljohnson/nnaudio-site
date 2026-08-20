@@ -1,80 +1,138 @@
 /**
- * @fileoverview Locked public offer and sales copy for /product/cymasphere.
- * Sourced from this repo's product docs plus the Sound on Sound and Attack
- * Magazine pieces. Do not add testimonials, prices, or formats that are not
- * already in those sources.
+ * @fileoverview Locked $149 one-time Cymasphere sales copy for /product/cymasphere.
+ * Press quotes are from the SOS and Attack pieces named here. CymaSynth is a
+ * separate catalog SKU — do not claim it ships with this purchase.
  * @module lib/cymasphere-sales
  */
 
 export const CYMASPHERE_SLUG = "cymasphere";
 
-/** Locked storefront price. Do not advertise $499, $6, or $59 on this page. */
+/** Locked storefront price. Do not advertise $499, $6, or $59. */
 export const CYMASPHERE_PRICE_USD = 149;
 export const CYMASPHERE_PRICE_LABEL = "$149";
-export const CYMASPHERE_PRICE_NOTE = "One-time purchase";
+export const CYMASPHERE_PRICE_NOTE = "one-time. No subscription.";
 
-export const CYMASPHERE_FORMATS = ["VST3", "AU", "Standalone", "iPad"] as const;
+/**
+ * CymaSynth is its own product (`cymasynth`, separate price). Live related
+ * products for Cymasphere are empty. Do not render a suite / “ships with” block.
+ */
+export const CYMASPHERE_INCLUDES_CYMASYNTH = false;
+
+export const CYMASPHERE_FORMATS = [
+  "Standalone",
+  "VST3",
+  "AU",
+  "iPad",
+] as const;
 
 export const CYMASPHERE_META = {
-  title: "Cymasphere — MIDI Chord & Harmony Tool",
+  title: "Cymasphere — MIDI harmony engine · $149 one-time | NN Audio",
   description:
-    "Harmony-centric MIDI chord and composition tool. Play cymatic voicings as block chords, strums, or arpeggios. VST3, AU, standalone, and iPad. $149 one-time.",
+    "Unstick the progression. Cymasphere is a MIDI harmony engine for voicings, progressions, and voice leading. $149 one-time. No subscription.",
 } as const;
 
 export const CYMASPHERE_SALES = {
-  eyebrow: "MIDI chord & composition tool",
-  name: "Cymasphere",
+  eyebrow: "MIDI harmony engine · $149 one-time",
+  headline: "Unstick the progression.",
   lede:
-    "A harmony-centric MIDI tool that turns cymatics into voicings you can play as block chords, strums, or arpeggios.",
-  whatItIsTitle: "What it is",
-  whatItIs: [
-    "Cymasphere is a chord-focused MIDI generator for producers, composers, educators, and anyone who writes with harmony. Tap a cymatic — a visual chord shape — and it outputs a voicing to the instruments in your session.",
-    "It sits in the same space as Scaler, Captain Chords, and ChordJam. Attack Magazine put it there and said Cymasphere goes further on theory.",
+    "Stuck rewriting the same four bars? Cymasphere is a MIDI harmony engine — progressions, voicings, voice leading — so the next chord isn’t a guess.",
+  priceLine: "$149 one-time. No subscription.",
+  ctaLabel: "Get Cymasphere",
+  hearItLabel: "Hear it",
+  valueLead: "Cymasphere writes harmony as MIDI.",
+  valueBullets: [
+    "Build a progression.",
+    "Revoice it. Change the leading.",
+    "Send it to your instruments.",
   ],
-  howTitle: "How you use it",
-  howItems: [
+  valueCloser: "Not a DAW. Not another wavetable to babysit.",
+  aisleTitle: "Deeper than a chord plugin.",
+  aisleBody: [
+    "If you already know Scaler, Captain Chords, or ChordJam: Attack Magazine put Cymasphere in that lane, then said it goes deeper on the theory.",
+    "The GUI looks dense. The voicings are why.",
+  ],
+  howTitle: "How it works",
+  howSteps: [
     {
-      title: "Cymatics, then voicings",
-      body: "Harmony palettes hold cymatic buttons. Each one is a chord you can trigger, edit, and drop into a progression.",
+      title: "Progression",
+      body: "Lay it down, reharmonize when it stalls.",
     },
     {
-      title: "Block, strum, or arp",
-      body: "Play the voicing as a block chord, add a strum, or run it through the arpeggiator / sequencer. Sound on Sound described those three playing styles directly.",
+      title: "Voicing",
+      body: "Count, spacing, inversions, leading. Theory on the surface on purpose.",
     },
     {
-      title: "Shape the chord",
-      body: "Set voice count (1–12), spacing, inversion, octave, sustain, and voice leading. The pattern editor follows the progression when the chord changes.",
-    },
-    {
-      title: "Into the DAW or on its own",
-      body: "Run it standalone or as VST3 / AU. MIDI can stay on one channel or split voices across channels so a string, wind, or brass template can take the voicing at once.",
+      title: "Out",
+      body: "MIDI to the DAW.",
     },
   ],
-  formatsTitle: "Formats",
   formatsNote:
-    "VST3, AU, standalone, and iPad. Windows 10+, macOS 10.14+, iPadOS 13+. Works with major DAWs except Pro Tools.",
-  ctaLabel: "Add to Cart",
-  ctaPrice: CYMASPHERE_PRICE_LABEL,
+    "Standalone, VST3, and AU. macOS, Windows, iPad. Major DAWs except Pro Tools.",
+  limitsTitle: "Honest limits",
+  limitsBody: [
+    "Attack said it looks confusing. Not a three-knob chord picker.",
+    "SOS reviewed the 2023–24 standalone (Jan 2024) — best independent write-up we have, not a review of today’s AU/VST3 page.",
+    "If you want a chord stamp, wrong tool. If you want control of the harmony, it isn’t.",
+  ],
+  accessTitle: "NNAudio Access",
+  accessBody:
+    "Download, install, update, library. Mac and Windows. Not a login wall.",
+  buyLine: "$149 one-time.",
+  faqTitle: "FAQ",
 } as const;
 
-export const CYMASPHERE_PRESS = [
+export const CYMASPHERE_ATTACK = {
+  source: "Attack Magazine",
+  date: "11 Jan 2024",
+  href: "https://www.attackmagazine.com/technique/video-tutorials/cymasphere-a-new-complex-chord-generator/",
+  quotes: [
+    "If you’re thinking “What about ChordJam” or “Captain Chords” or “Scaler” then yes – this is sitting in a similar space. However, Cymasphere goes far deeper, especially on the theory.",
+    "Without a doubt, Cymasphere looks confusing! … it’s an incredible harmony engine that intelligently generates chord voicings and melodic sequences using scales as its source.",
+  ],
+} as const;
+
+export const CYMASPHERE_SOS = {
+  source: "Sound on Sound",
+  author: "Robin Bigwood",
+  date: "Jan 2024",
+  href: "https://www.soundonsound.com/reviews/cymasphere",
+  quotes: [
+    "Cymasphere aims to make more complex chord construction available to all.",
+    "…a chord-focused MIDI note generator.",
+    "If chord formation is your thing, it could prove to be a brilliant harmonic playground.",
+    "Cymasphere has few counterparts… [none] get anywhere close to Cymasphere’s harmonic sophistication…",
+    "I also can’t fault Cymasphere’s execution.",
+  ],
+  limitQuotes: [
+    "it’s not entirely clear who Cymasphere is really for.",
+    "the number of playing styles is limited: only block chords, strums, or monophonic arpeggiation.",
+  ],
+} as const;
+
+export const CYMASPHERE_FAQ = [
   {
-    source: "Sound on Sound",
-    href: "https://www.soundonsound.com/reviews/cymasphere",
-    label: "Sound on Sound review",
-    quote:
-      "If chord formation is your thing, it could prove to be a brilliant harmonic playground.",
-    context:
-      "SOS reviewed Cymasphere as chord-generation software: a MIDI note generator whose cymatics play conventionally, strummed, or arpeggiated.",
+    q: "What is it?",
+    a: "A MIDI harmony engine.",
   },
   {
-    source: "Attack Magazine",
-    href: "https://www.attackmagazine.com/technique/video-tutorials/cymasphere-a-new-complex-chord-generator/",
-    label: "Attack Magazine",
-    quote:
-      "An incredible harmony engine that intelligently generates chord voicings and melodic sequences using scales as its source.",
-    context:
-      "Attack compared it with Scaler, Captain Chords, and ChordJam, and said it goes far deeper on the theory.",
+    q: "Scaler / Captain Chords / ChordJam?",
+    a: "Same aisle. Attack said deeper on theory, and that the GUI looks dense.",
+  },
+  {
+    q: "Is CymaSynth the product?",
+    a: "No.",
+  },
+  {
+    q: "Subscription?",
+    a: "No.",
+  },
+  {
+    q: "Formats?",
+    a: "Standalone, VST3, AU, iPad.",
+  },
+  {
+    q: "Install?",
+    a: "NNAudio Access. Download, install, update, library.",
   },
 ] as const;
 

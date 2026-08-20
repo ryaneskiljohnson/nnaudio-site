@@ -65,22 +65,34 @@
   color: rgba(255, 255, 255, 0.82);
 }
 
-.priceRow {
-  display: flex;
-  align-items: baseline;
-  gap: 0.85rem;
-  margin-bottom: 0.85rem;
-}
-
-.price {
-  font-size: 2.6rem;
+.priceLine {
+  margin: 0 0 1.15rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: #4ecdc4;
 }
 
-.priceNote {
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.7);
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.secondaryCta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 28px;
+  border-radius: 50px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.secondaryCta:hover {
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .formats {
@@ -113,11 +125,60 @@
   font-weight: 700;
 }
 
-.copy p {
+.lead,
+.copyP,
+.copyTight {
   margin: 0 0 1rem;
   font-size: 1.08rem;
   line-height: 1.75;
   color: rgba(255, 255, 255, 0.8);
+}
+
+.lead {
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.bullets,
+.steps {
+  margin: 0 0 1.25rem;
+  padding-left: 1.25rem;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.7;
+}
+
+.bullets li,
+.steps li {
+  margin-bottom: 0.55rem;
+}
+
+.steps h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.steps p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.faq {
+  margin: 0;
+}
+
+.faqItem {
+  margin-bottom: 1rem;
+}
+
+.faqItem dt {
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.faqItem dd {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.6;
 }
 
 .grid {
