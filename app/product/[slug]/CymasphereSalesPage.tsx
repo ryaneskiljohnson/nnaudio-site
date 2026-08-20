@@ -64,6 +64,7 @@ export default function CymasphereSalesPage({
               alt="Cymasphere"
               fill
               priority
+              sizes="(max-width: 860px) 100vw, 480px"
               unoptimized={imageIsRemote}
               style={{ objectFit: "contain", padding: 24 }}
             />
