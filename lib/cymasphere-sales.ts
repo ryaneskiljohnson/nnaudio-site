@@ -1,5 +1,5 @@
 /**
- * @fileoverview Locked $149 one-time Cymasphere sales copy for /product/cymasphere.
+ * @fileoverview Locked $199 one-time Cymasphere sales copy for /product/cymasphere.
  * Press quotes are the locked SOS and Attack lines named here only.
  * CymaSynth is a separate catalog SKU — do not claim it ships with this purchase.
  * @module lib/cymasphere-sales
@@ -7,9 +7,9 @@
 
 export const CYMASPHERE_SLUG = "cymasphere";
 
-/** Locked storefront price. Do not advertise $499, $6, or $59. */
-export const CYMASPHERE_PRICE_USD = 149;
-export const CYMASPHERE_PRICE_LABEL = "$149";
+/** Locked storefront display price. Do not advertise $149, $499, $6, or $59. */
+export const CYMASPHERE_PRICE_USD = 199;
+export const CYMASPHERE_PRICE_LABEL = "$199";
 export const CYMASPHERE_PRICE_NOTE = "one-time. No subscription.";
 
 /**
@@ -81,17 +81,17 @@ export const CYMASPHERE_FORMATS = [
 ] as const;
 
 export const CYMASPHERE_META = {
-  title: "Cymasphere — MIDI harmony engine · $149 one-time | NN Audio",
+  title: "Cymasphere — MIDI harmony engine · $199 one-time | NN Audio",
   description:
-    "Unstick the progression. Cymasphere is a MIDI harmony engine for voicings, progressions, and voice leading. $149 one-time. No subscription.",
+    "Unstick the progression. Cymasphere is a MIDI harmony engine for voicings, progressions, and voice leading. $199 one-time. No subscription.",
 } as const;
 
 export const CYMASPHERE_SALES = {
-  eyebrow: "MIDI harmony engine · $149 one-time",
+  eyebrow: "MIDI harmony engine · $199 one-time",
   headline: "Unstick the progression.",
   lede:
     "Stuck rewriting the same four bars? Cymasphere is a MIDI harmony engine — progressions, voicings, voice leading — so the next chord isn’t a guess.",
-  priceLine: "$149 one-time. No subscription.",
+  priceLine: "$199 one-time. No subscription.",
   ctaLabel: "Get Cymasphere",
   hearItLabel: "Hear it",
   valueLead: "Cymasphere writes harmony as MIDI.",
@@ -125,7 +125,7 @@ export const CYMASPHERE_SALES = {
   accessTitle: "NNAudio Access",
   accessBody:
     "Download, install, update, library. Mac and Windows. Not a login wall.",
-  buyLine: "$149 one-time.",
+  buyLine: "$199 one-time.",
   faqTitle: "FAQ",
 } as const;
 

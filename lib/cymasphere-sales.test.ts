@@ -27,12 +27,12 @@ const salesText = JSON.stringify({
 });
 
 describe("cymasphere sales copy", () => {
-  it("is the locked $149 one-time offer", () => {
-    expect(CYMASPHERE_PRICE_USD).toBe(149);
-    expect(CYMASPHERE_PRICE_LABEL).toBe("$149");
-    expect(CYMASPHERE_SALES.priceLine).toBe("$149 one-time. No subscription.");
+  it("is the locked $199 one-time offer", () => {
+    expect(CYMASPHERE_PRICE_USD).toBe(199);
+    expect(CYMASPHERE_PRICE_LABEL).toBe("$199");
+    expect(CYMASPHERE_SALES.priceLine).toBe("$199 one-time. No subscription.");
     expect(CYMASPHERE_SALES.ctaLabel).toBe("Get Cymasphere");
-    expect(salesText).not.toMatch(/\$499|\$6\b|\$59\b/i);
+    expect(salesText).not.toMatch(/\$149|\$499|\$6\b|\$59\b/i);
     expect(salesText.toLowerCase()).not.toMatch(/\/mo|per month|monthly|yearly/);
     expect(salesText.toLowerCase()).not.toContain("trial");
     expect(salesText.toLowerCase()).not.toContain("was-$");
@@ -93,6 +93,7 @@ describe("cymasphere sales copy", () => {
     const lower = salesText.toLowerCase();
     expect(lower).not.toContain("ships with");
     expect(lower).not.toContain("one $149 purchase");
+    expect(lower).not.toContain("one $199 purchase");
     expect(lower).not.toContain("serum");
     expect(lower).not.toContain("serum 2");
     expect(lower).not.toContain("feature parity");

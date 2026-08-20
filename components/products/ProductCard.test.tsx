@@ -1,5 +1,5 @@
 /**
- * @fileoverview Homepage/catalog cards must not advertise Cymasphere as $499.
+ * @fileoverview Homepage/catalog cards must show Cymasphere as $199, never $499.
  * @module components/products/ProductCard.test
  */
 
@@ -49,7 +49,7 @@ vi.mock("framer-motion", () => ({
 import ProductCard from "./ProductCard";
 
 describe("ProductCard Cymasphere offer", () => {
-  it("renders $149 with no $499 strikethrough when CMS still has 499/149", () => {
+  it("renders $199 with no $499 strikethrough when CMS still has 499/149", () => {
     const html = renderToStaticMarkup(
       <ProductCard
         product={{
@@ -66,7 +66,8 @@ describe("ProductCard Cymasphere offer", () => {
       />
     );
 
-    expect(html).toContain("$149");
+    expect(html).toContain("$199");
+    expect(html).not.toContain("$149");
     expect(html).not.toContain("$499");
     expect(html).not.toContain("line-through");
   });

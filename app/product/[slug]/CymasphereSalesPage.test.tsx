@@ -1,6 +1,6 @@
 /**
  * @fileoverview Ensures the Cymasphere sales page SSR HTML contains the locked
- * offer and supplied copy, without a loading shell or $499 strikethrough.
+ * $199 offer and supplied copy, without a loading shell or $499 strikethrough.
  * @module app/product/[slug]/CymasphereSalesPage.test
  */
 
@@ -66,7 +66,7 @@ describe("CymasphereSalesPage SSR HTML", () => {
     );
 
     expect(html).toContain("Unstick the progression.");
-    expect(html).toContain("$149 one-time. No subscription.");
+    expect(html).toContain("$199 one-time. No subscription.");
     expect(html).toContain("Get Cymasphere");
     expect(html).toContain("Standalone");
     expect(html).toContain("VST3");
@@ -90,6 +90,7 @@ describe("CymasphereSalesPage SSR HTML", () => {
     expect(html).toContain("NNAudio Access");
     expect(html).toContain("What is it?");
     expect(html).not.toContain("Loading product");
+    expect(html).not.toContain("$149");
     expect(html).not.toContain("$499");
     expect(html).not.toContain("ships with");
     expect(html).not.toContain("Hear it");

@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { getPublicOfferDisplay } from "./public-offer-display";
 
 describe("getPublicOfferDisplay", () => {
-  it("locks Cymasphere at $149 with no $499 compare-at", () => {
+  it("locks Cymasphere at $199 with no $499 or $149 compare-at", () => {
     expect(
       getPublicOfferDisplay({
         slug: "cymasphere",
         price: 499,
         sale_price: 149,
       })
-    ).toEqual({ amount: 149, compareAt: null, isFree: false });
+    ).toEqual({ amount: 199, compareAt: null, isFree: false });
     expect(
       getPublicOfferDisplay({
         slug: "Cymasphere",
@@ -17,7 +17,7 @@ describe("getPublicOfferDisplay", () => {
         sale_price: null,
         compareAtPrice: 499,
       })
-    ).toEqual({ amount: 149, compareAt: null, isFree: false });
+    ).toEqual({ amount: 199, compareAt: null, isFree: false });
   });
 
   it("keeps sale strikethrough for other products", () => {

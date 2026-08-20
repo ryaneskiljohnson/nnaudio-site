@@ -1,6 +1,6 @@
 /**
- * @fileoverview Public catalog price display. Cymasphere is a locked $149
- * one-time offer — never advertise the CMS $499 list as a strikethrough.
+ * @fileoverview Public catalog price display. Cymasphere is a locked $199
+ * one-time offer — never advertise the CMS $499 list or a $149 sale as display.
  * @module utils/products/public-offer-display
  */
 

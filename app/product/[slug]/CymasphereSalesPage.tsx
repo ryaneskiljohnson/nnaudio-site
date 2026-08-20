@@ -1,5 +1,5 @@
 /**
- * @fileoverview Server-rendered Cymasphere $149 one-time sales page.
+ * @fileoverview Server-rendered Cymasphere $199 one-time sales page.
  * @module app/product/[slug]/CymasphereSalesPage
  */
 

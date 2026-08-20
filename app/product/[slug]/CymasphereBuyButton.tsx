@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * @fileoverview Cart CTA for the Cymasphere sales page. Uses the existing
- * cart + toast path; does not change Stripe IDs or checkout.
+ * @fileoverview Cart CTA for the Cymasphere sales page. Display is $199
+ * one-time. Uses the existing cart + toast path; does not change Stripe IDs
+ * or checkout. Cart still passes CMS price / sale_price for reprice.
  * @module app/product/[slug]/CymasphereBuyButton
  */
 
