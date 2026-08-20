@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { scrollToHash } from "@/utils/scrollToHash";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaXTwitter,
@@ -119,22 +118,6 @@ const FooterLink = styled.span`
   transition: color 0.2s ease;
   cursor: pointer;
   display: block;
-  line-height: 1.5;
-
-  &:hover {
-    color: var(--primary);
-    text-decoration: none;
-  }
-`;
-
-const FooterAnchor = styled.span`
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  text-decoration: none;
-  margin-bottom: 0.75rem;
-  transition: color 0.2s ease;
-  display: block;
-  cursor: pointer;
   line-height: 1.5;
 
   &:hover {
@@ -538,25 +521,8 @@ const Footer = () => {
           <Link href="/products">
             <FooterLink>All Products</FooterLink>
           </Link>
-          <Link
-            href="/#pricing"
-            onClick={(e) => {
-              if (scrollToHash("/#pricing", pathname ?? "/")) e.preventDefault();
-            }}
-          >
-            <FooterAnchor as="span">
-              {getTranslation("header.pricing", "Pricing")}
-            </FooterAnchor>
-          </Link>
-          <Link
-            href="/#faq"
-            onClick={(e) => {
-              if (scrollToHash("/#faq", pathname ?? "/")) e.preventDefault();
-            }}
-          >
-            <FooterAnchor as="span">
-              {getTranslation("header.faq", "FAQ")}
-            </FooterAnchor>
+          <Link href="/product/nnaudio-access">
+            <FooterLink>Access — download, install, update, library</FooterLink>
           </Link>
         </FooterColumn>
 

@@ -16,8 +16,6 @@ import {
   FaUserPlus,
   FaUserCircle,
   FaPuzzlePiece,
-  FaQuestionCircle,
-  FaRegCreditCard,
   FaShieldAlt,
   FaShoppingCart,
   FaGift,
@@ -677,8 +675,7 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
       { name: "Packs", path: "/packs" },
       { name: "Bundles", path: "/bundles" },
       { name: "All Products", path: "/products" },
-      { name: "Pricing", path: "/#pricing" },
-      { name: "FAQ", path: "/#faq" },
+      { name: "Access", path: "/product/nnaudio-access" },
     ],
     [language]
   ); // Re-compute when language changes
@@ -946,13 +943,10 @@ const NextHeader = ({ hasActiveBanner = false }: NextHeaderProps = {}) => {
                       animate="visible"
                     >
                       {item.path === "/" && <FaHome />}
-                      {item.path === "/free-tools" && <FaGift />}
                       {item.path === "/plugins" && <FaPuzzlePiece />}
                       {item.path === "/packs" && <FaHeadphones />}
                       {item.path === "/products" && <FaThList />}
                       {item.path === "/bundles" && <FaBoxOpen />}
-                      {item.path === "/#pricing" && <FaRegCreditCard />}
-                      {item.path === "/#faq" && <FaQuestionCircle />}
                       {item.name}
                     </MobileNavLink>
                   </Link>

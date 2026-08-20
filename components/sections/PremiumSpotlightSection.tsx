@@ -13,6 +13,10 @@ import { usePathname } from "next/navigation";
 import styled from "styled-components";
 import { scrollToHash } from "@/utils/scrollToHash";
 import { FaCheck, FaLayerGroup, FaRocket } from "react-icons/fa";
+import {
+  CYMASPHERE_PRICE_LABEL,
+  CYMASPHERE_PRICE_NOTE,
+} from "@/lib/cymasphere-sales";
 
 const Section = styled.section`
   padding: 88px 20px;
@@ -176,13 +180,13 @@ const PriceBadge = styled.div`
   font-weight: 700;
 `;
 
-const PriceWas = styled.span`
-  text-decoration: line-through;
-  opacity: 0.55;
-`;
-
 const PriceNow = styled.span`
   color: #4ecdc4;
+`;
+
+const PriceNote = styled.span`
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 600;
 `;
 
 const CardTitle = styled.h3`
@@ -300,8 +304,8 @@ export default function PremiumSpotlightSection() {
         <SpotlightStack>
           <SpotlightCard>
             <PriceBadge>
-              <PriceWas>$499</PriceWas>
-              <PriceNow>$149</PriceNow>
+              <PriceNow>{CYMASPHERE_PRICE_LABEL}</PriceNow>
+              <PriceNote>{CYMASPHERE_PRICE_NOTE}</PriceNote>
             </PriceBadge>
             <Image
               src={cymasphereSrc}

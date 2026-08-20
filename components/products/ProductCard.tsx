@@ -10,6 +10,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/contexts/ToastContext";
 import { cleanHtmlText } from "@/utils/stringUtils";
 import ProductNewBadge from "@/components/products/ProductNewBadge";
+import { getPublicOfferDisplay } from "@/utils/products/public-offer-display";
 
 const ProductCardContainer = styled(motion.div)`
   position: relative;
@@ -243,7 +244,7 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
   const imageImg = product.image?.trim() || null;
   const primaryImageUrl = featuredImg || logoImg || imageImg;
   const shouldUseLogo = imageError || !primaryImageUrl;
-  const displayPrice = (product.sale_price !== null && product.sale_price !== undefined) ? product.sale_price : product.price;
+  const offer = getPublicOfferDisplay(product);
   // Card views should ONLY use tagline or short_description, never the full description
   // Clean HTML entities and truncate to 100 characters max for card display
   const rawTagline = product.tagline || product.short_description || '';
@@ -339,50 +340,18 @@ function ProductCard({ product, index = 0, showCartButton = true, showPluginType
             ) : (
               <>
                 <ProductPrice>
-                  {product.compareAtPrice != null && product.compareAtPrice > 0 && product.compareAtPrice > (typeof product.price === 'number' ? product.price : 0) ? (
-                    <>
-                      <span style={{
-                        textDecoration: 'line-through',
-                        fontSize: '1rem',
-                        opacity: 0.6,
-                        marginRight: '8px',
-                        color: 'rgba(255, 255, 255, 0.6)',
-                      }}>
-                        ${product.compareAtPrice.toFixed(2)}
-                      </span>
-                      {product.sale_price === 0 ? 'FREE' : (product.sale_price != null && product.sale_price > 0 ? `$${product.sale_price}` : `$${product.price}`)}
-                    </>
-                  ) : (product.sale_price !== null && product.sale_price !== undefined && product.sale_price >= 0 && product.sale_price < product.price) ? (
-                    <>
-                      <span style={{
-                        textDecoration: 'line-through',
-                        fontSize: '1rem',
-                        opacity: 0.6,
-                        marginRight: '8px',
-                        color: 'rgba(255, 255, 255, 0.6)',
-                      }}>
-                        ${product.price}
-                      </span>
-                      ${product.sale_price}
-                    </>
-                  ) : (product.price === 0 || product.sale_price === 0 || (product.sale_price === null && product.price === 0)) ? (
-                    <>
-                      {(product.sale_price === 0 && product.price > 0) && (
-                        <span style={{
-                          textDecoration: 'line-through',
-                          fontSize: '1rem',
-                          opacity: 0.6,
-                          marginRight: '8px',
-                          color: 'rgba(255, 255, 255, 0.6)',
-                        }}>
-                          ${product.price}
-                        </span>
-                      )}
-                      FREE
-                    </>
-                  ) : (
-                    `$${product.price}`
-                  )}
+                  {offer.compareAt != null ? (
+                    <span style={{
+                      textDecoration: 'line-through',
+                      fontSize: '1rem',
+                      opacity: 0.6,
+                      marginRight: '8px',
+                      color: 'rgba(255, 255, 255, 0.6)',
+                    }}>
+                      ${offer.compareAt}
+                    </span>
+                  ) : null}
+                  {offer.isFree ? 'FREE' : `$${offer.amount}`}
                 </ProductPrice>
                 {showCartButton && (
                   <CartButton

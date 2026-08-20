@@ -18,7 +18,6 @@ import AboutUsModal from "../modals/AboutUsModal";
 import NNAudioLogo from "../common/NNAudioLogo";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { scrollToHash } from "@/utils/scrollToHash";
 
 const FooterContainer = styled.footer`
   background-color: var(--surface);
@@ -261,21 +260,8 @@ const NextFooter = () => {
           <Link href="/products">
             <FooterLink>All Products</FooterLink>
           </Link>
-          <Link
-            href="/#pricing"
-            onClick={(e) => {
-              if (scrollToHash("/#pricing", pathname ?? "/")) e.preventDefault();
-            }}
-          >
-            <FooterLink>Pricing</FooterLink>
-          </Link>
-          <Link
-            href="/#faq"
-            onClick={(e) => {
-              if (scrollToHash("/#faq", pathname ?? "/")) e.preventDefault();
-            }}
-          >
-            <FooterLink>FAQ</FooterLink>
+          <Link href="/product/nnaudio-access">
+            <FooterLink>Access — download, install, update, library</FooterLink>
           </Link>
         </FooterColumn>
 

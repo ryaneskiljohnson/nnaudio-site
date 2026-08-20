@@ -7,10 +7,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import styled from "styled-components";
 import { FaBoxOpen, FaDesktop, FaGift, FaLayerGroup } from "react-icons/fa";
-import { scrollToHash } from "@/utils/scrollToHash";
 
 const Section = styled.section`
   padding: 44px 20px 28px;
@@ -122,7 +120,6 @@ const Footer = styled.div`
  * @returns Homepage proof strip.
  */
 export default function ProofPointsSection() {
-  const pathname = usePathname();
   return (
     <Section>
       <Inner>
@@ -180,25 +177,12 @@ export default function ProofPointsSection() {
         </Grid>
 
         <Footer>
-          New here? Start with the{" "}
-          <Link
-            href="#free-products"
-            onClick={(e) => {
-              if (scrollToHash("#free-products", pathname ?? "/")) e.preventDefault();
-            }}
-          >
-            Free Collection
-          </Link>{" "}
-          or jump straight into{" "}
-          <Link
-            href="#bundles"
-            onClick={(e) => {
-              if (scrollToHash("#bundles", pathname ?? "/")) e.preventDefault();
-            }}
-          >
-            Elite Bundles
-          </Link>
-          .
+          New here? Start with{" "}
+          <Link href="/free-tools">Free tools</Link>
+          {", "}
+          <Link href="/product/cymasphere">Cymasphere</Link>
+          {", or the "}
+          <Link href="/products">catalog</Link>.
         </Footer>
       </Inner>
     </Section>
