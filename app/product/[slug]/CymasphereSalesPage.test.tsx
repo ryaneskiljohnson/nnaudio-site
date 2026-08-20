@@ -67,6 +67,9 @@ describe("CymasphereSalesPage SSR HTML", () => {
 
     expect(html).toContain("Unstick the progression.");
     expect(html).toContain("$199 one-time. No subscription.");
+    expect(html).toContain("$199 one-time harmony engine");
+    expect(html).toContain("$199 one-time on nnaud.io.");
+    expect(html).not.toContain("One $199 purchase");
     expect(html).toContain("Get Cymasphere");
     expect(html).toContain("Standalone");
     expect(html).toContain("VST3");

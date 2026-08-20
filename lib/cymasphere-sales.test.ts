@@ -10,6 +10,7 @@ import {
   CYMASPHERE_PRICE_USD,
   CYMASPHERE_SALES,
   CYMASPHERE_SOS,
+  CYMASPHERE_SUITE_LINE,
   CYMASPHERE_UNAUDITED_DEMO_VIDEO_ID,
   collectCymasphereDemoVideos,
   filterCymasphereDemoVideos,
@@ -30,7 +31,15 @@ describe("cymasphere sales copy", () => {
   it("is the locked $199 one-time offer", () => {
     expect(CYMASPHERE_PRICE_USD).toBe(199);
     expect(CYMASPHERE_PRICE_LABEL).toBe("$199");
+    expect(CYMASPHERE_META.title).toBe(
+      "Cymasphere — MIDI harmony engine · $199 one-time | NN Audio"
+    );
+    expect(CYMASPHERE_SALES.headline).toBe("Unstick the progression.");
     expect(CYMASPHERE_SALES.priceLine).toBe("$199 one-time. No subscription.");
+    expect(CYMASPHERE_SALES.buyLine).toBe("$199 one-time harmony engine");
+    expect(CYMASPHERE_FAQ.some((item) => item.a === "$199 one-time on nnaud.io.")).toBe(
+      true
+    );
     expect(CYMASPHERE_SALES.ctaLabel).toBe("Get Cymasphere");
     expect(salesText).not.toMatch(/\$149|\$499|\$6\b|\$59\b/i);
     expect(salesText.toLowerCase()).not.toMatch(/\/mo|per month|monthly|yearly/);
@@ -94,6 +103,8 @@ describe("cymasphere sales copy", () => {
     expect(lower).not.toContain("ships with");
     expect(lower).not.toContain("one $149 purchase");
     expect(lower).not.toContain("one $199 purchase");
+    expect(CYMASPHERE_SUITE_LINE).toBe("One $199 purchase. Not a monthly plan.");
+    expect(CYMASPHERE_INCLUDES_CYMASYNTH).toBe(false);
     expect(lower).not.toContain("serum");
     expect(lower).not.toContain("serum 2");
     expect(lower).not.toContain("feature parity");

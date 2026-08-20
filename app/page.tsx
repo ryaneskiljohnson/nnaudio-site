@@ -17,6 +17,7 @@ import {
   CYMASPHERE_PRICE_USD,
   isCymasphereSlug,
 } from "@/lib/cymasphere-sales";
+import { applyCymasphereOfferPrices } from "@/utils/products/public-offer-display";
 import FreeCollectionSection from "@/components/sections/FreeCollectionSection";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import ProductsSectionSkeleton from "@/components/sections/ProductsSectionSkeleton";
@@ -371,7 +372,7 @@ export default function Home() {
             backgroundImage: p.background_image_url || p.background_video_url || '',
             price: typeof p.sale_price === 'number' ? p.sale_price : (typeof p.price === 'number' ? p.price : 0),
             sale_price: p.sale_price,
-          }));
+          })).map(applyCymasphereOfferPrices);
           setInstrumentPlugins(mappedInstrumentPlugins);
         }
 
@@ -392,7 +393,7 @@ export default function Home() {
             backgroundImage: p.background_image_url || p.background_video_url || '',
             price: typeof p.sale_price === 'number' ? p.sale_price : (typeof p.price === 'number' ? p.price : 0),
             sale_price: p.sale_price,
-          }));
+          })).map(applyCymasphereOfferPrices);
           setAudioFxPlugins(mappedFxPlugins);
         }
 
@@ -414,7 +415,7 @@ export default function Home() {
             backgroundImage: p.background_image_url || '',
             price: typeof p.sale_price === 'number' ? p.sale_price : (typeof p.price === 'number' ? p.price : 0),
             sale_price: p.sale_price,
-          }));
+          })).map(applyCymasphereOfferPrices);
           setPacks(mappedPacks);
         }
 
@@ -434,7 +435,7 @@ export default function Home() {
             backgroundImage: p.background_image_url || p.background_video_url || '',
             price: typeof p.price === 'number' ? p.price : 0, // Preserve original price
             sale_price: p.sale_price,
-          }));
+          })).map(applyCymasphereOfferPrices);
           setFreeProducts(mappedFree);
         }
       } catch (error) {

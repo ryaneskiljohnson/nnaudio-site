@@ -125,9 +125,13 @@ export const CYMASPHERE_SALES = {
   accessTitle: "NNAudio Access",
   accessBody:
     "Download, install, update, library. Mac and Windows. Not a login wall.",
-  buyLine: "$199 one-time.",
+  buyLine: "$199 one-time harmony engine",
   faqTitle: "FAQ",
 } as const;
+
+/** Only render when `CYMASPHERE_INCLUDES_CYMASYNTH` is true. */
+export const CYMASPHERE_SUITE_LINE =
+  "One $199 purchase. Not a monthly plan.";
 
 export const CYMASPHERE_ATTACK = {
   source: "Attack Magazine",
@@ -174,6 +178,10 @@ export const CYMASPHERE_FAQ = [
   {
     q: "Subscription?",
     a: "No.",
+  },
+  {
+    q: "Price?",
+    a: "$199 one-time on nnaud.io.",
   },
   {
     q: "Formats?",

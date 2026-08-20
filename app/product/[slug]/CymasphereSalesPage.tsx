@@ -9,11 +9,12 @@ import {
   CYMASPHERE_ATTACK,
   CYMASPHERE_FAQ,
   CYMASPHERE_FORMATS,
+  CYMASPHERE_INCLUDES_CYMASYNTH,
   CYMASPHERE_META,
-  CYMASPHERE_PRICE_LABEL,
   CYMASPHERE_PRICE_USD,
   CYMASPHERE_SALES,
   CYMASPHERE_SOS,
+  CYMASPHERE_SUITE_LINE,
   collectCymasphereDemoVideos,
 } from "@/lib/cymasphere-sales";
 import type { PublicProduct } from "@/utils/products/get-public-product-by-slug";
@@ -200,9 +201,10 @@ export default function CymasphereSalesPage({
       </section>
 
       <section className={styles.ctaWrap}>
-        <h2 className={styles.sectionTitle}>Get Cymasphere</h2>
-        <p className={styles.priceLine}>{CYMASPHERE_SALES.buyLine}</p>
-        <p className={styles.srOnly}>{CYMASPHERE_PRICE_LABEL} one-time.</p>
+        <h2 className={styles.sectionTitle}>{CYMASPHERE_SALES.buyLine}</h2>
+        {CYMASPHERE_INCLUDES_CYMASYNTH ? (
+          <p className={styles.priceLine}>{CYMASPHERE_SUITE_LINE}</p>
+        ) : null}
         <CymasphereBuyButton product={product} />
       </section>
     </main>

@@ -1,6 +1,6 @@
 /**
  * @fileoverview Public catalog price display. Cymasphere is a locked $199
- * one-time offer — never advertise the CMS $499 list or a $149 sale as display.
+ * one-time nnaud.io offer — never advertise CMS list/sale leftovers.
  * @module utils/products/public-offer-display
  */
 
@@ -65,5 +65,20 @@ export function getPublicOfferDisplay(
     amount,
     compareAt: bundleCompare ?? saleCompare ?? freeCompare,
     isFree,
+  };
+}
+
+/**
+ * @brief Rewrites leftover CMS list/sale fields on Cymasphere homepage rows.
+ */
+export function applyCymasphereOfferPrices<T extends PublicOfferProduct>(
+  product: T
+): T {
+  if (!isCymasphereSlug(product.slug)) return product;
+  return {
+    ...product,
+    price: CYMASPHERE_PRICE_USD,
+    sale_price: CYMASPHERE_PRICE_USD,
+    compareAtPrice: null,
   };
 }

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { getPublicOfferDisplay } from "./public-offer-display";
+import {
+  applyCymasphereOfferPrices,
+  getPublicOfferDisplay,
+} from "./public-offer-display";
 
 describe("getPublicOfferDisplay", () => {
   it("locks Cymasphere at $199 with no $499 or $149 compare-at", () => {
@@ -18,6 +21,19 @@ describe("getPublicOfferDisplay", () => {
         compareAtPrice: 499,
       })
     ).toEqual({ amount: 199, compareAt: null, isFree: false });
+    expect(
+      applyCymasphereOfferPrices({
+        slug: "cymasphere",
+        price: 499,
+        sale_price: 149,
+        compareAtPrice: 499,
+      })
+    ).toEqual({
+      slug: "cymasphere",
+      price: 199,
+      sale_price: 199,
+      compareAtPrice: null,
+    });
   });
 
   it("keeps sale strikethrough for other products", () => {
