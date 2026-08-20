@@ -73,6 +73,13 @@ describe("CymasphereSalesPage SSR HTML", () => {
     expect(html).toContain("AU");
     expect(html).toContain("iPad");
     expect(html).toContain("Deeper than a chord plugin.");
+    expect(html).toContain("goes far deeper, especially on the theory");
+    expect(html).toContain("video tutorial, not a scored review");
+    expect(html).toContain("This is not a three-knob chord picker.");
+    expect(html).toContain("chord-focused MIDI note generator");
+    expect(html).toContain("brilliant harmonic playground");
+    expect(html).toContain("well worth a stab");
+    expect(html).toContain("print Jan 2024 / online 21 Dec 2023");
     expect(html).toContain("Sound on Sound");
     expect(html).toContain("Robin Bigwood");
     expect(html).toContain("Attack Magazine");
@@ -92,6 +99,13 @@ describe("CymasphereSalesPage SSR HTML", () => {
     expect(html).not.toContain("feature parity");
     expect(html).not.toContain("915245002872239");
     expect(html).not.toContain("GTM-MJSV92T9");
+    expect(html).not.toContain("looks confusing");
+    expect(html).not.toContain("incredible harmony engine");
+    expect(html).not.toContain("playing styles");
+    expect(html).not.toContain("not entirely clear");
+    expect(html).not.toContain("who Cymasphere is really for");
+    expect(html).not.toContain("tutorial series");
+    expect(html).not.toContain("download free");
   });
 
   it("embeds the Stall Short and ignores the unaudited catalog clip", () => {

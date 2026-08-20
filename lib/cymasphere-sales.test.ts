@@ -55,9 +55,37 @@ describe("cymasphere sales copy", () => {
     expect(CYMASPHERE_ATTACK.href).toBe(
       "https://www.attackmagazine.com/technique/video-tutorials/cymasphere-a-new-complex-chord-generator/"
     );
-    expect(CYMASPHERE_SOS.quotes.length).toBeGreaterThan(2);
-    expect(CYMASPHERE_ATTACK.quotes.length).toBe(2);
+    expect(CYMASPHERE_SOS.quotes).toEqual([
+      "chord-focused MIDI note generator",
+      "brilliant harmonic playground",
+      "well worth a stab",
+    ]);
+    expect(CYMASPHERE_ATTACK.quote).toContain(
+      "Cymasphere goes far deeper, especially on the theory"
+    );
+    expect(CYMASPHERE_ATTACK.kind).toBe("video tutorial, not a scored review");
+    expect(CYMASPHERE_SOS.date).toBe("print Jan 2024 / online 21 Dec 2023");
     expect(salesText).toContain("Robin Bigwood");
+  });
+
+  it("does not put SOS 2024 limits or extra Attack quotes on this page", () => {
+    const lower = salesText.toLowerCase();
+    expect(lower).not.toContain("looks confusing");
+    expect(lower).not.toContain("incredible harmony engine");
+    expect(lower).not.toContain("playing styles");
+    expect(lower).not.toContain("not entirely clear");
+    expect(lower).not.toContain("who cymasphere is really for");
+    expect(lower).not.toContain("no daw plug-in");
+    expect(lower).not.toContain("no daw plugin");
+    expect(lower).not.toContain("tutorial series");
+    expect(lower).not.toContain("download free");
+    expect(CYMASPHERE_SALES.limitsLead).toBe(
+      "This is not a three-knob chord picker. The GUI is dense because the theory is on the surface."
+    );
+    expect(CYMASPHERE_SOS.eraCaveat).toMatch(/2023–24 standalone/);
+    expect(CYMASPHERE_SOS.eraCaveat).toMatch(/AU\/VST3/);
+    expect(CYMASPHERE_INCLUDES_CYMASYNTH).toBe(false);
+    expect(CYMASPHERE_SOS.eraCaveat.toLowerCase()).toContain("separate product");
   });
 
   it("does not invent a CymaSynth suite, filler, or social proof", () => {

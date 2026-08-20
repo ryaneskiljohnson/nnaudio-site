@@ -110,18 +110,12 @@ export default function CymasphereSalesPage({
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{CYMASPHERE_SALES.aisleTitle}</h2>
-        {CYMASPHERE_SALES.aisleBody.map((paragraph) => (
-          <p key={paragraph} className={styles.copyP}>
-            {paragraph}
-          </p>
-        ))}
-        {CYMASPHERE_ATTACK.quotes.map((quote) => (
-          <blockquote key={quote} className={styles.quote}>
-            “{quote}”
-          </blockquote>
-        ))}
+        <blockquote className={styles.quote}>
+          “{CYMASPHERE_ATTACK.quote}”
+        </blockquote>
         <p className={styles.context}>
-          {CYMASPHERE_ATTACK.source}, {CYMASPHERE_ATTACK.date}
+          {CYMASPHERE_ATTACK.source}, {CYMASPHERE_ATTACK.date} —{" "}
+          {CYMASPHERE_ATTACK.kind}
         </p>
         <a
           className={styles.link}
@@ -150,23 +144,8 @@ export default function CymasphereSalesPage({
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{CYMASPHERE_SALES.limitsTitle}</h2>
-        {CYMASPHERE_SALES.limitsBody.map((paragraph) => (
-          <p key={paragraph} className={styles.copyP}>
-            {paragraph}
-          </p>
-        ))}
-        <blockquote className={styles.quote}>
-          “{CYMASPHERE_SOS.limitQuotes[0]}”
-        </blockquote>
-        <p className={styles.context}>
-          {CYMASPHERE_SOS.source} ({CYMASPHERE_SOS.author})
-        </p>
-        <blockquote className={styles.quote}>
-          “{CYMASPHERE_SOS.limitQuotes[1]}”
-        </blockquote>
-        <p className={styles.context}>
-          {CYMASPHERE_SOS.source} (that version)
-        </p>
+        <p className={styles.copyP}>{CYMASPHERE_SALES.limitsLead}</p>
+        <p className={styles.context}>{CYMASPHERE_SOS.eraCaveat}</p>
       </section>
 
       <section className={styles.section}>
@@ -181,6 +160,7 @@ export default function CymasphereSalesPage({
               “{quote}”
             </blockquote>
           ))}
+          <p className={styles.context}>{CYMASPHERE_SOS.eraCaveat}</p>
           <a
             className={styles.link}
             href={CYMASPHERE_SOS.href}

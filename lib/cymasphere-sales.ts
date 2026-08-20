@@ -102,10 +102,6 @@ export const CYMASPHERE_SALES = {
   ],
   valueCloser: "Not a DAW. Not another wavetable to babysit.",
   aisleTitle: "Deeper than a chord plugin.",
-  aisleBody: [
-    "If you already know Scaler, Captain Chords, or ChordJam: Attack Magazine put Cymasphere in that lane, then said it goes deeper on the theory.",
-    "The GUI looks dense. The voicings are why.",
-  ],
   howTitle: "How it works",
   howSteps: [
     {
@@ -124,11 +120,8 @@ export const CYMASPHERE_SALES = {
   formatsNote:
     "Standalone, VST3, and AU. macOS, Windows, iPad. Major DAWs except Pro Tools.",
   limitsTitle: "Honest limits",
-  limitsBody: [
-    "Attack said it looks confusing. Not a three-knob chord picker.",
-    "SOS reviewed the 2023–24 standalone (Jan 2024) — best independent write-up we have, not a review of today’s AU/VST3 page.",
-    "If you want a chord stamp, wrong tool. If you want control of the harmony, it isn’t.",
-  ],
+  limitsLead:
+    "This is not a three-knob chord picker. The GUI is dense because the theory is on the surface.",
   accessTitle: "NNAudio Access",
   accessBody:
     "Download, install, update, library. Mac and Windows. Not a login wall.",
@@ -139,29 +132,30 @@ export const CYMASPHERE_SALES = {
 export const CYMASPHERE_ATTACK = {
   source: "Attack Magazine",
   date: "11 Jan 2024",
+  kind: "video tutorial, not a scored review",
   href: "https://www.attackmagazine.com/technique/video-tutorials/cymasphere-a-new-complex-chord-generator/",
-  quotes: [
+  quote:
     "If you’re thinking “What about ChordJam” or “Captain Chords” or “Scaler” then yes – this is sitting in a similar space. However, Cymasphere goes far deeper, especially on the theory.",
-    "Without a doubt, Cymasphere looks confusing! … it’s an incredible harmony engine that intelligently generates chord voicings and melodic sequences using scales as its source.",
-  ],
 } as const;
 
 export const CYMASPHERE_SOS = {
   source: "Sound on Sound",
   author: "Robin Bigwood",
-  date: "Jan 2024",
+  printDate: "Jan 2024",
+  onlineDate: "21 Dec 2023",
+  date: "print Jan 2024 / online 21 Dec 2023",
   href: "https://www.soundonsound.com/reviews/cymasphere",
   quotes: [
-    "Cymasphere aims to make more complex chord construction available to all.",
-    "…a chord-focused MIDI note generator.",
-    "If chord formation is your thing, it could prove to be a brilliant harmonic playground.",
-    "Cymasphere has few counterparts… [none] get anywhere close to Cymasphere’s harmonic sophistication…",
-    "I also can’t fault Cymasphere’s execution.",
+    "chord-focused MIDI note generator",
+    "brilliant harmonic playground",
+    "well worth a stab",
   ],
-  limitQuotes: [
-    "it’s not entirely clear who Cymasphere is really for.",
-    "the number of playing styles is limited: only block chords, strums, or monophonic arpeggiation.",
-  ],
+  /**
+   * Review-era caveat only. Do not claim CymaSynth ships with this SKU.
+   * SOS did not review today’s AU/VST3, and they did not review CymaSynth.
+   */
+  eraCaveat:
+    "They reviewed the 2023–24 standalone, not today’s AU/VST3 — and not CymaSynth, which is a separate product.",
 } as const;
 
 export const CYMASPHERE_FAQ = [
@@ -171,7 +165,7 @@ export const CYMASPHERE_FAQ = [
   },
   {
     q: "Scaler / Captain Chords / ChordJam?",
-    a: "Same aisle. Attack said deeper on theory, and that the GUI looks dense.",
+    a: "Same aisle. Attack said it goes far deeper on the theory.",
   },
   {
     q: "Is CymaSynth the product?",
