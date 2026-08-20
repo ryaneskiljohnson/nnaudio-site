@@ -10,6 +10,9 @@ import {
   CYMASPHERE_PRICE_USD,
   CYMASPHERE_SALES,
   CYMASPHERE_SOS,
+  CYMASPHERE_UNAUDITED_DEMO_VIDEO_ID,
+  collectCymasphereDemoVideos,
+  filterCymasphereDemoVideos,
   isCymasphereSlug,
 } from "./cymasphere-sales";
 
@@ -63,6 +66,8 @@ describe("cymasphere sales copy", () => {
     expect(lower).not.toContain("ships with");
     expect(lower).not.toContain("one $149 purchase");
     expect(lower).not.toContain("serum");
+    expect(lower).not.toContain("serum 2");
+    expect(lower).not.toContain("feature parity");
     expect(lower).not.toContain("push the boundaries");
     expect(lower).not.toContain("intelligent music creation");
     expect(lower).not.toContain("aaron");
@@ -80,5 +85,38 @@ describe("cymasphere sales copy", () => {
     expect(isCymasphereSlug("cymasphere")).toBe(true);
     expect(isCymasphereSlug("Cymasphere")).toBe(true);
     expect(isCymasphereSlug("cymasynth")).toBe(false);
+  });
+
+  it("keeps only the Stall Short demo and drops the unaudited catalog clip", () => {
+    expect(
+      filterCymasphereDemoVideos([
+        "https://youtu.be/4ggHir150p8",
+        "https://www.youtube.com/shorts/lZZwMcxmWEQ",
+        "https://www.youtube.com/watch?v=4ggHir150p8",
+      ])
+    ).toEqual(["https://www.youtube.com/shorts/lZZwMcxmWEQ"]);
+    expect(
+      filterCymasphereDemoVideos([
+        `https://www.youtube.com/watch?v=${CYMASPHERE_UNAUDITED_DEMO_VIDEO_ID}`,
+      ])
+    ).toEqual([]);
+  });
+
+  it("does not fall back to the unaudited demo_video_url", () => {
+    expect(
+      collectCymasphereDemoVideos({
+        demo_videos: [],
+        demo_video_url: "https://youtu.be/4ggHir150p8",
+      })
+    ).toEqual([]);
+    expect(
+      collectCymasphereDemoVideos({
+        demo_videos: [
+          { url: "https://youtu.be/4ggHir150p8", order: 1 },
+          { url: "https://www.youtube.com/shorts/lZZwMcxmWEQ", order: 2 },
+        ],
+        demo_video_url: "https://youtu.be/4ggHir150p8",
+      })
+    ).toEqual([{ url: "https://www.youtube.com/shorts/lZZwMcxmWEQ", order: 1 }]);
   });
 });

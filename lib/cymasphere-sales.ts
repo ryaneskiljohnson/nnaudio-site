@@ -18,6 +18,61 @@ export const CYMASPHERE_PRICE_NOTE = "one-time. No subscription.";
  */
 export const CYMASPHERE_INCLUDES_CYMASYNTH = false;
 
+/**
+ * Only owned, audited demo clip for this page.
+ * Catalog `demo_video_url` is 4ggHir150p8 — unaudited, do not embed.
+ * `audio_samples` is empty; do not invent a player or clips.
+ */
+export const CYMASPHERE_ALLOWED_DEMO_VIDEO_ID = "lZZwMcxmWEQ";
+export const CYMASPHERE_UNAUDITED_DEMO_VIDEO_ID = "4ggHir150p8";
+
+export function isAllowedCymasphereDemoVideoUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (!trimmed.includes(CYMASPHERE_ALLOWED_DEMO_VIDEO_ID)) return false;
+  if (trimmed.includes(CYMASPHERE_UNAUDITED_DEMO_VIDEO_ID)) return false;
+  return true;
+}
+
+export function filterCymasphereDemoVideos(urls: string[]): string[] {
+  const seen = new Set<string>();
+  const allowed: string[] = [];
+  for (const url of urls) {
+    const trimmed = url.trim();
+    if (!isAllowedCymasphereDemoVideoUrl(trimmed) || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    allowed.push(trimmed);
+  }
+  return allowed;
+}
+
+export function collectCymasphereDemoVideos(product: {
+  demo_videos?: unknown;
+  demo_video_url?: string | null;
+}): Array<{ url: string; order: number }> {
+  const candidates: string[] = [];
+  if (Array.isArray(product.demo_videos)) {
+    for (const item of product.demo_videos) {
+      if (typeof item === "string") {
+        candidates.push(item);
+      } else if (
+        item &&
+        typeof item === "object" &&
+        typeof (item as { url?: unknown }).url === "string"
+      ) {
+        candidates.push((item as { url: string }).url);
+      }
+    }
+  }
+  if (typeof product.demo_video_url === "string") {
+    candidates.push(product.demo_video_url);
+  }
+  return filterCymasphereDemoVideos(candidates).map((url, index) => ({
+    url,
+    order: index + 1,
+  }));
+}
+
 export const CYMASPHERE_FORMATS = [
   "Standalone",
   "VST3",

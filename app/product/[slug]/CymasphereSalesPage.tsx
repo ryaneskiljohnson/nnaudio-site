@@ -14,6 +14,7 @@ import {
   CYMASPHERE_PRICE_USD,
   CYMASPHERE_SALES,
   CYMASPHERE_SOS,
+  collectCymasphereDemoVideos,
 } from "@/lib/cymasphere-sales";
 import type { PublicProduct } from "@/utils/products/get-public-product-by-slug";
 import { MultiVideoPlayer } from "@/app/components/MultiVideoPlayer";
@@ -22,32 +23,6 @@ import styles from "./cymasphere-sales.module.css";
 
 interface CymasphereSalesPageProps {
   product: PublicProduct | null;
-}
-
-interface DemoVideo {
-  url: string;
-  order: number;
-}
-
-function getDemoVideos(product: PublicProduct | null): DemoVideo[] {
-  const raw = product?.demo_videos;
-  if (Array.isArray(raw) && raw.length > 0) {
-    return raw
-      .map((item, index) => {
-        const rec = item as { url?: unknown; order?: unknown };
-        const url = typeof rec.url === "string" ? rec.url.trim() : "";
-        const order =
-          typeof rec.order === "number" ? rec.order : index + 1;
-        return { url, order };
-      })
-      .filter((item) => item.url.length > 0)
-      .sort((a, b) => a.order - b.order);
-  }
-  const legacy =
-    typeof product?.demo_video_url === "string"
-      ? product.demo_video_url.trim()
-      : "";
-  return legacy ? [{ url: legacy, order: 1 }] : [];
 }
 
 /**
@@ -61,7 +36,7 @@ export default function CymasphereSalesPage({
     product?.logo_url ||
     "/images/cymasphere-logo.png";
   const imageIsRemote = /^https?:\/\//i.test(imageSrc);
-  const videos = getDemoVideos(product);
+  const videos = collectCymasphereDemoVideos(product ?? {});
 
   const jsonLd = {
     "@context": "https://schema.org",

@@ -30,7 +30,14 @@ vi.mock("./CymasphereBuyButton", () => ({
 }));
 
 vi.mock("@/app/components/MultiVideoPlayer", () => ({
-  MultiVideoPlayer: () => <div>Demo video</div>,
+  MultiVideoPlayer: ({ videos }: { videos: Array<{ url: string }> }) => (
+    <div>
+      Demo video
+      {videos.map((video) => (
+        <span key={video.url}>{video.url}</span>
+      ))}
+    </div>
+  ),
 }));
 
 import CymasphereSalesPage from "./CymasphereSalesPage";
@@ -80,20 +87,45 @@ describe("CymasphereSalesPage SSR HTML", () => {
     expect(html).not.toContain("ships with");
     expect(html).not.toContain("Hear it");
     expect(html).not.toContain("Start trial");
+    expect(html).not.toContain("4ggHir150p8");
+    expect(html).not.toContain("Serum 2");
+    expect(html).not.toContain("feature parity");
+    expect(html).not.toContain("915245002872239");
+    expect(html).not.toContain("GTM-MJSV92T9");
   });
 
-  it("shows Hear it only when a real demo video exists", () => {
+  it("embeds the Stall Short and ignores the unaudited catalog clip", () => {
     const html = renderToStaticMarkup(
       <CymasphereSalesPage
         product={{
           ...product,
           demo_videos: [
-            { url: "https://www.youtube.com/shorts/lZZwMcxmWEQ", order: 1 },
+            { url: "https://youtu.be/4ggHir150p8", order: 1 },
+            { url: "https://www.youtube.com/shorts/lZZwMcxmWEQ", order: 2 },
           ],
+          demo_video_url: "https://youtu.be/4ggHir150p8",
         }}
       />
     );
     expect(html).toContain("Hear it");
-    expect(html).toContain("Demo video");
+    expect(html).toContain("lZZwMcxmWEQ");
+    expect(html).not.toContain("4ggHir150p8");
+  });
+
+  it("does not embed the unaudited demo_video_url or invent audio samples", () => {
+    const html = renderToStaticMarkup(
+      <CymasphereSalesPage
+        product={{
+          ...product,
+          audio_samples: [{ url: "https://example.com/invented.mp3", name: "Demo" }],
+          demo_videos: [{ url: "https://www.youtube.com/watch?v=4ggHir150p8" }],
+          demo_video_url: "https://youtu.be/4ggHir150p8",
+        }}
+      />
+    );
+    expect(html).not.toContain("4ggHir150p8");
+    expect(html).not.toContain("Hear it");
+    expect(html).not.toContain("invented.mp3");
+    expect(html).not.toContain("Demo video");
   });
 });
