@@ -14,9 +14,14 @@ const PatchNotesPage = () => {
   useEffect(() => {
     const fetchPatchNotes = async () => {
       try {
+        // Same pattern as Cymasphere: Installer/patch_notes.md uploaded to public storage.
+        // Access notes live under builds/nnaudio-access/ on the nnaud.io Supabase project.
+        const base =
+          process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") ||
+          "https://znecvzfogwkzinkduyuq.supabase.co";
         const response = await fetch(
-          "https://jibirpbauzqhdiwjlrmf.supabase.co/storage/v1/object/public/builds//patch_notes.md",
-          { cache: "no-store" } // Ensure we get the latest version
+          `${base}/storage/v1/object/public/builds/nnaudio-access/patch_notes.md`,
+          { cache: "no-store" },
         );
 
         if (!response.ok) {
@@ -28,7 +33,7 @@ const PatchNotesPage = () => {
       } catch (err) {
         console.error("Error fetching patch notes:", err);
         setError(
-          "Unable to fetch patch notes. Please check your connection and try again later."
+          "Unable to fetch patch notes. Please check your connection and try again later.",
         );
       } finally {
         setIsLoading(false);
