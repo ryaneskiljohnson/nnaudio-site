@@ -88,7 +88,7 @@ The Voicing Generator uses advanced algorithms to create rich, musically satisfy
 Cymasphere offers flexible pricing options:
 - **Monthly billing**: $6.00/month - Pay month-to-month, cancel anytime (most flexible)
 - **Yearly billing**: $59.00/year - Save 25% with yearly billing (best value)
-- **Lifetime**: $149.00 one-time payment - Lifetime access (best value)
+- **Lifetime**: $199.00 one-time payment - Lifetime access (best value)
 
 All plans include full access to all features. Pricing is simple and transparent.
 
