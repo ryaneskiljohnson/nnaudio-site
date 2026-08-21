@@ -5,9 +5,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { checkAdmin } from "@/app/actions/user-management";
 import { checkRateLimit, getClientIp } from "@/utils/rateLimit";
 import {
+  isExcludedPresenceIp,
   isPresenceVisitorId,
   PRESENCE_STALE_AFTER_MS,
   sanitizePresencePath,
@@ -50,8 +53,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const supabase = await createSupabaseServiceRole();
+    const userSupabase = await createClient();
+    const ignoreVisitor =
+      isExcludedPresenceIp(clientIp) || (await checkAdmin(userSupabase));
 
-    if (left === true) {
+    if (left === true || ignoreVisitor) {
       const { error } = await supabase
         .from("site_presence")
         .delete()

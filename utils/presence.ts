@@ -49,3 +49,41 @@ export function sanitizePresencePath(path: unknown): string {
   const collapsed = withoutQuery.replace(/\/{2,}/g, "/").slice(0, 200);
   return collapsed.length > 0 ? collapsed : "/";
 }
+
+/**
+ * @brief Normalizes an IP for comparison (trim, lowercase, strip IPv4-mapped IPv6 prefix).
+ */
+export function normalizePresenceIp(ip: string): string {
+  const trimmed = ip.trim().toLowerCase();
+  if (trimmed.startsWith("::ffff:")) {
+    return trimmed.slice("::ffff:".length);
+  }
+  return trimmed;
+}
+
+/**
+ * @brief Parses comma-separated IPs from PRESENCE_EXCLUDED_IPS (or an override for tests).
+ */
+export function parseExcludedPresenceIps(
+  value: string | undefined = process.env.PRESENCE_EXCLUDED_IPS,
+): string[] {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((entry) => normalizePresenceIp(entry))
+    .filter((entry) => entry.length > 0);
+}
+
+/**
+ * @brief Returns true when this client IP should be omitted from the live visitor count.
+ */
+export function isExcludedPresenceIp(
+  ip: string,
+  excludedIps: string[] = parseExcludedPresenceIps(),
+): boolean {
+  const normalized = normalizePresenceIp(ip);
+  return normalized.length > 0 && excludedIps.includes(normalized);
+}
