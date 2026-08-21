@@ -1387,6 +1387,8 @@ export default function AdminCRM() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [absoluteUserTotal, setAbsoluteUserTotal] = useState(0);
+  const [countLoading, setCountLoading] = useState(true);
   const [usersPerPage, setUsersPerPage] = useState(10);
 
   // Modal state
@@ -1520,20 +1522,41 @@ export default function AdminCRM() {
   // Fetch count separately (only when search/filter changes)
   const fetchCount = async () => {
     try {
-      const result = await getUsersForCRMCountAdmin(
-        debouncedSearchTerm || undefined,
-        subscriptionFilter
-      );
+      setCountLoading(true);
+      const isFiltered =
+        Boolean(debouncedSearchTerm) ||
+        (subscriptionFilter != null && subscriptionFilter !== "all");
 
-      if (result.error) {
-        console.error("Error fetching count:", result.error);
-        return;
+      const [filteredResult, absoluteResult] = await Promise.all([
+        getUsersForCRMCountAdmin(
+          debouncedSearchTerm || undefined,
+          subscriptionFilter
+        ),
+        // Always refresh absolute total so the headline count stays accurate
+        getUsersForCRMCountAdmin(undefined, "all"),
+      ]);
+
+      if (filteredResult.error) {
+        console.error("Error fetching count:", filteredResult.error);
+      } else {
+        setTotalCount(filteredResult.count);
+        setTotalPages(Math.ceil(filteredResult.count / usersPerPage));
       }
 
-      setTotalCount(result.count);
-      setTotalPages(Math.ceil(result.count / usersPerPage));
+      if (absoluteResult.error) {
+        console.error("Error fetching absolute user total:", absoluteResult.error);
+      } else {
+        setAbsoluteUserTotal(absoluteResult.count);
+        // When unfiltered, keep both counts in sync
+        if (!isFiltered) {
+          setTotalCount(absoluteResult.count);
+          setTotalPages(Math.ceil(absoluteResult.count / usersPerPage));
+        }
+      }
     } catch (err) {
       console.error("Error fetching count:", err);
+    } finally {
+      setCountLoading(false);
     }
   };
 
@@ -2858,6 +2881,45 @@ export default function AdminCRM() {
 
         {showContent && (
           <>
+            <StatsRow>
+              <StatCard
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35 }}
+              >
+                <StatValue>
+                  {countLoading && absoluteUserTotal === 0 ? (
+                    <StatLoadingSpinner size={24} />
+                  ) : (
+                    absoluteUserTotal.toLocaleString()
+                  )}
+                </StatValue>
+                <StatLabel>
+                  {t("admin.usersPage.totalUsers", "Total Users")}
+                </StatLabel>
+              </StatCard>
+              {(Boolean(debouncedSearchTerm) ||
+                (subscriptionFilter != null &&
+                  subscriptionFilter !== "all")) && (
+                <StatCard
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: 0.05 }}
+                >
+                  <StatValue>
+                    {countLoading && totalCount === 0 ? (
+                      <StatLoadingSpinner size={24} />
+                    ) : (
+                      totalCount.toLocaleString()
+                    )}
+                  </StatValue>
+                  <StatLabel>
+                    {t("admin.usersPage.matchingUsers", "Matching")}
+                  </StatLabel>
+                </StatCard>
+              )}
+            </StatsRow>
+
             <FiltersSection>
               <FiltersRow>
                 <SearchContainer>
