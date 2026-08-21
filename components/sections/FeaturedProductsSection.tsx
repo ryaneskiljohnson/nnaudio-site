@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @fileoverview Homepage featured-products carousel with optional premier
+ * card and add-to-cart actions.
+ * @module components/sections/FeaturedProductsSection
+ */
+
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
@@ -61,52 +67,6 @@ const SectionSubtitle = styled(motion.p)`
     font-size: 1rem;
     margin-bottom: 1.75rem;
   }
-`;
-
-const SectionVisual = styled.div`
-  margin: 0 auto 2.25rem;
-  max-width: 980px;
-  min-height: 240px;
-  border-radius: 24px;
-  overflow: hidden;
-  position: relative;
-  background:
-    linear-gradient(180deg, rgba(7, 8, 15, 0.15), rgba(7, 8, 15, 0.76)),
-    url("/images/landing/best-of-visual.webp");
-  background-size: cover;
-  background-position: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
-  display: flex;
-  align-items: flex-end;
-
-  @media (max-width: 768px) {
-    min-height: 200px;
-    margin-bottom: 1.9rem;
-  }
-`;
-
-const SectionVisualOverlay = styled.div`
-  width: 100%;
-  padding: 1.25rem 1.4rem;
-  background: linear-gradient(
-    180deg,
-    rgba(7, 8, 15, 0) 0%,
-    rgba(7, 8, 15, 0.68) 48%,
-    rgba(7, 8, 15, 0.88) 100%
-  );
-`;
-
-const SectionVisualTitle = styled.h3`
-  margin: 0 0 0.35rem;
-  color: var(--text);
-  font-size: 1.15rem;
-`;
-
-const SectionVisualBody = styled.p`
-  margin: 0;
-  color: rgba(255, 255, 255, 0.84);
-  line-height: 1.55;
 `;
 
 // Spotlight beams positioned at the top of the section, projecting downward
@@ -680,16 +640,6 @@ const FeaturedProductsSection: React.FC<FeaturedProductsSectionProps> = ({ title
             {footerNote}
           </SectionSubtitle>
         ) : null}
-
-        <SectionVisual>
-          <SectionVisualOverlay>
-            <SectionVisualTitle>These are the products that define the feel of the catalog</SectionVisualTitle>
-            <SectionVisualBody>
-              If you want the fastest sense of what makes NNAudio worth coming back to,
-              this is where to listen first.
-            </SectionVisualBody>
-          </SectionVisualOverlay>
-        </SectionVisual>
 
         {/* Premier Product */}
         {premierProduct && (

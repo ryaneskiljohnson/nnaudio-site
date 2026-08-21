@@ -275,3 +275,21 @@ a:hover,
 [role="button"]:hover {
   color: white !important;
 }
+
+/* Hero moons: never pick up the global a/button hover brightness. */
+.hero-moon:hover,
+.hero-moon:focus,
+.hero-moon:focus-visible {
+  color: inherit !important;
+  text-shadow: none !important;
+  filter: var(--moon-filter, none) !important;
+  outline: none;
+}
+
+.hero-moon:hover *,
+.hero-moon:focus *,
+.hero-moon:focus-visible * {
+  color: inherit !important;
+  text-shadow: none !important;
+  filter: none !important;
+}

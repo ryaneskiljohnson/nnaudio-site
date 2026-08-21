@@ -1,3 +1,19 @@
+/**
+ * @fileoverview CymasphereLogo Component
+ * @module components/common/CymasphereLogo
+ *
+ * Displays the Cymasphere brand logo with an animated energy ball and optional
+ * text. Supports clickable links, custom sizing, and optional text display.
+ *
+ * @example
+ * // Basic usage
+ * <CymasphereLogo />
+ *
+ * @example
+ * // With custom size and link
+ * <CymasphereLogo size="60px" fontSize="2rem" href="/" showText={true} />
+ */
+
 import React from "react";
 import Link from "next/link";
 import styled from "styled-components";
@@ -48,15 +64,36 @@ const LogoText = styled.div<LogoTextProps>`
   }
 `;
 
+/**
+ * @brief Props for the CymasphereLogo component
+ */
 interface CymasphereLogoProps {
+  /** @param {string} [size="40px"] - Size of the energy ball icon */
   size?: string;
+  /** @param {string} [fontSize="1.8rem"] - Font size for the logo text */
   fontSize?: string;
+  /** @param {boolean} [showText=true] - Whether to display the "CYMASPHERE" text */
   showText?: boolean;
+  /** @param {string} [href] - Optional URL to navigate to when logo is clicked */
   href?: string;
+  /** @param {React.MouseEventHandler<HTMLDivElement>} [onClick] - Optional click handler */
   onClick?: React.MouseEventHandler<HTMLDivElement>;
+  /** @param {string} [className] - Additional CSS class names */
   className?: string;
 }
 
+/**
+ * @brief CymasphereLogo component
+ *
+ * Renders the Cymasphere brand logo with an animated energy ball and optional
+ * text. The logo can be made clickable via href and supports custom sizing.
+ *
+ * @param {CymasphereLogoProps} props - Component props
+ * @returns {JSX.Element} The rendered logo component
+ *
+ * @note The logo text uses a gradient effect on the "CYMA" portion
+ * @note If href is provided, the logo becomes a clickable link
+ */
 const CymasphereLogo: React.FC<CymasphereLogoProps> = ({
   size = "40px",
   fontSize = "1.8rem",

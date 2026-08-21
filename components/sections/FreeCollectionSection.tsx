@@ -502,21 +502,17 @@ export default function FreeCollectionSection({
     <Section id="free-products">
       <Inner>
         <Eyebrow>Free Collection</Eyebrow>
-        <Title>Hear the sound. Feel the workflow. Spend nothing first.</Title>
+        <Title>Free tools</Title>
         <Subtitle>
-          This is the easiest way into the catalog: free plugins, free MIDI,
-          and NNAudio Access in one cleaner collection built to give you a real
-          feel for how NNAudio fits the way you work.
+          Plugins, MIDI, and NNAudio Access — no purchase required.
         </Subtitle>
 
         <IntroGrid>
           <VisualCard>
             <VisualOverlay>
-              <VisualTitle>Get the feel of the catalog before you commit</VisualTitle>
+              <VisualTitle>Try before you buy</VisualTitle>
               <VisualBody>
-                The free collection is where you hear the sound, test the
-                workflow, and decide what deserves a permanent place in your
-                setup.
+                Drop free plugins and MIDI into a real session.
               </VisualBody>
             </VisualOverlay>
           </VisualCard>
