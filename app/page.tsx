@@ -261,42 +261,73 @@ export default function Home() {
       .filter((slug) => slug && !HERO_SKIP.has(slug))
   ).size;
 
+  /**
+   * @brief First few artwork URLs from a product list, for the catalog
+   * grid's orbiting thumbnail clusters.
+   * @param list Card-shaped products.
+   * @returns Up to four artwork URLs.
+   */
+  const catThumbs = (list: ReturnType<typeof toCard>[]): string[] =>
+    list
+      .map((p) => p.featured_image_url || p.image || p.logo_url || "")
+      .filter(Boolean)
+      .slice(0, 4);
+
   const categories: CategoryTile[] = [
     {
       key: "instruments",
       label: "Instruments",
       href: "/products?category=instrument-plugin",
       count: instruments.length,
+      blurb: "Synths, texture engines, and sound generators.",
+      images: catThumbs(instruments),
     },
     {
       key: "effects",
       label: "Effects",
       href: "/products?category=audio-fx-plugin",
       count: effects.length,
+      blurb: "Color, space, and motion for any source.",
+      images: catThumbs(effects),
     },
     {
       key: "midi-fx",
       label: "MIDI FX",
       href: "/products?category=midi-fx-plugin",
       count: midiFx.length,
+      blurb: "Writing tools that plug into your DAW.",
+      images: catThumbs(midiFx),
     },
     {
       key: "packs",
       label: "MIDI & Sample Packs",
       href: "/packs",
       count: packs.length,
+      blurb: "Drop-in phrases, kits, and sounds.",
+      images: catThumbs(packs),
     },
     {
       key: "bundles",
       label: "Bundles",
       href: "/bundles",
       count: bundleCount,
+      blurb: "More products, one better price.",
     },
     {
       key: "free",
       label: "Free Tools",
       href: "/free-tools",
       count: freeProducts.length,
+      blurb: "Start producing without spending a dime.",
+      images: catThumbs(freeProducts),
+    },
+    {
+      key: "access",
+      label: "NNAudio Access",
+      href: "/downloads",
+      count: 1,
+      alwaysShow: true,
+      blurb: "One app to manage all your products.",
     },
   ];
 
