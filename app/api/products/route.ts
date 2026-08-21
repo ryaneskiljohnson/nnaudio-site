@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
+    const slug = searchParams.get('slug');
     const featured = searchParams.get('featured');
     const statusParam = searchParams.get('status');
     const limitParam = searchParams.get('limit');
@@ -52,6 +53,11 @@ export async function GET(request: NextRequest) {
     // Only apply limit if it's a reasonable number (to prevent abuse)
     if (limit > 0 && limit <= 10000) {
       query = query.limit(limit);
+    }
+
+    /** Exact slug match — used by the homepage Cymasphere price fetch. */
+    if (slug) {
+      query = query.eq('slug', slug);
     }
 
     if (category) {
