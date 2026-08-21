@@ -1,0 +1,1013 @@
+/**
+ * @fileoverview Orbital layout for homepage products as moons around
+ * Cymasphere. Rings, Kepler-derived periods, and camera-tour math for the
+ * VFX renderer. Real orbital motion lives in utils/orbital-physics.
+ * @module utils/circuit-network-layout
+ */
+
+import { hashOrbitKey, keplerPeriodSec } from "@/utils/orbital-physics";
+
+/** One catalog product assigned to an orbit. */
+export interface MoonPlacement {
+  /** Source product index. */
+  index: number;
+  /** 0 = innermost catalog ring (CymaSynth is separate). */
+  ring: number;
+  /** Orbit radius as a 0–1 fraction of the usable half-span. */
+  radius: number;
+  /** Starting angle in degrees (0 = right, CCW). */
+  startDeg: number;
+  /** Full revolution time in seconds. Inner moons are faster. */
+  periodSec: number;
+  /** Sphere diameter in CSS pixels (w and h match). */
+  size: { w: number; h: number };
+}
+
+interface RingSpec {
+  radius: number;
+  take: number;
+}
+
+/** Stable size multipliers so neighboring moons are not twins. */
+const SIZE_WAVE = [0.7, 1.4, 0.86, 1.18, 1.9, 0.76, 1.08, 2.2, 0.92, 1.28, 1.65, 0.8];
+
+/**
+ * @brief Sphere diameter for one catalog moon. Sizes vary like a cast.
+ * @param index Product index.
+ * @param ring Orbit ring.
+ * @param mobile Compact range.
+ * @returns Square diameter in CSS pixels.
+ */
+export function moonDiameter(
+  index: number,
+  ring: number,
+  mobile: boolean
+): number {
+  const bases = mobile ? [42, 32, 24] : [54, 42, 34, 26];
+  const base = bases[Math.min(Math.max(ring, 0), bases.length - 1)];
+  const d = Math.round(base * SIZE_WAVE[((index % SIZE_WAVE.length) + SIZE_WAVE.length) % SIZE_WAVE.length]);
+  return Math.max(mobile ? 20 : 22, Math.min(mobile ? 96 : 128, d));
+}
+
+/**
+ * @brief Builds ring specs that fill the system and leave room for CymaSynth.
+ * @param count Catalog moons (not including CymaSynth).
+ * @param mobile Compact rings and sizes.
+ * @returns Ring list whose `take` values sum to `count`.
+ */
+function catalogRings(count: number, mobile: boolean): RingSpec[] {
+  if (count <= 0) return [];
+  // Halfway between the original tight rings and the far solar-system
+  // set: the sun still shrinks on a trip out, without a huge empty gap.
+  const specs = mobile
+    ? [
+        { radius: 1.8, take: Math.min(4, count) },
+        { radius: 3.1, take: Math.min(8, Math.max(0, count - 4)) },
+        { radius: 5.0, take: Math.min(12, Math.max(0, count - 12)) },
+        { radius: 7.6, take: Math.max(0, count - 24) },
+      ]
+    : [
+        { radius: 2.2, take: Math.min(5, count) },
+        { radius: 3.85, take: Math.min(8, Math.max(0, count - 5)) },
+        { radius: 6.15, take: Math.min(12, Math.max(0, count - 13)) },
+        { radius: 9.15, take: Math.min(18, Math.max(0, count - 25)) },
+        { radius: 13.2, take: Math.max(0, count - 43) },
+      ];
+  return specs.filter((ring) => ring.take > 0);
+}
+
+/**
+ * @brief Evenly spaces moons around concentric orbits. Periods follow
+ * Kepler's third law, so closer rings move faster automatically.
+ * @param count How many catalog products to place.
+ * @param mobile Compact ring set.
+ * @returns One placement per product, inner ring first.
+ * @example
+ * moonPlacements(70, false).length === 70
+ */
+export function moonPlacements(
+  count: number,
+  mobile: boolean
+): MoonPlacement[] {
+  if (count <= 0) return [];
+  const rings = catalogRings(count, mobile);
+  const out: MoonPlacement[] = [];
+  let cursor = 0;
+
+  rings.forEach((ring, ringIndex) => {
+    for (let i = 0; i < ring.take && cursor < count; i += 1) {
+      const startDeg = (i / ring.take) * 360 + ringIndex * 11;
+      out.push({
+        index: cursor,
+        ring: ringIndex,
+        radius: ring.radius,
+        startDeg,
+        periodSec: keplerPeriodSec(Math.max(0.32, ring.radius * 0.18)),
+        size: {
+          w: moonDiameter(cursor, ringIndex, mobile),
+          h: moonDiameter(cursor, ringIndex, mobile),
+        },
+      });
+      cursor += 1;
+    }
+  });
+
+  return out;
+}
+
+/**
+ * @brief CymaSynth sits on the closest, largest orbit.
+ * @param mobile Compact sizing.
+ * @returns Moon placement for the flagship synth (index unused).
+ */
+export function cymasynthOrbit(mobile: boolean): MoonPlacement {
+  const radius = mobile ? 1.06 : 1.26;
+  return {
+    index: -1,
+    ring: -1,
+    radius,
+    startDeg: -90,
+    periodSec: keplerPeriodSec(Math.max(0.32, radius * 0.18)),
+    size: mobile ? { w: 78, h: 78 } : { w: 108, h: 108 },
+  };
+}
+
+/**
+ * @brief Converts an orbit radius fraction into pixels for the measured
+ * board. The span mixes both dimensions (biased to the smaller) so wide
+ * screens spread the system horizontally, and radii above 1.0 land
+ * off-screen — the camera tour is what reveals them.
+ * @param radius Fraction of the usable half-span (may exceed 1).
+ * @param width Board width.
+ * @param height Board height.
+ * @returns Pixel radius from the planet center.
+ * @example
+ * orbitRadiusPx(1.55, 1600, 800)
+ */
+export function orbitRadiusPx(
+  radius: number,
+  width: number,
+  height: number
+): number {
+  const span =
+    (Math.min(width, height) * 0.6 + Math.max(width, height) * 0.4) / 2;
+  return Math.max(48, Math.round(span * radius * 0.92));
+}
+
+/**
+ * @brief Current orbit angle for a moon.
+ * @param startDeg Seat start angle.
+ * @param periodSec Revolution time.
+ * @param elapsedMs Time since the system started.
+ * @returns Radians, 0 at +Z (toward camera).
+ * @example
+ * moonTheta(0, 40, 10000)
+ */
+export function moonTheta(
+  startDeg: number,
+  periodSec: number,
+  elapsedMs: number
+): number {
+  const turns = periodSec <= 0 ? 0 : elapsedMs / 1000 / periodSec;
+  return (startDeg * Math.PI) / 180 + turns * Math.PI * 2;
+}
+
+/**
+ * @brief Depth toward the camera from an orbit angle. 1 is in front.
+ * @param theta Orbit radians.
+ * @returns Value in [0, 1].
+ * @example
+ * moonDepth(0) // 1
+ */
+export function moonDepth(theta: number): number {
+  return (Math.cos(theta) + 1) / 2;
+}
+
+/** Live world position of one moon (same units as the Kepler system). */
+export interface MoonWorldPos {
+  x: number;
+  height: number;
+  z: number;
+}
+
+/**
+ * @brief Camera yaw/range that puts a world point on the +Z look axis.
+ * @param x World x (screen right).
+ * @param z World z (toward the camera).
+ * @returns Yaw in degrees and the XZ range in px.
+ */
+export function aimYawAt(x: number, z: number): { rotateY: number; range: number } {
+  const range = Math.max(80, Math.hypot(x, z));
+  return {
+    rotateY: (Math.atan2(-x, z) * 180) / Math.PI,
+    range,
+  };
+}
+
+/** Radius of the slow inspection truck around a focused moon. */
+export const FOCUS_TRUCK_PX = 12;
+/** One inspection circle; long enough to read the product, never parked. */
+export const FOCUS_TRUCK_PERIOD_SEC = 22;
+/** Sun yaw while Cymasphere is featured — monotonic so the shot never stalls. */
+export const SUN_YAW_DEG_PER_SEC = 7;
+/**
+ * Typical |x| offset of a held product, in px from frame center.
+ * The sun (scene origin) always projects to dead center, so aiming the
+ * moon exactly on-axis eclipsed Cymasphere on every hold. Sign and a
+ * little magnitude come from holdFrameOffset so some planets sit left.
+ */
+export const ECLIPSE_OFFSET_X_PX = 170;
+/**
+ * Typical y offset of a held product, in px (CSS down). Negative sits
+ * the planet a little above center so it does not read as bottom-heavy.
+ */
+export const ECLIPSE_OFFSET_Y_PX = -22;
+
+/**
+ * @brief Stable per-product framing so each hold sits off the sun, but
+ * not always to the same side. X flips left/right from the key; Y stays
+ * a little above center with a small hash jitter.
+ * @param key Credit / product key.
+ * @param viewHalfW Half the frame width in px; caps the x offset.
+ * @returns Screen offset (x right, y down) for lookAtMoon.
+ * @example
+ * holdFrameOffset("reiya").x !== holdFrameOffset("curio").x
+ */
+export function holdFrameOffset(
+  key: string,
+  viewHalfW = 620
+): { x: number; y: number } {
+  const h = hashOrbitKey(`frame:${key}`);
+  const xCap = Math.min(ECLIPSE_OFFSET_X_PX, viewHalfW * 0.3);
+  const xScale = 0.74 + ((h >>> 8) % 1000) / 1000 * 0.26;
+  const x = ((h & 1) === 0 ? 1 : -1) * xCap * xScale;
+  const yJitter = (((h >>> 16) % 1000) / 1000 - 0.5) * 20;
+  const yCap = Math.min(36, viewHalfW * 0.08);
+  const y = Math.max(-yCap, Math.min(yCap, ECLIPSE_OFFSET_Y_PX + yJitter));
+  return { x, y };
+}
+
+/**
+ * @brief How much the close-up dolly magnifies a held moon. Small moons
+ * get a longer push-in so every product reads large in frame.
+ * @param size Moon diameter in px.
+ * @returns Apparent scale factor at the hold (≥ 2.9).
+ * @example
+ * closeupMagnification(28) > closeupMagnification(120)
+ */
+export function closeupMagnification(size: number): number {
+  return Math.min(9.2, Math.max(2.9, 560 / Math.max(24, size * 2.1)));
+}
+
+/**
+ * @brief Applies the scene's yaw-then-pitch to a world point.
+ * @param px CSS x.
+ * @param py CSS y (down).
+ * @param pz CSS z (toward the camera).
+ * @param rotateX Pitch in degrees.
+ * @param rotateY Yaw in degrees.
+ * @returns Rotated point.
+ */
+function viewRotate(
+  px: number,
+  py: number,
+  pz: number,
+  rotateX: number,
+  rotateY: number
+): { x: number; y: number; z: number } {
+  const ry = (rotateY * Math.PI) / 180;
+  const rx = (rotateX * Math.PI) / 180;
+  const x1 = px * Math.cos(ry) + pz * Math.sin(ry);
+  const z1 = -px * Math.sin(ry) + pz * Math.cos(ry);
+  return {
+    x: x1,
+    y: py * Math.cos(rx) - z1 * Math.sin(rx),
+    z: py * Math.sin(rx) + z1 * Math.cos(rx),
+  };
+}
+
+/**
+ * @brief Pitch, yaw, and dolly that frame a moon in close-up. The base
+ * aim is a true look-at, then yaw/pitch are nudged so the moon renders
+ * `eclipseXPx` right and `eclipseYPx` down from frame center — the sun
+ * sits at dead center, so an exact look-at eclipsed it behind every hold.
+ * A slow truck around the look-at keeps the camera moving; it never
+ * parks, even when the moon itself is almost still.
+ * @param x World x (screen right).
+ * @param height World height (up from the ecliptic).
+ * @param z World z (toward the camera).
+ * @param size Moon diameter in px; drives how close we dolly.
+ * @param elapsedMs Tour time; drives the inspection truck. 0 = no offset.
+ * @param eclipseXPx On-screen offset right of center for the moon.
+ * @param eclipseYPx On-screen offset down from center for the moon.
+ * @returns Pose framing the moon just off the sun's screen position.
+ * @example
+ * const pose = lookAtMoon(400, 80, 0, 64, 0, 0, 0);
+ * // pose.rotateY === -90, pose.rotateX === atan2(-80, 400) in deg
+ */
+export function lookAtMoon(
+  x: number,
+  height: number,
+  z: number,
+  size: number,
+  elapsedMs = 0,
+  eclipseXPx = ECLIPSE_OFFSET_X_PX,
+  eclipseYPx = ECLIPSE_OFFSET_Y_PX
+): Pick<
+  TourCamera,
+  "rotateX" | "rotateY" | "rotateZ" | "translateX" | "translateY" | "translateZ"
+> {
+  const theta =
+    (elapsedMs / 1000) * ((Math.PI * 2) / FOCUS_TRUCK_PERIOD_SEC);
+  let rightX = z;
+  let rightZ = -x;
+  const rightLen = Math.hypot(rightX, rightZ);
+  if (rightLen < 1e-6) {
+    rightX = 1;
+    rightZ = 0;
+  } else {
+    rightX /= rightLen;
+    rightZ /= rightLen;
+  }
+  const camX = FOCUS_TRUCK_PX * Math.sin(theta) * rightX;
+  const camY = FOCUS_TRUCK_PX * (1 - Math.cos(theta)) * 0.62;
+  const camZ = FOCUS_TRUCK_PX * Math.sin(theta) * rightZ;
+  const lx = x - camX;
+  const lh = height + camY;
+  const lz = z - camZ;
+  const range = Math.max(80, Math.hypot(lx, lz));
+  const lookDist = Math.max(80, Math.hypot(lx, lh, lz));
+  const mag = closeupMagnification(size);
+  // Perspective magnifies camera-space offsets by `mag` at the hold
+  // depth, so dividing the target screen offset by mag makes the moon
+  // land exactly eclipseXPx/eclipseYPx from center after projection.
+  const yawOff = Math.asin(
+    Math.min(0.45, eclipseXPx / mag / range)
+  );
+  const pitchOff = Math.asin(
+    Math.min(0.45, eclipseYPx / mag / lookDist)
+  );
+  const rotateY =
+    (Math.atan2(-lx, lz) * 180) / Math.PI + (yawOff * 180) / Math.PI;
+  const rotateX =
+    (Math.atan2(-lh, range) * 180) / Math.PI - (pitchOff * 180) / Math.PI;
+  const dollyToMoon = TOUR_PERSPECTIVE_PX * (1 - 1 / mag);
+  const shifted = viewRotate(camX, camY, camZ, rotateX, rotateY);
+  return {
+    rotateX,
+    rotateY,
+    rotateZ: 0,
+    translateX: -shifted.x,
+    translateY: -shifted.y,
+    translateZ: dollyToMoon - lookDist,
+  };
+}
+
+/** How many moons to mount at once on desktop. */
+export const VISIBLE_MOON_BUDGET = 6;
+/** Tighter handful on a phone. */
+export const VISIBLE_MOON_BUDGET_MOBILE = 4;
+
+/** One body the visibility picker can consider. */
+export interface VisibleMoonCandidate {
+  key: string;
+  /** CymaSynth stays a preferred extra when it is on camera. */
+  synth?: boolean;
+  camSpaceX: number;
+  camSpaceZ: number;
+  aPx: number;
+}
+
+/**
+ * @brief Shortest arc between two bearings in radians.
+ * @param a First angle.
+ * @param b Second angle.
+ * @returns Distance in [0, π].
+ */
+function bearingGap(a: number, b: number): number {
+  const d = Math.abs(a - b) % (Math.PI * 2);
+  return d > Math.PI ? Math.PI * 2 - d : d;
+}
+
+/**
+ * @brief How worth-drawing a moon is in the current camera. Negative
+ * means leave it out (off-screen, clipping, or transiting the sun).
+ * @param moon Candidate in camera space.
+ * @param sunFocus When true, anything in front of the sun is rejected.
+ * @param dollyZ Camera translateZ.
+ * @param viewHalfW Half the board width in px.
+ * @returns Score, or −1 to drop.
+ */
+function visibilityScore(
+  moon: VisibleMoonCandidate,
+  sunFocus: boolean,
+  dollyZ: number,
+  viewHalfW: number
+): number {
+  const zTotal = dollyZ + moon.camSpaceZ;
+  if (zTotal > TOUR_PERSPECTIVE_PX * 0.78) return -1;
+  if (sunFocus) {
+    if (moon.camSpaceZ > -moon.aPx * 0.2) return -1;
+    return (
+      0.4 +
+      Math.min(0.35, moon.aPx / 900) -
+      Math.min(0.3, Math.abs(moon.camSpaceX) / (moon.aPx + 1))
+    );
+  }
+  const mag =
+    TOUR_PERSPECTIVE_PX / Math.max(60, TOUR_PERSPECTIVE_PX - zTotal);
+  const screenX = Math.abs(moon.camSpaceX) * mag;
+  if (screenX > viewHalfW * 1.2) return -1;
+  if (moon.camSpaceZ < -moon.aPx * 0.95) return -1;
+  const facing = Math.max(0, (moon.camSpaceZ / moon.aPx + 1) / 2);
+  const centered = 1 - Math.min(1, screenX / (viewHalfW * 1.2));
+  return facing * 0.5 + centered * 0.5 + (moon.synth ? 0.12 : 0);
+}
+
+/**
+ * @brief Picks a handful of moons to actually mount. Focus and the next
+ * credit always make the cut (except during the Cymasphere hold, when
+ * the stage is empty so untextured disks cannot silhouette on the sun).
+ * The rest are the most on-camera bodies, spread apart so one ring does
+ * not hog the budget. Sticky with `previous` so moons do not flicker.
+ * @param moons Every orbiting body this frame.
+ * @param opts Camera + tour context.
+ * @returns Keys to render, at most `budget` long.
+ * @example
+ * pickVisibleMoons(moons, { focusKey: "a", nextKey: "b", sunFocus: false, dollyZ: 0, viewHalfW: 600 }).length <= 6
+ */
+export function pickVisibleMoons(
+  moons: VisibleMoonCandidate[],
+  opts: {
+    focusKey: string | null;
+    nextKey: string | null;
+    sunFocus: boolean;
+    dollyZ: number;
+    viewHalfW: number;
+    budget?: number;
+    previous?: readonly string[];
+  }
+): string[] {
+  const present = new Set(moons.map((moon) => moon.key));
+  const forced = new Set<string>();
+  if (opts.focusKey && present.has(opts.focusKey)) forced.add(opts.focusKey);
+  // During the Cymasphere hold, do not force the next planet on stage —
+  // an untextured disk against the sun reads as a black glitch.
+  if (opts.nextKey && present.has(opts.nextKey) && !opts.sunFocus) {
+    forced.add(opts.nextKey);
+  }
+  if (opts.sunFocus) return [...forced];
+  const budget = Math.max(forced.size, opts.budget ?? VISIBLE_MOON_BUDGET);
+  const prev = new Set(opts.previous ?? []);
+  const scored = moons.map((moon) => {
+    const raw = forced.has(moon.key)
+      ? 1e6
+      : visibilityScore(moon, opts.sunFocus, opts.dollyZ, opts.viewHalfW);
+    const score = !forced.has(moon.key) && prev.has(moon.key) && raw > 0
+      ? raw + 0.22
+      : raw;
+    return {
+      key: moon.key,
+      score,
+      bearing: Math.atan2(moon.camSpaceX, moon.camSpaceZ),
+    };
+  });
+  scored.sort((a, b) => b.score - a.score);
+
+  const picked: string[] = [];
+  const bearings: number[] = [];
+  for (const item of scored) {
+    if (picked.length >= budget) break;
+    if (item.score < 0 && !forced.has(item.key)) continue;
+    if (!forced.has(item.key) && picked.length >= 3) {
+      const crowded = bearings.some((b) => bearingGap(b, item.bearing) < 0.34);
+      if (crowded) continue;
+    }
+    picked.push(item.key);
+    bearings.push(item.bearing);
+  }
+  if (picked.length < budget) {
+    for (const item of scored) {
+      if (picked.length >= budget) break;
+      if (item.score < 0 && !forced.has(item.key)) continue;
+      if (!picked.includes(item.key)) picked.push(item.key);
+    }
+  }
+  return picked;
+}
+
+/** CSS perspective of the board; camera dolly math depends on it. */
+export const TOUR_PERSPECTIVE_PX = 900;
+/** Opening fly-in before the credits start. */
+export const TOUR_INTRO_MS = 5200;
+/** Base time on a catalog product: hold plus the journey to the next stop. */
+export const CREDIT_MS = 3400;
+/** Reserved focus key for the Cymasphere sun hold. */
+export const SUN_FOCUS_KEY = "sun-cymasphere";
+/** Travel leg at the end of each credit — the flight to the next moon. */
+export const CREDIT_TRAVEL_MS = 1800;
+/** Wide pull-out after the last credit. */
+export const TOUR_OUTRO_MS = 3600;
+/** Length of the original galaxy loop when no credits are supplied. */
+export const TOUR_DURATION_MS = 28000;
+
+/** One product the camera can hold on like a credit card. */
+export interface CreditTarget {
+  key: string;
+  name: string;
+  /** Product page slug for the credit-card link. */
+  slug?: string;
+  price?: string;
+  /** Product tagline shown as the small line above the name. */
+  subtitle?: string;
+  /** Artwork URL shown as the credit card thumbnail. */
+  image?: string;
+  /** True when this credit is the Cymasphere sun, not a moon. */
+  sun?: boolean;
+  /** Hold length as a multiple of CREDIT_MS (Cymasphere 4, CymaSynth 2). */
+  weight?: number;
+  startDeg: number;
+  periodSec: number;
+  radius: number;
+  /** Orbit radius in px (semi-major axis); drives the close-up dolly. */
+  radiusPx?: number;
+  size: number;
+}
+
+/** Camera pose for one moment of the tour. */
+export interface TourCamera {
+  rotateX: number;
+  rotateY: number;
+  rotateZ: number;
+  translateZ: number;
+  /** View-space truck; the inspection circle around a focused moon. */
+  translateX: number;
+  /** View-space vertical shift from the inspection truck. */
+  translateY: number;
+  sunScale: number;
+  labelOpacity: number;
+  /** Body currently framed, if any. */
+  focusKey: string | null;
+  /** Upcoming credit, so the renderer can mount it before the hop. */
+  nextKey: string | null;
+  /** Credit title card opacity. */
+  creditOpacity: number;
+}
+
+interface TourKey {
+  t: number;
+  rotateX: number;
+  rotateY: number;
+  rotateZ: number;
+  translateZ: number;
+  sunScale: number;
+}
+
+const TOUR_KEYS: TourKey[] = [
+  { t: 0, rotateX: 8, rotateY: -48, rotateZ: -10, translateZ: -1180, sunScale: 0.42 },
+  { t: 0.12, rotateX: 14, rotateY: -22, rotateZ: -4, translateZ: -640, sunScale: 0.7 },
+  { t: 0.24, rotateX: 20, rotateY: 8, rotateZ: 0, translateZ: -140, sunScale: 1.2 },
+  { t: 0.4, rotateX: 10, rotateY: 72, rotateZ: 8, translateZ: 160, sunScale: 1.55 },
+  { t: 0.56, rotateX: 52, rotateY: 138, rotateZ: 2, translateZ: -30, sunScale: 1.08 },
+  { t: 0.72, rotateX: 24, rotateY: 208, rotateZ: -2, translateZ: -20, sunScale: 1 },
+  { t: 0.88, rotateX: 18, rotateY: 268, rotateZ: 0, translateZ: -8, sunScale: 1.02 },
+  { t: 1, rotateX: 8, rotateY: 312, rotateZ: -10, translateZ: -1180, sunScale: 0.42 },
+];
+
+/**
+ * @brief Smoothstep from 0–1.
+ * @param t Linear progress.
+ * @returns Eased progress.
+ */
+/**
+ * @brief Apparent extra scale for the sun from camera dolly.
+ * CSS perspective already shrinks distant objects; this adds the
+ * solar-system cue so a nearby hold is a disk and a far planet is a star.
+ * @param translateZ Scene dolly (negative = pulled back from the sun).
+ * @returns Scale multiplier, clamped.
+ * @example
+ * sunScaleFromCamera(-2000) < sunScaleFromCamera(20)
+ */
+export function sunScaleFromCamera(translateZ: number): number {
+  const away = Math.max(0, -translateZ);
+  const toward = Math.max(0, translateZ);
+  const dist = away + toward * 0.15;
+  return Math.min(1.7, Math.max(0.14, 1.55 * (220 / (220 + dist * 0.42))));
+}
+
+function smoothstep(t: number): number {
+  const x = Math.min(1, Math.max(0, t));
+  return x * x * (3 - 2 * x);
+}
+
+/**
+ * @brief Hold + travel length for one credit. Weight 4 = Cymasphere, 2 =
+ * CymaSynth, 1 = everyone else. Travel stays CREDIT_TRAVEL_MS.
+ * @param credit Target.
+ * @returns Duration in milliseconds.
+ */
+export function creditHoldMs(credit: CreditTarget): number {
+  return CREDIT_MS * Math.max(1, credit.weight ?? 1);
+}
+
+/**
+ * @brief Sum of every credit hold in the tour.
+ * @param credits Ordered credits.
+ * @returns Span in milliseconds.
+ */
+export function creditsSpanMs(credits: CreditTarget[]): number {
+  return credits.reduce((sum, credit) => sum + creditHoldMs(credit), 0);
+}
+
+/**
+ * @brief Total length of a credits tour.
+ * @param countOrCredits Product count (uniform holds) or the weighted list.
+ * @returns Duration in milliseconds.
+ */
+export function tourDurationMs(
+  countOrCredits: number | CreditTarget[]
+): number {
+  const span =
+    typeof countOrCredits === "number"
+      ? Math.max(0, countOrCredits) * CREDIT_MS
+      : creditsSpanMs(countOrCredits);
+  return TOUR_INTRO_MS + span + TOUR_OUTRO_MS;
+}
+
+/**
+ * @brief Tour order: Cymasphere, then CymaSynth, then the rest by size.
+ * Implemented as weight desc (4 / 2 / 1), then size.
+ * @param credits Unsorted targets.
+ * @returns Sorted copy.
+ */
+export function orderCredits(credits: CreditTarget[]): CreditTarget[] {
+  return [...credits].sort((a, b) => {
+    const dw = (b.weight ?? 1) - (a.weight ?? 1);
+    if (dw !== 0) return dw;
+    return b.size - a.size;
+  });
+}
+
+/**
+ * @brief Camera that frames one moon up close, like a guided tour stop.
+ * The yaw puts the moon dead ahead between the sun and the viewer, then
+ * the dolly pushes deep enough that the moon reaches a target apparent
+ * size — small moons get a much longer push-in than big ones, and the
+ * whole system scales with the move because the scene is real 3D.
+ * Pitch and yaw look at the live Kepler seat so the product sits on the
+ * optical axis. Focus and card opacity are neutral here; creditTimeline
+ * owns them so blending poses can never flash the card.
+ * @param credit Target moon.
+ * @param elapsedMs Current tour time (keeps the moon moving).
+ * @param world Live Kepler position, when available.
+ * @param eclipseXPx Screen offset right of center (capped to the frame).
+ * @param eclipseYPx Screen offset down from center (capped to the frame).
+ * @returns Pose looking at that moon.
+ */
+function poseForCredit(
+  credit: CreditTarget,
+  elapsedMs: number,
+  world?: MoonWorldPos,
+  eclipseXPx = ECLIPSE_OFFSET_X_PX,
+  eclipseYPx = ECLIPSE_OFFSET_Y_PX
+): TourCamera {
+  if (credit.sun) {
+    return {
+      rotateX: 14,
+      rotateY: 8 + (elapsedMs / 1000) * SUN_YAW_DEG_PER_SEC,
+      rotateZ: 0,
+      translateX: 0,
+      translateZ: 20,
+      translateY: 0,
+      sunScale: sunScaleFromCamera(20),
+      labelOpacity: 1,
+      focusKey: credit.key,
+      nextKey: null,
+      creditOpacity: 0,
+    };
+  }
+  const theta = moonTheta(credit.startDeg, credit.periodSec, elapsedMs);
+  const rPx = credit.radiusPx ?? 280;
+  const look = world
+    ? lookAtMoon(
+        world.x,
+        world.height,
+        world.z,
+        credit.size,
+        elapsedMs,
+        eclipseXPx,
+        eclipseYPx
+      )
+    : lookAtMoon(
+        Math.sin(theta) * rPx,
+        0,
+        Math.cos(theta) * rPx,
+        credit.size,
+        elapsedMs,
+        eclipseXPx,
+        eclipseYPx
+      );
+  return {
+    ...look,
+    sunScale: sunScaleFromCamera(look.translateZ),
+    labelOpacity: 0.15,
+    focusKey: credit.key,
+    nextKey: null,
+    creditOpacity: 0,
+  };
+}
+
+/**
+ * @brief Which credit is on screen and how visible its card is, computed
+ * purely from the timeline. The card fades over 280ms at both ends of
+ * every credit, so it is continuous (0 at every boundary) regardless of
+ * how camera poses are blended.
+ * @param t Time within the current tour loop, ms.
+ * @param credits Tour credits in play order.
+ * @returns Focused key (null outside the credits window) and card opacity.
+ */
+/**
+ * @brief Finds which credit is playing at `creditT`.
+ * @param creditT Time since credits started, ms.
+ * @param credits Ordered credits.
+ * @returns Index, local time, and hold length — or null outside the span.
+ */
+function locateCredit(
+  creditT: number,
+  credits: CreditTarget[]
+): { index: number; local: number; hold: number } | null {
+  if (creditT < 0 || credits.length === 0) return null;
+  let acc = 0;
+  for (let i = 0; i < credits.length; i += 1) {
+    const hold = creditHoldMs(credits[i]);
+    if (creditT < acc + hold) {
+      return { index: i, local: creditT - acc, hold };
+    }
+    acc += hold;
+  }
+  return null;
+}
+
+function creditTimeline(
+  t: number,
+  credits: CreditTarget[]
+): { key: string | null; nextKey: string | null; opacity: number } {
+  const creditT = t - TOUR_INTRO_MS;
+  const located = locateCredit(creditT, credits);
+  if (!located) {
+    return {
+      key: null,
+      nextKey: creditT < 0 && credits.length > 0 ? credits[0].key : null,
+      opacity: 0,
+    };
+  }
+  const { index, local, hold } = located;
+  // Visible during the hold only; hidden for the whole travel leg.
+  return {
+    key: credits[index].key,
+    nextKey: credits[index + 1]?.key ?? null,
+    opacity: Math.max(
+      0,
+      Math.min(1, local / 320, (hold - CREDIT_TRAVEL_MS - local) / 320)
+    ),
+  };
+}
+
+/**
+ * @brief Samples the original galaxy-path keyframes.
+ * @param u Normalized 0–1 progress along TOUR_KEYS.
+ * @returns Camera pose with no credit focus.
+ */
+function poseFromKeys(u: number): TourCamera {
+  let i = 0;
+  while (i < TOUR_KEYS.length - 1 && u > TOUR_KEYS[i + 1].t) i += 1;
+  const a = TOUR_KEYS[i];
+  const b = TOUR_KEYS[i + 1] ?? a;
+  const span = b.t - a.t || 1;
+  const s = smoothstep((u - a.t) / span);
+  const translateZ = a.translateZ + (b.translateZ - a.translateZ) * s;
+  const closeness = 1 - Math.min(1, Math.abs(translateZ) / 900);
+  return {
+    rotateX: a.rotateX + (b.rotateX - a.rotateX) * s,
+    rotateY: a.rotateY + (b.rotateY - a.rotateY) * s,
+    rotateZ: a.rotateZ + (b.rotateZ - a.rotateZ) * s,
+    translateZ,
+    translateX: 0,
+    translateY: 0,
+    sunScale: a.sunScale + (b.sunScale - a.sunScale) * s,
+    labelOpacity: Math.max(0, closeness * 1.15 - 0.15),
+    focusKey: null,
+    nextKey: null,
+    creditOpacity: 0,
+  };
+}
+
+/**
+ * @brief Shortest signed arc from a to b in degrees. Modulo-based so
+ * unwrapped angles (which grow with elapsed time) cost O(1).
+ * @param a Start angle.
+ * @param b End angle.
+ * @returns Delta in (-180, 180].
+ */
+function angleDelta(a: number, b: number): number {
+  return ((((b - a) % 360) + 540) % 360) - 180;
+}
+
+/**
+ * @brief Interpolates degrees along the shortest arc.
+ * @param a Start angle.
+ * @param b End angle.
+ * @param t Mix 0–1.
+ * @returns Interpolated degrees.
+ */
+function lerpAngle(a: number, b: number, t: number): number {
+  return a + angleDelta(a, b) * t;
+}
+
+/**
+ * @brief Blends two camera poses, wrapping yaw on the short arc.
+ * @param a Start pose.
+ * @param b End pose.
+ * @param t Linear mix, eased internally.
+ * @returns Mixed pose.
+ */
+function mixPose(a: TourCamera, b: TourCamera, t: number): TourCamera {
+  const s = smoothstep(t);
+  return {
+    rotateX: lerpAngle(a.rotateX, b.rotateX, s),
+    rotateY: lerpAngle(a.rotateY, b.rotateY, s),
+    rotateZ: lerpAngle(a.rotateZ, b.rotateZ, s),
+    translateZ: a.translateZ + (b.translateZ - a.translateZ) * s,
+    translateX: a.translateX + (b.translateX - a.translateX) * s,
+    translateY: a.translateY + (b.translateY - a.translateY) * s,
+    sunScale: a.sunScale + (b.sunScale - a.sunScale) * s,
+    labelOpacity: a.labelOpacity + (b.labelOpacity - a.labelOpacity) * s,
+    focusKey: s > 0.45 ? b.focusKey : a.focusKey,
+    nextKey: s > 0.45 ? b.nextKey : a.nextKey,
+    creditOpacity: a.creditOpacity + (b.creditOpacity - a.creditOpacity) * s,
+  };
+}
+
+/**
+ * @brief Interpolates the cinematic camera. With credits, this is a show
+ * open: fly in on the sun, then linger on each product without parking.
+ * Without credits, it loops the galaxy path.
+ * @param elapsedMs Time since the tour started.
+ * @param reducedMotion When true, hold the beauty-shot pose.
+ * @param credits Optional products to feature, already in credit order.
+ * @param worldPos Live Kepler positions, keyed by credit key. When
+ * present the camera aims at the real moon instead of a flat circle.
+ * @param viewHalfW Half the frame width in px; caps the hold framing
+ * so the held planet stays well inside narrow (mobile) frames.
+ * @returns Camera pose plus the current credit focus.
+ * @example
+ * cameraTour(0, false).translateZ < cameraTour(8000, false).translateZ
+ */
+export function cameraTour(
+  elapsedMs: number,
+  reducedMotion: boolean,
+  credits: CreditTarget[] = [],
+  worldPos?: ReadonlyMap<string, MoonWorldPos>,
+  viewHalfW = 620
+): TourCamera {
+  const frameOf = (credit: CreditTarget) => holdFrameOffset(credit.key, viewHalfW);
+  if (reducedMotion) {
+    return {
+      rotateX: 22,
+      rotateY: 18,
+      rotateZ: 0,
+      translateZ: -20,
+      translateX: 0,
+      translateY: 0,
+      sunScale: 1.05,
+      labelOpacity: 1,
+      focusKey: null,
+      nextKey: null,
+      creditOpacity: 0,
+    };
+  }
+
+  if (credits.length === 0) {
+    const cycle =
+      ((elapsedMs % TOUR_DURATION_MS) + TOUR_DURATION_MS) % TOUR_DURATION_MS;
+    const free = poseFromKeys(cycle / TOUR_DURATION_MS);
+    free.sunScale = sunScaleFromCamera(free.translateZ);
+    return free;
+  }
+
+  const total = tourDurationMs(credits);
+  const t = ((elapsedMs % total) + total) % total;
+  const creditT = t - TOUR_INTRO_MS;
+  const creditSpan = creditsSpanMs(credits);
+  let pose: TourCamera;
+  // True during a hop between stops; the aim sweep must not be
+  // overridden by the hold lock or travel reads as a cut.
+  let traveling = false;
+
+  if (t < TOUR_INTRO_MS) {
+    const intro = poseFromKeys((t / TOUR_INTRO_MS) * 0.28);
+    pose =
+      t > TOUR_INTRO_MS - 900
+        ? mixPose(
+            intro,
+            poseForCredit(
+              credits[0],
+              elapsedMs,
+              worldPos?.get(credits[0].key),
+              frameOf(credits[0]).x,
+              frameOf(credits[0]).y
+            ),
+            (t - (TOUR_INTRO_MS - 900)) / 900
+          )
+        : intro;
+  } else if (creditT < creditSpan) {
+    const located = locateCredit(creditT, credits);
+    const index = located?.index ?? credits.length - 1;
+    const local = located?.local ?? 0;
+    const hold = located?.hold ?? CREDIT_MS;
+    const current = poseForCredit(
+      credits[index],
+      elapsedMs,
+      worldPos?.get(credits[index].key),
+      frameOf(credits[index]).x,
+      frameOf(credits[index]).y
+    );
+    if (index + 1 < credits.length && local > hold - CREDIT_TRAVEL_MS) {
+      traveling = true;
+      const leg = (local - (hold - CREDIT_TRAVEL_MS)) / CREDIT_TRAVEL_MS;
+      const next = poseForCredit(
+        credits[index + 1],
+        elapsedMs,
+        worldPos?.get(credits[index + 1].key),
+        frameOf(credits[index + 1]).x,
+        frameOf(credits[index + 1]).y
+      );
+      pose = mixPose(current, next, leg);
+      // Journey arc: pull out mid-flight, farther for distant stops, so
+      // hopping across the system reads as travel instead of a cut.
+      const sweep = angleDelta(current.rotateY, next.rotateY);
+      const gapDeg = Math.abs(sweep);
+      const gapR = Math.abs(
+        (credits[index].radiusPx ?? credits[index].radius * 420) -
+          ((credits[index + 1].radiusPx ?? credits[index + 1].radius * 420) || 0)
+      );
+      const pullOut = Math.min(3200, 180 + gapDeg * 3.2 + gapR * 0.28);
+      pose.translateZ -= pullOut * Math.sin(Math.PI * leg);
+      // Bank into the turn like a craft; strongest mid-leg, gone at
+      // both endpoints so holds stay level.
+      pose.rotateZ +=
+        Math.max(-6, Math.min(6, -sweep * 0.06)) * Math.sin(Math.PI * leg);
+    } else {
+      pose = current;
+    }
+  } else {
+    const last = poseForCredit(
+      credits[credits.length - 1],
+      elapsedMs,
+      worldPos?.get(credits[credits.length - 1].key),
+      frameOf(credits[credits.length - 1]).x,
+      frameOf(credits[credits.length - 1]).y
+    );
+    const outro = poseFromKeys(0.88 + ((creditT - creditSpan) / TOUR_OUTRO_MS) * 0.12);
+    pose = mixPose(last, outro, Math.min(1, (creditT - creditSpan) / 700));
+  }
+
+  const timeline = creditTimeline(t, credits);
+  pose.focusKey = timeline.key;
+  pose.nextKey = timeline.nextKey;
+  pose.creditOpacity = timeline.opacity;
+  // Holds keep the current product pinned at its framed offset. During
+  // travel the lock is released so the aim sweeps from the outgoing
+  // planet to the next one — overriding it there made hops read as a
+  // zoom-out / hard cut / zoom-in instead of a flight.
+  const focused = timeline.key
+    ? credits.find((credit) => credit.key === timeline.key)
+    : undefined;
+  if (focused && !focused.sun && !traveling) {
+    const live = worldPos?.get(focused.key);
+    const locked = live
+      ? lookAtMoon(
+          live.x,
+          live.height,
+          live.z,
+          focused.size,
+          elapsedMs,
+          frameOf(focused).x,
+          frameOf(focused).y
+        )
+      : poseForCredit(
+          focused,
+          elapsedMs,
+          undefined,
+          frameOf(focused).x,
+          frameOf(focused).y
+        );
+    pose.rotateX = locked.rotateX;
+    pose.rotateY = locked.rotateY;
+    pose.rotateZ = 0;
+    pose.translateX = locked.translateX;
+    pose.translateY = locked.translateY;
+  }
+  pose.sunScale = sunScaleFromCamera(pose.translateZ);
+  return pose;
+}
