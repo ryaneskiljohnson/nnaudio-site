@@ -16,7 +16,7 @@
  * mapping on every row (column slices), and each row is then scaled to
  * its disk chord (row bands). ~200 GPU blits per warp, no per-pixel JS
  * and no putImageData upload. Slice/band counts scale with bake size so
- * a Retina close-up does not show crawling facets. The CPU path
+ * a Retina close-up stays around 3–4 px facets. The CPU path
  * (warpStripToCanvas) is the exact per-pixel reference used for
  * fallback and tests.
  * @module utils/sphere-texture
@@ -280,15 +280,15 @@ export function warpStripToCanvas(
 
 /** Floor on GPU longitude slices (small disks / tests). */
 const WARP_SLICES_MIN = 96;
-/** Cap so a 2× retina bake does not explode draw calls. */
-const WARP_SLICES_MAX = 240;
+/** Cap so a 2× retina bake stays under ~400 slice blits. */
+const WARP_SLICES_MAX = 384;
 /** Floor on GPU latitude bands. */
 const WARP_BANDS_MIN = 64;
 /** Cap on GPU latitude bands. */
-const WARP_BANDS_MAX = 192;
+const WARP_BANDS_MAX = 288;
 
 /**
- * @brief GPU tessellation for one disk size. Facets stay around 5–6 px
+ * @brief GPU tessellation for one disk size. Facets stay around 3–4 px
  * so a close-up spin does not crawl as visible grain. Larger bakes get
  * more slices/bands; small test disks keep the old minimums.
  * @param size Disk edge in px.
@@ -302,8 +302,14 @@ export function warpDensityForSize(size: number): {
 } {
   const edge = Math.max(1, size);
   return {
-    slices: Math.min(WARP_SLICES_MAX, Math.max(WARP_SLICES_MIN, Math.round(edge / 5))),
-    bands: Math.min(WARP_BANDS_MAX, Math.max(WARP_BANDS_MIN, Math.round(edge / 6))),
+    slices: Math.min(
+      WARP_SLICES_MAX,
+      Math.max(WARP_SLICES_MIN, Math.round(edge / 3.4))
+    ),
+    bands: Math.min(
+      WARP_BANDS_MAX,
+      Math.max(WARP_BANDS_MIN, Math.round(edge / 4.5))
+    ),
   };
 }
 
@@ -791,7 +797,7 @@ export function wrapPhase(t: number): number {
  * @param reverse When true, ambient spin is retrograde.
  * @param featured When true, add `boost` on top of the day-length spin.
  * @param boost Extra revolutions accumulated during a close-up (0–1).
- * @param align Extra phase offset (used to start a hold already wrapping).
+ * @param align Extra phase offset (used to start a hold face-on).
  * @returns Phase in [0, 1).
  * @example
  * moonSpinPhase(15000, 60, false, true, 0.2) === 0.45
@@ -813,7 +819,8 @@ export function moonSpinPhase(
 
 /**
  * @brief Phase offset that puts the artwork on the camera-facing
- * meridian right now. Used as the base for `holdStartAlign`.
+ * meridian right now. A hold adds this once so the product starts
+ * face-on, then the day spin and turntable continue from there.
  * @param elapsedMs Time since the tour started.
  * @param periodSec Ambient spin period.
  * @param reverse When true, ambient spin is retrograde.
@@ -827,31 +834,6 @@ export function faceOnAlign(
   reverse: boolean
 ): number {
   return wrapPhase(-moonSpinPhase(elapsedMs, periodSec, reverse, false, 0));
-}
-
-/**
- * How far a hold starts past face-on. Phase 0 shows a full unstretched
- * logo (reads as a sticker); ~0.16 already has limb compression.
- */
-export const HOLD_START_FRAC = 0.16;
-
-/**
- * @brief Phase offset so a credit hold starts already wrapping, then
- * the day spin and turntable continue from there. Face-on for the
- * whole lock hid the sphere.
- * @param elapsedMs Time since the tour started.
- * @param periodSec Ambient spin period.
- * @param reverse When true, ambient spin is retrograde.
- * @returns Align value for `moonSpinPhase`.
- * @example
- * moonSpinPhase(8000, 48, false, false, 0, holdStartAlign(8000, 48, false)) === HOLD_START_FRAC
- */
-export function holdStartAlign(
-  elapsedMs: number,
-  periodSec: number,
-  reverse: boolean
-): number {
-  return wrapPhase(faceOnAlign(elapsedMs, periodSec, reverse) + HOLD_START_FRAC);
 }
 
 /**

@@ -204,8 +204,11 @@ export function aimYawAt(x: number, z: number): { rotateY: number; range: number
   };
 }
 
-/** Radius of the slow inspection truck around a focused moon. */
-export const FOCUS_TRUCK_PX = 12;
+/**
+ * Inspection drift while a product is held. Kept tiny — at 6–9×
+ * close-up a 12px truck read as the planet rumbling.
+ */
+export const FOCUS_TRUCK_PX = 3;
 /** One inspection circle; long enough to read the product, never parked. */
 export const FOCUS_TRUCK_PERIOD_SEC = 22;
 /** Sun yaw while Cymasphere is featured — monotonic so the shot never stalls. */
@@ -249,14 +252,17 @@ export function holdFrameOffset(
 
 /**
  * @brief How much the close-up dolly magnifies a held moon. Small moons
- * get a longer push-in so every product reads large in frame.
+ * get a longer push-in so every product reads large in frame. `targetPx`
+ * is capped on narrow (mobile) frames so a hold does not overflow.
  * @param size Moon diameter in px.
+ * @param targetPx Apparent disk size to aim for (default 560).
  * @returns Apparent scale factor at the hold (≥ 2.9).
  * @example
  * closeupMagnification(28) > closeupMagnification(120)
  */
-export function closeupMagnification(size: number): number {
-  return Math.min(9.2, Math.max(2.9, 560 / Math.max(24, size * 2.1)));
+export function closeupMagnification(size: number, targetPx = 560): number {
+  const target = Math.max(220, targetPx);
+  return Math.min(9.2, Math.max(2.9, target / Math.max(24, size * 2.1)));
 }
 
 /**
@@ -300,6 +306,7 @@ function viewRotate(
  * @param elapsedMs Tour time; drives the inspection truck. 0 = no offset.
  * @param eclipseXPx On-screen offset right of center for the moon.
  * @param eclipseYPx On-screen offset down from center for the moon.
+ * @param targetPx Apparent disk size for the dolly (narrow frames pass less).
  * @returns Pose framing the moon just off the sun's screen position.
  * @example
  * const pose = lookAtMoon(400, 80, 0, 64, 0, 0, 0);
@@ -312,7 +319,8 @@ export function lookAtMoon(
   size: number,
   elapsedMs = 0,
   eclipseXPx = ECLIPSE_OFFSET_X_PX,
-  eclipseYPx = ECLIPSE_OFFSET_Y_PX
+  eclipseYPx = ECLIPSE_OFFSET_Y_PX,
+  targetPx = 560
 ): Pick<
   TourCamera,
   "rotateX" | "rotateY" | "rotateZ" | "translateX" | "translateY" | "translateZ"
@@ -337,7 +345,7 @@ export function lookAtMoon(
   const lz = z - camZ;
   const range = Math.max(80, Math.hypot(lx, lz));
   const lookDist = Math.max(80, Math.hypot(lx, lh, lz));
-  const mag = closeupMagnification(size);
+  const mag = closeupMagnification(size, targetPx);
   // Perspective magnifies camera-space offsets by `mag` at the hold
   // depth, so dividing the target screen offset by mag makes the moon
   // land exactly eclipseXPx/eclipseYPx from center after projection.
@@ -524,7 +532,7 @@ export interface CreditTarget {
   image?: string;
   /** True when this credit is the Cymasphere sun, not a moon. */
   sun?: boolean;
-  /** Hold length as a multiple of CREDIT_MS (Cymasphere 4, CymaSynth 2). */
+  /** Hold length as a multiple of CREDIT_MS (Cymasphere 3, CymaSynth 2). */
   weight?: number;
   startDeg: number;
   periodSec: number;
@@ -636,7 +644,7 @@ export function tourDurationMs(
 
 /**
  * @brief Tour order: Cymasphere, then CymaSynth, then the rest by size.
- * Implemented as weight desc (4 / 2 / 1), then size.
+ * Implemented as weight desc (3 / 2 / 1), then size.
  * @param credits Unsorted targets.
  * @returns Sorted copy.
  */
@@ -662,6 +670,7 @@ export function orderCredits(credits: CreditTarget[]): CreditTarget[] {
  * @param world Live Kepler position, when available.
  * @param eclipseXPx Screen offset right of center (capped to the frame).
  * @param eclipseYPx Screen offset down from center (capped to the frame).
+ * @param targetPx Apparent disk size for the dolly.
  * @returns Pose looking at that moon.
  */
 function poseForCredit(
@@ -669,7 +678,8 @@ function poseForCredit(
   elapsedMs: number,
   world?: MoonWorldPos,
   eclipseXPx = ECLIPSE_OFFSET_X_PX,
-  eclipseYPx = ECLIPSE_OFFSET_Y_PX
+  eclipseYPx = ECLIPSE_OFFSET_Y_PX,
+  targetPx = 560
 ): TourCamera {
   if (credit.sun) {
     return {
@@ -696,7 +706,8 @@ function poseForCredit(
         credit.size,
         elapsedMs,
         eclipseXPx,
-        eclipseYPx
+        eclipseYPx,
+        targetPx
       )
     : lookAtMoon(
         Math.sin(theta) * rPx,
@@ -705,7 +716,8 @@ function poseForCredit(
         credit.size,
         elapsedMs,
         eclipseXPx,
-        eclipseYPx
+        eclipseYPx,
+        targetPx
       );
   return {
     ...look,
@@ -871,6 +883,7 @@ export function cameraTour(
   viewHalfW = 620
 ): TourCamera {
   const frameOf = (credit: CreditTarget) => holdFrameOffset(credit.key, viewHalfW);
+  const holdTargetPx = Math.min(560, Math.max(220, viewHalfW * 1.55));
   if (reducedMotion) {
     return {
       rotateX: 22,
@@ -915,7 +928,8 @@ export function cameraTour(
               elapsedMs,
               worldPos?.get(credits[0].key),
               frameOf(credits[0]).x,
-              frameOf(credits[0]).y
+              frameOf(credits[0]).y,
+              holdTargetPx
             ),
             (t - (TOUR_INTRO_MS - 900)) / 900
           )
@@ -930,7 +944,8 @@ export function cameraTour(
       elapsedMs,
       worldPos?.get(credits[index].key),
       frameOf(credits[index]).x,
-      frameOf(credits[index]).y
+      frameOf(credits[index]).y,
+      holdTargetPx
     );
     if (index + 1 < credits.length && local > hold - CREDIT_TRAVEL_MS) {
       traveling = true;
@@ -940,7 +955,8 @@ export function cameraTour(
         elapsedMs,
         worldPos?.get(credits[index + 1].key),
         frameOf(credits[index + 1]).x,
-        frameOf(credits[index + 1]).y
+        frameOf(credits[index + 1]).y,
+        holdTargetPx
       );
       pose = mixPose(current, next, leg);
       // Journey arc: pull out mid-flight, farther for distant stops, so
@@ -966,7 +982,8 @@ export function cameraTour(
       elapsedMs,
       worldPos?.get(credits[credits.length - 1].key),
       frameOf(credits[credits.length - 1]).x,
-      frameOf(credits[credits.length - 1]).y
+      frameOf(credits[credits.length - 1]).y,
+      holdTargetPx
     );
     const outro = poseFromKeys(0.88 + ((creditT - creditSpan) / TOUR_OUTRO_MS) * 0.12);
     pose = mixPose(last, outro, Math.min(1, (creditT - creditSpan) / 700));
@@ -993,14 +1010,16 @@ export function cameraTour(
           focused.size,
           elapsedMs,
           frameOf(focused).x,
-          frameOf(focused).y
+          frameOf(focused).y,
+          holdTargetPx
         )
       : poseForCredit(
           focused,
           elapsedMs,
           undefined,
           frameOf(focused).x,
-          frameOf(focused).y
+          frameOf(focused).y,
+          holdTargetPx
         );
     pose.rotateX = locked.rotateX;
     pose.rotateY = locked.rotateY;

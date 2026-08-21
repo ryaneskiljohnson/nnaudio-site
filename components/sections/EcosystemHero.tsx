@@ -52,6 +52,7 @@ const Hero = styled.section`
   min-height: 100dvh;
   width: 100%;
   padding: 0;
+  margin-bottom: 28px;
   overflow: hidden;
   background: #02030a;
 `;
@@ -71,7 +72,8 @@ const Headline = styled.div`
   }
 
   @media (max-width: 768px) {
-    bottom: 18px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    width: min(560px, calc(100% - 1.5rem));
   }
 `;
 
@@ -88,8 +90,8 @@ const Title = styled(motion.h1)`
   filter: drop-shadow(0 8px 24px rgba(5, 6, 13, 0.85));
 
   @media (max-width: 768px) {
-    font-size: 1.7rem;
-    margin-bottom: 0.45rem;
+    font-size: clamp(1.35rem, 6.4vw, 1.7rem);
+    margin-bottom: 0.4rem;
   }
 `;
 
@@ -102,8 +104,26 @@ const Support = styled(motion.p)`
   text-shadow: 0 4px 18px rgba(5, 6, 13, 0.9);
 
   @media (max-width: 768px) {
-    font-size: 0.88rem;
-    margin-bottom: 0.9rem;
+    display: none;
+  }
+`;
+
+/**
+ * Shorter support line for phones so the copy does not cover the tour.
+ */
+const SupportMobile = styled(Support)`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: block;
+    max-width: 34rem;
+    font-size: 0.84rem;
+    line-height: 1.4;
+    margin-bottom: 0.7rem;
+  }
+
+  @media (max-width: 768px) and (max-height: 700px) {
+    display: none;
   }
 `;
 
@@ -112,6 +132,12 @@ const Ctas = styled(motion.div)`
   gap: 1rem;
   justify-content: center;
   flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+  }
 `;
 
 const PrimaryCta = styled(motion.a)`
@@ -128,6 +154,13 @@ const PrimaryCta = styled(motion.a)`
 
   &:hover {
     box-shadow: 0 8px 30px rgba(138, 43, 226, 0.6);
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 18px;
+    min-height: 44px;
+    font-size: 0.95rem;
+    text-align: center;
   }
 `;
 
@@ -147,6 +180,13 @@ const SecondaryCta = styled(motion.a)`
   &:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.45);
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px 18px;
+    min-height: 44px;
+    font-size: 0.95rem;
+    text-align: center;
   }
 `;
 
@@ -263,6 +303,10 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
     productCount > 0
       ? `Cymasphere writes from the center: harmony, voicings, and patterns - melodies, groove, and texture. In orbit: CymaSynth and ${productCount}+ instruments, effects, and packs.`
       : "Cymasphere writes from the center: harmony, voicings, and patterns - melodies, groove, and texture. In orbit: CymaSynth and a catalog of instruments, effects, and packs.";
+  const supportLineMobile =
+    productCount > 0
+      ? `Harmony, voicings, and patterns from the center. CymaSynth and ${productCount}+ more in orbit.`
+      : "Harmony, voicings, and patterns from the center. CymaSynth and the catalog in orbit.";
 
   return (
     <Hero id="home">
@@ -281,6 +325,9 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
           <Support custom={2} initial={{ opacity: 0, y: 18 }} animate={controls}>
             {supportLine}
           </Support>
+          <SupportMobile custom={2} initial={{ opacity: 0, y: 18 }} animate={controls}>
+            {supportLineMobile}
+          </SupportMobile>
           <Ctas custom={3} initial={{ opacity: 0, y: 18 }} animate={controls}>
             <PrimaryCta
               href="/product/cymasphere"

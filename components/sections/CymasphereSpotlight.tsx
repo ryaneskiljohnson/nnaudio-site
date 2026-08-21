@@ -54,6 +54,14 @@ const SphereBackdrop = styled.div`
     height: auto;
   }
 
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(8, 9, 17, 0.42);
+  }
+
   @media (max-width: 900px) {
     width: min(900px, 160%);
   }

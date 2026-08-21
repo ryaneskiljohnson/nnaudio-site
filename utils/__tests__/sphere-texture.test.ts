@@ -2,10 +2,8 @@ import { describe, expect, it } from "vitest";
 import { CREDIT_MS, CREDIT_TRAVEL_MS } from "@/utils/circuit-network-layout";
 import {
   bakeSphereStripFromPixels,
-  HOLD_START_FRAC,
   faceOnAlign,
   getWarpLUT,
-  holdStartAlign,
   lookupSphereTexture,
   moonSpinPhase,
   resolveWarpLUT,
@@ -42,12 +40,12 @@ describe("moonSpinPhase", () => {
     expect(turned).toBeLessThan(0.12);
   });
 
-  it("starts a hold already wrapping, then turns enough for the limb to read", () => {
+  it("starts a hold face-on, then turns enough for the limb to read", () => {
     const daySec = 48;
     const lockMs = CREDIT_MS - CREDIT_TRAVEL_MS;
     const turntableMs = 22000;
     const t0 = 12000;
-    const align = holdStartAlign(t0, daySec, false);
+    const align = faceOnAlign(t0, daySec, false);
     const start = moonSpinPhase(t0, daySec, false, true, 0, align);
     const end = moonSpinPhase(
       t0 + lockMs,
@@ -57,8 +55,7 @@ describe("moonSpinPhase", () => {
       lockMs / turntableMs,
       align
     );
-    expect(start).toBeCloseTo(HOLD_START_FRAC);
-    expect(start).toBeGreaterThan(0.12);
+    expect(start).toBeCloseTo(0);
     const turned = Math.min(Math.abs(end - start), 1 - Math.abs(end - start));
     expect(turned).toBeGreaterThan(0.08);
   });
@@ -76,15 +73,15 @@ describe("moonSpinPhase", () => {
 });
 
 describe("warpDensityForSize", () => {
-  it("keeps facets around 5–6 px and grows with the bake", () => {
+  it("keeps facets around 3–4 px and grows with the bake", () => {
     const small = warpDensityForSize(640);
     const retina = warpDensityForSize(1280);
     expect(small.slices).toBeGreaterThanOrEqual(96);
     expect(small.bands).toBeGreaterThanOrEqual(64);
     expect(retina.slices).toBeGreaterThan(small.slices);
     expect(retina.bands).toBeGreaterThan(small.bands);
-    expect(1280 / retina.slices).toBeLessThanOrEqual(6);
-    expect(1280 / retina.bands).toBeLessThanOrEqual(8);
+    expect(1280 / retina.slices).toBeLessThanOrEqual(4);
+    expect(1280 / retina.bands).toBeLessThanOrEqual(5);
   });
 });
 

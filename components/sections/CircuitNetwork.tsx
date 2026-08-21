@@ -46,7 +46,7 @@ import {
   type SphereTexture,
   getWarpLUT,
   loadSphereTexture,
-  holdStartAlign,
+  faceOnAlign,
   moonSpinPhase,
   warpStripToCanvas,
   warpStripToCanvasGpu,
@@ -81,27 +81,33 @@ const FEATURED_TURNTABLE_MS = 22000;
  * bake is `MOON_FOCUS_CSS_PX × devicePixelRatio` so Retina is 1:1.
  */
 const MOON_FOCUS_CSS_PX = 640;
+/** Smaller close-up disk on phones so a hold stays inside the frame. */
+const MOON_FOCUS_CSS_PX_MOBILE = 280;
 
 /**
  * @brief Close-up bake edge. Matches CSS pixels on 1× displays; 2× on
  * Retina so the wrap is not stretched (that stretch is the grain).
+ * @param compact When true, bake for the mobile focus disk.
  * @returns Strip height in device pixels.
  */
-function moonBakePx(): number {
+function moonBakePx(compact = false): number {
   const dpr =
     typeof window === "undefined" ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  return Math.round(MOON_FOCUS_CSS_PX * dpr);
+  const css = compact ? MOON_FOCUS_CSS_PX_MOBILE : MOON_FOCUS_CSS_PX;
+  return Math.round(css * dpr);
 }
 
 /**
- * @brief Sun wrap bake. Matches the 560px disk at 1× / 2× without a
- * 1536 warp (that hitch is worse than a slightly softer close-up).
+ * @brief Sun wrap bake. Matches the 560px disk at device pixels so
+ * Retina does not stretch a 768 strip (that stretch is the grain).
+ * @param compact When true, bake for the smaller phone sun.
  * @returns Strip height in device pixels.
  */
-function sunBakePx(): number {
+function sunBakePx(compact = false): number {
   const dpr =
     typeof window === "undefined" ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  return dpr >= 2 ? 768 : 512;
+  if (compact) return dpr >= 2 ? 512 : 384;
+  return dpr >= 2 ? 1120 : 560;
 }
 
 /** A product rendered as a moon. */
@@ -174,10 +180,10 @@ const CreditSlot = styled.div`
   opacity: 0;
 
   @media (max-width: 768px) {
-    left: 5%;
+    left: 4%;
     right: auto;
-    top: clamp(4.75rem, 14vh, 7rem);
-    max-width: min(70vw, 420px);
+    top: max(4.25rem, calc(env(safe-area-inset-top, 0px) + 3.4rem));
+    max-width: min(88vw, 340px);
   }
 `;
 
@@ -213,8 +219,9 @@ const CreditThumb = styled.img`
     0 0 26px rgba(108, 99, 255, 0.28);
 
   @media (max-width: 768px) {
-    width: 80px;
-    height: 80px;
+    width: 56px;
+    height: 56px;
+    padding: 8px;
   }
 
   &[data-sun="true"] {
@@ -259,6 +266,11 @@ const CreditName = styled.span`
   line-height: 0.95;
   letter-spacing: -0.03em;
   color: #fff;
+  overflow-wrap: anywhere;
+
+  @media (max-width: 768px) {
+    font-size: clamp(1.15rem, 6vw, 1.55rem);
+  }
 
   ${CreditCard}:hover & {
     text-decoration: underline;
@@ -376,8 +388,8 @@ const OrbitRing = styled.svg<{
 `;
 
 /**
- * Rings flatten as one isolated layer behind the bodies. Without
- * isolation some engines depth-sort the ring plane through a disk.
+ * Orbit strokes live in the same 3D scene as the moons. Hidden while
+ * the camera features Cymasphere so no rings sit on the sun.
  */
 const RingLayer = styled.div`
   position: absolute;
@@ -385,16 +397,15 @@ const RingLayer = styled.div`
   z-index: 0;
   pointer-events: none;
   transform-style: preserve-3d;
-  isolation: isolate;
+  transition: opacity 0.35s ease;
 `;
 
-/** Moons + sun: isolated above RingLayer so a stroke cannot paint over a disk. */
+/** Moons + sun: live in the scene 3D space, stacked above the ring plate. */
 const BodyLayer = styled.div`
   position: absolute;
   inset: 0;
   z-index: 1;
   transform-style: preserve-3d;
-  isolation: isolate;
 `;
 
 const Moon = styled(Link).attrs({ className: "hero-moon" })`
@@ -622,8 +633,8 @@ const SunCore = styled(Link)`
   }
 
   @media (max-width: 768px) {
-    width: 300px;
-    height: 300px;
+    width: min(56vw, 240px);
+    height: min(56vw, 240px);
     gap: 8px;
   }
 `;
@@ -674,8 +685,8 @@ const SunCorona = styled.div`
   );
 
   @media (max-width: 768px) {
-    width: 400px;
-    height: 400px;
+    width: min(88vw, 320px);
+    height: min(88vw, 320px);
   }
 `;
 
@@ -924,6 +935,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
+  const ringLayerRef = useRef<HTMLDivElement>(null);
   const sunRef = useRef<HTMLDivElement>(null);
   const sunFaceRef = useRef<HTMLDivElement>(null);
   const sunCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -964,9 +976,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   /** Extra turntable rotation accumulated while a moon is featured. */
   const spinBoost = useRef(new Map<string, number>());
   /**
-   * Phase offset so a hold starts already wrapping (not face-on).
+   * Phase offset so a hold starts with the artwork facing the camera.
    * Latched when a moon becomes focus or next, then the day spin
-   * continues from there.
+   * continues from that face-on start.
    */
   const faceAlign = useRef(new Map<string, number>());
   const facedKeys = useRef("");
@@ -1073,7 +1085,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     [nodes.length, mobile]
   );
   const synthSeat = useMemo(() => cymasynthOrbit(mobile), [mobile]);
-  const bakePx = useMemo(() => moonBakePx(), []);
+  const bakePx = useMemo(() => moonBakePx(mobile), [mobile]);
 
   const bodies = useMemo(() => {
     const list: Array<{
@@ -1154,7 +1166,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           subtitle: (cymasphere?.tagline || "").trim(),
           image: CYMASPHERE_APP_ICON,
           sun: true,
-          weight: 4,
+          weight: 3,
           startDeg: 0,
           periodSec: 1,
           radius: 0,
@@ -1209,14 +1221,14 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   }, [bodies, credits]);
 
   useEffect(() => {
-    const size = sunBakePx();
+    const size = sunBakePx(mobile);
     void loadSphereTexture(CYMASPHERE_SUN_SPHERE, size, {
       surfaceShade: false,
     }).then((tex) => {
       if (!mountedRef.current || !tex) return;
       sunTexRef.current = tex;
     });
-  }, []);
+  }, [mobile]);
 
   const creditsByKey = useMemo(
     () => new Map(credits.map((credit) => [credit.key, credit])),
@@ -1297,6 +1309,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     let lastCreditCss = "";
     let lastCreditCopy = "";
     let lastSunPhase: number | undefined;
+    let lastRingsHidden = false;
     const tick = (now: number) => {
       try {
       frameNo += 1;
@@ -1366,7 +1379,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       } else {
         const jump =
           Math.abs(camY - follow.y) + Math.abs(cam.translateZ - follow.tz) / 80;
-        const tau = jump > 10 ? 32 : 150;
+        // Holds track the live moon tightly. A long tau left the disk
+        // chasing the camera by a few magnified pixels every frame.
+        const tau = creditsW > 0.65 ? 22 : jump > 10 ? 32 : 150;
         const followK = 1 - Math.exp(-gapClamped / tau);
         follow.x += (camX - follow.x) * followK;
         follow.y += (camY - follow.y) * followK;
@@ -1397,6 +1412,14 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         ].join(" ");
       }
       const sunFeatured = cam.focusKey === SUN_FOCUS_KEY;
+      const hideRings =
+        sunFeatured ||
+        (cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY);
+      if (ringLayerRef.current && hideRings !== lastRingsHidden) {
+        lastRingsHidden = hideRings;
+        ringLayerRef.current.style.opacity = hideRings ? "0" : "1";
+        ringLayerRef.current.style.visibility = hideRings ? "hidden" : "visible";
+      }
       if (sunFeatured && !reducedMotion) {
         sunBoostRef.current =
           (sunBoostRef.current + gapClamped / FEATURED_TURNTABLE_MS) % 1;
@@ -1451,22 +1474,22 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       const facePair = `${cam.focusKey ?? ""}|${cam.nextKey ?? ""}`;
       if (facePair !== facedKeys.current) {
         facedKeys.current = facePair;
-        const latchHoldStart = (key: string | null) => {
+        const latchFaceOn = (key: string | null) => {
           if (!key) return;
           const idx = bodyIndexByKey.get(key);
           const body = idx === undefined ? undefined : bodies[idx];
           if (!body) return;
           faceAlign.current.set(
             body.key,
-            holdStartAlign(elapsed, body.spinDur, body.spinRev)
+            faceOnAlign(elapsed, body.spinDur, body.spinRev)
           );
           spinBoost.current.set(body.key, 0);
           warpPhases.current.delete(body.key);
         };
-        latchHoldStart(cam.focusKey);
-        latchHoldStart(cam.nextKey);
+        latchFaceOn(cam.focusKey);
+        latchFaceOn(cam.nextKey);
         if (cam.focusKey === SUN_FOCUS_KEY) {
-          sunAlignRef.current = holdStartAlign(elapsed, SUN_SPIN_SEC, false);
+          sunAlignRef.current = faceOnAlign(elapsed, SUN_SPIN_SEC, false);
           sunBoostRef.current = 0;
           lastSunPhase = undefined;
         }
@@ -1625,7 +1648,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const hiTex = isFocusKey
           ? texturesHiRef.current.get(body.key)
           : undefined;
-        setMoonBitmapSize(el, hiTex ? MOON_FOCUS_CSS_PX : worldD);
+        setMoonBitmapSize(
+          el,
+          hiTex ? (mobile ? MOON_FOCUS_CSS_PX_MOBILE : MOON_FOCUS_CSS_PX) : worldD
+        );
         const wx = pos[i * 3];
         const wh = pos[i * 3 + 1];
         const wz = pos[i * 3 + 2];
@@ -1721,7 +1747,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           const warped = warpBody(
             body,
             elapsed,
-            featured ? 0.4 / bakePx : 0.002,
+            featured ? 0.55 / bakePx : 0.002,
             featured
           );
           if (!featured && warped) ambientWarped = true;
@@ -1914,7 +1940,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       <NebulaGold $x={62} $y={52} $w={50} $h={42} />
       <NebulaTeal $x={48} $y={46} $w={44} $h={36} />
       <Scene ref={sceneRef}>
-        <RingLayer>{ringField}</RingLayer>
+        <RingLayer ref={ringLayerRef}>{ringField}</RingLayer>
         <BodyLayer>
           {moonField}
 

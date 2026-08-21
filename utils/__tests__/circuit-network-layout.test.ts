@@ -231,7 +231,7 @@ describe("cameraTour", () => {
     expect(second.focusKey).toBe("small");
   });
 
-  it("holds Cymasphere 4× and CymaSynth 2× before the rest", () => {
+  it("holds Cymasphere 3× and CymaSynth 2× before the rest", () => {
     const credits = orderCredits([
       { key: "pack", name: "Pack", startDeg: 0, periodSec: 40, radius: 0.8, size: 80, weight: 1 },
       {
@@ -251,25 +251,25 @@ describe("cameraTour", () => {
         radius: 0,
         size: 0,
         sun: true,
-        weight: 4,
+        weight: 3,
       },
     ]);
     expect(credits.map((c) => c.key)).toEqual([SUN_FOCUS_KEY, "synth", "pack"]);
-    expect(creditHoldMs(credits[0])).toBe(CREDIT_MS * 4);
+    expect(creditHoldMs(credits[0])).toBe(CREDIT_MS * 3);
     expect(creditHoldMs(credits[1])).toBe(CREDIT_MS * 2);
     expect(creditHoldMs(credits[2])).toBe(CREDIT_MS);
     expect(tourDurationMs(credits)).toBe(
-      TOUR_INTRO_MS + CREDIT_MS * 7 + TOUR_OUTRO_MS
+      TOUR_INTRO_MS + CREDIT_MS * 6 + TOUR_OUTRO_MS
     );
 
     const sun = cameraTour(TOUR_INTRO_MS + 400, false, credits);
     expect(sun.focusKey).toBe(SUN_FOCUS_KEY);
     expect(sun.creditOpacity).toBeGreaterThan(0.5);
-    const stillSun = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 3, false, credits);
+    const stillSun = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 2, false, credits);
     expect(stillSun.focusKey).toBe(SUN_FOCUS_KEY);
-    const synth = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 4 + 400, false, credits);
+    const synth = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 3 + 400, false, credits);
     expect(synth.focusKey).toBe("synth");
-    const pack = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 6 + 400, false, credits);
+    const pack = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 5 + 400, false, credits);
     expect(pack.focusKey).toBe("pack");
   });
 
@@ -290,6 +290,33 @@ describe("cameraTour", () => {
       const after = cameraTour(boundary + 1, false, credits).creditOpacity;
       expect(Math.abs(after - before)).toBeLessThan(0.05);
     });
+  });
+
+  it("keeps the close-up inside a narrow mobile frame", () => {
+    expect(closeupMagnification(28, 300)).toBeLessThan(closeupMagnification(28));
+    const wide = cameraTour(TOUR_INTRO_MS + CREDIT_MS / 2, false, [
+      {
+        key: "x",
+        name: "X",
+        startDeg: 0,
+        periodSec: 40,
+        radius: 0.5,
+        radiusPx: 300,
+        size: 28,
+      },
+    ], undefined, 620);
+    const phone = cameraTour(TOUR_INTRO_MS + CREDIT_MS / 2, false, [
+      {
+        key: "x",
+        name: "X",
+        startDeg: 0,
+        periodSec: 40,
+        radius: 0.5,
+        radiusPx: 300,
+        size: 28,
+      },
+    ], undefined, 180);
+    expect(wide.translateZ).toBeGreaterThan(phone.translateZ);
   });
 
   it("dollies in much closer for small moons than big ones", () => {
@@ -521,7 +548,9 @@ describe("cameraTour", () => {
     const a = cameraTour(t0, false, credits, world);
     const b = cameraTour(t0 + 200, false, credits, world);
     expect(a.focusKey).toBe("x");
-    expect(poseTravel(a, b)).toBeGreaterThan(0.2);
+    // Tiny inspection drift — enough to not park, not enough to rumble.
+    expect(poseTravel(a, b)).toBeGreaterThan(0.04);
+    expect(poseTravel(a, b)).toBeLessThan(0.2);
     // The framing offset holds steady while the camera creeps.
     const off = holdFrameOffset("x").x / closeupMagnification(80);
     const onA = projectThroughCamera(400, 80, 0, a);
