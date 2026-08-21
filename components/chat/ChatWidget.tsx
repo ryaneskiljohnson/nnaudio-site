@@ -586,40 +586,21 @@ export default function ChatWidget({ className }: ChatWidgetProps) {
     }
   }, [isOpen]);
 
-  // Check if email modal is open (detect modal overlay with z-index 9999)
+  // Check if the email modal is open so the chat can step aside.
+  // EmailCollectionModal tags its overlay with [data-email-modal]; a
+  // direct selector lookup replaces the old full-document sweep, which
+  // ran getComputedStyle on every element per mutation and caused
+  // constant style-recalc stalls while the homepage hero animated.
   useEffect(() => {
     const checkEmailModal = () => {
-      // Check for modal overlay - EmailCollectionModal uses z-index 9999
-      // Exclude chat widget elements
-      const allElements = document.querySelectorAll('*');
-      let hasEmailModal = false;
-      
-      for (const el of allElements) {
-        // Skip chat widget elements
-        if (el.hasAttribute('data-chat-widget') || 
-            el.closest('[data-chat-widget]') ||
-            el.closest('[class*="ChatContainer"], [class*="ChatWidget"]')) {
-          continue;
-        }
-        
-        const styles = window.getComputedStyle(el);
-        // Check for email modal overlay - it should have z-index 9999, be fixed, and have backdrop blur
-        // Also check for specific modal classes or data attributes
-        if (styles.zIndex === '9999' && styles.position === 'fixed') {
-          // Check if it's a modal overlay (has backdrop blur or specific styling)
-          // EmailCollectionModal typically has backdrop-filter blur
-          if ((styles.backdropFilter && styles.backdropFilter !== 'none') || 
-              (styles.backgroundColor === 'rgba(0, 0, 0, 0.7)' && el.classList.toString().includes('Modal'))) {
-            hasEmailModal = true;
-            break;
-          }
-        }
-      }
-      
+      const hasEmailModal = Boolean(
+        document.querySelector("[data-email-modal]")
+      );
+
       const emailModalJustOpened = hasEmailModal && !wasEmailModalOpen;
       setIsEmailModalOpen(hasEmailModal);
       setWasEmailModalOpen(hasEmailModal);
-      
+
       // If email modal just opened (not already open), close chat widget
       // Add a small delay to prevent immediate closing when chat opens
       if (emailModalJustOpened && isOpen) {
@@ -632,24 +613,24 @@ export default function ChatWidget({ className }: ChatWidgetProps) {
     // Check immediately
     checkEmailModal();
 
-    // Set up observer to watch for modal changes
+    // The modal mounts via a portal, so watching child-list changes is
+    // enough — attribute changes (which the hero makes every frame) are
+    // deliberately not observed.
     const observer = new MutationObserver(() => {
       checkEmailModal();
     });
-    
+
     observer.observe(document.body, {
       childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['style', 'class']
+      subtree: false,
     });
 
-    // Also check periodically as fallback
-    const interval = setInterval(checkEmailModal, 200);
+    // Slow fallback, only needed while the chat is open.
+    const interval = isOpen ? setInterval(checkEmailModal, 1000) : undefined;
 
     return () => {
       observer.disconnect();
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
     };
   }, [isOpen]);
 
