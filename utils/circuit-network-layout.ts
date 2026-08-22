@@ -684,6 +684,34 @@ export function pickVisibleMoons(
 
 /** CSS perspective of the board; camera dolly math depends on it. */
 export const TOUR_PERSPECTIVE_PX = 900;
+/** Far-galaxy dolly; sky parallax is normalized to 1 here. */
+export const TOUR_OPENING_TRANSLATE_Z = -1180;
+
+/**
+ * @brief Screen-space sky transform so a dolly over empty space
+ * scales the starfield the same way it scales the planets.
+ * World-space star plates go edge-on under yaw; this stays a backdrop.
+ * @param translateZ Camera dolly (opening = {@link TOUR_OPENING_TRANSLATE_Z}).
+ * @param rotateX Pitch in degrees.
+ * @param rotateY Yaw in degrees.
+ * @returns Pixel slide and scale (1 at the opening galaxy shot).
+ * @example
+ * skyParallaxCss(0, 0, 0).scale > skyParallaxCss(TOUR_OPENING_TRANSLATE_Z, 0, 0).scale
+ */
+export function skyParallaxCss(
+  translateZ: number,
+  rotateX: number,
+  rotateY: number
+): { x: number; y: number; scale: number } {
+  const persp = TOUR_PERSPECTIVE_PX;
+  const raw = persp / Math.max(180, persp - translateZ);
+  const rest = persp / Math.max(180, persp - TOUR_OPENING_TRANSLATE_Z);
+  return {
+    x: -rotateY * 2.2,
+    y: rotateX * 1.4,
+    scale: Math.max(0.7, Math.min(1.6, raw / rest)),
+  };
+}
 /** Opening fly-in before the credits start. */
 export const TOUR_INTRO_MS = 5200;
 /** How far along TOUR_KEYS the fly-in travels before the first hold. */
@@ -756,14 +784,14 @@ interface TourKey {
 }
 
 const TOUR_KEYS: TourKey[] = [
-  { t: 0, rotateX: 8, rotateY: -48, rotateZ: -10, translateZ: -1180, sunScale: 0.42 },
+  { t: 0, rotateX: 8, rotateY: -48, rotateZ: -10, translateZ: TOUR_OPENING_TRANSLATE_Z, sunScale: 0.42 },
   { t: 0.12, rotateX: 14, rotateY: -22, rotateZ: -4, translateZ: -640, sunScale: 0.7 },
   { t: 0.24, rotateX: 20, rotateY: 8, rotateZ: 0, translateZ: -140, sunScale: 1.2 },
   { t: 0.4, rotateX: 10, rotateY: 72, rotateZ: 8, translateZ: 160, sunScale: 1.55 },
   { t: 0.56, rotateX: 52, rotateY: 138, rotateZ: 2, translateZ: -30, sunScale: 1.08 },
   { t: 0.72, rotateX: 24, rotateY: 208, rotateZ: -2, translateZ: -20, sunScale: 1 },
   { t: 0.88, rotateX: 18, rotateY: 268, rotateZ: 0, translateZ: -8, sunScale: 1.02 },
-  { t: 1, rotateX: 8, rotateY: 312, rotateZ: -10, translateZ: -1180, sunScale: 0.42 },
+  { t: 1, rotateX: 8, rotateY: 312, rotateZ: -10, translateZ: TOUR_OPENING_TRANSLATE_Z, sunScale: 0.42 },
 ];
 
 /**

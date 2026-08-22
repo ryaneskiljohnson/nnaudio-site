@@ -5,6 +5,7 @@ import {
   SUN_FOCUS_KEY,
   SUN_YAW_DEG_PER_SEC,
   TOUR_INTRO_MS,
+  TOUR_OPENING_TRANSLATE_Z,
   TOUR_OUTRO_MS,
   angleDelta,
   creditHoldMs,
@@ -31,6 +32,7 @@ import {
   orbitRadiusPx,
   orderCredits,
   pickVisibleMoons,
+  skyParallaxCss,
   tourDurationMs,
   type TourCamera,
 } from "@/utils/circuit-network-layout";
@@ -159,6 +161,21 @@ describe("cymasynthOrbit", () => {
     const synth = cymasynthOrbit(false);
     expect(synth.radius).toBeGreaterThan(1.15);
     expect(moonPlacements(8, false)[0].radius).toBeGreaterThan(synth.radius + 0.7);
+  });
+});
+
+describe("skyParallaxCss", () => {
+  it("is identity scale at the opening galaxy shot", () => {
+    const sky = skyParallaxCss(TOUR_OPENING_TRANSLATE_Z, 8, -48);
+    expect(sky.scale).toBeCloseTo(1, 5);
+    expect(sky.x).toBeCloseTo(48 * 2.2, 5);
+    expect(sky.y).toBeCloseTo(8 * 1.4, 5);
+  });
+
+  it("zooms in when the camera dollies toward the system", () => {
+    const far = skyParallaxCss(TOUR_OPENING_TRANSLATE_Z, 0, 0);
+    const near = skyParallaxCss(160, 0, 0);
+    expect(near.scale).toBeGreaterThan(far.scale);
   });
 });
 

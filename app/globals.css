@@ -268,14 +268,15 @@ html {
   color: white;
 }
 
-/* Global button hover effect */
+/* Global button hover effect. Hero tour links opt out — brightness
+ * on the Cymasphere sun reads as a hover glow on its halo. */
 button:hover, 
 .button:hover,
 a.button:hover,
-a:hover,
+a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit),
 [role="button"]:hover,
 button:hover *,
-a:hover *,
+a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit) *,
 [role="button"]:hover *,
 *[class*="Button"]:hover,
 *[class*="button"]:hover {
@@ -285,8 +286,8 @@ a:hover *,
 }
 
 /* Override any green/accent color on button hover */
-button:hover, 
-a:hover,
+button:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit),
+a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit),
 [role="button"]:hover {
   color: white !important;
 }
@@ -370,6 +371,24 @@ a:hover,
 .hero-moon:hover *,
 .hero-moon:focus *,
 .hero-moon:focus-visible * {
+  color: inherit !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* Cymasphere sun: same opt-out — brightness(1.05) reads as a hover glow. */
+.hero-sun:hover,
+.hero-sun:focus,
+.hero-sun:focus-visible {
+  color: inherit !important;
+  text-shadow: none !important;
+  filter: none !important;
+  outline: none;
+}
+
+.hero-sun:hover *,
+.hero-sun:focus *,
+.hero-sun:focus-visible * {
   color: inherit !important;
   text-shadow: none !important;
   filter: none !important;

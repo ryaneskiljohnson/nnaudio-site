@@ -33,7 +33,6 @@ import {
   cameraTour,
   cymasynthOrbit,
   holdFrameOffset,
-  holdOriginCss,
   moonDiameter,
   moonPlacements,
   orbitRadiusPx,
@@ -41,12 +40,27 @@ import {
   hideSynthForSunApproach,
   isStableMoonHold,
   pickVisibleMoons,
+  skyParallaxCss,
   sineOscillatorRingPath,
   synthRingMoonRefPx,
 } from "@/utils/circuit-network-layout";
 
 /** First-paint pose: far galaxy, same as cameraTour(0). */
 const OPENING_CAM = cameraTour(0, false);
+const OPENING_SKY = skyParallaxCss(
+  OPENING_CAM.translateZ,
+  OPENING_CAM.rotateX,
+  OPENING_CAM.rotateY
+);
+
+/**
+ * @brief CSS transform for the screen-space star/nebula backdrop.
+ * @param sky Slide and scale from {@link skyParallaxCss}.
+ * @returns transform string written onto the Sky node.
+ */
+function skyCss(sky: { x: number; y: number; scale: number }): string {
+  return `translate3d(${sky.x.toFixed(3)}px, ${sky.y.toFixed(3)}px, 0) scale(${sky.scale.toFixed(4)})`;
+}
 
 /**
  * @brief CSS 3D transform for the touring scene.
@@ -339,7 +353,7 @@ const CreditSlot = styled.div`
   }
 `;
 
-const CreditCard = styled(Link)`
+const CreditCard = styled(Link).attrs({ className: "hero-credit" })`
   display: flex;
   align-items: center;
   gap: 20px;
@@ -380,12 +394,6 @@ const CreditThumb = styled.img`
     padding: 0;
     object-fit: cover;
     background: #05050a;
-  }
-
-  ${CreditCard}:hover & {
-    box-shadow:
-      0 12px 32px rgba(0, 0, 0, 0.55),
-      0 0 32px rgba(255, 214, 170, 0.45);
   }
 `;
 
@@ -470,8 +478,22 @@ const Scene = styled.div`
 `;
 
 /**
+ * Stars + nebulae ride this layer. It stays screen-facing (world-space
+ * plates go edge-on under yaw) but scales and slides with the camera
+ * so a dolly over empty space matches a dolly over a planet.
+ */
+const Sky = styled.div`
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: 50% 45%;
+  will-change: transform;
+  transform: ${skyCss(OPENING_SKY)};
+`;
+
+/**
  * Screen-space dust. World-space plates go edge-on when the camera
- * yaws and read as flat discs; these sit on the board so they stay
+ * yaws and read as flat discs; these sit on the sky so they stay
  * clouds from every tour angle.
  */
 const Nebula = styled.div<{ $x: number; $y: number; $w: number; $h: number }>`
@@ -579,17 +601,6 @@ const BodyLayer = styled.div`
   position: absolute;
   inset: 0;
   z-index: 1;
-  transform-style: preserve-3d;
-`;
-
-/**
- * Moons only (not the sun). During a product hold this layer is shifted
- * to the featured moon's seat so that moon is posed at the CSS origin —
- * large world coordinates + 5× close-up were shaking outer planets.
- */
-const HoldOrigin = styled.div`
-  position: absolute;
-  inset: 0;
   transform-style: preserve-3d;
 `;
 
@@ -866,7 +877,7 @@ const SunWrap = styled.div`
   transform-style: preserve-3d;
 `;
 
-const SunCore = styled(Link)`
+const SunCore = styled(Link).attrs({ className: "hero-sun" })`
   position: relative;
   z-index: 3;
   width: 560px;
@@ -886,10 +897,15 @@ const SunCore = styled(Link)`
     inset -36px -44px 64px rgba(40, 10, 70, 0.35),
     inset 24px 28px 44px rgba(255, 255, 255, 0.28);
 
-  &:hover {
+  &:hover,
+  &:focus,
+  &:focus-visible {
+    color: inherit;
+    outline: none;
+    filter: none;
     box-shadow:
-      0 0 64px #fff,
-      0 0 130px rgba(108, 99, 255, 0.7),
+      0 0 48px rgba(255, 230, 180, 0.85),
+      0 0 110px rgba(108, 99, 255, 0.55),
       inset -36px -44px 64px rgba(40, 10, 70, 0.35),
       inset 24px 28px 44px rgba(255, 255, 255, 0.28);
   }
@@ -1248,7 +1264,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
-  const holdOriginRef = useRef<HTMLDivElement>(null);
+  const skyRef = useRef<HTMLDivElement>(null);
   const ringLayerRef = useRef<HTMLDivElement>(null);
   const sunRef = useRef<HTMLDivElement>(null);
   const synthRingsRef = useRef<HTMLDivElement>(null);
@@ -1804,17 +1820,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           translateZ: follow.tz,
         });
       }
-      const holdKey = holdingMoon ? cam.focusKey : null;
-      const holdWp = holdKey ? worldPos.get(holdKey) : undefined;
-      const holdOrigin = holdWp ? holdOriginCss(holdWp) : null;
-      if (holdOriginRef.current) {
-        holdOriginRef.current.style.transform = holdOrigin
-          ? `translate3d(${holdOrigin.x.toFixed(3)}px, ${holdOrigin.y.toFixed(3)}px, ${holdOrigin.z.toFixed(3)}px)`
-          : "none";
+      if (skyRef.current) {
+        skyRef.current.style.transform = skyCss(
+          skyParallaxCss(follow.tz, camX, camY)
+        );
       }
-      const ox = holdWp?.x ?? 0;
-      const oh = holdWp?.height ?? 0;
-      const oz = holdWp?.z ?? 0;
       if (sunRef.current) {
         // Billboard the sun too so its face never goes edge-on under yaw.
         sunRef.current.style.transform = tourSunCss({
@@ -2125,9 +2135,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           body.key,
           poseMoon(
             el,
-            wx - ox,
-            wh - oh,
-            wz - oz,
+            wx,
+            wh,
+            wz,
             wx * cosYaw + wz * sinYaw,
             zc,
             system.a[i],
@@ -2155,9 +2165,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             Math.max(synthBody.seat.size.w, synthBody.seat.size.h) / 2;
           poseSynthOscRings(
             ringsEl,
-            pos[si * 3] - ox,
-            pos[si * 3 + 1] - oh,
-            pos[si * 3 + 2] - oz,
+            pos[si * 3],
+            pos[si * 3 + 1],
+            pos[si * 3 + 2],
             visualR * 2,
             reducedMotion ? 0 : (elapsed / 90) % 360,
             moonOpacity,
@@ -2297,8 +2307,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     };
     // Far sheets are wide so the sky still fills the frame when the
     // camera dollies out or yaws across the system.
-    // One static sheet on the board (not inside the moving Scene) so
-    // the camera does not re-composite hundreds of shadows every frame.
+    // Shadows stay static; Sky's transform is what zooms/slides them.
     const sheets = mobile
       ? [sheet(70, 1400, 900, 0, 0.62)]
       : [sheet(120, 1800, 1100, 0, 0.62)];
@@ -2405,14 +2414,15 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
 
   return (
     <Board ref={containerRef}>
-      {starField}
-      <NebulaViolet $x={28} $y={38} $w={58} $h={48} />
-      <NebulaGold $x={62} $y={52} $w={50} $h={42} />
-      <NebulaTeal $x={48} $y={46} $w={44} $h={36} />
+      <Sky ref={skyRef}>
+        {starField}
+        <NebulaViolet $x={28} $y={38} $w={58} $h={48} />
+        <NebulaGold $x={62} $y={52} $w={50} $h={42} />
+        <NebulaTeal $x={48} $y={46} $w={44} $h={36} />
+      </Sky>
       <Scene ref={sceneRef}>
         <RingLayer ref={ringLayerRef}>{ringField}</RingLayer>
         <BodyLayer>
-          <HoldOrigin ref={holdOriginRef}>
           {cymasynth ? (
             <SynthRingPlate
               ref={synthRingsRef}
@@ -2437,14 +2447,17 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             </SynthRingPlate>
           ) : null}
           {moonField}
-          </HoldOrigin>
 
           <SunWrap ref={sunRef}>
             <SunNebulaViolet />
             <SunNebulaGold />
             <SunCorona />
             <SunFlare />
-            <SunCore href="/product/cymasphere" aria-label="Cymasphere">
+            <SunCore
+              href="/product/cymasphere"
+              className="hero-sun"
+              aria-label="Cymasphere"
+            >
               <SunFace ref={sunFaceRef}>
                 <SunMark src={CYMASPHERE_SUN_SPHERE} alt="" />
                 <TexCanvas
