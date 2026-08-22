@@ -357,6 +357,46 @@ export function mergeManualAndPromotionalSalePrice(
   return Math.min(...candidates);
 }
 
+/** @brief Catalog row fields required to merge shop promotion pricing. */
+export type ShopProductForPromotion = {
+  id: string | number;
+  price?: number | null;
+  sale_price?: number | null;
+};
+
+/**
+ * @brief Merges active shop promotion sale prices into catalog product rows.
+ * @param products Catalog products from PostgREST.
+ * @param promotion Active shop-wide promotion or null.
+ * @returns Products with updated sale_price when eligible.
+ */
+export function applyShopPromotionToProducts<T extends ShopProductForPromotion>(
+  products: T[],
+  promotion: PromotionPricingRow | null
+): T[] {
+  if (!promotion) return products;
+
+  return products.map((product) => {
+    if (!isShopProductIncluded(String(product.id), promotion)) {
+      return product;
+    }
+    const regular = Number(product.price);
+    if (!Number.isFinite(regular)) return product;
+    const promoUnit = computePromotionalUnitPrice(
+      regular,
+      promotion.discount_type,
+      Number(promotion.discount_value)
+    );
+    const merged = mergeManualAndPromotionalSalePrice(
+      regular,
+      product.sale_price,
+      promoUnit
+    );
+    if (merged === null) return product;
+    return { ...product, sale_price: merged };
+  });
+}
+
 export type LineForEligibility = {
   id: string;
   lineTotal: number;

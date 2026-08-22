@@ -7,13 +7,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { createAdminClient } from '@/utils/supabase/service';
 import { requireAdmin } from '@/utils/auth/require-admin';
-import { isPSTDateAfterNow, isPSTDateBeforeNow } from '@/utils/timezoneUtils';
-import {
-  computePromotionalUnitPrice,
-  isShopProductIncluded,
-  mergeManualAndPromotionalSalePrice,
-} from '@/utils/promotions/apply-promotion';
 import { excludeNnaudioAccessForCommerce } from '@/lib/shopProductFilters';
+import {
+  fetchActiveShopPromotion,
+  withShopPromotionPrices,
+} from '@/utils/promotions/active-shop-promotion';
 
 // GET /api/products - List all products (with filters)
 export async function GET(request: NextRequest) {
@@ -132,49 +130,13 @@ export async function GET(request: NextRequest) {
      */
     if (!isAdminRequest) {
       const pub = await createClient();
-      const { data: promoRows } = await (pub as any)
-        .from('promotions')
-        .select(
-          'id, promotion_target_mode, included_targets, discount_type, discount_value, start_date, end_date, priority'
-        )
-        .eq('active', true)
-        .order('priority', { ascending: false });
-
-      const scheduleOk = (promo: any) => {
-        if (promo.start_date && isPSTDateAfterNow(promo.start_date)) return false;
-        if (promo.end_date && isPSTDateBeforeNow(promo.end_date)) return false;
-        return true;
-      };
-
-      const affectsShop = (promo: any) => {
-        if (promo.promotion_target_mode === 'all') return true;
-        const t = promo.included_targets || [];
-        return t.some((x: string) => typeof x === 'string' && x.startsWith('product:'));
-      };
-
-      const shopPromo =
-        (promoRows || []).find((p: any) => scheduleOk(p) && affectsShop(p)) || null;
+      const shopPromo = await fetchActiveShopPromotion(pub);
 
       if (shopPromo) {
-        productsWithRatings = productsWithRatings.map((product: any) => {
-          if (!isShopProductIncluded(product.id, shopPromo)) {
-            return product;
-          }
-          const regular = Number(product.price);
-          if (!Number.isFinite(regular)) return product;
-          const promoUnit = computePromotionalUnitPrice(
-            regular,
-            shopPromo.discount_type,
-            Number(shopPromo.discount_value)
-          );
-          const merged = mergeManualAndPromotionalSalePrice(
-            regular,
-            product.sale_price,
-            promoUnit
-          );
-          if (merged === null) return product;
-          return { ...product, sale_price: merged };
-        });
+        productsWithRatings = withShopPromotionPrices(
+          productsWithRatings,
+          shopPromo
+        );
       }
     }
 
