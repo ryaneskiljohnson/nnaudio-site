@@ -17,6 +17,7 @@ import {
   thumbsFromProducts,
   type HomepageCatalogSeed,
   type HomepageCategorySeed,
+  type HomepageProductRow,
 } from "@/lib/homepage-hero-seed";
 import {
   fetchActiveShopPromotion,
@@ -35,20 +36,29 @@ const HERO_CATALOG_CATEGORIES: ProductCategory[] = [
 const FEATURED_SELECT =
   "id, slug, name, category, tagline, short_description, featured_image_url, logo_url, background_image_url, background_video_url, price, sale_price";
 
+const HERO_TOUR_SELECT =
+  "id, slug, name, tagline, short_description, featured_image_url, logo_url, price, sale_price";
+
+const HERO_TOUR_LIMIT = 80;
+
 const FREE_SELECT =
   "slug, name, price, sale_price, featured_image_url, logo_url";
 
+type ShopPromotion = Awaited<ReturnType<typeof fetchActiveShopPromotion>>;
+
 /**
- * @brief Count and four thumbs for one active category bucket.
+ * @brief Count, thumbs, and tour rows for one active category bucket.
  * @param supabase Anon Supabase client.
  * @param category Product category enum value.
- * @returns Category tile seed data.
+ * @param shopPromotion Active shop promotion for price fields.
+ * @returns Category tile seed data plus hero tour rows.
  */
 async function fetchCategoryBucket(
   supabase: ReturnType<typeof createClient<Database>>,
-  category: ProductCategory
-): Promise<HomepageCategorySeed> {
-  const [countRes, thumbsRes] = await Promise.all([
+  category: ProductCategory,
+  shopPromotion: ShopPromotion
+): Promise<HomepageCategorySeed & { products: HomepageProductRow[] }> {
+  const [countRes, productsRes] = await Promise.all([
     supabase
       .from("products")
       .select("id", { count: "exact", head: true })
@@ -56,16 +66,22 @@ async function fetchCategoryBucket(
       .eq("category", category),
     supabase
       .from("products")
-      .select("featured_image_url, logo_url")
+      .select(HERO_TOUR_SELECT)
       .eq("status", "active")
       .eq("category", category)
       .order("created_at", { ascending: false })
-      .limit(4),
+      .limit(HERO_TOUR_LIMIT),
   ]);
+
+  const products = withShopPromotionPrices(
+    productsRes.data ?? [],
+    shopPromotion
+  );
 
   return {
     count: countRes.count ?? 0,
-    thumbs: thumbsFromProducts(thumbsRes.data ?? []),
+    thumbs: thumbsFromProducts(products),
+    products,
   };
 }
 
@@ -129,16 +145,17 @@ export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
     bundlesRes,
     featuredRes,
     cymasphereRes,
+    cymasphereProductRes,
   ] = await Promise.all([
     supabase
       .from("products")
       .select("slug")
       .eq("status", "active")
       .in("category", HERO_CATALOG_CATEGORIES),
-    fetchCategoryBucket(supabase, "instrument-plugin"),
-    fetchCategoryBucket(supabase, "audio-fx-plugin"),
-    fetchCategoryBucket(supabase, "midi-fx-plugin"),
-    fetchCategoryBucket(supabase, "pack"),
+    fetchCategoryBucket(supabase, "instrument-plugin", shopPromotion),
+    fetchCategoryBucket(supabase, "audio-fx-plugin", shopPromotion),
+    fetchCategoryBucket(supabase, "midi-fx-plugin", shopPromotion),
+    fetchCategoryBucket(supabase, "pack", shopPromotion),
     fetchFreeBucket(supabase),
     supabase
       .from("bundles")
@@ -152,6 +169,12 @@ export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
     supabase
       .from("products")
       .select("id, price, sale_price")
+      .eq("status", "active")
+      .eq("slug", "cymasphere")
+      .limit(1),
+    supabase
+      .from("products")
+      .select(FEATURED_SELECT)
       .eq("status", "active")
       .eq("slug", "cymasphere")
       .limit(1),
@@ -181,6 +204,12 @@ export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
       cymasphereRes.error.message
     );
   }
+  if (cymasphereProductRes.error) {
+    console.error(
+      "Homepage Cymasphere product seed failed:",
+      cymasphereProductRes.error.message
+    );
+  }
 
   const promotedFeatured = withShopPromotionPrices(
     featuredRes.data ?? [],
@@ -195,12 +224,31 @@ export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
     ? withShopPromotionPrices([cymasphereRow], shopPromotion)[0]
     : null;
 
+  const promotedCymasphereProduct = cymasphereProductRes.data?.[0]
+    ? withShopPromotionPrices(
+        [cymasphereProductRes.data[0]],
+        shopPromotion
+      )[0]
+    : null;
+
   return {
     productCount: countHeroCatalogProducts(heroSlugsRes.data ?? []),
-    instruments,
-    effects,
-    midiFx,
-    packs,
+    instruments: {
+      count: instruments.count,
+      thumbs: instruments.thumbs,
+    },
+    effects: {
+      count: effects.count,
+      thumbs: effects.thumbs,
+    },
+    midiFx: {
+      count: midiFx.count,
+      thumbs: midiFx.thumbs,
+    },
+    packs: {
+      count: packs.count,
+      thumbs: packs.thumbs,
+    },
     free,
     bundleCount: bundlesRes.count ?? 0,
     cymasphere: promotedCymasphere
@@ -210,5 +258,12 @@ export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
         }
       : {},
     featured,
+    heroTour: {
+      instruments: instruments.products,
+      effects: effects.products,
+      midiFx: midiFx.products,
+      packs: packs.products,
+    },
+    cymasphereProduct: promotedCymasphereProduct ?? null,
   };
 }

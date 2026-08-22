@@ -251,6 +251,16 @@ function LayoutContent({
     bannersReady && !isLandingPage && !shouldShowPromotion;
   const hasAnyBanner = showAccessBanner || shouldShowPromotion;
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const stripHeight =
+      shouldShowPromotion && isLandingPage ? "50px" : "0px";
+    root.style.setProperty("--site-promo-strip-height", stripHeight);
+    return () => {
+      root.style.removeProperty("--site-promo-strip-height");
+    };
+  }, [shouldShowPromotion, isLandingPage]);
+
   return (
     <LayoutWrapper>
       {!shouldHideHeaderFooter && (

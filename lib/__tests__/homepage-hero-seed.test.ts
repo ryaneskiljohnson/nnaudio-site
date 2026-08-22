@@ -129,6 +129,8 @@ describe("emptyHomepageCatalogSeed", () => {
     seed.instruments.count = 5;
     expect(seed.effects.count).toBe(0);
     expect(seed.packs.thumbs).toEqual([]);
+    expect(seed.heroTour.instruments).toEqual([]);
+    expect(seed.cymasphereProduct).toBeNull();
   });
 });
 

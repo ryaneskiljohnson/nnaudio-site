@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Fixed NextHeader clearance (matches PromotionBanner sticky top offsets).
+ * Use for absolutely positioned hero overlays (tour credit card, etc.).
+ */
+:root {
+  --site-header-height: 70px;
+  --site-promo-strip-height: 0px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --site-header-height: 64px;
+  }
+}
+
 /* Disable text selection site-wide; keep inputs/textarea selectable for editing */
 html, body, * {
   -webkit-user-select: none;

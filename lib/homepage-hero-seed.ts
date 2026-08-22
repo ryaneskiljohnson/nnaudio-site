@@ -47,6 +47,14 @@ export interface HomepageFeaturedSeed {
   hasMultiplePricing: boolean;
 }
 
+/** Slim rows for the hero tour so the circuit board is not empty on first paint. */
+export interface HomepageHeroTourSeed {
+  instruments: HomepageProductRow[];
+  effects: HomepageProductRow[];
+  midiFx: HomepageProductRow[];
+  packs: HomepageProductRow[];
+}
+
 /** First-paint snapshot for the homepage client tree. */
 export interface HomepageCatalogSeed {
   productCount: number;
@@ -61,6 +69,10 @@ export interface HomepageCatalogSeed {
     salePrice?: number | null;
   };
   featured: HomepageFeaturedSeed[];
+  /** Category catalogs for EcosystemHero / CircuitNetwork on first paint. */
+  heroTour: HomepageHeroTourSeed;
+  /** Cymasphere record for the sun credit card when the client fetch lags. */
+  cymasphereProduct: HomepageProductRow | null;
 }
 
 /** Slim product row used for featured mapping and free filtering. */
@@ -208,5 +220,12 @@ export function emptyHomepageCatalogSeed(): HomepageCatalogSeed {
     bundleCount: 0,
     cymasphere: {},
     featured: [],
+    heroTour: {
+      instruments: [],
+      effects: [],
+      midiFx: [],
+      packs: [],
+    },
+    cymasphereProduct: null,
   };
 }

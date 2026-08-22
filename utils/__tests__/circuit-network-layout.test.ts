@@ -16,7 +16,10 @@ import {
   holdFrameOffset,
   cymasynthOrbit,
   CYMASYNTH_OSC_RINGS,
+  SYNTH_RING_PLATE_DESKTOP_PX,
+  SYNTH_RING_PLATE_MOBILE_PX,
   sineOscillatorRingPath,
+  synthRingMoonRefPx,
   sunScaleFromCamera,
   moonDepth,
   moonDiameter,
@@ -153,6 +156,18 @@ describe("cymasynthOrbit", () => {
     const synth = cymasynthOrbit(false);
     expect(synth.radius).toBeGreaterThan(1.15);
     expect(moonPlacements(8, false)[0].radius).toBeGreaterThan(synth.radius + 0.7);
+  });
+});
+
+describe("synthRingMoonRefPx", () => {
+  it("scales the moon reference with plate raster size", () => {
+    const desktop = synthRingMoonRefPx(SYNTH_RING_PLATE_DESKTOP_PX);
+    const mobile = synthRingMoonRefPx(SYNTH_RING_PLATE_MOBILE_PX);
+    expect(mobile).toBeLessThan(desktop);
+    expect(desktop / mobile).toBeCloseTo(
+      SYNTH_RING_PLATE_DESKTOP_PX / SYNTH_RING_PLATE_MOBILE_PX,
+      5
+    );
   });
 });
 

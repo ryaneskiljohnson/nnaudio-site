@@ -190,9 +190,33 @@ export const CYMASYNTH_OSC_RINGS: ReadonlyArray<{
 export const CYMASYNTH_RING_DISK_TILT_DEG = 52;
 
 /**
- * CymaSynth moon diameter). Pose scale is `visualDiameter / this`.
+ * CSS box the oscillator plate is authored against (matches desktop
+ * CymaSynth moon diameter). Pose scale is `visualDiameter / moonRef`.
  */
 export const CYMASYNTH_RING_PLATE_MOON_PX = 108;
+
+/** ViewBox edge for nested sine oscillator paths. */
+export const SYNTH_RING_AUTHOR_PX = 240;
+
+/** Raster edge for the CymaSynth oscillator plate on desktop. */
+export const SYNTH_RING_PLATE_DESKTOP_PX = 1280;
+
+/** Smaller plate on phones to limit GPU memory. */
+export const SYNTH_RING_PLATE_MOBILE_PX = 512;
+
+/** Matches hero tour `matchMedia` and styled-component mobile rules. */
+export const HERO_MOBILE_MAX_WIDTH_PX = 768;
+
+/**
+ * @brief Pose scale denominator so a plate of `platePx` matches the moon.
+ * @param platePx Rendered CSS edge of the oscillator plate.
+ * @returns Moon-diameter reference in the same units as `visualDiameter`.
+ * @example
+ * synthRingMoonRefPx(SYNTH_RING_PLATE_MOBILE_PX)
+ */
+export function synthRingMoonRefPx(platePx: number): number {
+  return CYMASYNTH_RING_PLATE_MOON_PX * (platePx / SYNTH_RING_AUTHOR_PX);
+}
 
 /**
  * @brief CymaSynth sits on the closest, largest orbit.

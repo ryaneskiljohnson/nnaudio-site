@@ -16,6 +16,7 @@ import {
   mapRawProductToFeaturedCard,
   sortFeaturedProducts,
   type HomepageCatalogSeed,
+  type HomepageProductRow,
 } from "@/lib/homepage-hero-seed";
 import EcosystemHero from "@/components/sections/EcosystemHero";
 import type { CategoryTile } from "@/components/sections/CategoryGrid";
@@ -114,6 +115,25 @@ function toCard(p: ApiProduct) {
 }
 
 /**
+ * @brief Maps a server hero-tour row to the client card shape.
+ * @param row Slim product from the homepage catalog seed.
+ * @returns Card-shaped product for EcosystemHero.
+ */
+function seedRowToCard(row: HomepageProductRow): ReturnType<typeof toCard> {
+  return toCard({
+    id: row.id ?? row.slug ?? "",
+    name: row.name ?? "",
+    slug: row.slug ?? "",
+    tagline: row.tagline ?? undefined,
+    short_description: row.short_description ?? undefined,
+    featured_image_url: row.featured_image_url ?? undefined,
+    logo_url: row.logo_url ?? undefined,
+    price: row.price ?? undefined,
+    sale_price: row.sale_price ?? undefined,
+  });
+}
+
+/**
  * @brief Client homepage; `seed` is painted in the first HTML so the hero
  * count and category grid do not pop in after the catalog fetches.
  * @param seed Server-counted orbit catalog snapshot.
@@ -125,10 +145,18 @@ export default function HomePageClient({
   seed?: HomepageCatalogSeed;
 }) {
   const [featuredProducts, setFeaturedProducts] = useState(seed.featured);
-  const [instruments, setInstruments] = useState<any[]>([]);
-  const [effects, setEffects] = useState<any[]>([]);
-  const [packs, setPacks] = useState<any[]>([]);
-  const [midiFx, setMidiFx] = useState<any[]>([]);
+  const [instruments, setInstruments] = useState(() =>
+    seed.heroTour.instruments.map(seedRowToCard)
+  );
+  const [effects, setEffects] = useState(() =>
+    seed.heroTour.effects.map(seedRowToCard)
+  );
+  const [packs, setPacks] = useState(() =>
+    seed.heroTour.packs.map(seedRowToCard)
+  );
+  const [midiFx, setMidiFx] = useState(() =>
+    seed.heroTour.midiFx.map(seedRowToCard)
+  );
   const [freeProducts, setFreeProducts] = useState<any[]>([]);
   const [bundleCount, setBundleCount] = useState(seed.bundleCount);
   const [cymaspherePricing, setCymaspherePricing] = useState<{
@@ -137,7 +165,9 @@ export default function HomePageClient({
   }>(seed.cymasphere);
   const [cymasphereProduct, setCymasphereProduct] = useState<ReturnType<
     typeof toCard
-  > | null>(null);
+  > | null>(() =>
+    seed.cymasphereProduct ? seedRowToCard(seed.cymasphereProduct) : null
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

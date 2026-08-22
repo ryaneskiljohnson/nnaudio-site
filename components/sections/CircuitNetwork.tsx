@@ -22,7 +22,9 @@ import {
   CYMASYNTH_OSC_GREEN,
   CYMASYNTH_OSC_RINGS,
   CYMASYNTH_RING_DISK_TILT_DEG,
-  CYMASYNTH_RING_PLATE_MOON_PX,
+  HERO_MOBILE_MAX_WIDTH_PX,
+  SYNTH_RING_PLATE_DESKTOP_PX,
+  SYNTH_RING_PLATE_MOBILE_PX,
   SUN_FOCUS_KEY,
   TOUR_PERSPECTIVE_PX,
   VISIBLE_MOON_BUDGET,
@@ -38,6 +40,7 @@ import {
   hideSynthForSunApproach,
   pickVisibleMoons,
   sineOscillatorRingPath,
+  synthRingMoonRefPx,
 } from "@/utils/circuit-network-layout";
 
 /** First-paint pose: far galaxy, same as cameraTour(0). */
@@ -144,16 +147,16 @@ const MOON_FOCUS_CSS_PX = 640;
 const MOON_FOCUS_CSS_PX_MOBILE = 280;
 
 /**
- * @brief Close-up bake edge. Matches CSS pixels on 1× displays; 2× on
- * Retina so the wrap is not stretched (that stretch is the grain).
+ * @brief Close-up bake edge. Desktop matches CSS pixels at 2× DPR; mobile
+ * caps below full disk size to limit decode memory on phones.
  * @param compact When true, bake for the mobile focus disk.
  * @returns Strip height in device pixels.
  */
 function moonBakePx(compact = false): number {
   const dpr =
     typeof window === "undefined" ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  const css = compact ? MOON_FOCUS_CSS_PX_MOBILE : MOON_FOCUS_CSS_PX;
-  return Math.round(css * dpr);
+  if (compact) return dpr >= 2 ? 384 : 280;
+  return Math.round(MOON_FOCUS_CSS_PX * dpr);
 }
 
 /**
@@ -195,19 +198,25 @@ interface CircuitNetworkProps {
 
 /**
  * @brief Artwork URL for a moon's spherical wrap.
- * CymaSynth uses the pre-rendered planet (like the sun); catalog moons
- * use their product image. Wrap sources stay unoptimized: `/_next/image`
- * at q=75 recompresses the artwork and that grain stretches across the
- * sphere as it spins. Credit thumbs still use the optimizer.
- * @param body Tour body with synth flag and node art.
+ * CymaSynth uses the pre-rendered planet (like the sun). Catalog moons use
+ * full-resolution art on desktop; on phones a bake-sized `/_next/image`
+ * URL avoids decoding megabyte originals (Safari OOM reload loops).
+ * @param body Tour body with synth flag, node art, and bake size.
+ * @param compact When true, wrap through the image optimizer at bake size.
  * @returns Absolute path or remote image URL, or empty when none.
  */
-function moonWrapUrl(body: {
-  synth: boolean;
-  node: { image?: string };
-}): string {
+function moonWrapUrl(
+  body: {
+    synth: boolean;
+    node: { image?: string };
+    texSizeHi: number;
+  },
+  compact: boolean
+): string {
   if (body.synth) return CYMASYNTH_SPHERE;
-  return body.node.image || "";
+  const raw = body.node.image || "";
+  if (!raw) return "";
+  return compact ? optimizedImageUrl(raw, body.texSizeHi) : raw;
 }
 
 /**
@@ -262,6 +271,7 @@ const Board = styled.div`
   height: 100%;
   margin: 0 auto;
   overflow: hidden;
+  overflow: clip;
   perspective: ${TOUR_PERSPECTIVE_PX}px;
 
   /* Low-detail latch: drop decorative filters/blends so the moving
@@ -313,7 +323,10 @@ const CreditSlot = styled.div`
   @media (max-width: 768px) {
     left: 4%;
     right: auto;
-    top: max(3.25rem, calc(env(safe-area-inset-top, 0px) + 2.5rem));
+    top: calc(
+      env(safe-area-inset-top, 0px) + var(--site-header-height) +
+        var(--site-promo-strip-height) + 0.625rem
+    );
     transform: none;
     max-width: min(88vw, 340px);
 
@@ -694,16 +707,6 @@ const synthOscSpin = keyframes`
 `;
 
 /**
- * Layout edge for the CymaSynth oscillator plate. Paths stay in the
- * 240-unit viewBox; the CSS box is larger so a 3D `scale()` does not
- * upscale a 240px raster (that stretch is the pixelation).
- */
-const SYNTH_RING_AUTHOR_PX = 240;
-const SYNTH_RING_PLATE_PX = 1280;
-const SYNTH_RING_MOON_REF_PX =
-  CYMASYNTH_RING_PLATE_MOON_PX * (SYNTH_RING_PLATE_PX / SYNTH_RING_AUTHOR_PX);
-
-/**
  * World-space oscillator disk around CymaSynth. Sibling of the moon so
  * the sphere can keep overflow:hidden; not billboarded, so the rings
  * stay in a Saturn-like plane as the camera tours.
@@ -712,14 +715,19 @@ const SynthRingPlate = styled.div`
   position: absolute;
   left: 50%;
   top: 50%;
-  width: ${SYNTH_RING_PLATE_PX}px;
-  height: ${SYNTH_RING_PLATE_PX}px;
+  width: ${SYNTH_RING_PLATE_DESKTOP_PX}px;
+  height: ${SYNTH_RING_PLATE_DESKTOP_PX}px;
   pointer-events: none;
   z-index: 19;
   overflow: visible;
   visibility: hidden;
   opacity: 0;
   transform-style: preserve-3d;
+
+  &[data-compact="true"] {
+    width: ${SYNTH_RING_PLATE_MOBILE_PX}px;
+    height: ${SYNTH_RING_PLATE_MOBILE_PX}px;
+  }
 
   &[data-posed="true"] .synth-osc {
     animation-play-state: running;
@@ -735,8 +743,8 @@ const SynthRingDisk = styled.div<{ $tiltX: number; $tiltZ: number }>`
 
 const SynthRingSvg = styled.svg`
   display: block;
-  width: ${SYNTH_RING_PLATE_PX}px;
-  height: ${SYNTH_RING_PLATE_PX}px;
+  width: 100%;
+  height: 100%;
   overflow: visible;
   shape-rendering: geometricPrecision;
 `;
@@ -1173,6 +1181,7 @@ function poseMoon(
  * @param opacity Matched to the moon so flybys fade together.
  * @param zIndex Just under the moon.
  * @param visible False when the synth moon is culled.
+ * @param compact When true, pose against the smaller phone plate.
  */
 function poseSynthOscRings(
   el: HTMLElement,
@@ -1183,7 +1192,8 @@ function poseSynthOscRings(
   spinDeg: number,
   opacity: number,
   zIndex: number,
-  visible: boolean
+  visible: boolean,
+  compact = false
 ): void {
   if (!visible) {
     if (el.style.visibility !== "hidden") el.style.visibility = "hidden";
@@ -1192,7 +1202,10 @@ function poseSynthOscRings(
     return;
   }
 
-  const scale = visualDiameter / SYNTH_RING_MOON_REF_PX;
+  const platePx = compact
+    ? SYNTH_RING_PLATE_MOBILE_PX
+    : SYNTH_RING_PLATE_DESKTOP_PX;
+  const scale = visualDiameter / synthRingMoonRefPx(platePx);
   el.style.transform = [
     "translate(-50%, -50%)",
     `translate3d(${x.toFixed(2)}px, ${(-height).toFixed(2)}px, ${z.toFixed(2)}px)`,
@@ -1271,7 +1284,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
    */
   const faceAlign = useRef(new Map<string, number>());
   const facedKeys = useRef("");
-  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  const [isMobile, setIsMobile] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia(`(max-width: ${HERO_MOBILE_MAX_WIDTH_PX}px)`).matches
+  );
   // Start the tour immediately. IntersectionObserver pauses it when the
   // hero leaves the viewport; if IO never fires (embedded previews), the
   // camera and credit card still run.
@@ -1293,10 +1310,12 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const liveForced = useRef("");
   const mountedRef = useRef(true);
   const candidatePool = useRef<VisibleMoonCandidate[]>([]);
-  const mobile = isMobile === true;
+  const mobile = isMobile;
 
   useEffect(() => {
-    const mql = window.matchMedia("(max-width: 768px)");
+    const mql = window.matchMedia(
+      `(max-width: ${HERO_MOBILE_MAX_WIDTH_PX}px)`
+    );
     setIsMobile(mql.matches);
     if (mql.matches) {
       FRAME.lowDetail = true;
@@ -1510,7 +1529,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       .map((credit) => credit.key);
     for (const key of upcoming) {
       const body = byKey.get(key);
-      const wrap = body ? moonWrapUrl(body) : "";
+      const wrap = body ? moonWrapUrl(body, mobile) : "";
       if (!body || !wrap || texturesHiRef.current.has(body.key)) continue;
       void loadSphereTexture(wrap, body.texSizeHi, moonWrapBakeOpts(body)).then(
         (tex) => {
@@ -1862,7 +1881,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const focusedBody =
           focusedIdx === undefined ? undefined : bodies[focusedIdx];
         const prefetchHi = (body?: (typeof bodies)[number]) => {
-          const wrap = body ? moonWrapUrl(body) : "";
+          const wrap = body ? moonWrapUrl(body, mobile) : "";
           if (!body || !wrap || texturesHiRef.current.has(body.key)) return;
           void loadSphereTexture(
             wrap,
@@ -2106,7 +2125,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             reducedMotion ? 0 : (elapsed / 90) % 360,
             moonOpacity,
             synthEl ? Number(synthEl.style.zIndex || "20") : 19,
-            moonOnCamera && moonOpacity > 0.08
+            moonOnCamera && moonOpacity > 0.08,
+            mobile
           );
         }
       }
@@ -2356,7 +2376,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         <RingLayer ref={ringLayerRef}>{ringField}</RingLayer>
         <BodyLayer>
           {cymasynth ? (
-            <SynthRingPlate ref={synthRingsRef} aria-hidden>
+            <SynthRingPlate
+              ref={synthRingsRef}
+              data-compact={mobile ? "true" : undefined}
+              aria-hidden
+            >
               {SYNTH_OSC_PATHS.map((ring) => (
                 <SynthRingDisk
                   key={`${ring.cycles}-${ring.radius}`}
