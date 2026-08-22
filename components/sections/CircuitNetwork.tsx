@@ -43,6 +43,7 @@ import {
   skyParallaxCss,
   sineOscillatorRingPath,
   synthRingMoonRefPx,
+  tourDurationMs,
 } from "@/utils/circuit-network-layout";
 
 /** First-paint pose: far galaxy, same as cameraTour(0). */
@@ -117,6 +118,7 @@ import {
   loadSphereTexture,
   faceOnAlign,
   moonSpinPhase,
+  releaseAllSphereTextureResources,
   warpStripToCanvas,
   warpStripToCanvasGpu,
 } from "@/utils/sphere-texture";
@@ -161,6 +163,18 @@ const FEATURED_TURNTABLE_MS = 22000;
 const MOON_FOCUS_CSS_PX = 640;
 /** Smaller close-up disk on phones so a hold stays inside the frame. */
 const MOON_FOCUS_CSS_PX_MOBILE = 280;
+
+/**
+ * Full tour loops a phone plays before the hero parks on the closing
+ * wide shot. iOS Safari force-reloads pages that keep the GPU busy
+ * indefinitely ("using significant energy"), and every extra loop
+ * re-bakes the whole catalog. One loop shows every product once;
+ * desktop keeps looping.
+ */
+const TOUR_MOBILE_MAX_LOOPS = 1;
+
+/** sessionStorage key for the crash watchdog. */
+const WATCHDOG_KEY = "hero-tour-watchdog";
 
 /**
  * @brief Close-up bake edge. Desktop matches CSS pixels at 2× DPR; mobile
@@ -297,6 +311,12 @@ const Board = styled.div`
     animation: none !important;
     filter: none !important;
     mix-blend-mode: normal !important;
+  }
+
+  /* Parked: the tour has stopped scheduling frames; also halt the CSS
+     oscillator spin so the compositor goes fully idle. */
+  &[data-parked="true"] .synth-osc {
+    animation-play-state: paused !important;
   }
   perspective-origin: 50% 50%;
   background:
@@ -1340,7 +1360,59 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const liveForced = useRef("");
   const mountedRef = useRef(true);
   const candidatePool = useRef<VisibleMoonCandidate[]>([]);
+  /** True once a phone has toured the catalog and the hero froze. */
+  const parkedRef = useRef(false);
   const mobile = isMobile;
+
+  // Crash watchdog: a user reload or navigation fires pagehide first,
+  // but a Safari memory/energy kill does not — so an entry left
+  // "unclean" by the previous page load means the browser killed us.
+  // Logged to the console so a tethered Web Inspector can attribute
+  // reload loops (aliveSec + whether the tour had already parked).
+  useEffect(() => {
+    try {
+      const prev = sessionStorage.getItem(WATCHDOG_KEY);
+      if (prev) {
+        const rec = JSON.parse(prev) as {
+          clean?: boolean;
+          aliveSec?: number;
+          parked?: boolean;
+        };
+        if (!rec.clean) {
+          console.warn(
+            `[hero] Previous visit ended without pagehide after ~${rec.aliveSec ?? "?"}s ` +
+              `(tour parked: ${rec.parked ? "yes" : "no"}) — Safari likely killed the page (memory/energy).`
+          );
+        }
+      }
+    } catch {
+      /* Private mode: no storage, no watchdog. */
+    }
+    const startedAtMs = Date.now();
+    const write = (clean: boolean) => {
+      try {
+        sessionStorage.setItem(
+          WATCHDOG_KEY,
+          JSON.stringify({
+            clean,
+            aliveSec: Math.round((Date.now() - startedAtMs) / 1000),
+            parked: parkedRef.current,
+          })
+        );
+      } catch {
+        /* ignore */
+      }
+    };
+    write(false);
+    const beat = window.setInterval(() => write(false), 5000);
+    const onHide = () => write(true);
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      window.clearInterval(beat);
+      window.removeEventListener("pagehide", onHide);
+      onHide();
+    };
+  }, []);
 
   useEffect(() => {
     const mql = window.matchMedia(
@@ -1734,6 +1806,19 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         containerRef.current?.setAttribute("data-low", "true");
       }
       const elapsed = now - startedAt.current;
+      // Phones park after the catalog has toured once. An endless rAF +
+      // warp loop is exactly what iOS Safari's energy watchdog reloads
+      // pages for, and each extra loop re-bakes every product texture.
+      // The tour wraps to the opening wide shot at the loop boundary, so
+      // this last frame renders that pose and then stops scheduling.
+      if (
+        !parkedRef.current &&
+        mobile &&
+        credits.length > 1 &&
+        elapsed >= tourDurationMs(credits) * TOUR_MOBILE_MAX_LOOPS
+      ) {
+        parkedRef.current = true;
+      }
       const pos = stepOrbitalSystem(system, reducedMotion ? 0 : elapsed / 1000);
       for (let i = 0; i < bodies.length; i += 1) {
         const body = bodies[i];
@@ -2246,7 +2331,18 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       }
 
       } finally {
-        raf = window.requestAnimationFrame(tick);
+        if (parkedRef.current) {
+          // Freeze on the closing wide shot and hand the memory back:
+          // strips, scratch canvases, and warp tables all release. The
+          // painted moon/sun canvases keep their last frame, and links
+          // stay clickable — the hero just becomes a still.
+          containerRef.current?.setAttribute("data-parked", "true");
+          texturesHiRef.current.clear();
+          sunTexRef.current = null;
+          releaseAllSphereTextureResources();
+        } else {
+          raf = window.requestAnimationFrame(tick);
+        }
       }
     };
     raf = window.requestAnimationFrame(tick);

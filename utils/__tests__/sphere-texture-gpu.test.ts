@@ -17,6 +17,7 @@ import {
   bakeSphereStripFromPixels,
   getWarpLUT,
   loadSphereTexture,
+  releaseAllSphereTextureResources,
   resolvedSphereTexture,
   warpStripToCanvas,
   warpStripToCanvasGpu,
@@ -156,5 +157,28 @@ describe("loadSphereTexture LRU", () => {
     const again = await loadSphereTexture(ONE_PX_PNG, 8);
     expect(again).not.toBeNull();
     expect(resolvedSphereTexture(ONE_PX_PNG, 8)).toBe(again);
+  });
+});
+
+describe("releaseAllSphereTextureResources", () => {
+  it("empties the caches and the warp path still rebuilds after", async () => {
+    await loadSphereTexture(ONE_PX_PNG, 40);
+    expect(resolvedSphereTexture(ONE_PX_PNG, 40)).not.toBeUndefined();
+
+    releaseAllSphereTextureResources();
+    expect(resolvedSphereTexture(ONE_PX_PNG, 40)).toBeUndefined();
+
+    // Scratch canvases and warp tables were cleared too — a fresh warp
+    // must rebuild them all and still produce a valid disk. SIZE matches
+    // the reference suite; tiny disks hit node-canvas sub-pixel limits.
+    const src = new Uint8ClampedArray(SIZE * SIZE * 4).fill(200);
+    const tex = bakeSphereStripFromPixels(src, SIZE);
+    const out = createCanvas(SIZE, SIZE);
+    expect(
+      warpStripToCanvasGpu(tex, 0.2, out as unknown as HTMLCanvasElement)
+    ).toBe(true);
+    const d = out.getContext("2d").getImageData(0, 0, SIZE, SIZE).data;
+    const center = ((SIZE / 2) * SIZE + SIZE / 2) * 4;
+    expect(d[center + 3]).toBeGreaterThan(200);
   });
 });

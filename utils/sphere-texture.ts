@@ -436,6 +436,10 @@ function vWarpedStrip(tex: SphereTexture): HTMLCanvasElement | null {
     const v = Math.min(lastRow, Math.max(0, stripV(ny) * lastRow));
     wctx.drawImage(raw, 0, v, stripW, 1, 0, y, stripW, 1);
   }
+  // The scratch canvas is garbage now, but Safari reclaims canvas
+  // backing stores lazily; zeroing frees it immediately.
+  raw.width = 0;
+  raw.height = 0;
   vWarpedCache.set(tex, warped);
   return warped;
 }
@@ -730,11 +734,11 @@ export function bakeSphereStrip(
   sctx.imageSmoothingEnabled = true;
   sctx.imageSmoothingQuality = "high";
   sctx.drawImage(img, 0, 0, size, size);
-  return bakeSphereStripFromPixels(
-    sctx.getImageData(0, 0, size, size).data,
-    size,
-    options
-  );
+  const pixels = sctx.getImageData(0, 0, size, size).data;
+  // Free the rasterization scratch right away instead of waiting on GC.
+  src.width = 0;
+  src.height = 0;
+  return bakeSphereStripFromPixels(pixels, size, options);
 }
 
 const textureCache = new Map<string, Promise<SphereTexture | null>>();
@@ -797,6 +801,39 @@ function evictStaleTextures(): void {
     if (oldest === undefined) break;
     releaseTextureKey(oldest);
   }
+}
+
+/**
+ * @brief Zeroes and clears one map of shared scratch canvases.
+ * @param cache Per-size canvas cache (hemi / frame / rim mask).
+ */
+function releaseCanvasCache(cache: Map<number, HTMLCanvasElement>): void {
+  cache.forEach((canvas) => {
+    canvas.width = 0;
+    canvas.height = 0;
+  });
+  cache.clear();
+}
+
+/**
+ * @brief Releases every cached bake, scratch canvas, and warp table.
+ * The hero calls this when it parks the tour: nothing will warp again,
+ * so all texture memory can go back to the browser. Every cache here
+ * rebuilds on demand, so a later warp still works — it just re-bakes.
+ */
+export function releaseAllSphereTextureResources(): void {
+  for (const key of Array.from(textureCache.keys())) {
+    releaseTextureKey(key);
+  }
+  for (const key of Array.from(resolvedTextures.keys())) {
+    releaseTextureKey(key);
+  }
+  releaseCanvasCache(hemiCache);
+  releaseCanvasCache(maskCache);
+  releaseCanvasCache(frameCache);
+  lutCache.clear();
+  sliceCache.clear();
+  bandCache.clear();
 }
 
 /**
