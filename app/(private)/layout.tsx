@@ -1,33 +1,22 @@
-"use client";
+/**
+ * @fileoverview Server layout for authenticated app routes. Kept dynamic so
+ * dashboard/admin HTML is never CDN-cached as a public marketing page.
+ * @module app/(private)/layout
+ */
 
-import React, { useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRouter, usePathname } from "next/navigation";
-import LoadingComponent from "@/components/common/LoadingComponent";
-import { getSafeRedirectUrl } from "@/utils/redirectValidation";
+import PrivateGate from "./PrivateGate";
 
-export default function RootLayout({
+export const dynamic = "force-dynamic";
+
+/**
+ * @brief Wraps private routes with the client auth gate.
+ * @param children Dashboard or admin page tree.
+ * @returns Auth-gated children.
+ */
+export default function PrivateLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const auth = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    if (!auth.user && !auth.loading) {
-      const safeRedirect = getSafeRedirectUrl(pathname ?? "");
-      const redirectParam = safeRedirect
-        ? encodeURIComponent(safeRedirect)
-        : "";
-      router.push(redirectParam ? `/login?redirect=${redirectParam}` : "/login");
-    }
-  }, [auth.user, router, auth.loading, pathname]);
-
-  if (!auth.user || auth.loading) {
-    return <LoadingComponent fullScreen text="Loading..." />;
-  }
-
-  return <>{children}</>;
+  return <PrivateGate>{children}</PrivateGate>;
 }

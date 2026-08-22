@@ -15,9 +15,10 @@ import Analytics from "@/components/analytics/Analytics";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
-// Force dynamic rendering for all routes to prevent React undefined errors during static generation
-// This is needed because client components with styled-components require React during module evaluation
-export const dynamic = 'force-dynamic';
+// Public marketing HTML can be statically generated / CDN-cached. Auth,
+// checkout, cart, bundles, and (private) layouts opt into force-dynamic.
+// styled-components "React is not defined" during SSG is handled by
+// set-global-react.ts imported above.
 
 // Metadata configuration – favicon and icons use NNAud.io logo (dev and release)
 export const metadata: Metadata = {
