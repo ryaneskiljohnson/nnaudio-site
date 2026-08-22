@@ -6,7 +6,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import styled from "styled-components";
 import { useSearchParams } from "next/navigation";
 import ProductCard from "@/components/products/ProductCard";
@@ -80,7 +80,7 @@ const ProductsGrid = styled.div`
   }
 `;
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -274,6 +274,18 @@ export default function ProductsPage() {
         </ProductsGrid>
       )}
     </Container>
+  );
+}
+
+/**
+ * @brief Catalog page shell; Suspense is required for useSearchParams during SSG.
+ * @returns Products catalog with search, sort, and category filters.
+ */
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<LoadingComponent text="Loading products..." />}>
+      <ProductsPageContent />
+    </Suspense>
   );
 }
 
