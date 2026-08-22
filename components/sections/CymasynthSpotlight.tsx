@@ -9,6 +9,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 
@@ -149,7 +150,7 @@ const Cta = styled(Link)`
   }
 `;
 
-const Visual = styled(motion.div)<{ $bg?: string }>`
+const Visual = styled(motion.div)`
   position: relative;
   aspect-ratio: 4 / 3;
   border-radius: 16px;
@@ -159,19 +160,32 @@ const Visual = styled(motion.div)<{ $bg?: string }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    ${(p) => (p.$bg ? `url('${p.$bg}') center / cover,` : "")}
-    linear-gradient(160deg, #10142a 0%, #060810 100%);
-
-  img {
-    max-width: 78%;
-    max-height: 78%;
-    object-fit: contain;
-    filter: drop-shadow(0 12px 40px rgba(0, 0, 0, 0.8));
-  }
+  background: linear-gradient(160deg, #10142a 0%, #060810 100%);
 
   @media (max-width: 900px) {
     order: 2;
+  }
+`;
+
+const VisualBackdrop = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+
+  img {
+    object-fit: cover;
+  }
+`;
+
+const ProductArt = styled.div`
+  position: relative;
+  z-index: 1;
+  width: 78%;
+  height: 78%;
+  filter: drop-shadow(0 12px 40px rgba(0, 0, 0, 0.8));
+
+  img {
+    object-fit: contain;
   }
 `;
 
@@ -181,6 +195,26 @@ const reveal = {
   viewport: { once: true, margin: "-80px" },
   transition: { duration: 0.7 },
 };
+
+/**
+ * @brief True when a catalog URL is a raster image next/image can optimize.
+ * @param url Featured, logo, or background URL from the products API.
+ * @returns Whether the URL should be passed to next/image.
+ * @note Video fallbacks on `backgroundImage` must stay out of the optimizer.
+ */
+function isRasterImageUrl(url?: string): url is string {
+  if (!url) return false;
+  if (url.startsWith("/")) return true;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+  return !/\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url);
+}
 
 /**
  * @brief Formats a numeric price with optional sale strikethrough.
@@ -207,9 +241,14 @@ function renderPrice(price?: number | string, salePrice?: number | null) {
  * @note Feature facts (oscillators, wavetable frames, mod routes, voices) are
  * fixed product truths, not marketing copy, so they live here rather than in
  * the database description.
+ * @note Catalog PNGs are loaded through next/image so Vercel can serve
+ * sized WebP/AVIF instead of the raw 1–2 MB Supabase files.
  */
 const CymasynthSpotlight: React.FC<CymasynthSpotlightProps> = ({ product }) => {
   const image = product?.featured_image_url || product?.logo_url;
+  const rawBackdrop = product?.backgroundImage;
+  const backdrop = isRasterImageUrl(rawBackdrop) ? rawBackdrop : undefined;
+  const productArt = isRasterImageUrl(image) ? image : undefined;
 
   return (
     <Section id="cymasynth">
@@ -231,14 +270,29 @@ const CymasynthSpotlight: React.FC<CymasynthSpotlightProps> = ({ product }) => {
           </PriceRow>
         </Copy>
 
-        <Visual
-          {...reveal}
-          transition={{ duration: 0.7, delay: 0.15 }}
-          $bg={product?.backgroundImage}
-        >
-          {image && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="CymaSynth" loading="lazy" />
+        <Visual {...reveal} transition={{ duration: 0.7, delay: 0.15 }}>
+          {backdrop && (
+            <VisualBackdrop>
+              <Image
+                src={backdrop}
+                alt=""
+                fill
+                sizes="(max-width: 900px) 100vw, 55vw"
+                quality={70}
+                aria-hidden
+              />
+            </VisualBackdrop>
+          )}
+          {productArt && (
+            <ProductArt>
+              <Image
+                src={productArt}
+                alt="CymaSynth"
+                fill
+                sizes="(max-width: 900px) 80vw, 40vw"
+                quality={75}
+              />
+            </ProductArt>
           )}
         </Visual>
       </Inner>

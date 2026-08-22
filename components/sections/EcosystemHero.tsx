@@ -4,12 +4,14 @@
  * @fileoverview Homepage hero: a cinematic tour of the Cymasphere solar
  * system, then a two-line headline and CTAs underneath.
  * @module components/sections/EcosystemHero
+ * @note Title and support copy are static (no Framer opacity-0) so LCP can
+ * paint with the HTML. Only the solar-system board fades in after mount.
  */
 
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import styled from "styled-components";
-import { motion, useAnimation } from "framer-motion";
+import { motion } from "framer-motion";
 import CircuitNetwork, { CircuitNode } from "./CircuitNetwork";
 import { scrollToHash } from "@/utils/scrollToHash";
 
@@ -77,7 +79,7 @@ const Headline = styled.div`
   }
 `;
 
-const Title = styled(motion.h1)`
+const Title = styled.h1`
   margin: 0 0 0.65rem;
   font-size: 2.8rem;
   font-weight: 800;
@@ -95,7 +97,7 @@ const Title = styled(motion.h1)`
   }
 `;
 
-const Support = styled(motion.p)`
+const Support = styled.p`
   margin: 0 auto 1.2rem;
   max-width: 480px;
   font-size: 1.02rem;
@@ -127,7 +129,7 @@ const SupportMobile = styled(Support)`
   }
 `;
 
-const Ctas = styled(motion.div)`
+const Ctas = styled.div`
   display: flex;
   gap: 1rem;
   justify-content: center;
@@ -190,7 +192,7 @@ const SecondaryCta = styled(motion.a)`
   }
 `;
 
-const BoardArea = styled(motion.div)`
+const BoardArea = styled.div`
   position: relative;
   z-index: 2;
   display: flex;
@@ -198,6 +200,18 @@ const BoardArea = styled(motion.div)`
   flex: 1 1 auto;
   width: 100%;
   min-height: 0;
+`;
+
+/**
+ * Decorative tour fade only. Headline copy stays in the first paint so LCP
+ * is not gated on hydration (opacity 0 until useAnimation was 21s on mobile).
+ */
+const BoardFade = styled(motion.div)`
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 `;
 
 /**
@@ -252,16 +266,6 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   productCount = 0,
 }) => {
   const pathname = usePathname();
-  const controls = useAnimation();
-
-  // Animate in after mount to avoid an SSR/hydration flash.
-  useEffect(() => {
-    controls.start((i: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.7, delay: i * 0.12 },
-    }));
-  }, [controls]);
 
   const { cymasynth, nodes } = useMemo(() => {
     const synthProduct = instruments.find((p) => p.slug === "cymasynth");
@@ -310,25 +314,27 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
 
   return (
     <Hero id="home">
-      <BoardArea custom={0} initial={{ opacity: 0, y: 18 }} animate={controls}>
-        <CircuitNetwork
-          cymasphere={cymasphere ? toNode(cymasphere) : null}
-          cymasynth={cymasynth}
-          nodes={nodes}
-        />
+      <BoardArea>
+        <BoardFade
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          <CircuitNetwork
+            cymasphere={cymasphere ? toNode(cymasphere) : null}
+            cymasynth={cymasynth}
+            nodes={nodes}
+          />
+        </BoardFade>
         <Headline>
-          <Title custom={1} initial={{ opacity: 0, y: 18 }} animate={controls}>
+          <Title>
             Worlds of sound.
             <br />
             Orbiting in harmony.
           </Title>
-          <Support custom={2} initial={{ opacity: 0, y: 18 }} animate={controls}>
-            {supportLine}
-          </Support>
-          <SupportMobile custom={2} initial={{ opacity: 0, y: 18 }} animate={controls}>
-            {supportLineMobile}
-          </SupportMobile>
-          <Ctas custom={3} initial={{ opacity: 0, y: 18 }} animate={controls}>
+          <Support>{supportLine}</Support>
+          <SupportMobile>{supportLineMobile}</SupportMobile>
+          <Ctas>
             <PrimaryCta
               href="/product/cymasphere"
               whileHover={{ scale: 1.04 }}

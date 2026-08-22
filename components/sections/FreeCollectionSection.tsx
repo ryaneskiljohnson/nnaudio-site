@@ -2,12 +2,15 @@
  * @fileoverview Curated homepage section for the free collection. This gives
  * free offers a stronger landing-page feel than a generic catalog carousel.
  * @module components/sections/FreeCollectionSection
+ * @note The intro visual is a next/image fill so the (previously mislabeled
+ * PNG-as-webp) asset is served at display size, not as a CSS background.
  */
 
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import styled from "styled-components";
 import { scrollToHash } from "@/utils/scrollToHash";
@@ -94,11 +97,7 @@ const VisualCard = styled.div`
   border-radius: 24px;
   overflow: hidden;
   position: relative;
-  background:
-    linear-gradient(180deg, rgba(7, 8, 15, 0.2), rgba(7, 8, 15, 0.78)),
-    url("/images/landing/free-collection-visual.webp");
-  background-size: cover;
-  background-position: center;
+  background: #07080f;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
   display: flex;
@@ -109,7 +108,19 @@ const VisualCard = styled.div`
   }
 `;
 
+const VisualMedia = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+
+  img {
+    object-fit: cover;
+  }
+`;
+
 const VisualOverlay = styled.div`
+  position: relative;
+  z-index: 1;
   width: 100%;
   padding: 1.35rem 1.4rem;
   background: linear-gradient(
@@ -509,6 +520,16 @@ export default function FreeCollectionSection({
 
         <IntroGrid>
           <VisualCard>
+            <VisualMedia>
+              <Image
+                src="/images/landing/free-collection-visual.webp"
+                alt=""
+                fill
+                sizes="(max-width: 920px) 100vw, 55vw"
+                quality={70}
+                aria-hidden
+              />
+            </VisualMedia>
             <VisualOverlay>
               <VisualTitle>Try before you buy</VisualTitle>
               <VisualBody>
