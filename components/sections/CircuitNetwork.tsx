@@ -114,6 +114,15 @@ const CYMASPHERE_SUN_MARK = "/images/cymasphere-sun-mark.png";
  * on the spotlight; a 1280² JPEG is enough for the 560px sun.
  */
 const CYMASPHERE_SUN_SPHERE = "/images/cymasphere-sun-sphere-hero.jpg";
+/**
+ * Official CymaSynth app icon (Seed of Life / cymatic mark) for credit thumbs.
+ */
+const CYMASYNTH_MARK = "/images/cymasynth-mark.png";
+/**
+ * Downscaled CymaSynth planet for the hero wrap. 4K lives at
+ * `/images/cymasynth-sphere.jpg` for the spotlight.
+ */
+const CYMASYNTH_SPHERE = "/images/cymasynth-sphere-hero.jpg";
 /** Cymasphere axial day — slower than the moons, still readable. */
 const SUN_SPIN_SEC = 80;
 const SYNTH_SPIN_SEC = 56;
@@ -177,6 +186,30 @@ interface CircuitNetworkProps {
   cymasynth?: CircuitNode | null;
   /** Remaining catalog products on the outer orbits. */
   nodes: CircuitNode[];
+}
+
+/**
+ * @brief Artwork URL for a moon's spherical wrap.
+ * CymaSynth uses the pre-rendered planet (like the sun); catalog moons
+ * use their product image.
+ * @param body Tour body with synth flag and node art.
+ * @returns Absolute path or remote image URL, or empty when none.
+ */
+function moonWrapUrl(body: {
+  synth: boolean;
+  node: { image?: string };
+}): string {
+  if (body.synth) return CYMASYNTH_SPHERE;
+  return body.node.image || "";
+}
+
+/**
+ * @brief Bake options for a moon wrap. Pre-lit planets skip surface shade.
+ * @param body Tour body with synth flag.
+ * @returns Options for loadSphereTexture, or undefined for defaults.
+ */
+function moonWrapBakeOpts(body: { synth: boolean }) {
+  return body.synth ? { surfaceShade: false as const } : undefined;
 }
 
 const Board = styled.div`
@@ -1137,7 +1170,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   // Start the tour immediately. IntersectionObserver pauses it when the
   // hero leaves the viewport; if IO never fires (embedded previews), the
   // camera and credit card still run.
-  const [isVisible, setIsVisible] = useState(true);
+  // IntersectionObserver updates a ref so scrolling the hero off-screen
+  // pauses the tour without tearing down the rAF loop (that remount used
+  // to feel like a reload on mobile when scrolling back).
+  const heroOnScreenRef = useRef(true);
+  const pageHiddenRef = useRef(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [frameSize, setFrameSize] = useState<{ w: number; h: number } | null>(
     null
@@ -1156,15 +1193,25 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   useEffect(() => {
     const mql = window.matchMedia("(max-width: 768px)");
     setIsMobile(mql.matches);
+    if (mql.matches) {
+      FRAME.lowDetail = true;
+      containerRef.current?.setAttribute("data-low", "true");
+    }
     const onResize = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mql.addEventListener("change", onResize);
     const motionMql = window.matchMedia("(prefers-reduced-motion: reduce)");
     setReducedMotion(motionMql.matches);
     const onMotion = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
     motionMql.addEventListener("change", onMotion);
+    const onPageVis = () => {
+      pageHiddenRef.current = document.visibilityState === "hidden";
+    };
+    onPageVis();
+    document.addEventListener("visibilitychange", onPageVis);
     return () => {
       mql.removeEventListener("change", onResize);
       motionMql.removeEventListener("change", onMotion);
+      document.removeEventListener("visibilitychange", onPageVis);
     };
   }, []);
 
@@ -1187,11 +1234,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             // Embedded previews sometimes report 0 intersection while the
             // board still fills the viewport — keep the tour running then.
             if (r.height > 8 && r.top < vh && r.bottom > 0) {
-              setIsVisible(true);
+              heroOnScreenRef.current = true;
               return;
             }
           }
-          setIsVisible(e.isIntersecting);
+          heroOnScreenRef.current = e.isIntersecting;
         }),
       { threshold: 0 }
     );
@@ -1317,7 +1364,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           subtitle: (cymasphere?.tagline || "").trim(),
           image: CYMASPHERE_APP_ICON,
           sun: true,
-          weight: 3,
+          weight: 1.5,
           startDeg: 0,
           periodSec: 1,
           radius: 0,
@@ -1356,18 +1403,21 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       .map((credit) => credit.key);
     for (const key of upcoming) {
       const body = byKey.get(key);
-      if (!body?.node.image || texturesHiRef.current.has(body.key)) continue;
-      void loadSphereTexture(body.node.image, body.texSizeHi).then((tex) => {
-        if (!mountedRef.current) return;
-        if (!tex) {
-          console.warn(
-            `[hero] texture for ${body.key} fell back to an untextured sphere — image host may lack CORS headers.`
-          );
-          return;
+      const wrap = body ? moonWrapUrl(body) : "";
+      if (!body || !wrap || texturesHiRef.current.has(body.key)) continue;
+      void loadSphereTexture(wrap, body.texSizeHi, moonWrapBakeOpts(body)).then(
+        (tex) => {
+          if (!mountedRef.current) return;
+          if (!tex) {
+            console.warn(
+              `[hero] texture for ${body.key} fell back to an untextured sphere — image host may lack CORS headers.`
+            );
+            return;
+          }
+          rememberHiRes(texturesHiRef.current, body.key, tex);
+          warpPhases.current.delete(body.key);
         }
-        rememberHiRes(texturesHiRef.current, body.key, tex);
-        warpPhases.current.delete(body.key);
-      });
+      );
     }
   }, [bodies, credits]);
 
@@ -1414,7 +1464,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   };
 
   useEffect(() => {
-    if (!isVisible) return;
     let raf = 0;
 
     // Every moon keeps its day-length spin; featured moons add a faint
@@ -1486,6 +1535,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     let ringFade = 1;
     const tick = (now: number) => {
       try {
+      if (!heroOnScreenRef.current || pageHiddenRef.current) {
+        lastFrameAt.current = now;
+        raf = window.requestAnimationFrame(tick);
+        return;
+      }
       frameNo += 1;
       const {
         credits,
@@ -1701,8 +1755,13 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const focusedBody =
           focusedIdx === undefined ? undefined : bodies[focusedIdx];
         const prefetchHi = (body?: (typeof bodies)[number]) => {
-          if (!body?.node.image || texturesHiRef.current.has(body.key)) return;
-          void loadSphereTexture(body.node.image, body.texSizeHi).then((tex) => {
+          const wrap = body ? moonWrapUrl(body) : "";
+          if (!body || !wrap || texturesHiRef.current.has(body.key)) return;
+          void loadSphereTexture(
+            wrap,
+            body.texSizeHi,
+            moonWrapBakeOpts(body)
+          ).then((tex) => {
             if (!tex) return;
             rememberHiRes(texturesHiRef.current, body.key, tex);
             warpPhases.current.delete(body.key);
@@ -1719,7 +1778,15 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       if (focused) {
         const role = focused.subtitle || "";
         const sunCredit = Boolean(focused.sun);
-        const thumbSrc = sunCredit ? CYMASPHERE_APP_ICON : focused.image || "";
+        const focusedIdx = bodyIndexByKey.get(focused.key);
+        const focusedBody =
+          focusedIdx === undefined ? undefined : bodies[focusedIdx];
+        const synthCredit = focusedBody?.synth === true;
+        const thumbSrc = sunCredit
+          ? CYMASPHERE_APP_ICON
+          : synthCredit
+            ? CYMASYNTH_MARK
+            : focused.image || "";
         const copyKey = `${focused.key}|${focused.name}|${role}|${focused.price ?? ""}|${thumbSrc}`;
         if (copyKey !== lastCreditCopy) {
           lastCreditCopy = copyKey;
@@ -1996,7 +2063,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     };
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [isVisible, reducedMotion]);
+  }, [reducedMotion]);
 
   const ringRadii = useMemo(() => {
     const seen = new Set<number>();

@@ -127,6 +127,10 @@ const WaveformTransition: React.FC<WaveformTransitionProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const resolvedBarCount = useMemo(() => {
+    if (typeof window === "undefined") return barCount;
+    return window.innerWidth <= 768 ? Math.min(barCount, 48) : barCount;
+  }, [barCount]);
   
   // Check for reduced motion preference
   useEffect(() => {
@@ -145,8 +149,8 @@ const WaveformTransition: React.FC<WaveformTransitionProps> = ({
   
   // Memoize bar heights - only generate once per instance
   const barHeights = useMemo(() => 
-    Array.from({ length: barCount }, () => Math.random() * 0.8 + 0.2),
-    [barCount]
+    Array.from({ length: resolvedBarCount }, () => Math.random() * 0.8 + 0.2),
+    [resolvedBarCount]
   );
 
   // Memoize animation variants - use transform: scaleY for better performance

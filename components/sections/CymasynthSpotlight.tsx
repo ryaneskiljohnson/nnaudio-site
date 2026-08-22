@@ -2,8 +2,8 @@
 
 /**
  * @fileoverview CymaSynth flagship-instrument spotlight: mirrored layout to
- * the Cymasphere spotlight with product art from the catalog API and terse
- * engine facts.
+ * the Cymasphere spotlight with the 4K CymaSynth sphere behind product art,
+ * plus terse engine facts.
  * @module components/sections/CymasynthSpotlight
  */
 
@@ -171,9 +171,10 @@ const VisualBackdrop = styled.div`
   position: absolute;
   inset: 0;
   z-index: 0;
+  background: #02040a;
 
   img {
-    object-fit: cover;
+    object-fit: contain;
   }
 `;
 
@@ -195,6 +196,9 @@ const reveal = {
   viewport: { once: true, margin: "-80px" },
   transition: { duration: 0.7 },
 };
+
+/** 4K CymaSynth planet generated from the official cymatic mark. */
+const SYNTH_SPHERE = "/images/cymasynth-sphere.jpg";
 
 /**
  * @brief True when a catalog URL is a raster image next/image can optimize.
@@ -241,13 +245,11 @@ function renderPrice(price?: number | string, salePrice?: number | null) {
  * @note Feature facts (oscillators, wavetable frames, mod routes, voices) are
  * fixed product truths, not marketing copy, so they live here rather than in
  * the database description.
- * @note Catalog PNGs are loaded through next/image so Vercel can serve
- * sized WebP/AVIF instead of the raw 1–2 MB Supabase files.
+ * @note Catalog product art still sits in front of the local 4K sphere;
+ * next/image optimizes both.
  */
 const CymasynthSpotlight: React.FC<CymasynthSpotlightProps> = ({ product }) => {
   const image = product?.featured_image_url || product?.logo_url;
-  const rawBackdrop = product?.backgroundImage;
-  const backdrop = isRasterImageUrl(rawBackdrop) ? rawBackdrop : undefined;
   const productArt = isRasterImageUrl(image) ? image : undefined;
 
   return (
@@ -271,18 +273,16 @@ const CymasynthSpotlight: React.FC<CymasynthSpotlightProps> = ({ product }) => {
         </Copy>
 
         <Visual {...reveal} transition={{ duration: 0.7, delay: 0.15 }}>
-          {backdrop && (
-            <VisualBackdrop>
-              <Image
-                src={backdrop}
-                alt=""
-                fill
-                sizes="(max-width: 900px) 100vw, 55vw"
-                quality={70}
-                aria-hidden
-              />
-            </VisualBackdrop>
-          )}
+          <VisualBackdrop>
+            <Image
+              src={SYNTH_SPHERE}
+              alt=""
+              fill
+              sizes="(max-width: 900px) 100vw, 55vw"
+              quality={70}
+              aria-hidden
+            />
+          </VisualBackdrop>
           {productArt && (
             <ProductArt>
               <Image
