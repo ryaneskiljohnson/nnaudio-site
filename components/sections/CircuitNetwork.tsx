@@ -292,8 +292,8 @@ const CreditSlot = styled.div`
   position: absolute;
   left: 6.5%;
   right: auto;
-  top: 50%;
-  transform: translateY(-52%);
+  top: 40%;
+  transform: translateY(-58%);
   z-index: 40;
   max-width: min(38vw, 420px);
   pointer-events: none;
@@ -309,7 +309,7 @@ const CreditSlot = styled.div`
   @media (max-width: 768px) {
     left: 4%;
     right: auto;
-    top: max(4.25rem, calc(env(safe-area-inset-top, 0px) + 3.4rem));
+    top: max(3.25rem, calc(env(safe-area-inset-top, 0px) + 2.5rem));
     transform: none;
     max-width: min(88vw, 340px);
 
