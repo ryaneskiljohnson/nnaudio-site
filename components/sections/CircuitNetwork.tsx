@@ -33,11 +33,13 @@ import {
   cameraTour,
   cymasynthOrbit,
   holdFrameOffset,
+  holdOriginCss,
   moonDiameter,
   moonPlacements,
   orbitRadiusPx,
   orderCredits,
   hideSynthForSunApproach,
+  isStableMoonHold,
   pickVisibleMoons,
   sineOscillatorRingPath,
   synthRingMoonRefPx,
@@ -58,10 +60,10 @@ function tourSceneCss(
   >
 ): string {
   return [
-    `translate3d(${cam.translateX.toFixed(2)}px, ${cam.translateY.toFixed(2)}px, ${cam.translateZ.toFixed(2)}px)`,
-    `rotateX(${cam.rotateX.toFixed(3)}deg)`,
-    `rotateY(${cam.rotateY.toFixed(3)}deg)`,
-    `rotateZ(${cam.rotateZ.toFixed(3)}deg)`,
+    `translate3d(${cam.translateX.toFixed(3)}px, ${cam.translateY.toFixed(3)}px, ${cam.translateZ.toFixed(3)}px)`,
+    `rotateX(${cam.rotateX.toFixed(4)}deg)`,
+    `rotateY(${cam.rotateY.toFixed(4)}deg)`,
+    `rotateZ(${cam.rotateZ.toFixed(4)}deg)`,
   ].join(" ");
 }
 
@@ -76,9 +78,9 @@ function tourSunCss(
   return [
     "translate(-50%, -50%)",
     "translateZ(2px)",
-    `rotateZ(${(-cam.rotateZ).toFixed(3)}deg)`,
-    `rotateY(${(-cam.rotateY).toFixed(3)}deg)`,
-    `rotateX(${(-cam.rotateX).toFixed(3)}deg)`,
+    `rotateZ(${(-cam.rotateZ).toFixed(4)}deg)`,
+    `rotateY(${(-cam.rotateY).toFixed(4)}deg)`,
+    `rotateX(${(-cam.rotateX).toFixed(4)}deg)`,
     `scale(${cam.sunScale.toFixed(3)})`,
   ].join(" ");
 }
@@ -577,6 +579,17 @@ const BodyLayer = styled.div`
   position: absolute;
   inset: 0;
   z-index: 1;
+  transform-style: preserve-3d;
+`;
+
+/**
+ * Moons only (not the sun). During a product hold this layer is shifted
+ * to the featured moon's seat so that moon is posed at the CSS origin —
+ * large world coordinates + 5× close-up were shaking outer planets.
+ */
+const HoldOrigin = styled.div`
+  position: absolute;
+  inset: 0;
   transform-style: preserve-3d;
 `;
 
@@ -1156,13 +1169,13 @@ function poseMoon(
   }
   el.style.transform = [
     "translate(-50%, -50%)",
-    `translate3d(${x.toFixed(2)}px, ${(-height).toFixed(2)}px, ${z.toFixed(2)}px)`,
-    `rotateZ(${(-FRAME.camZ).toFixed(3)}deg)`,
-    `rotateY(${(-FRAME.camY).toFixed(3)}deg)`,
-    `rotateX(${(-FRAME.camX).toFixed(3)}deg)`,
+    `translate3d(${x.toFixed(3)}px, ${(-height).toFixed(3)}px, ${z.toFixed(3)}px)`,
+    `rotateZ(${(-FRAME.camZ).toFixed(4)}deg)`,
+    `rotateY(${(-FRAME.camY).toFixed(4)}deg)`,
+    `rotateX(${(-FRAME.camX).toFixed(4)}deg)`,
     // Sit the disk in front of its ring plane so the stroke cannot
     // composite over the planet even where the dash hole is tight.
-    `translateZ(${(visualR + 4).toFixed(2)}px)`,
+    `translateZ(${(visualR + 4).toFixed(3)}px)`,
     `scale(${scale.toFixed(4)})`,
   ].join(" ");
   return visualR;
@@ -1208,9 +1221,9 @@ function poseSynthOscRings(
   const scale = visualDiameter / synthRingMoonRefPx(platePx);
   el.style.transform = [
     "translate(-50%, -50%)",
-    `translate3d(${x.toFixed(2)}px, ${(-height).toFixed(2)}px, ${z.toFixed(2)}px)`,
+    `translate3d(${x.toFixed(3)}px, ${(-height).toFixed(3)}px, ${z.toFixed(3)}px)`,
     `rotateX(${CYMASYNTH_RING_DISK_TILT_DEG}deg)`,
-    `rotateZ(${spinDeg.toFixed(2)}deg)`,
+    `rotateZ(${spinDeg.toFixed(3)}deg)`,
     `scale(${scale.toFixed(4)})`,
   ].join(" ");
   el.dataset.posed = "true";
@@ -1235,6 +1248,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
+  const holdOriginRef = useRef<HTMLDivElement>(null);
   const ringLayerRef = useRef<HTMLDivElement>(null);
   const sunRef = useRef<HTMLDivElement>(null);
   const synthRingsRef = useRef<HTMLDivElement>(null);
@@ -1738,6 +1752,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       const lookScale = 1 - creditsW;
       let camX = cam.rotateX + look.current.y * lookScale;
       let camY = cam.rotateY + look.current.x * lookScale;
+      const holdingMoon = isStableMoonHold(cam, creditsW);
       const follow = camFollow.current;
       if (!follow.armed) {
         follow.x = camX;
@@ -1757,16 +1772,27 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const sunApproach =
           cam.focusKey === SUN_FOCUS_KEY ||
           (cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY);
-        const tau = sunApproach ? 320 : creditsW > 0.65 ? 22 : jump > 10 ? 32 : 150;
-        const followK = 1 - Math.exp(-gapClamped / tau);
-        follow.x += angleDelta(follow.x, camX) * followK;
-        follow.y += angleDelta(follow.y, camY) * followK;
-        follow.z += angleDelta(follow.z, cam.rotateZ) * followK;
-        follow.tx += (cam.translateX - follow.tx) * followK;
-        follow.ty += (cam.translateY - follow.ty) * followK;
-        follow.tz += (cam.translateZ - follow.tz) * followK;
-        camX = follow.x;
-        camY = follow.y;
+        // Holds snap: a 22ms chase of the live Kepler seat plus 0.01px
+        // CSS rounding was the rumble, worse on far/small moons.
+        if (holdingMoon) {
+          follow.x = camX;
+          follow.y = camY;
+          follow.z = cam.rotateZ;
+          follow.tx = cam.translateX;
+          follow.ty = cam.translateY;
+          follow.tz = cam.translateZ;
+        } else {
+          const tau = sunApproach ? 320 : jump > 10 ? 32 : 150;
+          const followK = 1 - Math.exp(-gapClamped / tau);
+          follow.x += angleDelta(follow.x, camX) * followK;
+          follow.y += angleDelta(follow.y, camY) * followK;
+          follow.z += angleDelta(follow.z, cam.rotateZ) * followK;
+          follow.tx += (cam.translateX - follow.tx) * followK;
+          follow.ty += (cam.translateY - follow.ty) * followK;
+          follow.tz += (cam.translateZ - follow.tz) * followK;
+          camX = follow.x;
+          camY = follow.y;
+        }
       }
       if (sceneRef.current) {
         sceneRef.current.style.transform = tourSceneCss({
@@ -1778,6 +1804,17 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           translateZ: follow.tz,
         });
       }
+      const holdKey = holdingMoon ? cam.focusKey : null;
+      const holdWp = holdKey ? worldPos.get(holdKey) : undefined;
+      const holdOrigin = holdWp ? holdOriginCss(holdWp) : null;
+      if (holdOriginRef.current) {
+        holdOriginRef.current.style.transform = holdOrigin
+          ? `translate3d(${holdOrigin.x.toFixed(3)}px, ${holdOrigin.y.toFixed(3)}px, ${holdOrigin.z.toFixed(3)}px)`
+          : "none";
+      }
+      const ox = holdWp?.x ?? 0;
+      const oh = holdWp?.height ?? 0;
+      const oz = holdWp?.z ?? 0;
       if (sunRef.current) {
         // Billboard the sun too so its face never goes edge-on under yaw.
         sunRef.current.style.transform = tourSunCss({
@@ -2088,9 +2125,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           body.key,
           poseMoon(
             el,
-            wx,
-            wh,
-            wz,
+            wx - ox,
+            wh - oh,
+            wz - oz,
             wx * cosYaw + wz * sinYaw,
             zc,
             system.a[i],
@@ -2118,9 +2155,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             Math.max(synthBody.seat.size.w, synthBody.seat.size.h) / 2;
           poseSynthOscRings(
             ringsEl,
-            pos[si * 3],
-            pos[si * 3 + 1],
-            pos[si * 3 + 2],
+            pos[si * 3] - ox,
+            pos[si * 3 + 1] - oh,
+            pos[si * 3 + 2] - oz,
             visualR * 2,
             reducedMotion ? 0 : (elapsed / 90) % 360,
             moonOpacity,
@@ -2375,6 +2412,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       <Scene ref={sceneRef}>
         <RingLayer ref={ringLayerRef}>{ringField}</RingLayer>
         <BodyLayer>
+          <HoldOrigin ref={holdOriginRef}>
           {cymasynth ? (
             <SynthRingPlate
               ref={synthRingsRef}
@@ -2399,6 +2437,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             </SynthRingPlate>
           ) : null}
           {moonField}
+          </HoldOrigin>
 
           <SunWrap ref={sunRef}>
             <SunNebulaViolet />

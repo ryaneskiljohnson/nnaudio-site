@@ -308,10 +308,10 @@ export function aimYawAt(x: number, z: number): { rotateY: number; range: number
 }
 
 /**
- * Inspection drift while a product is held. Kept tiny — at 6–9×
+ * Inspection drift while a product is held. Kept tiny — at 5–6×
  * close-up a 12px truck read as the planet rumbling.
  */
-export const FOCUS_TRUCK_PX = 3;
+export const FOCUS_TRUCK_PX = 1.2;
 /** One inspection circle; long enough to read the product, never parked. */
 export const FOCUS_TRUCK_PERIOD_SEC = 22;
 /** Sun yaw while Cymasphere is featured — monotonic so the shot never stalls. */
@@ -359,13 +359,68 @@ export function holdFrameOffset(
  * is capped on narrow (mobile) frames so a hold does not overflow.
  * @param size Moon diameter in px.
  * @param targetPx Apparent disk size to aim for (default 560).
- * @returns Apparent scale factor at the hold (≥ 2.9).
+ * @returns Apparent scale factor at the hold (≥ 2.6).
  * @example
  * closeupMagnification(28) > closeupMagnification(120)
  */
 export function closeupMagnification(size: number, targetPx = 560): number {
   const target = Math.max(220, targetPx);
-  return Math.min(9.2, Math.max(2.9, target / Math.max(24, size * 2.1)));
+  // Cap well below 9×: outer/small moons at 9× turned 0.01px Kepler
+  // steps (and CSS rounding) into visible rumble.
+  return Math.min(5.8, Math.max(2.6, target / Math.max(24, size * 2.4)));
+}
+
+/**
+ * @brief CSS origin for the hold wrapper so the featured moon sits at
+ * (0,0,0) in that layer. Pair with posing moons at `world - focus`.
+ * @param focus Live Kepler seat of the featured moon.
+ * @returns CSS translation (y down) equal to the moon's world seat.
+ */
+export function holdOriginCss(focus: MoonWorldPos): {
+  x: number;
+  y: number;
+  z: number;
+} {
+  return { x: focus.x, y: -focus.height, z: focus.z };
+}
+
+/**
+ * @brief Net CSS translation for a moon when hold recentering is active.
+ * `T(origin) · T(world − focus)` must equal `T(world)` so hops do not jump.
+ * @param focus Live Kepler seat of the featured moon.
+ * @param world Live Kepler seat of the moon being posed.
+ * @returns Unshifted CSS translate components (y down).
+ */
+export function moonHoldNetCss(
+  focus: MoonWorldPos,
+  world: MoonWorldPos
+): { x: number; y: number; z: number } {
+  const origin = holdOriginCss(focus);
+  const localX = world.x - focus.x;
+  const localY = -(world.height - focus.height);
+  const localZ = world.z - focus.z;
+  return {
+    x: origin.x + localX,
+    y: origin.y + localY,
+    z: origin.z + localZ,
+  };
+}
+
+/**
+ * @brief Whether the tour is in a stable moon hold (not sun, not travel).
+ * `creditOpacity` is 0 during travel legs — gating on it avoids snapping
+ * the follow camera mid-hop when `creditsBlend` is already high.
+ * @param cam Current tour camera sample.
+ * @param creditsBlend Client-side card blend weight (0–1).
+ * @returns True when snap/recenter should engage.
+ */
+export function isStableMoonHold(cam: TourCamera, creditsBlend: number): boolean {
+  return (
+    creditsBlend > 0.65 &&
+    cam.focusKey != null &&
+    cam.focusKey !== SUN_FOCUS_KEY &&
+    cam.creditOpacity > 0.12
+  );
 }
 
 /**

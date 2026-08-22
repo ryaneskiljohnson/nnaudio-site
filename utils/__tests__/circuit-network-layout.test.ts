@@ -14,6 +14,9 @@ import {
   lookAtMoon,
   hideSynthForSunApproach,
   holdFrameOffset,
+  holdOriginCss,
+  isStableMoonHold,
+  moonHoldNetCss,
   cymasynthOrbit,
   CYMASYNTH_OSC_RINGS,
   SYNTH_RING_PLATE_DESKTOP_PX,
@@ -156,6 +159,111 @@ describe("cymasynthOrbit", () => {
     const synth = cymasynthOrbit(false);
     expect(synth.radius).toBeGreaterThan(1.15);
     expect(moonPlacements(8, false)[0].radius).toBeGreaterThan(synth.radius + 0.7);
+  });
+});
+
+describe("holdOriginCss", () => {
+  it("maps world up to CSS down so the hold moon can sit at the origin", () => {
+    expect(holdOriginCss({ x: 400, height: 80, z: -20 })).toEqual({
+      x: 400,
+      y: -80,
+      z: -20,
+    });
+  });
+});
+
+describe("moonHoldNetCss", () => {
+  it("recenter plus offset equals a direct world pose for any moon", () => {
+    const focus = { x: 400, height: 80, z: -20 };
+    const world = { x: -120, height: 30, z: 260 };
+    const net = moonHoldNetCss(focus, world);
+    expect(net.x).toBe(world.x);
+    expect(net.y).toBe(-world.height);
+    expect(net.z).toBe(world.z);
+  });
+
+  it("leaves the featured moon at its world seat", () => {
+    const wp = { x: 400, height: 80, z: -20 };
+    const net = moonHoldNetCss(wp, wp);
+    expect(net).toEqual({ x: wp.x, y: -wp.height, z: wp.z });
+  });
+});
+
+describe("isStableMoonHold", () => {
+  it("is false during travel even when creditsBlend is high", () => {
+    const credits = [
+      {
+        key: "a",
+        name: "A",
+        startDeg: 0,
+        periodSec: 40,
+        radius: 0.5,
+        radiusPx: 300,
+        size: 40,
+      },
+      {
+        key: "b",
+        name: "B",
+        startDeg: 140,
+        periodSec: 90,
+        radius: 1.2,
+        radiusPx: 600,
+        size: 110,
+      },
+    ];
+    const world = new Map([
+      ["a", { x: 300, height: 40, z: 80 }],
+      ["b", { x: -200, height: -30, z: 420 }],
+    ]);
+    const midTravel = cameraTour(
+      TOUR_INTRO_MS + CREDIT_MS - CREDIT_TRAVEL_MS / 2,
+      false,
+      credits,
+      world
+    );
+    expect(midTravel.creditOpacity).toBe(0);
+    expect(isStableMoonHold(midTravel, 0.9)).toBe(false);
+  });
+
+  it("is true mid-hold when the card is visible", () => {
+    const world = new Map([["x", { x: 400, height: 80, z: 0 }]]);
+    const cam = cameraTour(
+      TOUR_INTRO_MS + CREDIT_MS / 2,
+      false,
+      [
+        {
+          key: "x",
+          name: "X",
+          startDeg: 0,
+          periodSec: 40,
+          radius: 0.5,
+          radiusPx: 300,
+          size: 80,
+        },
+      ],
+      world
+    );
+    expect(cam.creditOpacity).toBeGreaterThan(0.12);
+    expect(isStableMoonHold(cam, 0.9)).toBe(true);
+  });
+});
+
+describe("closeupMagnification", () => {
+  it("caps well below 9× so outer moons do not rumble", () => {
+    expect(closeupMagnification(22)).toBeLessThanOrEqual(5.8);
+    expect(closeupMagnification(22)).toBeGreaterThanOrEqual(2.6);
+  });
+
+  it("clamps at 5.8 for very small moons", () => {
+    expect(closeupMagnification(10)).toBe(5.8);
+  });
+
+  it("clamps at 2.6 for very large moons", () => {
+    expect(closeupMagnification(500)).toBe(2.6);
+  });
+
+  it("scales inversely with size between clamps", () => {
+    expect(closeupMagnification(28)).toBeGreaterThan(closeupMagnification(120));
   });
 });
 
