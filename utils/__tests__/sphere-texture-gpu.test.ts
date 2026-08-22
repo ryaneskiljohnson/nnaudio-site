@@ -8,10 +8,16 @@
  * @module utils/__tests__/sphere-texture-gpu.test
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createCanvas, ImageData as NodeImageData } from "canvas";
+import {
+  createCanvas,
+  Image as NodeImage,
+  ImageData as NodeImageData,
+} from "canvas";
 import {
   bakeSphereStripFromPixels,
   getWarpLUT,
+  loadSphereTexture,
+  resolvedSphereTexture,
   warpStripToCanvas,
   warpStripToCanvasGpu,
 } from "@/utils/sphere-texture";
@@ -23,11 +29,13 @@ beforeAll(() => {
     createElement: () => createCanvas(2, 2),
   };
   (globalThis as { ImageData?: unknown }).ImageData = NodeImageData;
+  (globalThis as { Image?: unknown }).Image = NodeImage;
 });
 
 afterAll(() => {
   delete (globalThis as { document?: unknown }).document;
   delete (globalThis as { ImageData?: unknown }).ImageData;
+  delete (globalThis as { Image?: unknown }).Image;
 });
 
 /**
@@ -111,4 +119,42 @@ describe("warpStripToCanvasGpu vs CPU reference", () => {
       );
     }
   );
+});
+
+/** 1×1 PNG so loadSphereTexture can bake without network access. */
+const ONE_PX_PNG =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+
+describe("loadSphereTexture LRU", () => {
+  it("caps cached bakes and evicts the least-recently-used first", async () => {
+    // The cache key is url@size, so distinct sizes make distinct entries.
+    for (const size of [8, 9, 10, 11, 12, 13, 14, 15]) {
+      await loadSphereTexture(ONE_PX_PNG, size);
+    }
+    // Cap is 6: the two oldest bakes are gone, the rest survive.
+    expect(resolvedSphereTexture(ONE_PX_PNG, 8)).toBeUndefined();
+    expect(resolvedSphereTexture(ONE_PX_PNG, 9)).toBeUndefined();
+    for (const size of [10, 11, 12, 13, 14, 15]) {
+      expect(resolvedSphereTexture(ONE_PX_PNG, size)).not.toBeUndefined();
+    }
+  });
+
+  it("keeps a re-requested bake alive past newer ones", async () => {
+    for (const size of [30, 31, 32, 33, 34, 35]) {
+      await loadSphereTexture(ONE_PX_PNG, size);
+    }
+    // Touch the oldest, then overflow the cap: the touched entry must
+    // survive and the next-oldest goes instead.
+    await loadSphereTexture(ONE_PX_PNG, 30);
+    await loadSphereTexture(ONE_PX_PNG, 36);
+    expect(resolvedSphereTexture(ONE_PX_PNG, 30)).not.toBeUndefined();
+    expect(resolvedSphereTexture(ONE_PX_PNG, 31)).toBeUndefined();
+  });
+
+  it("re-bakes an evicted texture on the next request", async () => {
+    expect(resolvedSphereTexture(ONE_PX_PNG, 8)).toBeUndefined();
+    const again = await loadSphereTexture(ONE_PX_PNG, 8);
+    expect(again).not.toBeNull();
+    expect(resolvedSphereTexture(ONE_PX_PNG, 8)).toBe(again);
+  });
 });

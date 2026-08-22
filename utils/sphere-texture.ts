@@ -19,6 +19,12 @@
  * a Retina close-up stays around 3–4 px facets. The CPU path
  * (warpStripToCanvas) is the exact per-pixel reference used for
  * fallback and tests.
+ *
+ * Bakes are cached in a small LRU (TEXTURE_CACHE_MAX). The hero tour
+ * loops through the whole catalog forever; an unbounded cache left every
+ * visited product's strip pixels and v-warped canvas alive for the life
+ * of the page, which walked iOS Safari into its memory limit and a
+ * kill-and-reload loop. Eviction frees the canvas backing store too.
  * @module utils/sphere-texture
  */
 
@@ -735,6 +741,65 @@ const textureCache = new Map<string, Promise<SphereTexture | null>>();
 const resolvedTextures = new Map<string, SphereTexture | null>();
 
 /**
+ * Most bakes kept alive at once. Each entry pins the strip pixels plus
+ * a same-size v-warped canvas (~2.4 MB combined at the phone bake size,
+ * ~26 MB at the desktop Retina size). The tour's working set is three
+ * (featured moon, next moon, sun), so six leaves comfortable slack
+ * without letting a full catalog loop accumulate.
+ */
+const TEXTURE_CACHE_MAX = 6;
+
+/**
+ * @brief Drops one cached bake and frees its v-warped canvas.
+ * A caller still holding the SphereTexture keeps working: the strip
+ * pixels live on that reference, and vWarpedStrip rebuilds the canvas
+ * on the next warp because its cache entry is deleted here.
+ * @param key Cache key (`url@size[:raw]`).
+ */
+function releaseTextureKey(key: string): void {
+  textureCache.delete(key);
+  const tex = resolvedTextures.get(key);
+  resolvedTextures.delete(key);
+  if (!tex) return;
+  const warped = vWarpedCache.get(tex);
+  vWarpedCache.delete(tex);
+  if (warped) {
+    // Zeroing the dimensions releases the canvas backing store now —
+    // iOS Safari budgets canvas memory far tighter than JS heap.
+    warped.width = 0;
+    warped.height = 0;
+  }
+}
+
+/**
+ * @brief Marks a cache key most-recently-used (Map order is LRU order).
+ * @param key Cache key.
+ */
+function touchTextureKey(key: string): void {
+  const pending = textureCache.get(key);
+  if (pending) {
+    textureCache.delete(key);
+    textureCache.set(key, pending);
+  }
+  if (resolvedTextures.has(key)) {
+    const tex = resolvedTextures.get(key) ?? null;
+    resolvedTextures.delete(key);
+    resolvedTextures.set(key, tex);
+  }
+}
+
+/**
+ * @brief Evicts least-recently-used bakes beyond TEXTURE_CACHE_MAX.
+ */
+function evictStaleTextures(): void {
+  while (textureCache.size > TEXTURE_CACHE_MAX) {
+    const oldest = textureCache.keys().next().value;
+    if (oldest === undefined) break;
+    releaseTextureKey(oldest);
+  }
+}
+
+/**
  * @brief Returns a bake that has already finished, if any.
  * @param url Artwork URL.
  * @param size Strip height.
@@ -839,11 +904,12 @@ export function faceOnAlign(
 }
 
 /**
- * @brief Loads an image and bakes its wrap strip, cached per url+size.
- * Cross-origin images are requested anonymously; same-origin and
- * `/_next/image` URLs are not, so a missing ACAO header cannot taint
- * the canvas. A tainted or failed load resolves null and the moon
- * stays an untextured tinted sphere.
+ * @brief Loads an image and bakes its wrap strip, cached per url+size in
+ * an LRU capped at TEXTURE_CACHE_MAX (older bakes are released, canvas
+ * backing store included). Cross-origin images are requested anonymously;
+ * same-origin and `/_next/image` URLs are not, so a missing ACAO header
+ * cannot taint the canvas. A tainted or failed load resolves null and
+ * the moon stays an untextured tinted sphere.
  * @param url Artwork URL.
  * @param size Strip height in px.
  * @param options Forwarded to bakeSphereStrip.
@@ -857,30 +923,44 @@ export function loadSphereTexture(
   options: { surfaceShade?: boolean } = {}
 ): Promise<SphereTexture | null> {
   const key = `${url}@${size}${options.surfaceShade === false ? ":raw" : ""}`;
-  let pending = textureCache.get(key);
-  if (!pending) {
-    pending = new Promise((resolve) => {
-      const img = new Image();
-      if (imageUrlNeedsCrossOrigin(url)) {
-        img.crossOrigin = "anonymous";
-      }
-      img.onload = () => {
-        try {
-          const baked = bakeSphereStrip(img, size, options);
-          resolvedTextures.set(key, baked);
-          resolve(baked);
-        } catch {
-          resolvedTextures.set(key, null);
-          resolve(null);
-        }
-      };
-      img.onerror = () => {
-        resolvedTextures.set(key, null);
-        resolve(null);
-      };
-      img.src = url;
-    });
-    textureCache.set(key, pending);
+  const hit = textureCache.get(key);
+  if (hit) {
+    touchTextureKey(key);
+    return hit;
   }
+  let settle: (tex: SphereTexture | null) => void = () => undefined;
+  const pending = new Promise<SphereTexture | null>((resolve) => {
+    settle = resolve;
+  });
+  // Cache before the load starts so a synchronously-firing onload
+  // (node-canvas in tests) still finds its own entry in `finish`.
+  textureCache.set(key, pending);
+  evictStaleTextures();
+
+  /**
+   * @brief Caches and settles one finished bake (or failure).
+   * @param baked Texture, or null when the load or bake failed.
+   */
+  const finish = (baked: SphereTexture | null) => {
+    // Skip the cache when this key was evicted mid-flight; a later
+    // request re-bakes instead of resurrecting an orphan entry.
+    if (textureCache.get(key) === pending) {
+      resolvedTextures.set(key, baked);
+    }
+    settle(baked);
+  };
+  const img = new Image();
+  if (imageUrlNeedsCrossOrigin(url)) {
+    img.crossOrigin = "anonymous";
+  }
+  img.onload = () => {
+    try {
+      finish(bakeSphereStrip(img, size, options));
+    } catch {
+      finish(null);
+    }
+  };
+  img.onerror = () => finish(null);
+  img.src = url;
   return pending;
 }
