@@ -10,7 +10,13 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { countHeroCatalogProducts } from "@/lib/homepage-hero-count";
+import {
+  countHeroCatalogProducts,
+  emptyHomepageCatalogSeed,
+  mapRawProductToFeaturedCard,
+  sortFeaturedProducts,
+  type HomepageCatalogSeed,
+} from "@/lib/homepage-hero-seed";
 import EcosystemHero from "@/components/sections/EcosystemHero";
 import CymasphereSpotlight from "@/components/sections/CymasphereSpotlight";
 import CymasynthSpotlight from "@/components/sections/CymasynthSpotlight";
@@ -20,6 +26,7 @@ import CategoryGrid, {
 import FreeCollectionSection from "@/components/sections/FreeCollectionSection";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import FeaturedProductsSectionSkeleton from "@/components/sections/FeaturedProductsSectionSkeleton";
+import FreeCollectionSectionSkeleton from "@/components/sections/FreeCollectionSectionSkeleton";
 
 // Lazy load below-the-fold sections for better initial page load.
 const FeaturedProductsSection = dynamic(
@@ -90,27 +97,27 @@ function toCard(p: ApiProduct) {
 }
 
 /**
- * @brief Client homepage; `initialProductCount` is painted in the first HTML
- * so the hero support line does not swap "a catalog" → "73+" after fetch.
- * @param initialProductCount Server-counted orbit catalog size.
+ * @brief Client homepage; `seed` is painted in the first HTML so the hero
+ * count and category grid do not pop in after the catalog fetches.
+ * @param seed Server-counted orbit catalog snapshot.
  * @returns Homepage sections.
  */
 export default function HomePageClient({
-  initialProductCount = 0,
+  seed = emptyHomepageCatalogSeed(),
 }: {
-  initialProductCount?: number;
+  seed?: HomepageCatalogSeed;
 }) {
-  const [featuredProducts, setFeaturedProducts] = useState<any[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState(seed.featured);
   const [instruments, setInstruments] = useState<any[]>([]);
   const [effects, setEffects] = useState<any[]>([]);
   const [packs, setPacks] = useState<any[]>([]);
   const [midiFx, setMidiFx] = useState<any[]>([]);
   const [freeProducts, setFreeProducts] = useState<any[]>([]);
-  const [bundleCount, setBundleCount] = useState(0);
+  const [bundleCount, setBundleCount] = useState(seed.bundleCount);
   const [cymaspherePricing, setCymaspherePricing] = useState<{
     price?: number;
     salePrice?: number | null;
-  }>({});
+  }>(seed.cymasphere);
   const [cymasphereProduct, setCymasphereProduct] = useState<ReturnType<
     typeof toCard
   > | null>(null);
@@ -178,56 +185,12 @@ export default function HomePageClient({
           }
         }
 
-        // Featured row: curated order for the best-sellers strip.
+        // Featured row: same mapper + sort as the server seed for stable prices.
         if (featuredData.success && featuredData.products) {
-          const bundleSlugs = [
-            "ultimate-bundle",
-            "producers-arsenal",
-            "beat-lab",
-          ];
           const mappedFeatured = featuredData.products
-            .filter((p: any) => p)
-            .map((p: any) => {
-              const isBundle = bundleSlugs.includes(p.slug);
-              const productImage = p.featured_image_url || "";
-              const logoOrProduct = p.logo_url || productImage || "";
-              const useProductImageOnly =
-                (p.slug || "").toLowerCase() === "cymasphere";
-              return {
-                id: p.id,
-                name: p.name,
-                slug: p.slug,
-                tagline: p.tagline || p.short_description || "",
-                description: p.description,
-                logo: useProductImageOnly ? productImage : logoOrProduct,
-                thumbnail: useProductImageOnly
-                  ? productImage
-                  : productImage || p.logo_url || "",
-                backgroundImage:
-                  p.background_image_url || p.background_video_url || "",
-                price: `$${p.sale_price || p.price}`,
-                hasMultiplePricing: isBundle || p.category === "bundle",
-              };
-            });
-          const curatedFeaturedOrder = [
-            "ultimate-bundle",
-            "cymasphere",
-            "curio-texture-generator",
-            "reiya",
-            "obscura-tortured-orchestral-box",
-          ];
-          const sortedFeatured = mappedFeatured
-            .sort((a: any, b: any) => {
-              const aIndex = curatedFeaturedOrder.indexOf(a.slug);
-              const bIndex = curatedFeaturedOrder.indexOf(b.slug);
-              const normalizedA =
-                aIndex === -1 ? Number.MAX_SAFE_INTEGER : aIndex;
-              const normalizedB =
-                bIndex === -1 ? Number.MAX_SAFE_INTEGER : bIndex;
-              return normalizedA - normalizedB;
-            })
-            .slice(0, 5);
-          setFeaturedProducts(sortedFeatured || []);
+            .filter((p: ApiProduct) => p)
+            .map((p: ApiProduct) => mapRawProductToFeaturedCard(p));
+          setFeaturedProducts(sortFeaturedProducts(mappedFeatured));
         }
 
         if (bundlesData.success && bundlesData.bundles) {
@@ -271,7 +234,7 @@ export default function HomePageClient({
     ...packs,
     ...midiFx,
   ]);
-  const productCount = liveCount > 0 ? liveCount : initialProductCount;
+  const productCount = liveCount > 0 ? liveCount : seed.productCount;
 
   /**
    * @brief First few artwork URLs from a product list, for the catalog
@@ -290,33 +253,35 @@ export default function HomePageClient({
       key: "instruments",
       label: "Instruments",
       href: "/products?category=instrument-plugin",
-      count: instruments.length,
+      count: instruments.length || seed.instruments.count,
       blurb: "Synths, texture engines, and sound generators.",
-      images: catThumbs(instruments),
+      images: instruments.length
+        ? catThumbs(instruments)
+        : seed.instruments.thumbs,
     },
     {
       key: "effects",
       label: "Effects",
       href: "/products?category=audio-fx-plugin",
-      count: effects.length,
+      count: effects.length || seed.effects.count,
       blurb: "Color, space, and motion for any source.",
-      images: catThumbs(effects),
+      images: effects.length ? catThumbs(effects) : seed.effects.thumbs,
     },
     {
       key: "midi-fx",
       label: "MIDI FX",
       href: "/products?category=midi-fx-plugin",
-      count: midiFx.length,
+      count: midiFx.length || seed.midiFx.count,
       blurb: "Writing tools that plug into your DAW.",
-      images: catThumbs(midiFx),
+      images: midiFx.length ? catThumbs(midiFx) : seed.midiFx.thumbs,
     },
     {
       key: "packs",
       label: "MIDI & Sample Packs",
       href: "/packs",
-      count: packs.length,
+      count: packs.length || seed.packs.count,
       blurb: "Drop-in phrases, kits, and sounds.",
-      images: catThumbs(packs),
+      images: packs.length ? catThumbs(packs) : seed.packs.thumbs,
     },
     {
       key: "bundles",
@@ -329,9 +294,9 @@ export default function HomePageClient({
       key: "free",
       label: "Free Tools",
       href: "/free-tools",
-      count: freeProducts.length,
+      count: freeProducts.length || seed.free.count,
       blurb: "Start producing without spending a dime.",
-      images: catThumbs(freeProducts),
+      images: freeProducts.length ? catThumbs(freeProducts) : seed.free.thumbs,
     },
     {
       key: "access",
@@ -374,19 +339,23 @@ export default function HomePageClient({
       {/* Catalog breadth at a glance */}
       <CategoryGrid categories={categories} />
 
-      {/* Featured row */}
-      {!loading && featuredProducts.length > 0 && (
+      {/* Featured row: seed paints first; skeleton only if seed was empty. */}
+      {featuredProducts.length > 0 ? (
         <FeaturedProductsSection
           id="featured"
           eyebrow="Best Sellers"
           title="Where most people start"
           products={featuredProducts}
         />
+      ) : (
+        loading && <FeaturedProductsSectionSkeleton />
       )}
 
-      {/* Free row */}
-      {!loading && freeProducts.length > 0 && (
+      {/* Free row: reserve height until the client catalog arrives. */}
+      {freeProducts.length > 0 ? (
         <FreeCollectionSection products={freeProducts} />
+      ) : (
+        loading && <FreeCollectionSectionSkeleton />
       )}
 
       {/* Pricing + FAQ */}

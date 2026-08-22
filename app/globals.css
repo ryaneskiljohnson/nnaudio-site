@@ -292,6 +292,54 @@ a:hover,
   background: #02030a;
 }
 
+/*
+ * First-paint LCP for the hero headline. Styled-components later applies
+ * the gradient + transparent fill; until then the h1 must be visible
+ * (transparent fill with no background is an invisible LCP).
+ */
+#home h1 {
+  margin: 0 0 0.65rem;
+  color: #fff;
+  font-size: 2.8rem;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+#home .hero-cta {
+  display: inline-block;
+  padding: 12px 28px;
+  border-radius: 50px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.02rem;
+  text-decoration: none;
+  text-align: center;
+}
+
+#home .hero-cta-primary {
+  background: linear-gradient(135deg, #8a2be2 0%, #4b0082 100%);
+  box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
+}
+
+#home .hero-cta-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+@media (max-width: 768px) {
+  #home h1 {
+    font-size: clamp(1.35rem, 6.4vw, 1.7rem);
+    margin-bottom: 0.4rem;
+  }
+
+  #home .hero-cta {
+    padding: 12px 18px;
+    min-height: 44px;
+    font-size: 0.95rem;
+  }
+}
+
 /* Hero moons: never pick up the global a/button hover brightness. */
 .hero-moon:hover,
 .hero-moon:focus,

@@ -1,21 +1,21 @@
 /**
- * @fileoverview Homepage server entry. Counts orbit catalog products so the
- * hero support line is already "73+" in the first HTML, then hydrates the
- * client homepage with that count.
+ * @fileoverview Homepage server entry. Seeds catalog counts, thumbs,
+ * featured cards, and Cymasphere pricing so first HTML can paint the
+ * hero line and category grid without waiting on client fetches.
  * @module app/page
  */
 
 import HomePageClient from "./HomePageClient";
-import { getHomepageHeroProductCount } from "@/lib/homepage-hero-count";
+import { getHomepageCatalogSeed } from "@/lib/homepage-catalog-seed.server";
 
-/** Refresh the painted catalog count about once an hour. */
+/** Refresh the painted catalog snapshot about once an hour. */
 export const revalidate = 3600;
 
 /**
- * @brief Renders the public homepage with a server-seeded hero product count.
+ * @brief Renders the public homepage with a server-seeded catalog snapshot.
  * @returns The client homepage tree.
  */
 export default async function Home() {
-  const initialProductCount = await getHomepageHeroProductCount();
-  return <HomePageClient initialProductCount={initialProductCount} />;
+  const seed = await getHomepageCatalogSeed();
+  return <HomePageClient seed={seed} />;
 }

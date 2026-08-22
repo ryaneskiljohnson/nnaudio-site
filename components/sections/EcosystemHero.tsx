@@ -5,9 +5,10 @@
  * system, then a two-line headline and CTAs underneath.
  * @module components/sections/EcosystemHero
  * @note Title and support copy are static (no Framer opacity-0) so LCP can
- * paint with the HTML. The tour is a dynamic import so its JS is not on
- * the LCP path. Hero height is also reserved in globals.css (#home) so a
- * late styled-components sheet cannot collapse-then-expand the section.
+ * paint with the HTML. Critical #home h1 / CTA rules live in globals.css so
+ * the headline is visible before styled-components hydrates. The tour is a
+ * dynamic import so its JS is not on the LCP path. Hero height is reserved
+ * in globals.css (#home) so a late sheet cannot collapse-then-expand.
  */
 
 import React, { useMemo } from "react";
@@ -146,7 +147,7 @@ const Ctas = styled.div`
   }
 `;
 
-const PrimaryCta = styled(motion.a)`
+const PrimaryCta = styled.a`
   display: inline-block;
   padding: 12px 28px;
   border-radius: 50px;
@@ -156,10 +157,15 @@ const PrimaryCta = styled(motion.a)`
   font-size: 1.02rem;
   text-decoration: none;
   box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
-  transition: box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
 
   &:hover {
     box-shadow: 0 8px 30px rgba(138, 43, 226, 0.6);
+    transform: scale(1.04);
+  }
+
+  &:active {
+    transform: scale(0.96);
   }
 
   @media (max-width: 768px) {
@@ -170,7 +176,7 @@ const PrimaryCta = styled(motion.a)`
   }
 `;
 
-const SecondaryCta = styled(motion.a)`
+const SecondaryCta = styled.a`
   display: inline-block;
   padding: 12px 28px;
   border-radius: 50px;
@@ -181,11 +187,16 @@ const SecondaryCta = styled(motion.a)`
   font-size: 1.02rem;
   text-decoration: none;
   backdrop-filter: blur(10px);
-  transition: background 0.3s ease, border-color 0.3s ease;
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.2s ease;
 
   &:hover {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.45);
+    transform: scale(1.04);
+  }
+
+  &:active {
+    transform: scale(0.96);
   }
 
   @media (max-width: 768px) {
@@ -358,16 +369,14 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
           <SupportMobile>{supportLineMobile}</SupportMobile>
           <Ctas>
             <PrimaryCta
+              className="hero-cta hero-cta-primary"
               href="/product/cymasphere"
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
             >
               Explore Cymasphere
             </PrimaryCta>
             <SecondaryCta
+              className="hero-cta hero-cta-secondary"
               href="#catalog"
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
               onClick={(e) => {
                 if (scrollToHash("#catalog", pathname ?? "/")) e.preventDefault();
               }}

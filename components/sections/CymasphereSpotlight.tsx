@@ -2,7 +2,7 @@
 
 /**
  * @fileoverview Cymasphere flagship spotlight: real product UI screenshots
- * and copy over the 4K Cymasphere sphere, plus feature lines, price, and
+ * and copy over the hero-sized Cymasphere sphere, plus feature lines, price, and
  * a single CTA. Visual-first by design.
  * @module components/sections/CymasphereSpotlight
  */
@@ -265,8 +265,8 @@ const reveal = {
 const SONG_VIEW = { src: "/images/cymasphere-features/Song View.webp", w: 2844, h: 1990 };
 /** Intrinsic pixels of the Palette View screenshot (public asset). */
 const PALETTE_VIEW = { src: "/images/cymasphere-features/Palette View.webp", w: 2864, h: 1998 };
-/** 4K Cymasphere planet generated from the official mark. */
-const SUN_SPHERE = "/images/cymasphere-sun-sphere.jpg";
+/** Hero-sized Cymasphere planet (below the fold; not the 4K 2.2MB original). */
+const SUN_SPHERE = "/images/cymasphere-sun-sphere-hero.jpg";
 
 /**
  * @brief Renders the Cymasphere spotlight over the 4K sphere, with UI
@@ -288,9 +288,10 @@ const CymasphereSpotlight: React.FC<CymasphereSpotlightProps> = ({
         <Image
           src={SUN_SPHERE}
           alt=""
-          width={4096}
-          height={4096}
+          width={1024}
+          height={1024}
           sizes="(max-width: 900px) 160vw, 130vw"
+          loading="lazy"
           aria-hidden
         />
       </SphereBackdrop>

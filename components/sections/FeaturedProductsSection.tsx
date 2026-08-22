@@ -477,7 +477,7 @@ const NavigationButton = styled.button<{ $direction: 'left' | 'right' }>`
 `;
 
 interface FeaturedProduct {
-  id: number;
+  id: number | string;
   name: string;
   tagline?: string;
   description?: string;
