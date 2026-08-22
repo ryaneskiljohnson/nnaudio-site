@@ -181,7 +181,8 @@ describe("sineOscillatorRingPath", () => {
     expect(CYMASYNTH_OSC_RINGS.some((r) => r.tiltX !== 0 || r.tiltZ !== 0)).toBe(
       true
     );
-    expect(CYMASYNTH_OSC_RINGS.every((r) => Math.abs(r.tiltX) <= 12)).toBe(true);
+    expect(CYMASYNTH_OSC_RINGS.every((r) => Math.abs(r.tiltX) <= 3)).toBe(true);
+    expect(CYMASYNTH_OSC_RINGS.every((r) => Math.abs(r.tiltZ) <= 4)).toBe(true);
   });
 });
 

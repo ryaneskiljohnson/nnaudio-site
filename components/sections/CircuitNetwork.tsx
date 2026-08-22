@@ -21,6 +21,7 @@ import {
   type VisibleMoonCandidate,
   CYMASYNTH_OSC_GREEN,
   CYMASYNTH_OSC_RINGS,
+  CYMASYNTH_RING_DISK_TILT_DEG,
   CYMASYNTH_RING_PLATE_MOON_PX,
   SUN_FOCUS_KEY,
   TOUR_PERSPECTIVE_PX,
@@ -195,18 +196,18 @@ interface CircuitNetworkProps {
 /**
  * @brief Artwork URL for a moon's spherical wrap.
  * CymaSynth uses the pre-rendered planet (like the sun); catalog moons
- * use their product image.
+ * use their product image. Wrap sources stay unoptimized: `/_next/image`
+ * at q=75 recompresses the artwork and that grain stretches across the
+ * sphere as it spins. Credit thumbs still use the optimizer.
  * @param body Tour body with synth flag and node art.
  * @returns Absolute path or remote image URL, or empty when none.
  */
 function moonWrapUrl(body: {
   synth: boolean;
   node: { image?: string };
-  texSizeHi: number;
 }): string {
   if (body.synth) return CYMASYNTH_SPHERE;
-  const raw = body.node.image || "";
-  return raw ? optimizedImageUrl(raw, body.texSizeHi) : "";
+  return body.node.image || "";
 }
 
 /**
@@ -693,6 +694,16 @@ const synthOscSpin = keyframes`
 `;
 
 /**
+ * Layout edge for the CymaSynth oscillator plate. Paths stay in the
+ * 240-unit viewBox; the CSS box is larger so a 3D `scale()` does not
+ * upscale a 240px raster (that stretch is the pixelation).
+ */
+const SYNTH_RING_AUTHOR_PX = 240;
+const SYNTH_RING_PLATE_PX = 1280;
+const SYNTH_RING_MOON_REF_PX =
+  CYMASYNTH_RING_PLATE_MOON_PX * (SYNTH_RING_PLATE_PX / SYNTH_RING_AUTHOR_PX);
+
+/**
  * World-space oscillator disk around CymaSynth. Sibling of the moon so
  * the sphere can keep overflow:hidden; not billboarded, so the rings
  * stay in a Saturn-like plane as the camera tours.
@@ -701,14 +712,18 @@ const SynthRingPlate = styled.div`
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 240px;
-  height: 240px;
+  width: ${SYNTH_RING_PLATE_PX}px;
+  height: ${SYNTH_RING_PLATE_PX}px;
   pointer-events: none;
   z-index: 19;
   overflow: visible;
   visibility: hidden;
   opacity: 0;
   transform-style: preserve-3d;
+
+  &[data-posed="true"] .synth-osc {
+    animation-play-state: running;
+  }
 `;
 
 const SynthRingDisk = styled.div<{ $tiltX: number; $tiltZ: number }>`
@@ -720,9 +735,10 @@ const SynthRingDisk = styled.div<{ $tiltX: number; $tiltZ: number }>`
 
 const SynthRingSvg = styled.svg`
   display: block;
-  width: 240px;
-  height: 240px;
+  width: ${SYNTH_RING_PLATE_PX}px;
+  height: ${SYNTH_RING_PLATE_PX}px;
   overflow: visible;
+  shape-rendering: geometricPrecision;
 `;
 
 const SynthOscPath = styled.path<{ $dur: string }>`
@@ -731,8 +747,10 @@ const SynthOscPath = styled.path<{ $dur: string }>`
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.45;
-  transform-origin: 120px 120px;
+  transform-origin: center center;
+  shape-rendering: geometricPrecision;
   animation: ${synthOscSpin} ${(p) => p.$dur} linear infinite;
+  animation-play-state: paused;
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
@@ -741,7 +759,14 @@ const SynthOscPath = styled.path<{ $dur: string }>`
 
 const SYNTH_OSC_PATHS = CYMASYNTH_OSC_RINGS.map((ring) => ({
   ...ring,
-  d: sineOscillatorRingPath(120, 120, ring.radius, ring.amplitude, ring.cycles),
+  d: sineOscillatorRingPath(
+    120,
+    120,
+    ring.radius,
+    ring.amplitude,
+    ring.cycles,
+    256
+  ),
 }));
 
 const SynthMoon = styled(Moon)`
@@ -1162,19 +1187,23 @@ function poseSynthOscRings(
 ): void {
   if (!visible) {
     if (el.style.visibility !== "hidden") el.style.visibility = "hidden";
+    if (el.style.opacity !== "0") el.style.opacity = "0";
+    if (el.dataset.posed) delete el.dataset.posed;
     return;
   }
-  if (el.style.visibility !== "visible") el.style.visibility = "visible";
-  el.style.zIndex = String(Math.max(1, zIndex - 1));
-  el.style.opacity = opacity.toFixed(3);
-  const scale = visualDiameter / CYMASYNTH_RING_PLATE_MOON_PX;
+
+  const scale = visualDiameter / SYNTH_RING_MOON_REF_PX;
   el.style.transform = [
     "translate(-50%, -50%)",
     `translate3d(${x.toFixed(2)}px, ${(-height).toFixed(2)}px, ${z.toFixed(2)}px)`,
-    "rotateX(68deg)",
+    `rotateX(${CYMASYNTH_RING_DISK_TILT_DEG}deg)`,
     `rotateZ(${spinDeg.toFixed(2)}deg)`,
     `scale(${scale.toFixed(4)})`,
   ].join(" ");
+  el.dataset.posed = "true";
+  el.style.zIndex = String(Math.max(1, zIndex - 1));
+  el.style.opacity = opacity.toFixed(3);
+  if (el.style.visibility !== "visible") el.style.visibility = "visible";
 }
 
 /**

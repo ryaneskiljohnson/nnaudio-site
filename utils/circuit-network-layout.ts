@@ -160,7 +160,9 @@ export const CYMASYNTH_OSC_GREEN = "rgba(78, 205, 196, 0.82)";
 /**
  * Nested sine-wave rings around CymaSynth. Radii stay tight so they
  * read as one oscillator family; tiltX/tiltZ splay a few onto nearby
- * axes without breaking the nest. Plate is 240×240.
+ * axes without breaking the nest. Paths are authored in a 240×240
+ * viewBox; CircuitNetwork rasterizes the plate larger so 3D scale
+ * does not pixelate the strokes.
  */
 export const CYMASYNTH_OSC_RINGS: ReadonlyArray<{
   cycles: number;
@@ -173,17 +175,21 @@ export const CYMASYNTH_OSC_RINGS: ReadonlyArray<{
   tiltZ: number;
 }> = [
   { cycles: 3, radius: 64, amplitude: 2.6, duration: "14s", tiltX: 0, tiltZ: 0 },
-  { cycles: 4, radius: 70, amplitude: 3.0, duration: "18s", tiltX: 5, tiltZ: 8 },
-  { cycles: 5, radius: 76, amplitude: 3.2, duration: "22s", tiltX: -6, tiltZ: -4 },
-  { cycles: 6, radius: 82, amplitude: 3.4, duration: "16s", tiltX: 3, tiltZ: -10 },
-  { cycles: 7, radius: 88, amplitude: 3.6, duration: "26s", tiltX: -8, tiltZ: 6 },
-  { cycles: 8, radius: 94, amplitude: 3.8, duration: "20s", tiltX: 7, tiltZ: -7 },
-  { cycles: 9, radius: 100, amplitude: 4.0, duration: "30s", tiltX: -4, tiltZ: 11 },
-  { cycles: 11, radius: 106, amplitude: 4.2, duration: "24s", tiltX: 9, tiltZ: 3 },
+  { cycles: 4, radius: 70, amplitude: 3.0, duration: "18s", tiltX: 2, tiltZ: 2 },
+  { cycles: 5, radius: 76, amplitude: 3.2, duration: "22s", tiltX: -2, tiltZ: -1 },
+  { cycles: 6, radius: 82, amplitude: 3.4, duration: "16s", tiltX: 1, tiltZ: -3 },
+  { cycles: 7, radius: 88, amplitude: 3.6, duration: "26s", tiltX: -2, tiltZ: 2 },
+  { cycles: 8, radius: 94, amplitude: 3.8, duration: "20s", tiltX: 2, tiltZ: -2 },
+  { cycles: 9, radius: 100, amplitude: 4.0, duration: "30s", tiltX: -1, tiltZ: 3 },
+  { cycles: 11, radius: 106, amplitude: 4.2, duration: "24s", tiltX: 2, tiltZ: 1 },
 ];
 
 /**
- * CSS box the oscillator plate is authored against (matches desktop
+ * Shared rotateX for the CymaSynth oscillator disk in world space.
+ */
+export const CYMASYNTH_RING_DISK_TILT_DEG = 52;
+
+/**
  * CymaSynth moon diameter). Pose scale is `visualDiameter / this`.
  */
 export const CYMASYNTH_RING_PLATE_MOON_PX = 108;
