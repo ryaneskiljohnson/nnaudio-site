@@ -276,6 +276,22 @@ a:hover,
   color: white !important;
 }
 
+/*
+ * Homepage hero (#home). Height is reserved here — not only in
+ * styled-components — so first paint already occupies a full small
+ * viewport. If CSS-in-JS arrives late, the spotlight below does not
+ * jump. svh (not dvh) so the slot does not resize when the mobile
+ * URL bar shows or hides (that resize is itself CLS).
+ */
+#home {
+  height: 100vh;
+  height: 100svh;
+  min-height: 100vh;
+  min-height: 100svh;
+  overflow: hidden;
+  background: #02030a;
+}
+
 /* Hero moons: never pick up the global a/button hover brightness. */
 .hero-moon:hover,
 .hero-moon:focus,

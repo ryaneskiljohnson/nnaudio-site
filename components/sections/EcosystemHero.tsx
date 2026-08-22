@@ -5,14 +5,17 @@
  * system, then a two-line headline and CTAs underneath.
  * @module components/sections/EcosystemHero
  * @note Title and support copy are static (no Framer opacity-0) so LCP can
- * paint with the HTML. Only the solar-system board fades in after mount.
+ * paint with the HTML. The tour is a dynamic import so its JS is not on
+ * the LCP path. Hero height is also reserved in globals.css (#home) so a
+ * late styled-components sheet cannot collapse-then-expand the section.
  */
 
 import React, { useMemo } from "react";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import styled from "styled-components";
 import { motion } from "framer-motion";
-import CircuitNetwork, { CircuitNode } from "./CircuitNetwork";
+import type { CircuitNode } from "./CircuitNetwork";
 import { scrollToHash } from "@/utils/scrollToHash";
 
 /** Minimal product shape consumed from the homepage fetches. */
@@ -50,8 +53,9 @@ const Hero = styled.section`
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  height: 100dvh;
-  min-height: 100dvh;
+  /* Match globals.css #home. svh avoids URL-bar resize CLS. */
+  height: 100svh;
+  min-height: 100svh;
   width: 100%;
   padding: 0;
   margin-bottom: 28px;
@@ -215,6 +219,23 @@ const BoardFade = styled(motion.div)`
 `;
 
 /**
+ * Same box as the tour board so swapping the dynamic import in does not
+ * change layout. Background matches CircuitNetwork's Board.
+ */
+const BoardPlaceholder = styled.div`
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  background: #02030a;
+`;
+
+const CircuitNetwork = dynamic(() => import("./CircuitNetwork"), {
+  ssr: false,
+  loading: () => <BoardPlaceholder />,
+});
+
+/**
  * @brief Formats a product price for chip tooltips ("Free" when 0).
  * @param product Source product.
  * @returns Display string or undefined when no price exists.
@@ -244,7 +265,8 @@ function toNode(product: HeroProduct): CircuitNode {
     slug: product.slug,
     image,
     price: displayPrice(product),
-    tagline: product.tagline || product.short_description || "",
+    tagline: product.tagline || "",
+    description: product.short_description || product.tagline || "",
   };
 }
 

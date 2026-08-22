@@ -258,7 +258,11 @@ function LayoutContent({
       )}
       {!shouldHideHeaderFooter && showAccessBanner && <NNAudioAccessBanner />}
       {!shouldHideHeaderFooter && shouldShowPromotion && (
-        <PromotionBanner showCountdown={true} />
+        /* Homepage: overlay so the late fetch cannot shove the 100svh hero. */
+        <PromotionBanner
+          showCountdown={true}
+          overlay={isLandingPage}
+        />
       )}
       <Main>{children}</Main>
       {!shouldHideHeaderFooter && <Footer />}

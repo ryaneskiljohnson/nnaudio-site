@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Site-wide sale strip. The default sticky variant can overlay
+ * the homepage hero (no document-flow insert) so a late fetch does not
+ * shove the 100svh section and inflate CLS.
+ * @module components/banners/PromotionBanner
+ */
+
 "use client";
 
 import React, { useState } from 'react';
@@ -14,16 +21,24 @@ import {
   recordPromotionBannerDismissal,
 } from '@/utils/promotions/promotion-banner-dismissal';
 
-const BannerContainer = styled(motion.div)<{ $background: string; $variant: 'sticky' | 'card' }>`
+const BannerContainer = styled(motion.div)<{
+  $background: string;
+  $variant: 'sticky' | 'card';
+  $overlay: boolean;
+}>`
   background: ${props => props.$background};
   padding: ${props => props.$variant === 'card' ? '2rem' : '1rem 2rem'};
-  position: ${props => props.$variant === 'sticky' ? 'sticky' : 'relative'};
-  top: ${props => props.$variant === 'sticky' ? '70px' : 'auto'};
+  position: ${props =>
+    props.$overlay ? 'fixed' : props.$variant === 'sticky' ? 'sticky' : 'relative'};
+  top: ${props =>
+    props.$overlay || props.$variant === 'sticky' ? '70px' : 'auto'};
+  left: ${props => (props.$overlay ? 0 : 'auto')};
+  right: ${props => (props.$overlay ? 0 : 'auto')};
   overflow: hidden;
   width: 100%;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  /* For sticky header banner, stay above nav; for card variant, stay above background canvas */
-  z-index: ${props => props.$variant === 'sticky' ? '3001' : '5'};
+  /* For sticky/overlay header banner, stay above nav; for card variant, stay above background canvas */
+  z-index: ${props => props.$variant === 'sticky' || props.$overlay ? '3001' : '5'};
   display: flex;
   align-items: center;
   min-height: ${props => props.$variant === 'card' ? '120px' : '60px'};
@@ -59,7 +74,8 @@ const BannerContainer = styled(motion.div)<{ $background: string; $variant: 'sti
   
   @media (max-width: 768px) {
     padding: ${props => props.$variant === 'card' ? '1.5rem 1rem' : '1rem'};
-    top: ${props => props.$variant === 'sticky' ? '64px' : 'auto'};
+    top: ${props =>
+      props.$overlay || props.$variant === 'sticky' ? '64px' : 'auto'};
     min-height: ${props => props.$variant === 'card' ? '100px' : '50px'};
   }
 `;
@@ -328,6 +344,12 @@ interface PromotionBannerProps {
   showCountdown?: boolean;
   dismissible?: boolean;
   variant?: 'sticky' | 'card';
+  /**
+   * Pin the sticky strip over the page instead of inserting it into
+   * document flow. Use on the homepage so a late promotion fetch cannot
+   * push the reserved 100svh hero.
+   */
+  overlay?: boolean;
 }
 
 interface Promotion {
@@ -346,7 +368,16 @@ interface Promotion {
   };
 }
 
-export default function PromotionBanner({ showCountdown = true, dismissible = true, variant = 'sticky' }: PromotionBannerProps) {
+/**
+ * @brief Renders the active sale strip, or nothing when the user is lifetime,
+ * the promo ended, or the visitor previously dismissed it.
+ * @param showCountdown When true, render the D/H/M/S boxes from end_date.
+ * @param dismissible When true, persist close in localStorage and hide later.
+ * @param variant `sticky` sits under the header; `card` is an in-page block.
+ * @param overlay When true, `position: fixed` so mount does not shift layout.
+ * @returns The banner, or null.
+ */
+export default function PromotionBanner({ showCountdown = true, dismissible = true, variant = 'sticky', overlay = false }: PromotionBannerProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [sale, setSale] = React.useState<Promotion | null>(null);
@@ -522,7 +553,8 @@ export default function PromotionBanner({ showCountdown = true, dismissible = tr
     <BannerContainer
       $background={theme.background}
       $variant={variant}
-      initial={{ opacity: 0, y: -20 }}
+      $overlay={overlay}
+      initial={overlay ? { opacity: 0 } : { opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.6 }}
