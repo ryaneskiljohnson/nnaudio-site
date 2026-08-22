@@ -22,6 +22,8 @@
  * @module utils/sphere-texture
  */
 
+import { imageUrlNeedsCrossOrigin } from "@/utils/optimized-image-url";
+
 /** Raw strip pixels; a plain record so the bake core is unit-testable. */
 export interface StripPixels {
   /** 2 × size: full 360° of longitude. */
@@ -838,9 +840,10 @@ export function faceOnAlign(
 
 /**
  * @brief Loads an image and bakes its wrap strip, cached per url+size.
- * Cross-origin images are requested anonymously; if the canvas ends up
- * tainted (no CORS headers) this resolves null and the moon stays an
- * untextured tinted sphere.
+ * Cross-origin images are requested anonymously; same-origin and
+ * `/_next/image` URLs are not, so a missing ACAO header cannot taint
+ * the canvas. A tainted or failed load resolves null and the moon
+ * stays an untextured tinted sphere.
  * @param url Artwork URL.
  * @param size Strip height in px.
  * @param options Forwarded to bakeSphereStrip.
@@ -858,7 +861,9 @@ export function loadSphereTexture(
   if (!pending) {
     pending = new Promise((resolve) => {
       const img = new Image();
-      img.crossOrigin = "anonymous";
+      if (imageUrlNeedsCrossOrigin(url)) {
+        img.crossOrigin = "anonymous";
+      }
       img.onload = () => {
         try {
           const baked = bakeSphereStrip(img, size, options);

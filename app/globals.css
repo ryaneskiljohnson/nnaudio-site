@@ -293,17 +293,19 @@ a:hover,
 }
 
 /*
- * First-paint LCP for the hero headline. Styled-components later applies
- * the gradient + transparent fill; until then the h1 must be visible
- * (transparent fill with no background is an invisible LCP).
+ * First-paint LCP for the hero headline. Keep solid white (no gradient
+ * clip / transparent fill) so hydration cannot restyle the LCP element.
  */
 #home h1 {
   margin: 0 0 0.65rem;
   color: #fff;
+  -webkit-text-fill-color: #fff;
+  background: none;
   font-size: 2.8rem;
   font-weight: 800;
   line-height: 1.12;
   letter-spacing: -0.02em;
+  text-shadow: 0 8px 24px rgba(5, 6, 13, 0.85);
 }
 
 #home .hero-cta {

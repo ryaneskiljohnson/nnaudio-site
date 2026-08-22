@@ -90,6 +90,7 @@ import {
   sphereShade,
   stepOrbitalSystem,
 } from "@/utils/orbital-physics";
+import { optimizedImageUrl } from "@/utils/optimized-image-url";
 import {
   type SphereTexture,
   getWarpLUT,
@@ -201,9 +202,11 @@ interface CircuitNetworkProps {
 function moonWrapUrl(body: {
   synth: boolean;
   node: { image?: string };
+  texSizeHi: number;
 }): string {
   if (body.synth) return CYMASYNTH_SPHERE;
-  return body.node.image || "";
+  const raw = body.node.image || "";
+  return raw ? optimizedImageUrl(raw, body.texSizeHi) : "";
 }
 
 /**
@@ -1858,10 +1861,12 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           focusedIdx === undefined ? undefined : bodies[focusedIdx];
         const synthCredit = focusedBody?.synth === true;
         const thumbSrc = sunCredit
-          ? CYMASPHERE_APP_ICON
+          ? optimizedImageUrl(CYMASPHERE_APP_ICON, 128)
           : synthCredit
-            ? CYMASYNTH_MARK
-            : focused.image || "";
+            ? optimizedImageUrl(CYMASYNTH_MARK, 128)
+            : focused.image
+              ? optimizedImageUrl(focused.image, 128)
+              : "";
         const blurb = featuredProductBlurb(focused, synthCredit);
         const copySide =
           sunCredit || holdFrameOffset(focused.key, viewHalfW).x > 0

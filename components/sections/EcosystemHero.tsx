@@ -5,8 +5,10 @@
  * system, then a two-line headline and CTAs underneath.
  * @module components/sections/EcosystemHero
  * @note Title and support copy are static (no Framer opacity-0) so LCP can
- * paint with the HTML. Critical #home h1 / CTA rules live in globals.css so
- * the headline is visible before styled-components hydrates. The tour is a
+ * paint with the HTML. The h1 stays solid white (no gradient / transparent
+ * fill) so hydration cannot restyle the LCP element. Critical #home h1 / CTA
+ * rules live in globals.css so the headline is visible before
+ * styled-components hydrates. The tour is a
  * dynamic import so its JS is not on the LCP path. Hero height is reserved
  * in globals.css (#home) so a late sheet cannot collapse-then-expand.
  */
@@ -86,15 +88,14 @@ const Headline = styled.div`
 
 const Title = styled.h1`
   margin: 0 0 0.65rem;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
   font-size: 2.8rem;
   font-weight: 800;
   line-height: 1.12;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #ffffff 0%, #c9c4ff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  filter: drop-shadow(0 8px 24px rgba(5, 6, 13, 0.85));
+  background: none;
+  text-shadow: 0 8px 24px rgba(5, 6, 13, 0.85);
 
   @media (max-width: 768px) {
     font-size: clamp(1.35rem, 6.4vw, 1.7rem);

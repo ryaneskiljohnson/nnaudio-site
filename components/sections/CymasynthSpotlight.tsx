@@ -197,8 +197,8 @@ const reveal = {
   transition: { duration: 0.7 },
 };
 
-/** 4K CymaSynth planet generated from the official cymatic mark. */
-const SYNTH_SPHERE = "/images/cymasynth-sphere.jpg";
+/** Hero-sized CymaSynth planet (the 4K original is not needed here). */
+const SYNTH_SPHERE = "/images/cymasynth-sphere-hero.jpg";
 
 /**
  * @brief True when a catalog URL is a raster image next/image can optimize.
@@ -245,7 +245,7 @@ function renderPrice(price?: number | string, salePrice?: number | null) {
  * @note Feature facts (oscillators, wavetable frames, mod routes, voices) are
  * fixed product truths, not marketing copy, so they live here rather than in
  * the database description.
- * @note Catalog product art still sits in front of the local 4K sphere;
+ * @note Catalog product art sits in front of the hero-sized sphere;
  * next/image optimizes both.
  */
 const CymasynthSpotlight: React.FC<CymasynthSpotlightProps> = ({ product }) => {

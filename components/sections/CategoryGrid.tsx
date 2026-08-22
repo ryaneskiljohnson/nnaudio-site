@@ -10,8 +10,10 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import styled from "styled-components";
 import { motion } from "framer-motion";
+import { isOptimizableImageSrc } from "@/utils/optimized-image-url";
 
 /** A single category tile. */
 export interface CategoryTile {
@@ -261,6 +263,28 @@ const Blurb = styled.span`
   color: rgba(255, 255, 255, 0.55);
 `;
 
+/**
+ * @brief 52px category-tile moon. Uses next/image when the host is
+ * allowlisted; unknown hosts stay a plain img so the homepage cannot throw.
+ * @param src Artwork URL from the catalog seed or API.
+ * @returns Optimized or fallback moon image.
+ */
+function CategoryMoonThumb({ src }: { src: string }) {
+  if (isOptimizableImageSrc(src)) {
+    return (
+      <Image
+        src={src}
+        alt=""
+        width={52}
+        height={52}
+        sizes="52px"
+        loading="lazy"
+      />
+    );
+  }
+  return <img src={src} alt="" loading="lazy" />;
+}
+
 const reveal = {
   initial: { opacity: 0, y: 24 },
   whileInView: { opacity: 1, y: 0 },
@@ -310,8 +334,11 @@ const CategoryGrid: React.FC<CategoryGridProps> = ({ categories }) => {
             >
               {c.images && c.images.length > 0 && (
                 <MoonCluster aria-hidden>
-                  {c.images.slice(0, i < 2 ? 4 : 3).map((src) => (
-                    <img key={src} src={src} alt="" loading="lazy" />
+                  {c.images.slice(0, i < 2 ? 4 : 3).map((src, moonIndex) => (
+                    <CategoryMoonThumb
+                      key={`${src}-${moonIndex}`}
+                      src={src}
+                    />
                   ))}
                 </MoonCluster>
               )}

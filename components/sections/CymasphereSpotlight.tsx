@@ -290,7 +290,7 @@ const CymasphereSpotlight: React.FC<CymasphereSpotlightProps> = ({
           alt=""
           width={1024}
           height={1024}
-          sizes="(max-width: 900px) 160vw, 130vw"
+          sizes="(max-width: 900px) 100vw, 70vw"
           loading="lazy"
           aria-hidden
         />
@@ -304,6 +304,7 @@ const CymasphereSpotlight: React.FC<CymasphereSpotlightProps> = ({
               width={song.w}
               height={song.h}
               sizes="(max-width: 900px) 88vw, 50vw"
+              loading="lazy"
               onLoadingComplete={(img) =>
                 setSong((prev) =>
                   prev.w === img.naturalWidth && prev.h === img.naturalHeight
@@ -320,6 +321,7 @@ const CymasphereSpotlight: React.FC<CymasphereSpotlightProps> = ({
               width={palette.w}
               height={palette.h}
               sizes="(max-width: 900px) 46vw, 25vw"
+              loading="lazy"
               onLoadingComplete={(img) =>
                 setPalette((prev) =>
                   prev.w === img.naturalWidth && prev.h === img.naturalHeight

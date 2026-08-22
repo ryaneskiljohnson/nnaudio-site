@@ -18,17 +18,34 @@ import {
   type HomepageCatalogSeed,
 } from "@/lib/homepage-hero-seed";
 import EcosystemHero from "@/components/sections/EcosystemHero";
-import CymasphereSpotlight from "@/components/sections/CymasphereSpotlight";
-import CymasynthSpotlight from "@/components/sections/CymasynthSpotlight";
-import CategoryGrid, {
-  CategoryTile,
-} from "@/components/sections/CategoryGrid";
-import FreeCollectionSection from "@/components/sections/FreeCollectionSection";
+import type { CategoryTile } from "@/components/sections/CategoryGrid";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import FeaturedProductsSectionSkeleton from "@/components/sections/FeaturedProductsSectionSkeleton";
 import FreeCollectionSectionSkeleton from "@/components/sections/FreeCollectionSectionSkeleton";
 
 // Lazy load below-the-fold sections for better initial page load.
+const CymasphereSpotlight = dynamic(
+  () => import("@/components/sections/CymasphereSpotlight"),
+  { ssr: true }
+);
+
+const CymasynthSpotlight = dynamic(
+  () => import("@/components/sections/CymasynthSpotlight"),
+  { ssr: true }
+);
+
+const CategoryGrid = dynamic(() => import("@/components/sections/CategoryGrid"), {
+  ssr: true,
+});
+
+const FreeCollectionSection = dynamic(
+  () => import("@/components/sections/FreeCollectionSection"),
+  {
+    ssr: true,
+    loading: () => <FreeCollectionSectionSkeleton />,
+  }
+);
+
 const FeaturedProductsSection = dynamic(
   () => import("@/components/sections/FeaturedProductsSection"),
   {
