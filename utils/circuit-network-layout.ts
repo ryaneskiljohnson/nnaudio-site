@@ -629,7 +629,7 @@ export interface CreditTarget {
   image?: string;
   /** True when this credit is the Cymasphere sun, not a moon. */
   sun?: boolean;
-  /** Hold length as a multiple of CREDIT_MS (Cymasphere 3, CymaSynth 2). */
+  /** Hold length as a multiple of CREDIT_MS (Cymasphere 1.5, CymaSynth 2). */
   weight?: number;
   startDeg: number;
   periodSec: number;
@@ -706,13 +706,13 @@ function smoothstep(t: number): number {
 }
 
 /**
- * @brief Hold + travel length for one credit. Weight 4 = Cymasphere, 2 =
+ * @brief Hold + travel length for one credit. Weight 1.5 = Cymasphere, 2 =
  * CymaSynth, 1 = everyone else. Travel stays CREDIT_TRAVEL_MS.
  * @param credit Target.
  * @returns Duration in milliseconds.
  */
 export function creditHoldMs(credit: CreditTarget): number {
-  return CREDIT_MS * Math.max(1, credit.weight ?? 1);
+  return CREDIT_MS * Math.max(0.5, credit.weight ?? 1);
 }
 
 /**
@@ -740,13 +740,15 @@ export function tourDurationMs(
 }
 
 /**
- * @brief Tour order: Cymasphere, then CymaSynth, then the rest by size.
- * Implemented as weight desc (3 / 2 / 1), then size.
+ * @brief Tour order: Cymasphere first, then CymaSynth, then the rest by size.
+ * Sun always leads (independent of hold weight). Among moons, weight desc
+ * (2 / 1), then size.
  * @param credits Unsorted targets.
  * @returns Sorted copy.
  */
 export function orderCredits(credits: CreditTarget[]): CreditTarget[] {
   return [...credits].sort((a, b) => {
+    if (a.sun !== b.sun) return a.sun ? -1 : 1;
     const dw = (b.weight ?? 1) - (a.weight ?? 1);
     if (dw !== 0) return dw;
     return b.size - a.size;

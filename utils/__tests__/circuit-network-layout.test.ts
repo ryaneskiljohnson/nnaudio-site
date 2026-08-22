@@ -291,7 +291,7 @@ describe("cameraTour", () => {
     expect(second.focusKey).toBe("small");
   });
 
-  it("holds Cymasphere 3× and CymaSynth 2× before the rest", () => {
+  it("holds Cymasphere 1.5× and CymaSynth 2× before the rest", () => {
     const credits = orderCredits([
       { key: "pack", name: "Pack", startDeg: 0, periodSec: 40, radius: 0.8, size: 80, weight: 1 },
       {
@@ -311,25 +311,25 @@ describe("cameraTour", () => {
         radius: 0,
         size: 0,
         sun: true,
-        weight: 3,
+        weight: 1.5,
       },
     ]);
     expect(credits.map((c) => c.key)).toEqual([SUN_FOCUS_KEY, "synth", "pack"]);
-    expect(creditHoldMs(credits[0])).toBe(CREDIT_MS * 3);
+    expect(creditHoldMs(credits[0])).toBe(CREDIT_MS * 1.5);
     expect(creditHoldMs(credits[1])).toBe(CREDIT_MS * 2);
     expect(creditHoldMs(credits[2])).toBe(CREDIT_MS);
     expect(tourDurationMs(credits)).toBe(
-      TOUR_INTRO_MS + CREDIT_MS * 6 + TOUR_OUTRO_MS
+      TOUR_INTRO_MS + CREDIT_MS * 4.5 + TOUR_OUTRO_MS
     );
 
     const sun = cameraTour(TOUR_INTRO_MS + 400, false, credits);
     expect(sun.focusKey).toBe(SUN_FOCUS_KEY);
     expect(sun.creditOpacity).toBeGreaterThan(0.5);
-    const stillSun = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 2, false, credits);
+    const stillSun = cameraTour(TOUR_INTRO_MS + CREDIT_MS, false, credits);
     expect(stillSun.focusKey).toBe(SUN_FOCUS_KEY);
-    const synth = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 3 + 400, false, credits);
+    const synth = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 1.5 + 400, false, credits);
     expect(synth.focusKey).toBe("synth");
-    const pack = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 5 + 400, false, credits);
+    const pack = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 3.5 + 400, false, credits);
     expect(pack.focusKey).toBe("pack");
   });
 
