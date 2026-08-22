@@ -116,6 +116,79 @@ export function moonPlacements(
 }
 
 /**
+ * @brief Closed SVG path for one sine-modulated ring (an oscillator).
+ * Radial displacement is A·sin(cycles·θ) so the loop reads as a waveform
+ * wrapped around CymaSynth, not a perfect circle.
+ * @param cx Path center x.
+ * @param cy Path center y.
+ * @param radius Mean radius.
+ * @param amplitude Sine amplitude in the same units as radius.
+ * @param cycles Integer number of waves around the ring (harmonic).
+ * @param steps Samples around the loop. Defaults to 96.
+ * @returns SVG path `d` starting at M and closed with Z.
+ * @example
+ * sineOscillatorRingPath(120, 120, 80, 4, 3)
+ */
+export function sineOscillatorRingPath(
+  cx: number,
+  cy: number,
+  radius: number,
+  amplitude: number,
+  cycles: number,
+  steps = 96
+): string {
+  const n = Math.max(12, Math.floor(steps));
+  const parts: string[] = [];
+  for (let i = 0; i <= n; i += 1) {
+    const t = (i / n) * Math.PI * 2;
+    const r = radius + amplitude * Math.sin(cycles * t);
+    const x = cx + r * Math.cos(t);
+    const y = cy + r * Math.sin(t);
+    parts.push(
+      `${i === 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`
+    );
+  }
+  parts.push("Z");
+  return parts.join("");
+}
+
+/**
+ * Shared green for every CymaSynth oscillator ring.
+ */
+export const CYMASYNTH_OSC_GREEN = "rgba(78, 205, 196, 0.82)";
+
+/**
+ * Nested sine-wave rings around CymaSynth. Radii stay tight so they
+ * read as one oscillator family; tiltX/tiltZ splay a few onto nearby
+ * axes without breaking the nest. Plate is 240×240.
+ */
+export const CYMASYNTH_OSC_RINGS: ReadonlyArray<{
+  cycles: number;
+  radius: number;
+  amplitude: number;
+  duration: string;
+  /** Extra rotateX on this disk, degrees from the shared plate. */
+  tiltX: number;
+  /** Extra rotateZ on this disk, degrees from the shared plate. */
+  tiltZ: number;
+}> = [
+  { cycles: 3, radius: 64, amplitude: 2.6, duration: "14s", tiltX: 0, tiltZ: 0 },
+  { cycles: 4, radius: 70, amplitude: 3.0, duration: "18s", tiltX: 5, tiltZ: 8 },
+  { cycles: 5, radius: 76, amplitude: 3.2, duration: "22s", tiltX: -6, tiltZ: -4 },
+  { cycles: 6, radius: 82, amplitude: 3.4, duration: "16s", tiltX: 3, tiltZ: -10 },
+  { cycles: 7, radius: 88, amplitude: 3.6, duration: "26s", tiltX: -8, tiltZ: 6 },
+  { cycles: 8, radius: 94, amplitude: 3.8, duration: "20s", tiltX: 7, tiltZ: -7 },
+  { cycles: 9, radius: 100, amplitude: 4.0, duration: "30s", tiltX: -4, tiltZ: 11 },
+  { cycles: 11, radius: 106, amplitude: 4.2, duration: "24s", tiltX: 9, tiltZ: 3 },
+];
+
+/**
+ * CSS box the oscillator plate is authored against (matches desktop
+ * CymaSynth moon diameter). Pose scale is `visualDiameter / this`.
+ */
+export const CYMASYNTH_RING_PLATE_MOON_PX = 108;
+
+/**
  * @brief CymaSynth sits on the closest, largest orbit.
  * @param mobile Compact sizing.
  * @returns Moon placement for the flagship synth (index unused).
@@ -444,6 +517,23 @@ function visibilityScore(
  * @example
  * pickVisibleMoons(moons, { focusKey: "a", nextKey: "b", sunFocus: false, dollyZ: 0, viewHalfW: 600 }).length <= 6
  */
+/**
+ * @brief True while the tour is flying into or holding Cymasphere.
+ * CymaSynth sits on the nearest orbit and would silhouette the sun.
+ * @param focusKey Current credit key.
+ * @param nextKey Upcoming credit key.
+ * @param creditOpacity Card opacity (0 during travel).
+ * @returns Whether CymaSynth should stay off-stage.
+ */
+export function hideSynthForSunApproach(
+  focusKey: string | null,
+  nextKey: string | null,
+  creditOpacity: number
+): boolean {
+  if (focusKey === SUN_FOCUS_KEY && creditOpacity > 0.12) return true;
+  return focusKey == null && nextKey === SUN_FOCUS_KEY;
+}
+
 export function pickVisibleMoons(
   moons: VisibleMoonCandidate[],
   opts: {
@@ -454,9 +544,12 @@ export function pickVisibleMoons(
     viewHalfW: number;
     budget?: number;
     previous?: readonly string[];
+    /** Drop CymaSynth (intro / Cymasphere hold). */
+    hideSynth?: boolean;
   }
 ): string[] {
-  const present = new Set(moons.map((moon) => moon.key));
+  const pool = opts.hideSynth ? moons.filter((moon) => !moon.synth) : moons;
+  const present = new Set(pool.map((moon) => moon.key));
   const forced = new Set<string>();
   if (opts.focusKey && present.has(opts.focusKey)) forced.add(opts.focusKey);
   // During the Cymasphere hold, do not force the next planet on stage —
@@ -467,7 +560,7 @@ export function pickVisibleMoons(
   if (opts.sunFocus) return [...forced];
   const budget = Math.max(forced.size, opts.budget ?? VISIBLE_MOON_BUDGET);
   const prev = new Set(opts.previous ?? []);
-  const scored = moons.map((moon) => {
+  const scored = pool.map((moon) => {
     const raw = forced.has(moon.key)
       ? 1e6
       : visibilityScore(moon, opts.sunFocus, opts.dollyZ, opts.viewHalfW);
@@ -508,6 +601,10 @@ export function pickVisibleMoons(
 export const TOUR_PERSPECTIVE_PX = 900;
 /** Opening fly-in before the credits start. */
 export const TOUR_INTRO_MS = 5200;
+/** How far along TOUR_KEYS the fly-in travels before the first hold. */
+export const INTRO_PATH_U = 0.28;
+/** Dolly/yaw blend from the fly-in into the Cymasphere hold. */
+export const INTRO_BLEND_MS = 1800;
 /** Base time on a catalog product: hold plus the journey to the next stop. */
 export const CREDIT_MS = 3400;
 /** Reserved focus key for the Cymasphere sun hold. */
@@ -679,17 +776,20 @@ function poseForCredit(
   world?: MoonWorldPos,
   eclipseXPx = ECLIPSE_OFFSET_X_PX,
   eclipseYPx = ECLIPSE_OFFSET_Y_PX,
-  targetPx = 560
+  targetPx = 560,
+  loopT = elapsedMs
 ): TourCamera {
   if (credit.sun) {
+    const introEnd = poseFromKeys(INTRO_PATH_U);
+    const holdT = Math.max(0, loopT - TOUR_INTRO_MS);
     return {
-      rotateX: 14,
-      rotateY: 8 + (elapsedMs / 1000) * SUN_YAW_DEG_PER_SEC,
-      rotateZ: 0,
+      rotateX: introEnd.rotateX,
+      rotateY: introEnd.rotateY + (holdT / 1000) * SUN_YAW_DEG_PER_SEC,
+      rotateZ: introEnd.rotateZ,
       translateX: 0,
-      translateZ: 20,
+      translateZ: introEnd.translateZ,
       translateY: 0,
-      sunScale: sunScaleFromCamera(20),
+      sunScale: sunScaleFromCamera(introEnd.translateZ),
       labelOpacity: 1,
       focusKey: credit.key,
       nextKey: null,
@@ -821,7 +921,7 @@ function poseFromKeys(u: number): TourCamera {
  * @param b End angle.
  * @returns Delta in (-180, 180].
  */
-function angleDelta(a: number, b: number): number {
+export function angleDelta(a: number, b: number): number {
   return ((((b - a) % 360) + 540) % 360) - 180;
 }
 
@@ -918,9 +1018,9 @@ export function cameraTour(
   let traveling = false;
 
   if (t < TOUR_INTRO_MS) {
-    const intro = poseFromKeys((t / TOUR_INTRO_MS) * 0.28);
+    const intro = poseFromKeys((t / TOUR_INTRO_MS) * INTRO_PATH_U);
     pose =
-      t > TOUR_INTRO_MS - 900
+      t > TOUR_INTRO_MS - INTRO_BLEND_MS
         ? mixPose(
             intro,
             poseForCredit(
@@ -929,9 +1029,10 @@ export function cameraTour(
               worldPos?.get(credits[0].key),
               frameOf(credits[0]).x,
               frameOf(credits[0]).y,
-              holdTargetPx
+              holdTargetPx,
+              t
             ),
-            (t - (TOUR_INTRO_MS - 900)) / 900
+            (t - (TOUR_INTRO_MS - INTRO_BLEND_MS)) / INTRO_BLEND_MS
           )
         : intro;
   } else if (creditT < creditSpan) {
@@ -945,7 +1046,8 @@ export function cameraTour(
       worldPos?.get(credits[index].key),
       frameOf(credits[index]).x,
       frameOf(credits[index]).y,
-      holdTargetPx
+      holdTargetPx,
+      t
     );
     if (index + 1 < credits.length && local > hold - CREDIT_TRAVEL_MS) {
       traveling = true;
@@ -956,7 +1058,8 @@ export function cameraTour(
         worldPos?.get(credits[index + 1].key),
         frameOf(credits[index + 1]).x,
         frameOf(credits[index + 1]).y,
-        holdTargetPx
+        holdTargetPx,
+        t
       );
       pose = mixPose(current, next, leg);
       // Journey arc: pull out mid-flight, farther for distant stops, so
@@ -983,7 +1086,8 @@ export function cameraTour(
       worldPos?.get(credits[credits.length - 1].key),
       frameOf(credits[credits.length - 1]).x,
       frameOf(credits[credits.length - 1]).y,
-      holdTargetPx
+      holdTargetPx,
+      t
     );
     const outro = poseFromKeys(0.88 + ((creditT - creditSpan) / TOUR_OUTRO_MS) * 0.12);
     pose = mixPose(last, outro, Math.min(1, (creditT - creditSpan) / 700));

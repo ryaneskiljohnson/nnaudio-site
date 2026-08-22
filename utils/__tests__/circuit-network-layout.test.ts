@@ -6,13 +6,17 @@ import {
   SUN_YAW_DEG_PER_SEC,
   TOUR_INTRO_MS,
   TOUR_OUTRO_MS,
+  angleDelta,
   creditHoldMs,
   aimYawAt,
   cameraTour,
   closeupMagnification,
   lookAtMoon,
+  hideSynthForSunApproach,
   holdFrameOffset,
   cymasynthOrbit,
+  CYMASYNTH_OSC_RINGS,
+  sineOscillatorRingPath,
   sunScaleFromCamera,
   moonDepth,
   moonDiameter,
@@ -152,6 +156,35 @@ describe("cymasynthOrbit", () => {
   });
 });
 
+describe("sineOscillatorRingPath", () => {
+  it("closes a loop whose radius oscillates by the given amplitude", () => {
+    const d = sineOscillatorRingPath(0, 0, 80, 4, 3, 24);
+    expect(d.startsWith("M")).toBe(true);
+    expect(d.endsWith("Z")).toBe(true);
+    const xs = [...d.matchAll(/[-0-9.]+/g)].map((m) => Number(m[0]));
+    const rs = [];
+    for (let i = 0; i + 1 < xs.length; i += 2) {
+      const x = xs[i];
+      const y = xs[i + 1];
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        rs.push(Math.hypot(x, y));
+      }
+    }
+    expect(Math.max(...rs)).toBeCloseTo(84, 0);
+    expect(Math.min(...rs)).toBeCloseTo(76, 0);
+  });
+
+  it("nests several green rings on nearby axes", () => {
+    expect(CYMASYNTH_OSC_RINGS.length).toBeGreaterThanOrEqual(7);
+    const radii = CYMASYNTH_OSC_RINGS.map((r) => r.radius);
+    expect(Math.max(...radii) - Math.min(...radii)).toBeLessThan(50);
+    expect(CYMASYNTH_OSC_RINGS.some((r) => r.tiltX !== 0 || r.tiltZ !== 0)).toBe(
+      true
+    );
+    expect(CYMASYNTH_OSC_RINGS.every((r) => Math.abs(r.tiltX) <= 12)).toBe(true);
+  });
+});
+
 describe("sunScaleFromCamera", () => {
   it("shrinks the sun as the camera leaves Cymasphere", () => {
     expect(sunScaleFromCamera(20)).toBeGreaterThan(1.4);
@@ -189,6 +222,33 @@ describe("cameraTour", () => {
     expect(far.translateZ).toBeLessThan(-800);
     expect(close.translateZ).toBeGreaterThan(far.translateZ);
     expect(close.sunScale).toBeGreaterThan(far.sunScale);
+  });
+
+  it("intro pose does not jump when the catalog grows mid-fly-in", () => {
+    const sun = {
+      key: SUN_FOCUS_KEY,
+      name: "Cymasphere",
+      sun: true as const,
+      weight: 3,
+      startDeg: 0,
+      periodSec: 1,
+      radius: 0,
+      size: 0,
+    };
+    const moon = {
+      key: "cymasynth",
+      name: "CymaSynth",
+      startDeg: 0,
+      periodSec: 24,
+      radius: 0.18,
+      size: 90,
+    };
+    const t = 900;
+    const sunOnly = cameraTour(t, false, orderCredits([sun]));
+    const withCatalog = cameraTour(t, false, orderCredits([sun, moon]));
+    expect(withCatalog.translateZ).toBeCloseTo(sunOnly.translateZ, 5);
+    expect(withCatalog.rotateY).toBeCloseTo(sunOnly.rotateY, 5);
+    expect(withCatalog.focusKey).toBeNull();
   });
 
   it("holds a beauty shot when motion is reduced", () => {
@@ -597,6 +657,30 @@ describe("cameraTour", () => {
     expect(travelMove).toBeGreaterThan(holdMove * 1.6);
   });
 
+  it("eases into the Cymasphere hold instead of cutting", () => {
+    const credits = [
+      {
+        key: SUN_FOCUS_KEY,
+        name: "Cymasphere",
+        startDeg: 0,
+        periodSec: 1,
+        radius: 0,
+        size: 0,
+        sun: true as const,
+        weight: 3,
+      },
+    ];
+    const a = cameraTour(TOUR_INTRO_MS - 40, false, credits);
+    const b = cameraTour(TOUR_INTRO_MS, false, credits);
+    const c = cameraTour(TOUR_INTRO_MS + 40, false, credits);
+    expect(Math.abs(b.translateZ - a.translateZ)).toBeLessThan(2);
+    expect(Math.abs(c.translateZ - b.translateZ)).toBeLessThan(2);
+    expect(Math.abs(angleDelta(a.rotateY, b.rotateY))).toBeLessThan(1);
+    expect(Math.abs(angleDelta(b.rotateY, c.rotateY))).toBeLessThan(1);
+    expect(Math.abs(b.rotateX - a.rotateX)).toBeLessThan(0.5);
+    expect(Math.abs(b.rotateZ - a.rotateZ)).toBeLessThan(0.5);
+  });
+
   it("keeps the sun turning instead of rocking to a stop", () => {
     const credits = [
       {
@@ -695,5 +779,28 @@ describe("pickVisibleMoons", () => {
       }
     );
     expect(keys).toEqual([]);
+  });
+
+  it("drops CymaSynth during the Cymasphere approach", () => {
+    expect(hideSynthForSunApproach(null, SUN_FOCUS_KEY, 0)).toBe(true);
+    expect(hideSynthForSunApproach(SUN_FOCUS_KEY, "synth", 0.8)).toBe(true);
+    expect(hideSynthForSunApproach(SUN_FOCUS_KEY, "synth", 0)).toBe(false);
+    expect(hideSynthForSunApproach("synth", "other", 0.9)).toBe(false);
+    const keys = pickVisibleMoons(
+      [
+        { key: "synth-1", synth: true, camSpaceX: 20, camSpaceZ: 80, aPx: 180 },
+        { key: "m0", camSpaceX: 120, camSpaceZ: 40, aPx: 280 },
+      ],
+      {
+        focusKey: null,
+        nextKey: SUN_FOCUS_KEY,
+        sunFocus: false,
+        dollyZ: -200,
+        viewHalfW: 600,
+        hideSynth: true,
+        budget: 6,
+      }
+    );
+    expect(keys).not.toContain("synth-1");
   });
 });

@@ -13,23 +13,70 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import {
   type CreditTarget,
   type MoonPlacement,
+  type TourCamera,
   type VisibleMoonCandidate,
+  CYMASYNTH_OSC_GREEN,
+  CYMASYNTH_OSC_RINGS,
+  CYMASYNTH_RING_PLATE_MOON_PX,
+  SUN_FOCUS_KEY,
   TOUR_PERSPECTIVE_PX,
   VISIBLE_MOON_BUDGET,
   VISIBLE_MOON_BUDGET_MOBILE,
+  angleDelta,
   cameraTour,
   cymasynthOrbit,
   moonDiameter,
   moonPlacements,
   orbitRadiusPx,
   orderCredits,
+  hideSynthForSunApproach,
   pickVisibleMoons,
-  SUN_FOCUS_KEY,
+  sineOscillatorRingPath,
 } from "@/utils/circuit-network-layout";
+
+/** First-paint pose: far galaxy, same as cameraTour(0). */
+const OPENING_CAM = cameraTour(0, false);
+
+/**
+ * @brief CSS 3D transform for the touring scene.
+ * @param cam Camera pose (follow-smoothed or opening).
+ * @returns transform string written onto the Scene node.
+ */
+function tourSceneCss(
+  cam: Pick<
+    TourCamera,
+    "rotateX" | "rotateY" | "rotateZ" | "translateX" | "translateY" | "translateZ"
+  >
+): string {
+  return [
+    `translate3d(${cam.translateX.toFixed(2)}px, ${cam.translateY.toFixed(2)}px, ${cam.translateZ.toFixed(2)}px)`,
+    `rotateX(${cam.rotateX.toFixed(3)}deg)`,
+    `rotateY(${cam.rotateY.toFixed(3)}deg)`,
+    `rotateZ(${cam.rotateZ.toFixed(3)}deg)`,
+  ].join(" ");
+}
+
+/**
+ * @brief Inverse billboard + scale for the sun so it matches the scene pose.
+ * @param cam Camera pose used for the matching scene transform.
+ * @returns transform string written onto SunWrap.
+ */
+function tourSunCss(
+  cam: Pick<TourCamera, "rotateX" | "rotateY" | "rotateZ" | "sunScale">
+): string {
+  return [
+    "translate(-50%, -50%)",
+    "translateZ(2px)",
+    `rotateZ(${(-cam.rotateZ).toFixed(3)}deg)`,
+    `rotateY(${(-cam.rotateY).toFixed(3)}deg)`,
+    `rotateX(${(-cam.rotateX).toFixed(3)}deg)`,
+    `scale(${cam.sunScale.toFixed(3)})`,
+  ].join(" ");
+}
 import {
   type SphereShadeOut,
   createOrbitalSystem,
@@ -144,7 +191,8 @@ const Board = styled.div`
 
   /* Low-detail latch: drop decorative filters/blends so the moving
      3D scene is not re-filtering megapixel layers every frame. */
-  &[data-low="true"] .sun-fx {
+  &[data-low="true"] .sun-fx,
+  &[data-low="true"] .synth-osc {
     animation: none !important;
     filter: none !important;
     mix-blend-mode: normal !important;
@@ -293,6 +341,8 @@ const Scene = styled.div`
   inset: 0;
   transform-style: preserve-3d;
   will-change: transform;
+  /* Match cameraTour(0) so the first paint is not identity → fly-in. */
+  transform: ${tourSceneCss(OPENING_CAM)};
 `;
 
 /**
@@ -528,6 +578,64 @@ const TexCanvas = styled.canvas`
   transition: opacity 0.45s ease;
 `;
 
+const synthOscSpin = keyframes`
+  to {
+    transform: rotate(360deg);
+  }
+`;
+
+/**
+ * World-space oscillator disk around CymaSynth. Sibling of the moon so
+ * the sphere can keep overflow:hidden; not billboarded, so the rings
+ * stay in a Saturn-like plane as the camera tours.
+ */
+const SynthRingPlate = styled.div`
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 240px;
+  height: 240px;
+  pointer-events: none;
+  z-index: 19;
+  overflow: visible;
+  visibility: hidden;
+  opacity: 0;
+  transform-style: preserve-3d;
+`;
+
+const SynthRingDisk = styled.div<{ $tiltX: number; $tiltZ: number }>`
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(${(p) => p.$tiltX}deg) rotateZ(${(p) => p.$tiltZ}deg);
+`;
+
+const SynthRingSvg = styled.svg`
+  display: block;
+  width: 240px;
+  height: 240px;
+  overflow: visible;
+`;
+
+const SynthOscPath = styled.path<{ $dur: string }>`
+  fill: none;
+  stroke: ${CYMASYNTH_OSC_GREEN};
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.45;
+  transform-origin: 120px 120px;
+  animation: ${synthOscSpin} ${(p) => p.$dur} linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+`;
+
+const SYNTH_OSC_PATHS = CYMASYNTH_OSC_RINGS.map((ring) => ({
+  ...ring,
+  d: sineOscillatorRingPath(120, 120, ring.radius, ring.amplitude, ring.cycles),
+}));
+
 const SynthMoon = styled(Moon)`
   background:
     radial-gradient(
@@ -598,7 +706,7 @@ const SunWrap = styled.div`
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%) translateZ(2px);
+  transform: ${tourSunCss(OPENING_CAM)};
   z-index: 20;
   pointer-events: none;
   transform-style: preserve-3d;
@@ -920,6 +1028,48 @@ function poseMoon(
 }
 
 /**
+ * @brief Places CymaSynth's oscillator rings at the moon's world seat.
+ * The disk is tilted in world space (not billboarded) so it reads as
+ * Saturn rings while the sphere stays face-on.
+ * @param el Ring plate element.
+ * @param x World x (px, screen right).
+ * @param height World height (px, up).
+ * @param z World depth toward the camera (px).
+ * @param visualDiameter Moon's posed diameter in px.
+ * @param spinDeg Slow precession of the disk.
+ * @param opacity Matched to the moon so flybys fade together.
+ * @param zIndex Just under the moon.
+ * @param visible False when the synth moon is culled.
+ */
+function poseSynthOscRings(
+  el: HTMLElement,
+  x: number,
+  height: number,
+  z: number,
+  visualDiameter: number,
+  spinDeg: number,
+  opacity: number,
+  zIndex: number,
+  visible: boolean
+): void {
+  if (!visible) {
+    if (el.style.visibility !== "hidden") el.style.visibility = "hidden";
+    return;
+  }
+  if (el.style.visibility !== "visible") el.style.visibility = "visible";
+  el.style.zIndex = String(Math.max(1, zIndex - 1));
+  el.style.opacity = opacity.toFixed(3);
+  const scale = visualDiameter / CYMASYNTH_RING_PLATE_MOON_PX;
+  el.style.transform = [
+    "translate(-50%, -50%)",
+    `translate3d(${x.toFixed(2)}px, ${(-height).toFixed(2)}px, ${z.toFixed(2)}px)`,
+    "rotateX(68deg)",
+    `rotateZ(${spinDeg.toFixed(2)}deg)`,
+    `scale(${scale.toFixed(4)})`,
+  ].join(" ");
+}
+
+/**
  * @brief Renders the solar-system tour: Cymasphere as the sun, products as moons.
  * @param cymasphere Sun credit (optional until loaded).
  * @param cymasynth Closest large moon (optional until loaded).
@@ -937,6 +1087,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const sceneRef = useRef<HTMLDivElement>(null);
   const ringLayerRef = useRef<HTMLDivElement>(null);
   const sunRef = useRef<HTMLDivElement>(null);
+  const synthRingsRef = useRef<HTMLDivElement>(null);
   const sunFaceRef = useRef<HTMLDivElement>(null);
   const sunCanvasRef = useRef<HTMLCanvasElement>(null);
   const sunTexRef = useRef<SphereTexture | null>(null);
@@ -960,13 +1111,13 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const look = useRef({ x: 0, y: 0, tx: 0, ty: 0 });
   /** Smoothed camera so look-at micro-steps do not shake the moons. */
   const camFollow = useRef({
-    x: 0,
-    y: 0,
-    z: 0,
-    tx: 0,
-    ty: 0,
-    tz: 0,
-    armed: false,
+    x: OPENING_CAM.rotateX,
+    y: OPENING_CAM.rotateY,
+    z: OPENING_CAM.rotateZ,
+    tx: OPENING_CAM.translateX,
+    ty: OPENING_CAM.translateY,
+    tz: OPENING_CAM.translateZ,
+    armed: true,
   });
   const startedAt = useRef<number | null>(null);
   const lastFrameAt = useRef<number | null>(null);
@@ -1239,6 +1390,29 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     [bodies]
   );
 
+  // rAF reads these every frame so the loop is not torn down (and the
+  // camera clock reset) when the homepage catalog arrives.
+  const tourLive = useRef({
+    credits,
+    bodies,
+    system,
+    bodyIndexByKey,
+    creditsByKey,
+    frameSize,
+    bakePx,
+    mobile,
+  });
+  tourLive.current = {
+    credits,
+    bodies,
+    system,
+    bodyIndexByKey,
+    creditsByKey,
+    frameSize,
+    bakePx,
+    mobile,
+  };
+
   useEffect(() => {
     if (!isVisible) return;
     let raf = 0;
@@ -1309,13 +1483,30 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     let lastCreditCss = "";
     let lastCreditCopy = "";
     let lastSunPhase: number | undefined;
-    let lastRingsHidden = false;
+    let ringFade = 1;
     const tick = (now: number) => {
       try {
       frameNo += 1;
+      const {
+        credits,
+        bodies,
+        system,
+        bodyIndexByKey,
+        creditsByKey,
+        frameSize,
+        bakePx,
+        mobile,
+      } = tourLive.current;
       if (creditLenRef.current !== credits.length) {
+        const prevLen = creditLenRef.current;
         creditLenRef.current = credits.length;
-        startedAt.current = now;
+        // Growing the list (homepage catalog fetch) used to rewind the
+        // fly-in to t=0 — a hard snap from mid-approach back to the
+        // far galaxy. Keep the clock; only reset if the tour is new
+        // or the list shrank.
+        if (startedAt.current == null || credits.length < prevLen) {
+          startedAt.current = now;
+        }
       }
       if (startedAt.current == null) startedAt.current = now;
       // Frame gap: rAF stopped (scrolled away / hidden tab). Shift the
@@ -1378,14 +1569,19 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         follow.armed = true;
       } else {
         const jump =
-          Math.abs(camY - follow.y) + Math.abs(cam.translateZ - follow.tz) / 80;
-        // Holds track the live moon tightly. A long tau left the disk
-        // chasing the camera by a few magnified pixels every frame.
-        const tau = creditsW > 0.65 ? 22 : jump > 10 ? 32 : 150;
+          Math.abs(angleDelta(follow.y, camY)) +
+          Math.abs(cam.translateZ - follow.tz) / 80;
+        // Moon holds track the live seat tightly. The sun hold is a
+        // slow yaw — a 22ms tau here snapped the leftover fly-in lag
+        // the moment Cymasphere was featured.
+        const sunApproach =
+          cam.focusKey === SUN_FOCUS_KEY ||
+          (cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY);
+        const tau = sunApproach ? 320 : creditsW > 0.65 ? 22 : jump > 10 ? 32 : 150;
         const followK = 1 - Math.exp(-gapClamped / tau);
-        follow.x += (camX - follow.x) * followK;
-        follow.y += (camY - follow.y) * followK;
-        follow.z += (cam.rotateZ - follow.z) * followK;
+        follow.x += angleDelta(follow.x, camX) * followK;
+        follow.y += angleDelta(follow.y, camY) * followK;
+        follow.z += angleDelta(follow.z, cam.rotateZ) * followK;
         follow.tx += (cam.translateX - follow.tx) * followK;
         follow.ty += (cam.translateY - follow.ty) * followK;
         follow.tz += (cam.translateZ - follow.tz) * followK;
@@ -1393,32 +1589,35 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         camY = follow.y;
       }
       if (sceneRef.current) {
-        sceneRef.current.style.transform = [
-          `translate3d(${follow.tx.toFixed(2)}px, ${follow.ty.toFixed(2)}px, ${follow.tz.toFixed(2)}px)`,
-          `rotateX(${camX.toFixed(3)}deg)`,
-          `rotateY(${camY.toFixed(3)}deg)`,
-          `rotateZ(${follow.z.toFixed(3)}deg)`,
-        ].join(" ");
+        sceneRef.current.style.transform = tourSceneCss({
+          rotateX: camX,
+          rotateY: camY,
+          rotateZ: follow.z,
+          translateX: follow.tx,
+          translateY: follow.ty,
+          translateZ: follow.tz,
+        });
       }
       if (sunRef.current) {
         // Billboard the sun too so its face never goes edge-on under yaw.
-        sunRef.current.style.transform = [
-          "translate(-50%, -50%)",
-          "translateZ(2px)",
-          `rotateZ(${(-follow.z).toFixed(3)}deg)`,
-          `rotateY(${(-camY).toFixed(3)}deg)`,
-          `rotateX(${(-camX).toFixed(3)}deg)`,
-          `scale(${cam.sunScale.toFixed(3)})`,
-        ].join(" ");
+        sunRef.current.style.transform = tourSunCss({
+          rotateX: camX,
+          rotateY: camY,
+          rotateZ: follow.z,
+          sunScale: cam.sunScale,
+        });
       }
       const sunFeatured = cam.focusKey === SUN_FOCUS_KEY;
       const hideRings =
         sunFeatured ||
         (cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY);
-      if (ringLayerRef.current && hideRings !== lastRingsHidden) {
-        lastRingsHidden = hideRings;
-        ringLayerRef.current.style.opacity = hideRings ? "0" : "1";
-        ringLayerRef.current.style.visibility = hideRings ? "hidden" : "visible";
+      if (ringLayerRef.current) {
+        const ringTarget = hideRings ? 0 : 1;
+        ringFade += (ringTarget - ringFade) * (1 - Math.exp(-gapClamped / 280));
+        if (Math.abs(ringFade - ringTarget) < 0.01) ringFade = ringTarget;
+        ringLayerRef.current.style.opacity = ringFade.toFixed(3);
+        ringLayerRef.current.style.visibility =
+          ringFade < 0.02 ? "hidden" : "visible";
       }
       if (sunFeatured && !reducedMotion) {
         sunBoostRef.current =
@@ -1488,11 +1687,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         };
         latchFaceOn(cam.focusKey);
         latchFaceOn(cam.nextKey);
-        if (cam.focusKey === SUN_FOCUS_KEY) {
-          sunAlignRef.current = faceOnAlign(elapsed, SUN_SPIN_SEC, false);
-          sunBoostRef.current = 0;
-          lastSunPhase = undefined;
-        }
+        // Cymasphere is on camera the whole fly-in. Face-on-resetting
+        // its wrap when the hold starts snapped the mark.
       }
       const focused = cam.focusKey
         ? creditsByKey.get(cam.focusKey)
@@ -1587,6 +1783,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         slot.aPx = system.a[i];
         pool[i] = slot;
       }
+      const hideSynth = hideSynthForSunApproach(
+        cam.focusKey,
+        cam.nextKey,
+        cam.creditOpacity
+      );
       const visible = pickVisibleMoons(pool, {
         focusKey: cam.focusKey,
         nextKey: cam.nextKey,
@@ -1595,6 +1796,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         viewHalfW: FRAME.viewHalfW,
         budget: mobile ? VISIBLE_MOON_BUDGET_MOBILE : VISIBLE_MOON_BUDGET,
         previous: liveKeysRef.current,
+        hideSynth,
       });
       const forced = `${cam.focusKey ?? ""}|${cam.nextKey ?? ""}`;
       const forcedChanged = forced !== liveForced.current;
@@ -1615,6 +1817,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         // Keep the last moons mounted (hidden) so leaving Cymasphere
         // does not remount generic spheres and flash.
         lingerAt.current.forEach((_, key) => lingerAt.current.set(key, now));
+      }
+      if (hideSynth) {
+        const synthKey = bodies.find((body) => body.synth)?.key;
+        if (synthKey) lingerAt.current.delete(synthKey);
       }
       const nextStage: string[] = [];
       lingerAt.current.forEach((seen, key) => {
@@ -1685,6 +1891,36 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             focusW
           )
         );
+      }
+
+      const synthBody = bodies.find((body) => body.synth);
+      const ringsEl = synthRingsRef.current;
+      if (synthBody && ringsEl) {
+        const si = bodyIndexByKey.get(synthBody.key);
+        if (si !== undefined) {
+          const synthEl = moonRefs.current.get(synthBody.key);
+          const moonOnCamera =
+            !!synthEl &&
+            visibleSet.has(synthBody.key) &&
+            lastVisible.get(synthEl) === true;
+          const moonOpacity = moonOnCamera
+            ? Number(synthEl.style.opacity || "0")
+            : 0;
+          const visualR =
+            visualRByKey.current.get(synthBody.key) ??
+            Math.max(synthBody.seat.size.w, synthBody.seat.size.h) / 2;
+          poseSynthOscRings(
+            ringsEl,
+            pos[si * 3],
+            pos[si * 3 + 1],
+            pos[si * 3 + 2],
+            visualR * 2,
+            reducedMotion ? 0 : (elapsed / 90) % 360,
+            moonOpacity,
+            synthEl ? Number(synthEl.style.zIndex || "20") : 19,
+            moonOnCamera && moonOpacity > 0.08
+          );
+        }
       }
 
       const ringCirc = 2 * Math.PI * ORBIT_RING_LOCAL_R;
@@ -1760,18 +1996,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     };
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [
-    bodies,
-    bodyIndexByKey,
-    credits,
-    creditsByKey,
-    frameSize,
-    isVisible,
-    mobile,
-    reducedMotion,
-    bakePx,
-    system,
-  ]);
+  }, [isVisible, reducedMotion]);
 
   const ringRadii = useMemo(() => {
     const seen = new Set<number>();
@@ -1942,6 +2167,25 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       <Scene ref={sceneRef}>
         <RingLayer ref={ringLayerRef}>{ringField}</RingLayer>
         <BodyLayer>
+          {cymasynth ? (
+            <SynthRingPlate ref={synthRingsRef} aria-hidden>
+              {SYNTH_OSC_PATHS.map((ring) => (
+                <SynthRingDisk
+                  key={`${ring.cycles}-${ring.radius}`}
+                  $tiltX={ring.tiltX}
+                  $tiltZ={ring.tiltZ}
+                >
+                  <SynthRingSvg viewBox="0 0 240 240" aria-hidden>
+                    <SynthOscPath
+                      className="synth-osc"
+                      d={ring.d}
+                      $dur={ring.duration}
+                    />
+                  </SynthRingSvg>
+                </SynthRingDisk>
+              ))}
+            </SynthRingPlate>
+          ) : null}
           {moonField}
 
           <SunWrap ref={sunRef}>
