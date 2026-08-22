@@ -29,6 +29,7 @@ import {
   angleDelta,
   cameraTour,
   cymasynthOrbit,
+  holdFrameOffset,
   moonDiameter,
   moonPlacements,
   orbitRadiusPx,
@@ -177,6 +178,8 @@ export interface CircuitNode {
   price?: string;
   /** One-line subtitle for the credit card. */
   tagline?: string;
+  /** Short product description shown in the empty half of a hold. */
+  description?: string;
 }
 
 interface CircuitNetworkProps {
@@ -210,6 +213,41 @@ function moonWrapUrl(body: {
  */
 function moonWrapBakeOpts(body: { synth: boolean }) {
   return body.synth ? { surfaceShade: false as const } : undefined;
+}
+
+/**
+ * @brief Strips tags and collapses whitespace from catalog HTML copy.
+ * @param raw Product description or tagline.
+ * @returns Plain text, or an empty string.
+ */
+function plainProductCopy(raw?: string): string {
+  if (!raw) return "";
+  return raw
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * @brief Description shown in the empty half of a featured hold.
+ * @param credit Current tour credit.
+ * @param synth Whether this is the CymaSynth moon.
+ * @returns Short plain-text blurb.
+ */
+function featuredProductBlurb(
+  credit: Pick<CreditTarget, "sun" | "description" | "subtitle">,
+  synth: boolean
+): string {
+  const copy = plainProductCopy(credit.description || credit.subtitle);
+  if (copy) return copy;
+  if (credit.sun) {
+    return "Cymasphere writes the harmony, voicings, and patterns at the center of the system.";
+  }
+  if (synth) {
+    return "A professional wavetable synthesizer built for the Cymasphere ecosystem.";
+  }
+  return "";
 }
 
 const Board = styled.div`
@@ -253,18 +291,32 @@ const Vignette = styled.div`
 const CreditSlot = styled.div`
   position: absolute;
   left: 6.5%;
-  top: clamp(5.75rem, 16vh, 8.5rem);
-  bottom: auto;
+  right: auto;
+  top: 50%;
+  transform: translateY(-52%);
   z-index: 40;
-  max-width: min(52vw, 620px);
+  max-width: min(38vw, 420px);
   pointer-events: none;
   opacity: 0;
+  text-align: left;
+
+  &[data-side="right"] {
+    left: auto;
+    right: 6.5%;
+    text-align: left;
+  }
 
   @media (max-width: 768px) {
     left: 4%;
     right: auto;
     top: max(4.25rem, calc(env(safe-area-inset-top, 0px) + 3.4rem));
+    transform: none;
     max-width: min(88vw, 340px);
+
+    &[data-side="right"] {
+      left: 4%;
+      right: auto;
+    }
   }
 `;
 
@@ -367,6 +419,26 @@ const CreditPrice = styled.span`
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.62);
+`;
+
+const CreditBlurb = styled.p`
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+  margin: 14px 0 0;
+  max-width: 36ch;
+  font-size: clamp(0.92rem, 1.5vw, 1.08rem);
+  font-weight: 500;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.72);
+
+  @media (max-width: 768px) {
+    -webkit-line-clamp: 3;
+    margin-top: 8px;
+    font-size: 0.86rem;
+    max-width: none;
+  }
 `;
 
 const Scene = styled.div`
@@ -1131,6 +1203,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const creditRoleRef = useRef<HTMLSpanElement>(null);
   const creditNameRef = useRef<HTMLSpanElement>(null);
   const creditPriceRef = useRef<HTMLSpanElement>(null);
+  const creditDescRef = useRef<HTMLParagraphElement>(null);
   const creditThumbRef = useRef<HTMLImageElement>(null);
   const lastCreditKey = useRef<string | null>(null);
   const moonRefs = useRef(new Map<string, HTMLAnchorElement>());
@@ -1362,6 +1435,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           slug: cymasphere?.slug || "cymasphere",
           price: cymasphere?.price,
           subtitle: (cymasphere?.tagline || "").trim(),
+          description: (cymasphere?.description || "").trim(),
           image: CYMASPHERE_APP_ICON,
           sun: true,
           weight: 1.5,
@@ -1377,6 +1451,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           slug: body.node.slug,
           price: body.node.price,
           subtitle: (body.node.tagline || "").trim(),
+          description: (body.node.description || "").trim(),
           image: body.node.image,
           weight: body.synth ? 2 : 1,
           startDeg: body.seat.startDeg,
@@ -1787,9 +1862,17 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           : synthCredit
             ? CYMASYNTH_MARK
             : focused.image || "";
-        const copyKey = `${focused.key}|${focused.name}|${role}|${focused.price ?? ""}|${thumbSrc}`;
+        const blurb = featuredProductBlurb(focused, synthCredit);
+        const copySide =
+          sunCredit || holdFrameOffset(focused.key, viewHalfW).x > 0
+            ? "left"
+            : "right";
+        const copyKey = `${focused.key}|${focused.name}|${role}|${focused.price ?? ""}|${thumbSrc}|${blurb}|${copySide}`;
         if (copyKey !== lastCreditCopy) {
           lastCreditCopy = copyKey;
+          if (creditWrapRef.current) {
+            creditWrapRef.current.dataset.side = copySide;
+          }
           if (creditLinkRef.current && focused.slug) {
             creditLinkRef.current.href = `/product/${focused.slug}`;
             creditLinkRef.current.setAttribute(
@@ -1806,6 +1889,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           }
           if (creditPriceRef.current) {
             creditPriceRef.current.textContent = focused.price ?? "";
+          }
+          if (creditDescRef.current) {
+            creditDescRef.current.textContent = blurb;
+            creditDescRef.current.style.display = blurb ? "" : "none";
           }
           if (creditThumbRef.current) {
             creditThumbRef.current.dataset.sun = sunCredit ? "true" : "false";
@@ -2285,6 +2372,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             <CreditRole ref={creditRoleRef} />
             <CreditName ref={creditNameRef} />
             <CreditPrice ref={creditPriceRef} />
+            <CreditBlurb ref={creditDescRef} />
           </CreditText>
         </CreditCard>
       </CreditSlot>

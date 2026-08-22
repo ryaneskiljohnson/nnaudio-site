@@ -606,7 +606,7 @@ export const INTRO_PATH_U = 0.28;
 /** Dolly/yaw blend from the fly-in into the Cymasphere hold. */
 export const INTRO_BLEND_MS = 1800;
 /** Base time on a catalog product: hold plus the journey to the next stop. */
-export const CREDIT_MS = 3400;
+export const CREDIT_MS = 4400;
 /** Reserved focus key for the Cymasphere sun hold. */
 export const SUN_FOCUS_KEY = "sun-cymasphere";
 /** Travel leg at the end of each credit — the flight to the next moon. */
@@ -625,6 +625,8 @@ export interface CreditTarget {
   price?: string;
   /** Product tagline shown as the small line above the name. */
   subtitle?: string;
+  /** Short product description shown beside the held planet. */
+  description?: string;
   /** Artwork URL shown as the credit card thumbnail. */
   image?: string;
   /** True when this credit is the Cymasphere sun, not a moon. */
