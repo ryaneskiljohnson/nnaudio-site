@@ -15,6 +15,12 @@ export const NEXT_IMAGE_WIDTHS = [
   3840,
 ] as const;
 
+/**
+ * Quality Next 16 accepts on `/_next/image` unless `images.qualities` is
+ * configured. Other values return 400 (`INVALID_IMAGE_OPTIMIZE_REQUEST`).
+ */
+export const NEXT_IMAGE_QUALITY = 75;
+
 /** Exact hosts from `images.remotePatterns` in next.config.js. */
 const ALLOWED_IMAGE_HOSTS = new Set(["nnaud.io"]);
 
@@ -97,25 +103,19 @@ export function nearestNextImageWidth(displayPx: number): number {
  * @brief Same-origin optimized URL for a local or allowlisted remote image.
  * @param src Absolute or root-relative image URL.
  * @param displayPx Target rendered (or bake) width in CSS pixels.
- * @param quality JPEG/WebP quality 1–100 (default 70).
  * @returns `/_next/image?...` URL, or the original src when it cannot be optimized.
+ * @note Quality is always 75. Next 16 `/_next/image` rejects other `q`
+ * values unless `images.qualities` is set, which 400s the request.
  * @example
  * optimizedImageUrl("https://nnaud.io/a.png", 52)
- * // "/_next/image?url=https%3A%2F%2Fnnaud.io%2Fa.png&w=64&q=70"
+ * // "/_next/image?url=https%3A%2F%2Fnnaud.io%2Fa.png&w=64&q=75"
  */
-export function optimizedImageUrl(
-  src: string,
-  displayPx: number,
-  quality = 70
-): string {
+export function optimizedImageUrl(src: string, displayPx: number): string {
   const url = src.trim();
   if (!url) return url;
   if (url.startsWith("/_next/image")) return url;
   if (!isOptimizableImageSrc(url)) return url;
 
-  const q = Number.isFinite(quality)
-    ? Math.min(100, Math.max(1, Math.round(quality)))
-    : 70;
   const w = nearestNextImageWidth(displayPx);
-  return `/_next/image?url=${encodeURIComponent(url)}&w=${w}&q=${q}`;
+  return `/_next/image?url=${encodeURIComponent(url)}&w=${w}&q=${NEXT_IMAGE_QUALITY}`;
 }

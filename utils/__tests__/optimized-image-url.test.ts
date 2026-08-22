@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  NEXT_IMAGE_QUALITY,
   NEXT_IMAGE_WIDTHS,
   imageUrlNeedsCrossOrigin,
   isOptimizableImageSrc,
@@ -64,11 +65,26 @@ describe("isOptimizableImageSrc", () => {
 describe("optimizedImageUrl", () => {
   it("wraps allowlisted remote and local paths in /_next/image", () => {
     expect(optimizedImageUrl("https://nnaud.io/a.png", 52)).toBe(
-      "/_next/image?url=https%3A%2F%2Fnnaud.io%2Fa.png&w=64&q=70"
+      `/_next/image?url=https%3A%2F%2Fnnaud.io%2Fa.png&w=64&q=${NEXT_IMAGE_QUALITY}`
     );
     expect(optimizedImageUrl("/images/icon.png", 128)).toBe(
-      "/_next/image?url=%2Fimages%2Ficon.png&w=128&q=70"
+      `/_next/image?url=%2Fimages%2Ficon.png&w=128&q=${NEXT_IMAGE_QUALITY}`
     );
+  });
+
+  it("always emits Next-accepted quality on generated optimizer URLs", () => {
+    const urls = [
+      optimizedImageUrl("https://nnaud.io/a.png", 52),
+      optimizedImageUrl("/images/icon.png", 128),
+      optimizedImageUrl(
+        "https://znecvzfogwkzinkduyuq.supabase.co/storage/v1/object/public/product-images/tetrad-guitars-featured.webp",
+        640
+      ),
+    ];
+    for (const url of urls) {
+      expect(url).toMatch(new RegExp(`&q=${NEXT_IMAGE_QUALITY}$`));
+    }
+    expect(urls.some((url) => url.includes("&q=70"))).toBe(false);
   });
 
   it("leaves unknown hosts and data URLs as the original src", () => {
