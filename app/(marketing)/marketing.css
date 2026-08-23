@@ -1,0 +1,267 @@
+/**
+ * @fileoverview Styles for the marketing homepage shell, catalog grid,
+ * header, and footer. Imported by the marketing layout so first paint
+ * does not depend on a stale global CSS chunk.
+ * @module app/(marketing)/marketing.css
+ */
+
+.marketing-shell {
+  min-height: 100vh;
+  background: #02030a;
+}
+
+.marketing-catalog {
+  position: relative;
+  overflow: hidden;
+  padding: 72px 16px 56px;
+  background:
+    radial-gradient(ellipse 60% 40% at 18% 8%, rgba(108, 99, 255, 0.09), transparent 60%),
+    radial-gradient(ellipse 50% 36% at 85% 90%, rgba(78, 205, 196, 0.07), transparent 60%),
+    linear-gradient(180deg, #07080f 0%, #0a0a0a 100%);
+}
+
+.marketing-catalog-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.marketing-catalog-eyebrow {
+  margin: 0 0 0.7rem;
+  text-align: center;
+  color: var(--accent, #4ecdc4);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.marketing-catalog-title {
+  margin: 0 0 0.7rem;
+  text-align: center;
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.marketing-catalog-sub {
+  margin: 0 auto 2.2rem;
+  max-width: 520px;
+  text-align: center;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.marketing-catalog-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+}
+
+.marketing-catalog-tile {
+  --cat: 108, 99, 255;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  min-height: 180px;
+  padding: 1.6rem 1.5rem 1.45rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(130% 100% at 88% -10%, rgba(var(--cat), 0.16), transparent 55%),
+    rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-decoration: none;
+  color: inherit;
+}
+
+.marketing-catalog-count {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  color: rgb(var(--cat));
+}
+
+.marketing-catalog-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.marketing-catalog-blurb {
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.marketing-catalog-moons {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.25rem;
+  display: flex;
+  flex-direction: row-reverse;
+}
+
+.marketing-catalog-moons img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #0a0a14;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.marketing-catalog-moons img:not(:first-child) {
+  margin-right: -16px;
+}
+
+.marketing-header-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(8, 9, 16, 0.86);
+  backdrop-filter: blur(12px);
+}
+
+.marketing-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 64px;
+  padding: 0.6rem 1.1rem;
+}
+
+.marketing-header-logo {
+  display: flex;
+  align-items: center;
+}
+
+.marketing-header-logo img {
+  display: block;
+  height: 36px !important;
+  width: auto !important;
+  max-height: 36px;
+}
+
+.marketing-header-nav {
+  display: none;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.marketing-header-nav a,
+.marketing-header-actions a,
+.marketing-header-menu a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.marketing-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.marketing-header-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.marketing-header-menu {
+  display: none;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.75rem 1.1rem 1.1rem;
+}
+
+.marketing-header-menu.is-open {
+  display: flex;
+}
+
+.marketing-footer {
+  padding: 3rem 1.25rem 2rem;
+  background: #0a0a0a;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.marketing-footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+.marketing-footer a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.marketing-footer-copy {
+  margin-top: 2rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+@media (min-width: 769px) {
+  .marketing-catalog {
+    padding: 110px 20px 80px;
+  }
+
+  .marketing-catalog-title {
+    font-size: 2.6rem;
+  }
+
+  .marketing-catalog-sub {
+    margin-bottom: 3rem;
+  }
+
+  .marketing-catalog-grid {
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1.1rem;
+  }
+
+  .marketing-catalog-tile {
+    grid-column: span 3;
+    min-height: 200px;
+  }
+
+  .marketing-catalog-tile.is-wide {
+    grid-column: span 6;
+    min-height: 220px;
+  }
+
+  .marketing-catalog-moons img {
+    width: 52px;
+    height: 52px;
+  }
+
+  .marketing-header-nav {
+    display: flex;
+  }
+
+  .marketing-header-toggle {
+    display: none;
+  }
+
+  .marketing-footer-inner {
+    grid-template-columns: 1.4fr 1fr 1fr;
+  }
+}

@@ -1,6 +1,6 @@
 /**
  * @fileoverview Client-safe homepage catalog seed types and helpers. No
- * Supabase imports — safe for `HomePageClient` and unit tests.
+ * Supabase imports — safe for homepage client islands and unit tests.
  * @module lib/homepage-hero-seed
  */
 
@@ -231,4 +231,124 @@ export function emptyHomepageCatalogSeed(): HomepageCatalogSeed {
     cymasphereProduct: null,
     freeProducts: [],
   };
+}
+
+/** Card shape shared by the hero, free row, and category thumbs. */
+export interface HomepageCard {
+  id: string | number;
+  name: string;
+  slug: string;
+  tagline: string;
+  short_description?: string | null;
+  description?: string | null;
+  category: string;
+  image: string;
+  featured_image_url?: string | null;
+  logo_url?: string | null;
+  backgroundImage: string;
+  price: number;
+  sale_price?: number | null;
+}
+
+/** Category tile data for the server-rendered catalog grid. */
+export interface HomepageCategoryTile {
+  key: string;
+  label: string;
+  href: string;
+  count: number;
+  blurb?: string;
+  images?: string[];
+  alwaysShow?: boolean;
+}
+
+/**
+ * @brief Maps a server seed row to the card shape used by the hero and
+ * free collection.
+ * @param row Slim product from the homepage catalog seed.
+ * @returns Card-shaped product.
+ */
+export function seedRowToCard(row: HomepageProductRow): HomepageCard {
+  return {
+    id: row.id ?? row.slug ?? "",
+    name: row.name ?? "",
+    slug: row.slug ?? "",
+    tagline: row.tagline || row.short_description || "",
+    short_description: row.short_description,
+    description: row.description,
+    category: row.category || "plugin",
+    image: row.featured_image_url || row.logo_url || "",
+    featured_image_url: row.featured_image_url,
+    logo_url: row.logo_url,
+    backgroundImage:
+      row.background_image_url || row.background_video_url || "",
+    price: typeof row.price === "number" ? row.price : 0,
+    sale_price: row.sale_price,
+  };
+}
+
+/**
+ * @brief Category tiles for the homepage catalog grid, from the seed.
+ * @param seed Server catalog snapshot.
+ * @returns Tiles including NNAudio Access.
+ */
+export function homepageCategoryTiles(
+  seed: HomepageCatalogSeed
+): HomepageCategoryTile[] {
+  return [
+    {
+      key: "instruments",
+      label: "Instruments",
+      href: "/products?category=instrument-plugin",
+      count: seed.instruments.count,
+      blurb: "Synths, texture engines, and sound generators.",
+      images: seed.instruments.thumbs,
+    },
+    {
+      key: "effects",
+      label: "Effects",
+      href: "/products?category=audio-fx-plugin",
+      count: seed.effects.count,
+      blurb: "Color, space, and motion for any source.",
+      images: seed.effects.thumbs,
+    },
+    {
+      key: "midi-fx",
+      label: "MIDI FX",
+      href: "/products?category=midi-fx-plugin",
+      count: seed.midiFx.count,
+      blurb: "Writing tools that plug into your DAW.",
+      images: seed.midiFx.thumbs,
+    },
+    {
+      key: "packs",
+      label: "MIDI & Sample Packs",
+      href: "/packs",
+      count: seed.packs.count,
+      blurb: "Drop-in phrases, kits, and sounds.",
+      images: seed.packs.thumbs,
+    },
+    {
+      key: "bundles",
+      label: "Bundles",
+      href: "/bundles",
+      count: seed.bundleCount,
+      blurb: "More products, one better price.",
+    },
+    {
+      key: "free",
+      label: "Free Tools",
+      href: "/free-tools",
+      count: seed.free.count,
+      blurb: "Start producing without spending a dime.",
+      images: seed.free.thumbs,
+    },
+    {
+      key: "access",
+      label: "NNAudio Access",
+      href: "/downloads",
+      count: 1,
+      alwaysShow: true,
+      blurb: "One app to manage all your products.",
+    },
+  ];
 }

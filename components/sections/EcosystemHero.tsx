@@ -9,10 +9,11 @@
  * fill) so hydration cannot restyle the LCP element. Critical #home h1 / CTA
  * rules live in globals.css so the headline is visible before
  * styled-components hydrates. The tour is a
- * dynamic import so its JS is not on the LCP path. On mobile and
- * prefers-reduced-motion the tour waits for load + idle (or never
- * starts). Hero height is reserved in globals.css (#home) so a late
- * sheet cannot collapse-then-expand.
+ * dynamic import so its JS is not on the LCP path. Mobile and
+ * prefers-reduced-motion never download CircuitNetwork until the user
+ * taps Play. Desktop starts the tour after mount. Hero height is
+ * reserved in globals.css (#home) so a late sheet cannot
+ * collapse-then-expand.
  */
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -230,6 +231,7 @@ const boardFadeIn = keyframes`
  * is not gated on hydration. CSS keyframes — no Framer on the LCP path.
  */
 const BoardFade = styled.div`
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
@@ -295,6 +297,32 @@ const PosterMoon = styled.div<{ $x: string; $y: string; $size: string }>`
   opacity: 0.7;
 `;
 
+const PlayTourButton = styled.button`
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  z-index: 3;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(5, 6, 16, 0.55);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  transform: translate(-50%, 92px);
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+
+  &:hover,
+  &:focus-visible {
+    border-color: rgba(201, 180, 255, 0.8);
+    outline: none;
+  }
+`;
+
 const CircuitNetwork = dynamic(() => import("./CircuitNetwork"), {
   ssr: false,
   loading: () => <StaticHeroPoster />,
@@ -317,18 +345,20 @@ function StaticHeroPoster() {
 }
 
 /**
- * @brief Whether the solar-system tour may mount this session.
- * Both server and the first client render stay on the poster so
- * hydration matches. Desktop enables the tour after mount; mobile
- * waits for `load` + idle. `prefers-reduced-motion` stays on the poster.
- * @returns True once CircuitNetwork is allowed to download and run.
- * @note Do not read `window` in the useState initializer — that is what
- * produced the homepage hydration mismatch (poster on the server,
- * LoadableComponent/Suspense on the client).
+ * @brief Desktop auto-starts the tour after mount. Mobile stays on the
+ * CSS poster until Play. Both sides start with `allowTour=false` so
+ * hydration matches.
+ * @returns Tour mount flags and the Play handler for phones.
  */
-function useDeferredHeroTour(): { allowTour: boolean; parkImmediately: boolean } {
+function useOptInHeroTour(): {
+  allowTour: boolean;
+  parkImmediately: boolean;
+  showPlay: boolean;
+  startMobileTour: () => void;
+} {
   const [allowTour, setAllowTour] = useState(false);
   const [parkImmediately, setParkImmediately] = useState(false);
+  const [showPlay, setShowPlay] = useState(false);
 
   useEffect(() => {
     const mobile = window.matchMedia(
@@ -337,49 +367,25 @@ function useDeferredHeroTour(): { allowTour: boolean; parkImmediately: boolean }
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
-    if (reduceMotion) {
-      return;
-    }
+    if (reduceMotion) return;
     if (!mobile) {
       setAllowTour(true);
       setParkImmediately(false);
       return;
     }
-
-    setParkImmediately(true);
-    let cancelled = false;
-    const idle =
-      window.requestIdleCallback?.bind(window) ??
-      ((cb: IdleRequestCallback) =>
-        window.setTimeout(
-          () =>
-            cb({
-              didTimeout: false,
-              timeRemaining: () => 0,
-            } as IdleDeadline),
-          200
-        ));
-
-    const start = () => {
-      if (cancelled) return;
-      idle(() => {
-        if (!cancelled) setAllowTour(true);
-      });
-    };
-
-    if (document.readyState === "complete") {
-      start();
-    } else {
-      window.addEventListener("load", start, { once: true });
-    }
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("load", start);
-    };
+    setShowPlay(true);
   }, []);
 
-  return { allowTour, parkImmediately };
+  /**
+   * @brief Downloads CircuitNetwork after an explicit tap on a phone.
+   */
+  const startMobileTour = () => {
+    setParkImmediately(true);
+    setAllowTour(true);
+    setShowPlay(false);
+  };
+
+  return { allowTour, parkImmediately, showPlay, startMobileTour };
 }
 
 /**
@@ -435,7 +441,8 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   productCount = 0,
 }) => {
   const pathname = usePathname();
-  const { allowTour, parkImmediately } = useDeferredHeroTour();
+  const { allowTour, parkImmediately, showPlay, startMobileTour } =
+    useOptInHeroTour();
 
   const { cymasynth, nodes } = useMemo(() => {
     const synthProduct = instruments.find((p) => p.slug === "cymasynth");
@@ -495,6 +502,11 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
             />
           ) : (
             <StaticHeroPoster />
+          )}
+          {showPlay && (
+            <PlayTourButton type="button" onClick={startMobileTour}>
+              Play tour
+            </PlayTourButton>
           )}
         </BoardFade>
         <Headline>

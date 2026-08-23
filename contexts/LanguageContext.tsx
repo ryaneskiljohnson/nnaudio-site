@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import useLanguageHook from '@/hooks/useLanguage';
 import i18next from 'i18next';
 
@@ -16,7 +17,9 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const { currentLanguage, isLoading, changeLanguage, languages } = useLanguageHook();
+  const pathname = usePathname();
+  const { currentLanguage, isLoading, changeLanguage, languages } =
+    useLanguageHook(pathname === "/");
 
   const t = (key: string, options?: any): string => {
     const result = i18next.t(key, options);

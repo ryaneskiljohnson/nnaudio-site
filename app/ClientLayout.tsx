@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useEffect, Suspense, useState } from "react";
+/**
+ * @fileoverview Root client chrome. `/` is a pass-through so the marketing
+ * layout can stay off Auth/Cart/chat. Every other public route uses the
+ * full shop shell.
+ * @module app/ClientLayout
+ */
+
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { ThemeProvider } from "styled-components";
 import { ToastProvider } from "@/contexts/ToastContext";
@@ -85,6 +92,19 @@ interface ClientLayoutProps {
 }
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
+  const pathname = usePathname();
+  if (pathname === "/") {
+    return <ThemeProvider theme={theme}>{children}</ThemeProvider>;
+  }
+  return <ShopLayout>{children}</ShopLayout>;
+}
+
+/**
+ * @brief Full commerce chrome: auth, cart, header, banners, chat.
+ * @param children Route content.
+ * @returns Shop app shell.
+ */
+function ShopLayout({ children }: ClientLayoutProps) {
   const pathname = usePathname();
   const [hasActivePromotion, setHasActivePromotion] = useState(false);
   /** When false, top-banner choice is deferred so access/promotion do not swap as async data arrives. */

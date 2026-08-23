@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   countHeroCatalogProducts,
   emptyHomepageCatalogSeed,
+  homepageCategoryTiles,
   isFreeHomepageProduct,
   mapRawProductToFeaturedCard,
+  seedRowToCard,
   sortFeaturedProducts,
   CURATED_FEATURED_ORDER,
 } from "@/lib/homepage-hero-seed";
@@ -132,6 +134,30 @@ describe("emptyHomepageCatalogSeed", () => {
     expect(seed.heroTour.instruments).toEqual([]);
     expect(seed.cymasphereProduct).toBeNull();
     expect(seed.freeProducts).toEqual([]);
+  });
+});
+
+describe("homepageCategoryTiles", () => {
+  it("keeps the Access tile and hides empty buckets via count", () => {
+    const seed = emptyHomepageCatalogSeed();
+    seed.instruments.count = 3;
+    const tiles = homepageCategoryTiles(seed);
+    expect(tiles.find((t) => t.key === "access")?.alwaysShow).toBe(true);
+    expect(tiles.find((t) => t.key === "instruments")?.count).toBe(3);
+  });
+});
+
+describe("seedRowToCard", () => {
+  it("maps seed image and price fields", () => {
+    const card = seedRowToCard({
+      id: "1",
+      slug: "reiya",
+      name: "Reiya",
+      featured_image_url: "https://example.com/a.webp",
+      price: 19,
+    });
+    expect(card.image).toBe("https://example.com/a.webp");
+    expect(card.price).toBe(19);
   });
 });
 

@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @fileoverview Language init and switcher. Remote catalog translations
+ * can be skipped on the marketing homepage.
+ * @module hooks/useLanguage
+ */
+
 import { useState, useEffect } from 'react';
 import i18next from 'i18next';
 import { languages, defaultLanguage, loadTranslations } from '@/app/i18n/i18n-config';
@@ -47,11 +53,21 @@ function initLanguageOnce(): Promise<string> {
   return languageInitPromise;
 }
 
-export default function useLanguage() {
+/**
+ * @brief Language hook. Homepage skips the translations API so `/` first
+ * paint does not wait on `/api/translations`.
+ * @param skipRemote When true, stay on bundled English fallbacks.
+ * @returns Current language helpers.
+ */
+export default function useLanguage(skipRemote = false) {
   const [currentLanguage, setCurrentLanguage] = useState<string>(defaultLanguage);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!skipRemote);
 
   useEffect(() => {
+    if (skipRemote) {
+      setIsLoading(false);
+      return;
+    }
     let cancelled = false;
     initLanguageOnce()
       .then((lang) => {
@@ -64,7 +80,7 @@ export default function useLanguage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [skipRemote]);
   
   const changeLanguage = async (lang: string) => {
     if (!languages.includes(lang) || lang === currentLanguage) return;

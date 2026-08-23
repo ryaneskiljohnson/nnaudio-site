@@ -1,6 +1,13 @@
 "use client";
 
+/**
+ * @fileoverview Wraps the app so language-change events refresh i18next.
+ * Homepage skips the remote translations fetch.
+ * @module app/i18n/I18nProvider
+ */
+
 import React, { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import i18next from 'i18next';
 import useLanguage from '@/hooks/useLanguage';
 // Ensure i18n-config loads early so sync init runs before LegalModal/useTranslation
@@ -11,7 +18,8 @@ interface I18nProviderProps {
 }
 
 export default function I18nProvider({ children }: I18nProviderProps) {
-  const { currentLanguage } = useLanguage();
+  const pathname = usePathname();
+  const { currentLanguage } = useLanguage(pathname === "/");
   
   // Listen for global language change events
   useEffect(() => {
