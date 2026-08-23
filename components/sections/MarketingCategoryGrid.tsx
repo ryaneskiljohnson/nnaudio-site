@@ -5,6 +5,7 @@
  */
 
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import type { HomepageCategoryTile } from "@/lib/homepage-hero-seed";
 
 const CATEGORY_RGB: Record<string, string> = {
@@ -40,7 +41,7 @@ export default function MarketingCategoryGrid({
         </p>
         <div className="marketing-catalog-grid">
           {visible.map((tile, index) => (
-            <a
+            <Link
               key={tile.key}
               href={tile.href}
               className={
@@ -56,8 +57,13 @@ export default function MarketingCategoryGrid({
             >
               {tile.images && tile.images.length > 0 ? (
                 <span className="marketing-catalog-moons" aria-hidden>
-                  {tile.images.slice(0, index < 2 ? 4 : 3).map((src) => (
-                    <img key={src} src={src} alt="" loading="lazy" />
+                  {tile.images.slice(0, index < 2 ? 4 : 3).map((src, imageIndex) => (
+                    <img
+                      key={`${tile.key}-${src}-${imageIndex}`}
+                      src={src}
+                      alt=""
+                      loading="lazy"
+                    />
                   ))}
                 </span>
               ) : null}
@@ -66,7 +72,7 @@ export default function MarketingCategoryGrid({
               {tile.blurb ? (
                 <span className="marketing-catalog-blurb">{tile.blurb}</span>
               ) : null}
-            </a>
+            </Link>
           ))}
         </div>
       </div>

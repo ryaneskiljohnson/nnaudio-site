@@ -49,6 +49,7 @@ export default function MarketingHeader() {
             type="button"
             className="marketing-header-toggle"
             aria-expanded={open}
+            aria-controls="marketing-mobile-menu"
             aria-label={open ? "Close menu" : "Open menu"}
             onClick={() => setOpen((value) => !value)}
           >
@@ -57,8 +58,10 @@ export default function MarketingHeader() {
         </div>
       </div>
       <nav
+        id="marketing-mobile-menu"
         className={open ? "marketing-header-menu is-open" : "marketing-header-menu"}
         aria-label="Mobile"
+        hidden={!open}
       >
         {NAV.map((item) => (
           <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>

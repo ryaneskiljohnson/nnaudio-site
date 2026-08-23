@@ -22,12 +22,12 @@ interface Product {
   name: string;
   slug?: string;
   tagline?: string;
-  short_description?: string;
-  description?: string;
+  short_description?: string | null;
+  description?: string | null;
   category?: string;
   image?: string;
-  featured_image_url?: string;
-  logo_url?: string;
+  featured_image_url?: string | null;
+  logo_url?: string | null;
   price: number | string;
   sale_price?: number | null;
 }

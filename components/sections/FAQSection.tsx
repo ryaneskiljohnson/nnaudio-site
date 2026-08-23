@@ -2,7 +2,8 @@
 
 /**
  * @fileoverview Homepage FAQ accordion. Answers are a small HTML allowlist
- * sanitized without jsdom so SSR of `/` cannot 500 on Node 24.
+ * sanitized without jsdom so SSR of `/` cannot 500 on Node 24. On `/` the
+ * language hook skips the translations API and uses bundled defaults.
  * @module components/sections/FAQSection
  */
 
@@ -10,6 +11,7 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { usePathname } from "next/navigation";
 import useLanguage from "@/hooks/useLanguage";
 import Link from "next/link";
 import { sanitizeLimitedHtml } from "@/utils/sanitize-limited-html";
@@ -176,7 +178,8 @@ interface FAQItem {
 const FAQSection = () => {
   const [expandedFaqs, setExpandedFaqs] = useState<ExpandedFaqs>({});
   const { t } = useTranslation();
-  const { isLoading: languageLoading } = useLanguage();
+  const pathname = usePathname();
+  const { isLoading: languageLoading } = useLanguage(pathname === "/");
 
   const toggleFaq = (index: number) => {
     setExpandedFaqs((prev) => ({

@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * @fileoverview App-wide language context. Homepage skips the remote
+ * translations fetch so `/` first paint stays on bundled English.
+ * @module contexts/LanguageContext
+ */
+
 import React, { createContext, useContext, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import useLanguageHook from '@/hooks/useLanguage';
@@ -16,6 +22,11 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
+/**
+ * @brief Supplies language helpers. Skips `/api/translations` on `/`.
+ * @param children App tree.
+ * @returns Language context provider.
+ */
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { currentLanguage, isLoading, changeLanguage, languages } =
@@ -42,6 +53,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * @brief Reads the language context.
+ * @returns Translation helpers from LanguageProvider.
+ */
 export function useLanguage() {
   const context = useContext(LanguageContext);
   if (context === undefined) {

@@ -194,6 +194,10 @@
   display: flex;
 }
 
+.marketing-header-menu[hidden] {
+  display: none;
+}
+
 .marketing-footer {
   padding: 3rem 1.25rem 2rem;
   background: #0a0a0a;

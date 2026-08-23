@@ -30,13 +30,13 @@ export interface HeroProduct {
   name: string;
   slug: string;
   image?: string;
-  logo_url?: string;
-  featured_image_url?: string;
+  logo_url?: string | null;
+  featured_image_url?: string | null;
   price?: number | string;
   sale_price?: number | null;
   /** One-line subtitle shown on the credit card during the camera tour. */
   tagline?: string;
-  short_description?: string;
+  short_description?: string | null;
 }
 
 interface EcosystemHeroProps {

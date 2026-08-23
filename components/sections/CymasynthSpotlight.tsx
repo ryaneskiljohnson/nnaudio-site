@@ -17,8 +17,8 @@ import { motion } from "framer-motion";
 export interface CymasynthProduct {
   name: string;
   slug: string;
-  featured_image_url?: string;
-  logo_url?: string;
+  featured_image_url?: string | null;
+  logo_url?: string | null;
   backgroundImage?: string;
   price?: number | string;
   sale_price?: number | null;
@@ -249,7 +249,7 @@ function renderPrice(price?: number | string, salePrice?: number | null) {
  * next/image optimizes both.
  */
 const CymasynthSpotlight: React.FC<CymasynthSpotlightProps> = ({ product }) => {
-  const image = product?.featured_image_url || product?.logo_url;
+  const image = product?.featured_image_url || product?.logo_url || undefined;
   const productArt = isRasterImageUrl(image) ? image : undefined;
 
   return (
