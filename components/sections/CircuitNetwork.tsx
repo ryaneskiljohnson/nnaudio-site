@@ -134,10 +134,13 @@ const CYMASPHERE_APP_ICON = "/images/cymasphere-app-icon.png";
  */
 const CYMASPHERE_SUN_MARK = "/images/cymasphere-sun-mark.png";
 /**
- * Downscaled Cymasphere planet for the hero wrap. The 4K source stays
- * on the spotlight; a 1280² JPEG is enough for the 560px sun.
+ * 4K Cymasphere planet for the hero wrap bake. The visible fallback
+ * (`CYMASPHERE_SUN_SPHERE_POSTER`) is the 1280 webp so Play is not bald
+ * while the 4K decode finishes.
  */
-const CYMASPHERE_SUN_SPHERE = "/images/cymasphere-sun-sphere-hero.webp";
+const CYMASPHERE_SUN_SPHERE = "/images/cymasphere-sun-sphere.jpg";
+/** Same render at 1280 — idle poster and SunMark while the 4K bake runs. */
+const CYMASPHERE_SUN_SPHERE_POSTER = "/images/cymasphere-sun-sphere-hero.webp";
 /**
  * Official CymaSynth app icon (Seed of Life / cymatic mark) for credit thumbs.
  */
@@ -1634,7 +1637,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   // This pre-bakes just the first two stops so the opening holds have art
   // ready; later stops bake from the rAF prefetch as the tour advances.
   useEffect(() => {
-    if (parkImmediately) return;
     const byKey = new Map(bodies.map((body) => [body.key, body]));
     const upcoming = credits
       .filter((credit) => !credit.sun)
@@ -1658,18 +1660,21 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         }
       );
     }
-  }, [bodies, credits, parkImmediately]);
+  }, [bodies, credits]);
 
   useEffect(() => {
-    if (parkImmediately) return;
     const size = sunBakePx(mobile);
-    void loadSphereTexture(CYMASPHERE_SUN_SPHERE, size, {
-      surfaceShade: false,
-    }).then((tex) => {
+    void loadSphereTexture(
+      optimizedImageUrl(CYMASPHERE_SUN_SPHERE, size),
+      size,
+      {
+        surfaceShade: false,
+      }
+    ).then((tex) => {
       if (!mountedRef.current || !tex) return;
       sunTexRef.current = tex;
     });
-  }, [mobile, parkImmediately]);
+  }, [mobile]);
 
   const creditsByKey = useMemo(
     () => new Map(credits.map((credit) => [credit.key, credit])),
@@ -2569,7 +2574,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             >
               <SunFace ref={sunFaceRef}>
                 <SunMark
-                  src={CYMASPHERE_SUN_SPHERE}
+                  src={CYMASPHERE_SUN_SPHERE_POSTER}
                   alt=""
                   fetchPriority="low"
                   decoding="async"

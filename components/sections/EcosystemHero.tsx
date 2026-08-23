@@ -11,7 +11,8 @@
  * styled-components hydrates. The tour is a
  * dynamic import so its JS is not on the LCP path. Mobile and
  * prefers-reduced-motion never download CircuitNetwork until the user
- * taps Play. Desktop starts the tour after mount. Hero height is
+ * taps Play, then the catalog tour actually runs. Desktop starts the
+ * tour after mount. Hero height is
  * reserved in globals.css (#home) so a late sheet cannot
  * collapse-then-expand.
  */
@@ -246,8 +247,8 @@ const BoardFade = styled.div`
 
 /**
  * Same box as the tour board so swapping the dynamic import in does not
- * change layout. CSS-only sun/moons — no JPG — so the poster cannot
- * steal LCP from the h1.
+ * change layout. The sun is the rendered Cymasphere planet (1280 webp;
+ * the tour bakes the 4K original after Play).
  */
 const BoardPlaceholder = styled.div`
   flex: 1 1 auto;
@@ -259,7 +260,7 @@ const BoardPlaceholder = styled.div`
   overflow: hidden;
 `;
 
-const PosterSun = styled.div`
+const PosterSunImg = styled.img`
   position: absolute;
   left: 50%;
   top: 46%;
@@ -267,15 +268,7 @@ const PosterSun = styled.div`
   height: min(42vw, 220px);
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  background: radial-gradient(
-    circle at 34% 30%,
-    #fffaf0 0%,
-    #ffe0a8 14%,
-    #c9b4ff 36%,
-    #6c63ff 56%,
-    #2a1460 78%,
-    #12071f 100%
-  );
+  object-fit: cover;
   box-shadow:
     0 0 48px rgba(255, 230, 180, 0.35),
     0 0 110px rgba(108, 99, 255, 0.28);
@@ -301,7 +294,7 @@ const PlayTourButton = styled.button`
   position: absolute;
   left: 50%;
   top: 46%;
-  z-index: 3;
+  z-index: 5;
   min-width: 44px;
   min-height: 44px;
   padding: 10px 18px;
@@ -328,9 +321,12 @@ const CircuitNetwork = dynamic(() => import("./CircuitNetwork"), {
   loading: () => <StaticHeroPoster />,
 });
 
+/** Rendered Cymasphere planet for the idle disk (220px). Tour bakes 4K. */
+const CYMASPHERE_SUN_POSTER = "/images/cymasphere-sun-sphere-hero.webp";
+
 /**
- * @brief CSS-only parked wide shot used until the tour chunk is allowed
- * to load. No image fetch — a JPG here would compete with the h1 LCP.
+ * @brief Parked wide shot used until the tour chunk is allowed to load.
+ * Uses the rendered Cymasphere sphere, not a bald CSS orb.
  * @returns Decorative sun and moons.
  */
 function StaticHeroPoster() {
@@ -339,25 +335,30 @@ function StaticHeroPoster() {
       <PosterMoon $x="18%" $y="28%" $size="44px" />
       <PosterMoon $x="74%" $y="22%" $size="32px" />
       <PosterMoon $x="68%" $y="62%" $size="56px" />
-      <PosterSun />
+      <PosterSunImg
+        src={CYMASPHERE_SUN_POSTER}
+        alt=""
+        width={1280}
+        height={1280}
+        decoding="async"
+      />
     </BoardPlaceholder>
   );
 }
 
 /**
  * @brief Desktop auto-starts the tour after mount. Mobile stays on the
- * CSS poster until Play. Both sides start with `allowTour=false` so
- * hydration matches.
+ * rendered-planet poster until Play, then runs the catalog tour. Both
+ * sides start
+ * with `allowTour=false` so hydration matches.
  * @returns Tour mount flags and the Play handler for phones.
  */
 function useOptInHeroTour(): {
   allowTour: boolean;
-  parkImmediately: boolean;
   showPlay: boolean;
   startMobileTour: () => void;
 } {
   const [allowTour, setAllowTour] = useState(false);
-  const [parkImmediately, setParkImmediately] = useState(false);
   const [showPlay, setShowPlay] = useState(false);
 
   useEffect(() => {
@@ -370,22 +371,21 @@ function useOptInHeroTour(): {
     if (reduceMotion) return;
     if (!mobile) {
       setAllowTour(true);
-      setParkImmediately(false);
       return;
     }
     setShowPlay(true);
   }, []);
 
   /**
-   * @brief Downloads CircuitNetwork after an explicit tap on a phone.
+   * @brief Downloads CircuitNetwork after an explicit tap on a phone
+   * and runs the catalog tour (does not park on the first frame).
    */
   const startMobileTour = () => {
-    setParkImmediately(true);
     setAllowTour(true);
     setShowPlay(false);
   };
 
-  return { allowTour, parkImmediately, showPlay, startMobileTour };
+  return { allowTour, showPlay, startMobileTour };
 }
 
 /**
@@ -441,8 +441,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   productCount = 0,
 }) => {
   const pathname = usePathname();
-  const { allowTour, parkImmediately, showPlay, startMobileTour } =
-    useOptInHeroTour();
+  const { allowTour, showPlay, startMobileTour } = useOptInHeroTour();
 
   const { cymasynth, nodes } = useMemo(() => {
     const synthProduct = instruments.find((p) => p.slug === "cymasynth");
@@ -498,7 +497,6 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
               cymasphere={cymasphere ? toNode(cymasphere) : null}
               cymasynth={cymasynth}
               nodes={nodes}
-              parkImmediately={parkImmediately}
             />
           ) : (
             <StaticHeroPoster />
