@@ -9,16 +9,18 @@
  * fill) so hydration cannot restyle the LCP element. Critical #home h1 / CTA
  * rules live in globals.css so the headline is visible before
  * styled-components hydrates. The tour is a
- * dynamic import so its JS is not on the LCP path. Hero height is reserved
- * in globals.css (#home) so a late sheet cannot collapse-then-expand.
+ * dynamic import so its JS is not on the LCP path. On mobile and
+ * prefers-reduced-motion the tour waits for load + idle (or never
+ * starts). Hero height is reserved in globals.css (#home) so a late
+ * sheet cannot collapse-then-expand.
  */
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import styled from "styled-components";
-import { motion } from "framer-motion";
+import styled, { keyframes } from "styled-components";
 import type { CircuitNode } from "./CircuitNetwork";
+import { HERO_MOBILE_MAX_WIDTH_PX } from "@/utils/circuit-network-layout";
 import { scrollToHash } from "@/utils/scrollToHash";
 
 /** Minimal product shape consumed from the homepage fetches. */
@@ -218,21 +220,32 @@ const BoardArea = styled.div`
   min-height: 0;
 `;
 
+const boardFadeIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`;
+
 /**
  * Decorative tour fade only. Headline copy stays in the first paint so LCP
- * is not gated on hydration (opacity 0 until useAnimation was 21s on mobile).
+ * is not gated on hydration. CSS keyframes — no Framer on the LCP path.
  */
-const BoardFade = styled(motion.div)`
+const BoardFade = styled.div`
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
+  animation: ${boardFadeIn} 0.6s ease forwards;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 /**
  * Same box as the tour board so swapping the dynamic import in does not
- * change layout. Background matches CircuitNetwork's Board.
+ * change layout. CSS-only sun/moons — no JPG — so the poster cannot
+ * steal LCP from the h1.
  */
 const BoardPlaceholder = styled.div`
   flex: 1 1 auto;
@@ -240,12 +253,134 @@ const BoardPlaceholder = styled.div`
   height: 100%;
   width: 100%;
   background: #02030a;
+  position: relative;
+  overflow: hidden;
+`;
+
+const PosterSun = styled.div`
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: min(42vw, 220px);
+  height: min(42vw, 220px);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle at 34% 30%,
+    #fffaf0 0%,
+    #ffe0a8 14%,
+    #c9b4ff 36%,
+    #6c63ff 56%,
+    #2a1460 78%,
+    #12071f 100%
+  );
+  box-shadow:
+    0 0 48px rgba(255, 230, 180, 0.35),
+    0 0 110px rgba(108, 99, 255, 0.28);
+`;
+
+const PosterMoon = styled.div<{ $x: string; $y: string; $size: string }>`
+  position: absolute;
+  left: ${(p) => p.$x};
+  top: ${(p) => p.$y};
+  width: ${(p) => p.$size};
+  height: ${(p) => p.$size};
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 32% 28%,
+    rgba(255, 255, 255, 0.55),
+    rgba(140, 150, 200, 0.35) 42%,
+    rgba(20, 18, 40, 0.9)
+  );
+  opacity: 0.7;
 `;
 
 const CircuitNetwork = dynamic(() => import("./CircuitNetwork"), {
   ssr: false,
-  loading: () => <BoardPlaceholder />,
+  loading: () => <StaticHeroPoster />,
 });
+
+/**
+ * @brief CSS-only parked wide shot used until the tour chunk is allowed
+ * to load. No image fetch — a JPG here would compete with the h1 LCP.
+ * @returns Decorative sun and moons.
+ */
+function StaticHeroPoster() {
+  return (
+    <BoardPlaceholder aria-hidden>
+      <PosterMoon $x="18%" $y="28%" $size="44px" />
+      <PosterMoon $x="74%" $y="22%" $size="32px" />
+      <PosterMoon $x="68%" $y="62%" $size="56px" />
+      <PosterSun />
+    </BoardPlaceholder>
+  );
+}
+
+/**
+ * @brief Whether the solar-system tour may mount this session.
+ * Both server and the first client render stay on the poster so
+ * hydration matches. Desktop enables the tour after mount; mobile
+ * waits for `load` + idle. `prefers-reduced-motion` stays on the poster.
+ * @returns True once CircuitNetwork is allowed to download and run.
+ * @note Do not read `window` in the useState initializer — that is what
+ * produced the homepage hydration mismatch (poster on the server,
+ * LoadableComponent/Suspense on the client).
+ */
+function useDeferredHeroTour(): { allowTour: boolean; parkImmediately: boolean } {
+  const [allowTour, setAllowTour] = useState(false);
+  const [parkImmediately, setParkImmediately] = useState(false);
+
+  useEffect(() => {
+    const mobile = window.matchMedia(
+      `(max-width: ${HERO_MOBILE_MAX_WIDTH_PX}px)`
+    ).matches;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    if (reduceMotion) {
+      return;
+    }
+    if (!mobile) {
+      setAllowTour(true);
+      setParkImmediately(false);
+      return;
+    }
+
+    setParkImmediately(true);
+    let cancelled = false;
+    const idle =
+      window.requestIdleCallback?.bind(window) ??
+      ((cb: IdleRequestCallback) =>
+        window.setTimeout(
+          () =>
+            cb({
+              didTimeout: false,
+              timeRemaining: () => 0,
+            } as IdleDeadline),
+          200
+        ));
+
+    const start = () => {
+      if (cancelled) return;
+      idle(() => {
+        if (!cancelled) setAllowTour(true);
+      });
+    };
+
+    if (document.readyState === "complete") {
+      start();
+    } else {
+      window.addEventListener("load", start, { once: true });
+    }
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("load", start);
+    };
+  }, []);
+
+  return { allowTour, parkImmediately };
+}
 
 /**
  * @brief Formats a product price for chip tooltips ("Free" when 0).
@@ -300,6 +435,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   productCount = 0,
 }) => {
   const pathname = usePathname();
+  const { allowTour, parkImmediately } = useDeferredHeroTour();
 
   const { cymasynth, nodes } = useMemo(() => {
     const synthProduct = instruments.find((p) => p.slug === "cymasynth");
@@ -349,16 +485,17 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   return (
     <Hero id="home">
       <BoardArea>
-        <BoardFade
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6 }}
-        >
-          <CircuitNetwork
-            cymasphere={cymasphere ? toNode(cymasphere) : null}
-            cymasynth={cymasynth}
-            nodes={nodes}
-          />
+        <BoardFade>
+          {allowTour ? (
+            <CircuitNetwork
+              cymasphere={cymasphere ? toNode(cymasphere) : null}
+              cymasynth={cymasynth}
+              nodes={nodes}
+              parkImmediately={parkImmediately}
+            />
+          ) : (
+            <StaticHeroPoster />
+          )}
         </BoardFade>
         <Headline>
           <Title>

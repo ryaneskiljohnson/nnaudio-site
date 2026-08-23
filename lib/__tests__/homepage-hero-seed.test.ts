@@ -131,6 +131,7 @@ describe("emptyHomepageCatalogSeed", () => {
     expect(seed.packs.thumbs).toEqual([]);
     expect(seed.heroTour.instruments).toEqual([]);
     expect(seed.cymasphereProduct).toBeNull();
+    expect(seed.freeProducts).toEqual([]);
   });
 });
 

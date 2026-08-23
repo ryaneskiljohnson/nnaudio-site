@@ -42,7 +42,7 @@ const HERO_TOUR_SELECT =
 const HERO_TOUR_LIMIT = 80;
 
 const FREE_SELECT =
-  "slug, name, price, sale_price, featured_image_url, logo_url";
+  "id, slug, name, category, tagline, short_description, featured_image_url, logo_url, price, sale_price";
 
 type ShopPromotion = Awaited<ReturnType<typeof fetchActiveShopPromotion>>;
 
@@ -88,11 +88,11 @@ async function fetchCategoryBucket(
 /**
  * @brief Free-tools bucket: zero-price products excluding NNAudio Access.
  * @param supabase Anon Supabase client.
- * @returns Free category tile seed data.
+ * @returns Free category tile seed data plus rows for the free collection.
  */
 async function fetchFreeBucket(
   supabase: ReturnType<typeof createClient<Database>>
-): Promise<HomepageCategorySeed> {
+): Promise<HomepageCategorySeed & { products: HomepageProductRow[] }> {
   const { data, error } = await supabase
     .from("products")
     .select(FREE_SELECT)
@@ -101,13 +101,14 @@ async function fetchFreeBucket(
 
   if (error) {
     console.error("Homepage free bucket failed:", error.message);
-    return { count: 0, thumbs: [] };
+    return { count: 0, thumbs: [], products: [] };
   }
 
   const free = (data ?? []).filter(isFreeHomepageProduct);
   return {
     count: free.length,
     thumbs: thumbsFromProducts(free),
+    products: free,
   };
 }
 
@@ -122,9 +123,10 @@ export async function getHomepageHeroProductCount(): Promise<number> {
 
 /**
  * @brief Slim catalog snapshot for homepage first paint.
- * @returns Counts, thumbs, featured cards, Cymasphere prices, bundle count.
+ * @returns Counts, thumbs, featured cards, free rows, Cymasphere prices,
+ * bundle count, and hero-tour product lists.
  * @note Uses the anon key (RLS) and does not read cookies, so the homepage
- * can stay statically cached. Does not return full category catalogs.
+ * can stay statically cached. Hero tour rows are capped per category.
  */
 export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
   const empty = emptyHomepageCatalogSeed();
@@ -249,7 +251,10 @@ export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
       count: packs.count,
       thumbs: packs.thumbs,
     },
-    free,
+    free: {
+      count: free.count,
+      thumbs: free.thumbs,
+    },
     bundleCount: bundlesRes.count ?? 0,
     cymasphere: promotedCymasphere
       ? {
@@ -265,5 +270,6 @@ export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
       packs: packs.products,
     },
     cymasphereProduct: promotedCymasphereProduct ?? null,
+    freeProducts: free.products,
   };
 }

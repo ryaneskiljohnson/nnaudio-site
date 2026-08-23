@@ -73,6 +73,8 @@ export interface HomepageCatalogSeed {
   heroTour: HomepageHeroTourSeed;
   /** Cymasphere record for the sun credit card when the client fetch lags. */
   cymasphereProduct: HomepageProductRow | null;
+  /** Free-tools row so the homepage does not refetch `?free=true`. */
+  freeProducts: HomepageProductRow[];
 }
 
 /** Slim product row used for featured mapping and free filtering. */
@@ -227,5 +229,6 @@ export function emptyHomepageCatalogSeed(): HomepageCatalogSeed {
       packs: [],
     },
     cymasphereProduct: null,
+    freeProducts: [],
   };
 }

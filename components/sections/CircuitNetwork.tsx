@@ -137,7 +137,7 @@ const CYMASPHERE_SUN_MARK = "/images/cymasphere-sun-mark.png";
  * Downscaled Cymasphere planet for the hero wrap. The 4K source stays
  * on the spotlight; a 1280² JPEG is enough for the 560px sun.
  */
-const CYMASPHERE_SUN_SPHERE = "/images/cymasphere-sun-sphere-hero.jpg";
+const CYMASPHERE_SUN_SPHERE = "/images/cymasphere-sun-sphere-hero.webp";
 /**
  * Official CymaSynth app icon (Seed of Life / cymatic mark) for credit thumbs.
  */
@@ -146,7 +146,7 @@ const CYMASYNTH_MARK = "/images/cymasynth-mark.png";
  * Downscaled CymaSynth planet for the hero wrap. 4K lives at
  * `/images/cymasynth-sphere.jpg` for the spotlight.
  */
-const CYMASYNTH_SPHERE = "/images/cymasynth-sphere-hero.jpg";
+const CYMASYNTH_SPHERE = "/images/cymasynth-sphere-hero.webp";
 /** Cymasphere axial day — slower than the moons, still readable. */
 const SUN_SPIN_SEC = 80;
 const SYNTH_SPIN_SEC = 56;
@@ -224,6 +224,12 @@ interface CircuitNetworkProps {
   cymasynth?: CircuitNode | null;
   /** Remaining catalog products on the outer orbits. */
   nodes: CircuitNode[];
+  /**
+   * Park after the first posed frame (mobile idle start). Skips the
+   * catalog tour loop and texture prefetch so phones do not keep the
+   * GPU busy on first paint.
+   */
+  parkImmediately?: boolean;
 }
 
 /**
@@ -1273,6 +1279,7 @@ function poseSynthOscRings(
  * @param cymasphere Sun credit (optional until loaded).
  * @param cymasynth Closest large moon (optional until loaded).
  * @param nodes Remaining products, one per orbit seat.
+ * @param parkImmediately When true, pose one frame then freeze.
  * @returns The tour scene.
  * @example
  * <CircuitNetwork cymasynth={synth} nodes={catalog} />
@@ -1281,6 +1288,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   cymasphere,
   cymasynth,
   nodes,
+  parkImmediately = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
@@ -1362,6 +1370,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const candidatePool = useRef<VisibleMoonCandidate[]>([]);
   /** True once a phone has toured the catalog and the hero froze. */
   const parkedRef = useRef(false);
+  const parkImmediatelyRef = useRef(parkImmediately);
+  parkImmediatelyRef.current = parkImmediately;
   const mobile = isMobile;
 
   // Crash watchdog: a user reload or navigation fires pagehide first,
@@ -1624,6 +1634,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   // This pre-bakes just the first two stops so the opening holds have art
   // ready; later stops bake from the rAF prefetch as the tour advances.
   useEffect(() => {
+    if (parkImmediately) return;
     const byKey = new Map(bodies.map((body) => [body.key, body]));
     const upcoming = credits
       .filter((credit) => !credit.sun)
@@ -1647,9 +1658,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         }
       );
     }
-  }, [bodies, credits]);
+  }, [bodies, credits, parkImmediately]);
 
   useEffect(() => {
+    if (parkImmediately) return;
     const size = sunBakePx(mobile);
     void loadSphereTexture(CYMASPHERE_SUN_SPHERE, size, {
       surfaceShade: false,
@@ -1657,7 +1669,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       if (!mountedRef.current || !tex) return;
       sunTexRef.current = tex;
     });
-  }, [mobile]);
+  }, [mobile, parkImmediately]);
 
   const creditsByKey = useMemo(
     () => new Map(credits.map((credit) => [credit.key, credit])),
@@ -1813,9 +1825,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       // this last frame renders that pose and then stops scheduling.
       if (
         !parkedRef.current &&
-        mobile &&
-        credits.length > 1 &&
-        elapsed >= tourDurationMs(credits) * TOUR_MOBILE_MAX_LOOPS
+        (parkImmediatelyRef.current ||
+          (mobile &&
+            credits.length > 1 &&
+            elapsed >= tourDurationMs(credits) * TOUR_MOBILE_MAX_LOOPS))
       ) {
         parkedRef.current = true;
       }
@@ -2555,7 +2568,12 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
               aria-label="Cymasphere"
             >
               <SunFace ref={sunFaceRef}>
-                <SunMark src={CYMASPHERE_SUN_SPHERE} alt="" />
+                <SunMark
+                  src={CYMASPHERE_SUN_SPHERE}
+                  alt=""
+                  fetchPriority="low"
+                  decoding="async"
+                />
                 <TexCanvas
                   ref={(el: HTMLCanvasElement | null) => {
                     sunCanvasRef.current = el;

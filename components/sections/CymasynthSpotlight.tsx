@@ -198,7 +198,7 @@ const reveal = {
 };
 
 /** Hero-sized CymaSynth planet (the 4K original is not needed here). */
-const SYNTH_SPHERE = "/images/cymasynth-sphere-hero.jpg";
+const SYNTH_SPHERE = "/images/cymasynth-sphere-hero.webp";
 
 /**
  * @brief True when a catalog URL is a raster image next/image can optimize.

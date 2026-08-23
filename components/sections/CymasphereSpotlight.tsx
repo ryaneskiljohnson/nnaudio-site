@@ -266,7 +266,7 @@ const SONG_VIEW = { src: "/images/cymasphere-features/Song View.webp", w: 2844, 
 /** Intrinsic pixels of the Palette View screenshot (public asset). */
 const PALETTE_VIEW = { src: "/images/cymasphere-features/Palette View.webp", w: 2864, h: 1998 };
 /** Hero-sized Cymasphere planet (below the fold; not the 4K 2.2MB original). */
-const SUN_SPHERE = "/images/cymasphere-sun-sphere-hero.jpg";
+const SUN_SPHERE = "/images/cymasphere-sun-sphere-hero.webp";
 
 /**
  * @brief Renders the Cymasphere spotlight over the 4K sphere, with UI

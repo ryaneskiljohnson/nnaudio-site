@@ -1,47 +1,46 @@
 "use client";
 
+/**
+ * @fileoverview Conditionally loads GTM, GA, and Meta Pixel from public
+ * env ids. Homepage GTM is deferred so the container does not compete
+ * with LCP / TBT on first mobile paint.
+ * @module components/analytics/Analytics
+ */
+
 import Script from "next/script";
+import { usePathname } from "next/navigation";
 import { GoogleAnalytics, MetaPixel } from "@/components/common/NextScript";
 
 /**
- * Analytics Component
- * 
- * Conditionally loads all tracking scripts based on environment variables:
- * - Google Tag Manager (GTM) - Required for Meta cAPI via Stape.io
- * - Google Analytics - Can be loaded directly or through GTM
- * - Meta Pixel - Facebook/Instagram tracking
- * 
- * Environment Variables Required:
- * - NEXT_PUBLIC_GTM_ID: Google Tag Manager Container ID (e.g., GTM-XXXXXXX)
- * - NEXT_PUBLIC_GA_ID: Google Analytics Measurement ID (e.g., G-XXXXXXXXXX) - Optional if using GTM
- * - NEXT_PUBLIC_META_PIXEL_ID: Meta Pixel ID (e.g., 123456789012345) - Optional
- * 
- * Updated: Environment variables configured in Vercel
+ * @brief Renders tracking scripts when the matching public env vars exist.
+ * @returns GTM / GA / Meta snippets, or nothing when ids are unset.
+ * @note GTM uses `afterInteractive` on `/` and `beforeInteractive` elsewhere
+ * so marketing first paint is not blocked by the tag container.
  */
 export default function Analytics() {
+  const pathname = usePathname();
   const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
   const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+  const gtmStrategy =
+    pathname === "/" ? "afterInteractive" : "beforeInteractive";
 
   return (
     <>
-      {/* Google Tag Manager - Initialize dataLayer first */}
       {gtmId && (
         <>
-          {/* GTM DataLayer initialization - must be before GTM container */}
           <Script
             id="gtm-datalayer"
-            strategy="beforeInteractive"
+            strategy={gtmStrategy}
             dangerouslySetInnerHTML={{
               __html: `
                 window.dataLayer = window.dataLayer || [];
               `,
             }}
           />
-          {/* GTM Container Script */}
           <Script
             id="gtm-container"
-            strategy="beforeInteractive"
+            strategy={gtmStrategy}
             dangerouslySetInnerHTML={{
               __html: `
                 (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -52,24 +51,20 @@ export default function Analytics() {
               `,
             }}
           />
-          {/* GTM NoScript fallback */}
           <noscript>
             <iframe
               src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
               height="0"
               width="0"
-              style={{ display: 'none', visibility: 'hidden' }}
+              style={{ display: "none", visibility: "hidden" }}
             />
           </noscript>
         </>
       )}
 
-      {/* Google Analytics - Only load directly if GTM is not used */}
       {gaId && !gtmId && <GoogleAnalytics id={gaId} />}
 
-      {/* Meta Pixel - Loads independently */}
       {metaPixelId && <MetaPixel pixelId={metaPixelId} />}
     </>
   );
 }
-
