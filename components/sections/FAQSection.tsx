@@ -1,12 +1,18 @@
 "use client";
 
+/**
+ * @fileoverview Homepage FAQ accordion. Answers are a small HTML allowlist
+ * sanitized without jsdom so SSR of `/` cannot 500 on Node 24.
+ * @module components/sections/FAQSection
+ */
+
 import React, { useState } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import useLanguage from "@/hooks/useLanguage";
 import Link from "next/link";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeLimitedHtml } from "@/utils/sanitize-limited-html";
 import {
   FaDesktop,
   FaBoxOpen,
@@ -290,10 +296,7 @@ const FAQSection = () => {
               >
                 <p
                   dangerouslySetInnerHTML={{
-                    __html: DOMPurify.sanitize(faq.answer, {
-                      ALLOWED_TAGS: ["a", "strong", "em", "br", "p", "span", "ul", "ol", "li"],
-                      ALLOWED_ATTR: ["href", "target", "rel"],
-                    }),
+                    __html: sanitizeLimitedHtml(faq.answer),
                   }}
                 />
               </Answer>
