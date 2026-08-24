@@ -837,6 +837,47 @@ export function releaseAllSphereTextureResources(): void {
 }
 
 /**
+ * @brief Test helper: inserts a finished bake into the LRU cache.
+ * @param key Full cache key (`url@size` or `url@size:raw`).
+ * @param tex Baked strip.
+ */
+export function seedSphereTextureCacheEntry(
+  key: string,
+  tex: SphereTexture
+): void {
+  textureCache.set(key, Promise.resolve(tex));
+  resolvedTextures.set(key, tex);
+  touchTextureKey(key);
+}
+
+/**
+ * @brief Drops least-recently-used bakes until at most `max` remain.
+ * Phones call this after each focus bake so Safari never pins a
+ * catalog-sized canvas set.
+ * @param max Entries to keep (at least 1).
+ * @param protect Keys that must not be evicted (staged moons).
+ * @example
+ * trimSphereTextureCache(2)
+ * trimSphereTextureCache(2, new Set(["reiya"]))
+ */
+export function trimSphereTextureCache(
+  max: number,
+  protect?: ReadonlySet<string>
+): void {
+  const keep = Math.max(1, max);
+  while (textureCache.size > keep) {
+    let evicted = false;
+    for (const key of textureCache.keys()) {
+      if (protect?.has(key)) continue;
+      releaseTextureKey(key);
+      evicted = true;
+      break;
+    }
+    if (!evicted) break;
+  }
+}
+
+/**
  * @brief Returns a bake that has already finished, if any.
  * @param url Artwork URL.
  * @param size Strip height.

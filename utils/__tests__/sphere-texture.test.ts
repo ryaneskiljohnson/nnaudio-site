@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, afterEach, expect, it } from "vitest";
 import { CREDIT_MS, CREDIT_TRAVEL_MS } from "@/utils/circuit-network-layout";
 import {
   bakeSphereStripFromPixels,
@@ -6,15 +6,22 @@ import {
   getWarpLUT,
   lookupSphereTexture,
   moonSpinPhase,
+  releaseAllSphereTextureResources,
   resolveWarpLUT,
   resolvedSphereTexture,
+  seedSphereTextureCacheEntry,
   stripSeamBlend,
   stripUFrac,
   stripV,
+  trimSphereTextureCache,
   warpBandRanges,
   warpDensityForSize,
   warpSliceRanges,
 } from "@/utils/sphere-texture";
+
+/** 1×1 PNG for cache tests. */
+const TEST_PNG =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
 describe("moonSpinPhase", () => {
   it("keeps the day-length spin even while a product is featured", () => {
@@ -350,5 +357,33 @@ describe("resolveWarpLUT", () => {
   it("keeps a matching table", () => {
     const lut = getWarpLUT(12);
     expect(resolveWarpLUT(tex, lut)).toBe(lut);
+  });
+});
+
+describe("trimSphereTextureCache", () => {
+  const tex = bakeSphereStripFromPixels(new Uint8ClampedArray(16 * 16 * 4).fill(255), 16);
+
+  afterEach(() => {
+    releaseAllSphereTextureResources();
+  });
+
+  it("evicts least-recently-used bakes until at most max remain", () => {
+    seedSphereTextureCacheEntry(`${TEST_PNG}#a@16`, tex);
+    seedSphereTextureCacheEntry(`${TEST_PNG}#b@16`, tex);
+    seedSphereTextureCacheEntry(`${TEST_PNG}#c@16`, tex);
+    trimSphereTextureCache(2);
+    expect(resolvedSphereTexture(`${TEST_PNG}#a`, 16)).toBeUndefined();
+    expect(resolvedSphereTexture(`${TEST_PNG}#b`, 16)).toBeTruthy();
+    expect(resolvedSphereTexture(`${TEST_PNG}#c`, 16)).toBeTruthy();
+  });
+
+  it("does not evict protected keys", () => {
+    seedSphereTextureCacheEntry(`${TEST_PNG}#a@16`, tex);
+    seedSphereTextureCacheEntry(`${TEST_PNG}#b@16`, tex);
+    seedSphereTextureCacheEntry(`${TEST_PNG}#c@16`, tex);
+    trimSphereTextureCache(2, new Set([`${TEST_PNG}#a@16`]));
+    expect(resolvedSphereTexture(`${TEST_PNG}#a`, 16)).toBeTruthy();
+    expect(resolvedSphereTexture(`${TEST_PNG}#b`, 16)).toBeUndefined();
+    expect(resolvedSphereTexture(`${TEST_PNG}#c`, 16)).toBeTruthy();
   });
 });

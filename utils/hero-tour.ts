@@ -5,7 +5,13 @@
  * @module utils/hero-tour
  */
 
-import { HERO_MOBILE_MAX_WIDTH_PX } from "@/utils/circuit-network-layout";
+import {
+  HERO_MOBILE_MAX_WIDTH_PX,
+  MOBILE_STAGE_BUDGET,
+  SUN_FOCUS_KEY,
+} from "@/utils/circuit-network-layout";
+
+export { MOBILE_STAGE_BUDGET };
 
 /** sessionStorage key for the crash watchdog. */
 export const HERO_TOUR_WATCHDOG_KEY = "hero-tour-watchdog";
@@ -23,8 +29,8 @@ export const TOUR_MOBILE_MAX_STOPS = 6;
  */
 export const MOBILE_CATALOG_MOON_CAP = 5;
 
-/** Strip height for phone moon/sun bakes (no 4K decode). */
-export const HERO_MOBILE_BAKE_PX = 256;
+/** Strip height for phone moon bakes (no 4K decode). */
+export const HERO_MOBILE_BAKE_PX = 160;
 
 /**
  * Desktop featured-moon CSS box. Bake is this × devicePixelRatio
@@ -32,8 +38,33 @@ export const HERO_MOBILE_BAKE_PX = 256;
  */
 export const HERO_MOON_FOCUS_CSS_PX = 640;
 
-/** Minimum ms between rendered frames on a phone (~24fps). */
-export const MOBILE_FRAME_MIN_MS = 42;
+/** Minimum ms between rendered frames on a phone (~15fps). */
+export const MOBILE_FRAME_MIN_MS = 66;
+
+/** Hi-res bakes kept on a phone (current + prefetch). */
+export const MOBILE_TEXTURE_KEEP = MOBILE_STAGE_BUDGET;
+
+/** How long a phone keeps a moon mounted after it leaves the window. */
+export const MOBILE_STAGE_LINGER_MS = 500;
+
+/**
+ * @brief Whether the hero board still intersects the viewport.
+ * Rect-based so flaky IntersectionObserver callbacks do not freeze
+ * the tour when the board still fills the screen.
+ * @param rect Board bounding rect.
+ * @param viewportHeight `window.innerHeight`.
+ * @returns True when any part of the board is on screen.
+ * @example
+ * heroBoardIsOnScreen({ top: 0, bottom: 600, height: 600 }, 800) // true
+ * heroBoardIsOnScreen({ top: -900, bottom: -100, height: 800 }, 800) // false
+ */
+export function heroBoardIsOnScreen(
+  rect: Pick<DOMRectReadOnly, "top" | "bottom" | "height">,
+  viewportHeight: number
+): boolean {
+  const vh = viewportHeight || 0;
+  return rect.height > 8 && rect.top < vh && rect.bottom > 0;
+}
 
 /**
  * @brief Whether the hero should use the phone-capped tour.
@@ -50,6 +81,36 @@ export const MOBILE_FRAME_MIN_MS = 42;
  */
 export function isHeroMobileViewport(width: number, height: number): boolean {
   return Math.min(width, height) <= HERO_MOBILE_MAX_WIDTH_PX;
+}
+
+/**
+ * @brief Phone stage window: only the current hold and the next stop.
+ * The Cymasphere hold mounts nothing so untextured disks cannot sit
+ * on the sun. Kepler still steps every body; they just have no DOM.
+ * @param focusKey Camera focus, or null while travelling.
+ * @param nextKey Upcoming credit, or null.
+ * @param sunFocus True during the Cymasphere hold.
+ * @returns At most two moon keys (never the sun).
+ * @example
+ * mobileStageKeys("reiya", "curio", false) // ["reiya", "curio"]
+ * mobileStageKeys("sun", "reiya", true) // []
+ */
+export function mobileStageKeys(
+  focusKey: string | null,
+  nextKey: string | null,
+  sunFocus: boolean
+): string[] {
+  if (sunFocus) return [];
+  const keys: string[] = [];
+  if (focusKey && focusKey !== SUN_FOCUS_KEY) keys.push(focusKey);
+  if (
+    nextKey &&
+    nextKey !== SUN_FOCUS_KEY &&
+    nextKey !== focusKey
+  ) {
+    keys.push(nextKey);
+  }
+  return keys;
 }
 
 /** Shape written by the CircuitNetwork crash watchdog. */
@@ -163,12 +224,12 @@ export function heroTourStopCap(
 
 /**
  * @brief Close-up bake edge. Desktop matches CSS pixels at 2× DPR;
- * phones use a fixed 256px strip so Safari does not decode 4K.
+ * phones use a fixed 160px strip so Safari does not decode 4K.
  * @param compact When true, bake for the mobile focus disk.
  * @param dpr Device pixel ratio (already clipped to 2 by the caller).
  * @returns Strip height in device pixels.
  * @example
- * moonBakePx(true, 2) // 256
+ * moonBakePx(true, 2) // 160
  * moonBakePx(false, 2) // 1280
  */
 export function moonBakePx(compact: boolean, dpr: number): number {
@@ -178,12 +239,12 @@ export function moonBakePx(compact: boolean, dpr: number): number {
 
 /**
  * @brief Sun wrap bake. Desktop matches the 560px disk at device
- * pixels; phones use the same 256px cap as catalog moons.
+ * pixels; phones use the same 160px cap as catalog moons.
  * @param compact When true, bake for the phone sun.
  * @param dpr Device pixel ratio (already clipped to 2 by the caller).
  * @returns Strip height in device pixels.
  * @example
- * sunBakePx(true, 2) // 256
+ * sunBakePx(true, 2) // 160
  * sunBakePx(false, 2) // 1120
  */
 export function sunBakePx(compact: boolean, dpr: number): number {

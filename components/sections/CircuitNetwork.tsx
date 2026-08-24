@@ -8,10 +8,10 @@
  * The sun uses the same spherical wrap as the moons, so its mark rolls
  * instead of sitting as a flat logo.
  * Pose is written from rAF so React does not re-render every frame.
- * Phones (short side ≤ 768px, including landscape) use a capped
- * system: curated moons, 256px bakes, no 4K, no oscillator SVG rings.
- * A mid-tour Safari kill switches the next *mobile* Play to a
- * no-canvas lite tour so the page can finish.
+ * Phones (short side ≤ 768px, including landscape) stage only the
+ * current moon and the next stop (160px bake, ~15fps, no rings or
+ * nebulae). A mid-tour Safari kill switches the next mobile Play
+ * to a no-canvas lite tour so the page can finish.
  * @module components/sections/CircuitNetwork
  */
 
@@ -31,7 +31,6 @@ import {
   SUN_FOCUS_KEY,
   TOUR_PERSPECTIVE_PX,
   VISIBLE_MOON_BUDGET,
-  VISIBLE_MOON_BUDGET_MOBILE,
   angleDelta,
   cameraTour,
   cymasynthOrbit,
@@ -52,9 +51,13 @@ import { CURATED_FEATURED_ORDER } from "@/lib/homepage-hero-seed";
 import {
   HERO_TOUR_WATCHDOG_KEY,
   MOBILE_FRAME_MIN_MS,
+  MOBILE_STAGE_LINGER_MS,
+  MOBILE_TEXTURE_KEEP,
+  heroBoardIsOnScreen,
   heroTourMoonCap,
   heroTourStopCap,
   isHeroMobileViewport,
+  mobileStageKeys,
   moonBakePx,
   pickMobileTourNodes,
   previousHeroTourWasKilled,
@@ -134,6 +137,7 @@ import {
   faceOnAlign,
   moonSpinPhase,
   releaseAllSphereTextureResources,
+  trimSphereTextureCache,
   warpStripToCanvas,
   warpStripToCanvasGpu,
 } from "@/utils/sphere-texture";
@@ -190,8 +194,6 @@ const MOON_FOCUS_CSS_PX_MOBILE = 280;
  * keeps looping.
  */
 const TOUR_MOBILE_MAX_LOOPS = 1;
-/** Let the first posed frame paint before any canvas bake on a phone. */
-const MOBILE_TEXTURE_DELAY_MS = 280;
 
 /**
  * @brief Device pixel ratio clipped to 2× so Retina does not bake 3× strips.
@@ -1080,18 +1082,30 @@ function setMoonBitmapSize(el: HTMLElement, px: number): void {
  * @param map Hi-res texture cache.
  * @param key Moon key.
  * @param tex Fresh bake.
+ * @param onEvict Called when an older entry is dropped.
+ * @param protect Keys that must stay pinned (staged moons).
  */
 function rememberHiRes(
   map: Map<string, SphereTexture>,
   key: string,
-  tex: SphereTexture
+  tex: SphereTexture,
+  max = 4,
+  onEvict?: (evictedKey: string) => void,
+  protect?: ReadonlySet<string>
 ): void {
   if (map.has(key)) map.delete(key);
   map.set(key, tex);
-  while (map.size > 4) {
-    const oldest = map.keys().next().value;
-    if (!oldest || oldest === key) break;
-    map.delete(oldest);
+  while (map.size > max) {
+    let evicted = false;
+    for (const oldest of map.keys()) {
+      if (!oldest || oldest === key) continue;
+      if (protect?.has(oldest)) continue;
+      map.delete(oldest);
+      onEvict?.(oldest);
+      evicted = true;
+      break;
+    }
+    if (!evicted) break;
   }
 }
 
@@ -1375,6 +1389,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   // pauses the tour without tearing down the rAF loop (that remount used
   // to feel like a reload on mobile when scrolling back).
   const heroOnScreenRef = useRef(true);
+  const tourWasPausedRef = useRef(false);
   const pageHiddenRef = useRef(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [frameSize, setFrameSize] = useState<{ w: number; h: number } | null>(
@@ -1495,15 +1510,19 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+    const syncOnScreen = () => {
+      const r = el.getBoundingClientRect();
+      const vh = window.innerHeight || 0;
+      heroOnScreenRef.current = heroBoardIsOnScreen(r, vh);
+    };
+    syncOnScreen();
     const observer = new IntersectionObserver(
       (entries) =>
         entries.forEach((e) => {
           if (!e.isIntersecting) {
             const r = e.boundingClientRect;
             const vh = window.innerHeight || 0;
-            // Embedded previews sometimes report 0 intersection while the
-            // board still fills the viewport — keep the tour running then.
-            if (r.height > 8 && r.top < vh && r.bottom > 0) {
+            if (heroBoardIsOnScreen(r, vh)) {
               heroOnScreenRef.current = true;
               return;
             }
@@ -1513,8 +1532,14 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       { threshold: 0 }
     );
     observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+    window.addEventListener("resize", syncOnScreen);
+    window.addEventListener("orientationchange", syncOnScreen);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncOnScreen);
+      window.removeEventListener("orientationchange", syncOnScreen);
+    };
+  }, [mobile]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -1625,8 +1650,16 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
 
   useEffect(() => {
     if (liveKeysRef.current.length > 0 || bodies.length === 0) return;
+    // Phones start empty: the rAF window mounts focus + next only.
+    // Seeding four moons here was enough to trip Safari on Play.
+    if (mobile) {
+      liveKeysRef.current = [];
+      stageKeysRef.current = [];
+      setStageKeys([]);
+      return;
+    }
     const seed = bodies
-      .slice(0, mobile ? VISIBLE_MOON_BUDGET_MOBILE : VISIBLE_MOON_BUDGET)
+      .slice(0, VISIBLE_MOON_BUDGET)
       .map((body) => body.key);
     liveKeysRef.current = seed;
     stageKeysRef.current = seed;
@@ -1678,67 +1711,117 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     return stopCap == null ? ordered : ordered.slice(0, stopCap);
   }, [bodies, cymasphere, system, mobile, tourCap]);
 
-  // Product art is deferred: moons fly as generic tinted spheres and only
-  // the featured / next tour stop gets its artwork baked and warped on.
-  // This pre-bakes just the first two stops so the opening holds have art
-  // ready; later stops bake from the rAF prefetch as the tour advances.
+  /**
+   * @brief Moon keys whose bakes must not be evicted mid-hold.
+   * @returns Live picker keys plus anything still mounted.
+   */
+  const textureProtectKeys = (): Set<string> => {
+    const keys = new Set(liveKeysRef.current);
+    for (const key of stageKeysRef.current) keys.add(key);
+    return keys;
+  };
+
+  /**
+   * @brief Maps staged moon keys to global sphere-texture cache keys.
+   * @param moonKeys Moon body keys to keep pinned.
+   * @param bodyList Catalog bodies for URL lookup.
+   * @param compact Phone bake path when true.
+   * @returns `url@size` keys for {@link trimSphereTextureCache}.
+   */
+  const textureCacheProtectKeys = (
+    moonKeys: Iterable<string>,
+    bodyList: typeof bodies,
+    compact: boolean
+  ): Set<string> => {
+    const protect = new Set<string>();
+    const byKey = new Map(bodyList.map((body) => [body.key, body]));
+    for (const moonKey of moonKeys) {
+      const body = byKey.get(moonKey);
+      if (!body) continue;
+      const wrap = moonWrapUrl(body, compact);
+      if (!wrap) continue;
+      const opts = moonWrapBakeOpts(body);
+      const raw = opts?.surfaceShade === false ? ":raw" : "";
+      protect.add(`${wrap}@${body.texSizeHi}${raw}`);
+    }
+    return protect;
+  };
+
+  /**
+   * @brief Pins a bake and drops older ones, zeroing evicted canvases.
+   * Phones keep two (hold + next) so Safari does not accumulate strips.
+   * @param key Moon key.
+   * @param tex Fresh bake.
+   */
+  const keepTexture = (key: string, tex: SphereTexture) => {
+    const moonProtect = textureProtectKeys();
+    rememberHiRes(
+      texturesHiRef.current,
+      key,
+      tex,
+      mobile ? MOBILE_TEXTURE_KEEP : 4,
+      (evicted) => {
+        const canvas = canvasRefs.current.get(evicted);
+        if (canvas) {
+          canvas.width = 0;
+          canvas.height = 0;
+          canvas.style.opacity = "0";
+          canvas.parentElement?.removeAttribute("data-art");
+        }
+        warpPhases.current.delete(evicted);
+      },
+      moonProtect
+    );
+    if (mobile) {
+      trimSphereTextureCache(
+        MOBILE_TEXTURE_KEEP,
+        textureCacheProtectKeys(moonProtect, bodies, mobile)
+      );
+    }
+  };
+
+  // Desktop pre-bakes the first two stops. Phones wait for the rAF
+  // window (focus + next only) so Play does not decode a pile at once.
   useEffect(() => {
-    if (liteTour) return;
+    if (liteTour || mobile) return;
     const byKey = new Map(bodies.map((body) => [body.key, body]));
     const upcoming = credits
       .filter((credit) => !credit.sun)
-      .slice(0, mobile ? 1 : 2)
+      .slice(0, 2)
       .map((credit) => credit.key);
-    const start = () => {
-      if (!mountedRef.current) return;
-      for (const key of upcoming) {
-        const body = byKey.get(key);
-        const wrap = body ? moonWrapUrl(body, mobile) : "";
-        if (!body || !wrap || texturesHiRef.current.has(body.key)) continue;
-        void loadSphereTexture(wrap, body.texSizeHi, moonWrapBakeOpts(body)).then(
-          (tex) => {
-            if (!mountedRef.current) return;
-            if (!tex) {
-              console.warn(
-                `[hero] texture for ${body.key} fell back to an untextured sphere — image host may lack CORS headers.`
-              );
-              return;
-            }
-            rememberHiRes(texturesHiRef.current, body.key, tex);
-            warpPhases.current.delete(body.key);
+    for (const key of upcoming) {
+      const body = byKey.get(key);
+      const wrap = body ? moonWrapUrl(body, mobile) : "";
+      if (!body || !wrap || texturesHiRef.current.has(body.key)) continue;
+      void loadSphereTexture(wrap, body.texSizeHi, moonWrapBakeOpts(body)).then(
+        (tex) => {
+          if (!mountedRef.current) return;
+          if (!tex) {
+            console.warn(
+              `[hero] texture for ${body.key} fell back to an untextured sphere — image host may lack CORS headers.`
+            );
+            return;
           }
-        );
-      }
-    };
-    if (!mobile) {
-      start();
-      return;
+          keepTexture(body.key, tex);
+          warpPhases.current.delete(body.key);
+        }
+      );
     }
-    const timer = window.setTimeout(start, MOBILE_TEXTURE_DELAY_MS);
-    return () => window.clearTimeout(timer);
   }, [bodies, credits, mobile, liteTour]);
 
   useEffect(() => {
-    if (liteTour) return;
-    const size = sunBakePx(mobile, heroBakeDpr());
-    const src = mobile
-      ? CYMASPHERE_SUN_SPHERE_POSTER
-      : optimizedImageUrl(CYMASPHERE_SUN_SPHERE, size);
-    const start = () => {
-      if (!mountedRef.current) return;
-      void loadSphereTexture(src, size, {
-        surfaceShade: false,
-      }).then((tex) => {
-        if (!mountedRef.current || !tex) return;
-        sunTexRef.current = tex;
-      });
-    };
-    if (!mobile) {
-      start();
-      return;
-    }
-    const timer = window.setTimeout(start, MOBILE_TEXTURE_DELAY_MS);
-    return () => window.clearTimeout(timer);
+    // Phones keep the CSS poster only — a second 160px sun bake was
+    // still enough extra canvas to trip Safari's memory watchdog.
+    if (liteTour || mobile) return;
+    const size = sunBakePx(false, heroBakeDpr());
+    void loadSphereTexture(
+      optimizedImageUrl(CYMASPHERE_SUN_SPHERE, size),
+      size,
+      { surfaceShade: false }
+    ).then((tex) => {
+      if (!mountedRef.current || !tex) return;
+      sunTexRef.current = tex;
+    });
   }, [mobile, liteTour]);
 
   const creditsByKey = useMemo(
@@ -1835,6 +1918,43 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       return true;
     };
 
+    /**
+     * @brief Pins a bake from rAF using the live mobile flag.
+     * @param key Moon key.
+     * @param tex Fresh bake.
+     */
+    const pinTexture = (key: string, tex: SphereTexture) => {
+      const compact = tourLive.current.mobile;
+      const moonProtect = textureProtectKeys();
+      rememberHiRes(
+        texturesHiRef.current,
+        key,
+        tex,
+        compact ? MOBILE_TEXTURE_KEEP : 4,
+        (evicted) => {
+          const canvas = canvasRefs.current.get(evicted);
+          if (canvas) {
+            canvas.width = 0;
+            canvas.height = 0;
+            canvas.style.opacity = "0";
+            canvas.parentElement?.removeAttribute("data-art");
+          }
+          warpPhases.current.delete(evicted);
+        },
+        moonProtect
+      );
+      if (compact) {
+        trimSphereTextureCache(
+          MOBILE_TEXTURE_KEEP,
+          textureCacheProtectKeys(
+            moonProtect,
+            tourLive.current.bodies,
+            compact
+          )
+        );
+      }
+    };
+
     let frameNo = 0;
     // Reused across frames (recreated only when the effect re-runs);
     // entries are mutated in place so steady state allocates nothing.
@@ -1848,13 +1968,21 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     let ringFade = 1;
     const tick = (now: number) => {
       try {
-      if (!heroOnScreenRef.current || pageHiddenRef.current) {
+      if (pageHiddenRef.current) {
+        tourWasPausedRef.current = true;
         lastFrameAt.current = now;
         raf = window.requestAnimationFrame(tick);
         return;
       }
-      // Phones render at ~24fps. Do not touch lastFrameAt here: the gap
-      // between *rendered* frames drives the epoch-shift and easing.
+      if (!heroOnScreenRef.current) {
+        tourWasPausedRef.current = true;
+        lastFrameAt.current = now;
+        raf = window.requestAnimationFrame(tick);
+        return;
+      }
+      // Phones draw at ~15fps. Skip without touching lastFrameAt so
+      // the next drawn frame gets a real dt. Still rAF, not setTimeout
+      // — a throttled timer looked like a pause and froze the tour.
       if (
         tourLive.current.mobile &&
         lastFrameAt.current != null &&
@@ -1887,10 +2015,13 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         }
       }
       if (startedAt.current == null) startedAt.current = now;
-      // Frame gap: rAF stopped (scrolled away / hidden tab). Shift the
-      // epoch so the tour resumes where it paused instead of jumping.
+      // Resume after a tab hide or scroll-away pause without jumping the
+      // tour clock. Slow draws while on-screen do not shift the epoch.
       const gap = lastFrameAt.current == null ? 16 : now - lastFrameAt.current;
-      if (gap > 400) startedAt.current += gap;
+      if (tourWasPausedRef.current) {
+        startedAt.current += gap;
+        tourWasPausedRef.current = false;
+      }
       lastFrameAt.current = now;
       const gapClamped = Math.min(64, Math.max(8, gap));
       const ease = 1 - Math.exp(-gapClamped / 140);
@@ -2034,7 +2165,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       }
       const sunTex = sunTexRef.current;
       const sunCanvas = sunCanvasRef.current;
-      if (sunTex && sunCanvas && !skipCanvas) {
+      if (sunTex && sunCanvas && !skipCanvas && !mobile) {
         const ph = reducedMotion
           ? 0
           : moonSpinPhase(
@@ -2118,8 +2249,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             body.texSizeHi,
             moonWrapBakeOpts(body)
           ).then((tex) => {
-            if (!tex) return;
-            rememberHiRes(texturesHiRef.current, body.key, tex);
+            if (!tex || !mountedRef.current) return;
+            pinTexture(body.key, tex);
             warpPhases.current.delete(body.key);
           });
         };
@@ -2200,45 +2331,59 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       const yawRad = (camY * Math.PI) / 180;
       const cosYaw = Math.cos(yawRad);
       const sinYaw = Math.sin(yawRad);
-      const pool = candidatePool.current;
-      if (pool.length !== bodies.length) pool.length = bodies.length;
-      for (let i = 0; i < bodies.length; i += 1) {
-        const body = bodies[i];
-        if (!body) continue;
-        const wx = pos[i * 3];
-        const wz = pos[i * 3 + 2];
-        const slot = pool[i] ?? {
-          key: "",
-          camSpaceX: 0,
-          camSpaceZ: 0,
-          aPx: 0,
-        };
-        slot.key = body.key;
-        slot.synth = body.synth;
-        slot.camSpaceX = wx * cosYaw + wz * sinYaw;
-        slot.camSpaceZ = wz * cosYaw - wx * sinYaw;
-        slot.aPx = system.a[i];
-        pool[i] = slot;
-      }
       const hideSynth = hideSynthForSunApproach(
         cam.focusKey,
         cam.nextKey,
         cam.creditOpacity
       );
-      const visible = pickVisibleMoons(pool, {
-        focusKey: cam.focusKey,
-        nextKey: cam.nextKey,
-        sunFocus: cam.focusKey === SUN_FOCUS_KEY,
-        dollyZ: cam.translateZ,
-        viewHalfW: FRAME.viewHalfW,
-        budget: mobile ? VISIBLE_MOON_BUDGET_MOBILE : VISIBLE_MOON_BUDGET,
-        previous: liveKeysRef.current,
-        hideSynth,
-      });
+      const sunFocus = cam.focusKey === SUN_FOCUS_KEY;
+      let visible: string[];
+      if (mobile) {
+        visible = mobileStageKeys(cam.focusKey, cam.nextKey, sunFocus);
+        if (hideSynth) {
+          const synthKey = bodies.find((body) => body.synth)?.key;
+          if (synthKey) visible = visible.filter((key) => key !== synthKey);
+        }
+      } else {
+        const pool = candidatePool.current;
+        if (pool.length !== bodies.length) pool.length = bodies.length;
+        for (let i = 0; i < bodies.length; i += 1) {
+          const body = bodies[i];
+          if (!body) continue;
+          const wx = pos[i * 3];
+          const wz = pos[i * 3 + 2];
+          const slot = pool[i] ?? {
+            key: "",
+            camSpaceX: 0,
+            camSpaceZ: 0,
+            aPx: 0,
+          };
+          slot.key = body.key;
+          slot.synth = body.synth;
+          slot.camSpaceX = wx * cosYaw + wz * sinYaw;
+          slot.camSpaceZ = wz * cosYaw - wx * sinYaw;
+          slot.aPx = system.a[i];
+          pool[i] = slot;
+        }
+        visible = pickVisibleMoons(pool, {
+          focusKey: cam.focusKey,
+          nextKey: cam.nextKey,
+          sunFocus,
+          dollyZ: cam.translateZ,
+          viewHalfW: FRAME.viewHalfW,
+          budget: VISIBLE_MOON_BUDGET,
+          previous: liveKeysRef.current,
+          hideSynth,
+        });
+      }
       const forced = `${cam.focusKey ?? ""}|${cam.nextKey ?? ""}`;
       const forcedChanged = forced !== liveForced.current;
       const stale = now - livePickAt.current > 180;
-      if (
+      if (mobile) {
+        liveForced.current = forced;
+        livePickAt.current = now;
+        liveKeysRef.current = visible;
+      } else if (
         (forcedChanged || stale) &&
         (visible.length !== liveKeysRef.current.length ||
           visible.some((key) => !liveKeysRef.current.includes(key)))
@@ -2250,18 +2395,19 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       const visibleSet = new Set(visible);
       if (cam.focusKey !== SUN_FOCUS_KEY) {
         for (const key of visible) lingerAt.current.set(key, now);
-      } else {
-        // Keep the last moons mounted (hidden) so leaving Cymasphere
-        // does not remount generic spheres and flash.
+      } else if (!mobile) {
+        // Desktop: keep the last moons mounted (hidden) so leaving
+        // Cymasphere does not remount generic spheres and flash.
         lingerAt.current.forEach((_, key) => lingerAt.current.set(key, now));
       }
       if (hideSynth) {
         const synthKey = bodies.find((body) => body.synth)?.key;
         if (synthKey) lingerAt.current.delete(synthKey);
       }
+      const lingerMs = mobile ? MOBILE_STAGE_LINGER_MS : 2500;
       const nextStage: string[] = [];
       lingerAt.current.forEach((seen, key) => {
-        if (now - seen < 2500) nextStage.push(key);
+        if (now - seen < lingerMs) nextStage.push(key);
         else lingerAt.current.delete(key);
       });
       if (
@@ -2362,7 +2508,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       }
 
       const ringCirc = 2 * Math.PI * ORBIT_RING_LOCAL_R;
-      ringCircleRefs.current.forEach((circle, r) => {
+      if (!mobile) ringCircleRefs.current.forEach((circle, r) => {
         const gaps: { angle: number; half: number }[] = [];
         let ex: [number, number, number] | undefined;
         let ey: [number, number, number] | undefined;
@@ -2417,11 +2563,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           const body = idx === undefined ? undefined : bodies[idx];
           if (!body) continue;
           const featured = body === focusedBody;
-          if (!featured && ambientWarped) continue;
+          if (!featured && (mobile || ambientWarped)) continue;
           const warped = warpBody(
             body,
             elapsed,
-            featured ? 0.55 / bakePx : mobile ? 0.012 : 0.002,
+            featured ? 0.55 / bakePx : 0.002,
             featured
           );
           if (!featured && warped) ambientWarped = true;
@@ -2503,7 +2649,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     // camera dollies out or yaws across the system.
     // Shadows stay static; Sky's transform is what zooms/slides them.
     const sheets = mobile
-      ? [sheet(70, 1400, 900, 0, 0.62)]
+      ? [sheet(20, 900, 700, 0, 0.5)]
       : [sheet(120, 1800, 1100, 0, 0.62)];
     return sheets.map((s, i) => (
       <StarSheet
@@ -2610,12 +2756,16 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     <Board ref={containerRef}>
       <Sky ref={skyRef}>
         {starField}
-        <NebulaViolet $x={28} $y={38} $w={58} $h={48} />
-        <NebulaGold $x={62} $y={52} $w={50} $h={42} />
-        <NebulaTeal $x={48} $y={46} $w={44} $h={36} />
+        {!mobile ? (
+          <>
+            <NebulaViolet $x={28} $y={38} $w={58} $h={48} />
+            <NebulaGold $x={62} $y={52} $w={50} $h={42} />
+            <NebulaTeal $x={48} $y={46} $w={44} $h={36} />
+          </>
+        ) : null}
       </Sky>
       <Scene ref={sceneRef}>
-        <RingLayer ref={ringLayerRef}>{ringField}</RingLayer>
+        <RingLayer ref={ringLayerRef}>{mobile ? null : ringField}</RingLayer>
         <BodyLayer>
           {cymasynth && !mobile ? (
             <SynthRingPlate
@@ -2643,10 +2793,14 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           {moonField}
 
           <SunWrap ref={sunRef}>
-            <SunNebulaViolet />
-            <SunNebulaGold />
-            <SunCorona />
-            <SunFlare />
+            {!mobile ? (
+              <>
+                <SunNebulaViolet />
+                <SunNebulaGold />
+                <SunCorona />
+                <SunFlare />
+              </>
+            ) : null}
             <SunCore
               href="/product/cymasphere"
               className="hero-sun"
@@ -2659,11 +2813,13 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
                   fetchPriority="low"
                   decoding="async"
                 />
-                <TexCanvas
-                  ref={(el: HTMLCanvasElement | null) => {
-                    sunCanvasRef.current = el;
-                  }}
-                />
+                {!mobile ? (
+                  <TexCanvas
+                    ref={(el: HTMLCanvasElement | null) => {
+                      sunCanvasRef.current = el;
+                    }}
+                  />
+                ) : null}
               </SunFace>
             </SunCore>
           </SunWrap>

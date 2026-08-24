@@ -5,13 +5,18 @@
 
 import { describe, expect, it } from "vitest";
 import { CURATED_FEATURED_ORDER } from "@/lib/homepage-hero-seed";
+import { SUN_FOCUS_KEY } from "@/utils/circuit-network-layout";
 import {
   HERO_MOBILE_BAKE_PX,
   MOBILE_CATALOG_MOON_CAP,
+  MOBILE_STAGE_BUDGET,
+  MOBILE_TEXTURE_KEEP,
   TOUR_MOBILE_MAX_STOPS,
+  heroBoardIsOnScreen,
   heroTourMoonCap,
   heroTourStopCap,
   isHeroMobileViewport,
+  mobileStageKeys,
   moonBakePx,
   parseHeroTourQuery,
   pickMobileTourNodes,
@@ -119,9 +124,58 @@ describe("heroTourMoonCap / heroTourStopCap", () => {
   });
 });
 
+describe("heroBoardIsOnScreen", () => {
+  it("is true when the board intersects the viewport", () => {
+    expect(heroBoardIsOnScreen({ top: 0, bottom: 600, height: 600 }, 800)).toBe(
+      true
+    );
+    expect(heroBoardIsOnScreen({ top: 100, bottom: 900, height: 800 }, 800)).toBe(
+      true
+    );
+  });
+
+  it("is false when the board is fully above or below the viewport", () => {
+    expect(
+      heroBoardIsOnScreen({ top: -900, bottom: -100, height: 800 }, 800)
+    ).toBe(false);
+    expect(heroBoardIsOnScreen({ top: 900, bottom: 1700, height: 800 }, 800)).toBe(
+      false
+    );
+  });
+
+  it("treats a full-viewport hero as on-screen when IO says otherwise", () => {
+    expect(heroBoardIsOnScreen({ top: 0, bottom: 844, height: 844 }, 844)).toBe(
+      true
+    );
+  });
+});
+
+describe("mobile stage budget", () => {
+  it("keeps texture and stage caps aligned", () => {
+    expect(MOBILE_TEXTURE_KEEP).toBe(MOBILE_STAGE_BUDGET);
+    expect(MOBILE_STAGE_BUDGET).toBe(2);
+  });
+});
+
+describe("mobileStageKeys", () => {
+  it("keeps only the hold and the next stop", () => {
+    expect(mobileStageKeys("reiya", "curio", false)).toEqual([
+      "reiya",
+      "curio",
+    ]);
+    expect(mobileStageKeys("reiya", "reiya", false)).toEqual(["reiya"]);
+  });
+
+  it("mounts nothing during the sun hold", () => {
+    expect(mobileStageKeys(SUN_FOCUS_KEY, "reiya", true)).toEqual([]);
+    expect(mobileStageKeys(null, SUN_FOCUS_KEY, false)).toEqual([]);
+  });
+});
+
 describe("bake sizes", () => {
-  it("uses a 256px strip on phones and Retina-matched desktop bakes", () => {
+  it("uses a 160px strip on phones and Retina-matched desktop bakes", () => {
     expect(moonBakePx(true, 2)).toBe(HERO_MOBILE_BAKE_PX);
+    expect(HERO_MOBILE_BAKE_PX).toBe(160);
     expect(sunBakePx(true, 3)).toBe(HERO_MOBILE_BAKE_PX);
     expect(moonBakePx(false, 2)).toBe(1280);
     expect(sunBakePx(false, 2)).toBe(1120);

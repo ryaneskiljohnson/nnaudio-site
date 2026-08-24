@@ -531,8 +531,13 @@ export function lookAtMoon(
 
 /** How many moons to mount at once on desktop. */
 export const VISIBLE_MOON_BUDGET = 6;
-/** Tighter handful on a phone. */
-export const VISIBLE_MOON_BUDGET_MOBILE = 4;
+/**
+ * Phone stage: the focused moon and the next credit only. Also caps
+ * hi-res bakes ({@link MOBILE_TEXTURE_KEEP} in hero-tour aliases this).
+ */
+export const MOBILE_STAGE_BUDGET = 2;
+/** @deprecated Use {@link MOBILE_STAGE_BUDGET}. */
+export const VISIBLE_MOON_BUDGET_MOBILE = MOBILE_STAGE_BUDGET;
 
 /** One body the visibility picker can consider. */
 export interface VisibleMoonCandidate {
