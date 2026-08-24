@@ -11,8 +11,9 @@
  * styled-components hydrates. The tour is a
  * dynamic import so its JS is not on the LCP path. Mobile and
  * prefers-reduced-motion never download CircuitNetwork until the user
- * taps Play, then the catalog tour actually runs. Desktop starts the
- * tour after mount. Hero height is
+ * taps Play, then the catalog tour actually runs. `?heroAutoTour=1`
+ * skips Play (used by the recorder). `?tourCap=N` caps credit stops.
+ * Desktop starts the tour after mount. Hero height is
  * reserved in globals.css (#home) so a late sheet cannot
  * collapse-then-expand.
  */
@@ -22,7 +23,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import styled, { keyframes } from "styled-components";
 import type { CircuitNode } from "./CircuitNetwork";
-import { HERO_MOBILE_MAX_WIDTH_PX } from "@/utils/circuit-network-layout";
+import { isHeroMobileViewport, parseHeroTourQuery } from "@/utils/hero-tour";
 import { scrollToHash } from "@/utils/scrollToHash";
 
 /** Minimal product shape consumed from the homepage fetches. */
@@ -70,7 +71,7 @@ const Hero = styled.section`
   background: #02030a;
 `;
 
-const Headline = styled.div`
+const Headline = styled.div.attrs({ "data-hero-headline": true })`
   position: absolute;
   left: 50%;
   bottom: 28px;
@@ -349,28 +350,32 @@ function StaticHeroPoster() {
 /**
  * @brief Desktop auto-starts the tour after mount. Mobile stays on the
  * rendered-planet poster until Play, then runs the catalog tour. Both
- * sides start
- * with `allowTour=false` so hydration matches.
- * @returns Tour mount flags and the Play handler for phones.
+ * sides start with `allowTour=false` so hydration matches.
+ * `?heroAutoTour=1` starts the live tour on phones (recorder).
+ * Landscape phones use the short viewport side, not width-only 768px.
+ * @returns Tour mount flags, optional recording cap, and the Play handler.
  */
 function useOptInHeroTour(): {
   allowTour: boolean;
   showPlay: boolean;
+  tourCap: number | undefined;
   startMobileTour: () => void;
 } {
   const [allowTour, setAllowTour] = useState(false);
   const [showPlay, setShowPlay] = useState(false);
+  const [tourCap, setTourCap] = useState<number | undefined>(undefined);
 
   useEffect(() => {
-    const mobile = window.matchMedia(
-      `(max-width: ${HERO_MOBILE_MAX_WIDTH_PX}px)`
-    ).matches;
+    const query = parseHeroTourQuery(window.location.search);
+    setTourCap(query.tourCap);
+    const mobile = isHeroMobileViewport(window.innerWidth, window.innerHeight);
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
     if (reduceMotion) return;
-    if (!mobile) {
+    if (query.autoTour || !mobile) {
       setAllowTour(true);
+      setShowPlay(false);
       return;
     }
     setShowPlay(true);
@@ -385,7 +390,7 @@ function useOptInHeroTour(): {
     setShowPlay(false);
   };
 
-  return { allowTour, showPlay, startMobileTour };
+  return { allowTour, showPlay, tourCap, startMobileTour };
 }
 
 /**
@@ -441,7 +446,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   productCount = 0,
 }) => {
   const pathname = usePathname();
-  const { allowTour, showPlay, startMobileTour } = useOptInHeroTour();
+  const { allowTour, showPlay, tourCap, startMobileTour } = useOptInHeroTour();
 
   const { cymasynth, nodes } = useMemo(() => {
     const synthProduct = instruments.find((p) => p.slug === "cymasynth");
@@ -497,6 +502,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
               cymasphere={cymasphere ? toNode(cymasphere) : null}
               cymasynth={cymasynth}
               nodes={nodes}
+              tourCap={tourCap}
             />
           ) : (
             <StaticHeroPoster />

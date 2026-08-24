@@ -8,6 +8,10 @@
  * The sun uses the same spherical wrap as the moons, so its mark rolls
  * instead of sitting as a flat logo.
  * Pose is written from rAF so React does not re-render every frame.
+ * Phones (short side ≤ 768px, including landscape) use a capped
+ * system: curated moons, 256px bakes, no 4K, no oscillator SVG rings.
+ * A mid-tour Safari kill switches the next *mobile* Play to a
+ * no-canvas lite tour so the page can finish.
  * @module components/sections/CircuitNetwork
  */
 
@@ -22,7 +26,6 @@ import {
   CYMASYNTH_OSC_GREEN,
   CYMASYNTH_OSC_RINGS,
   CYMASYNTH_RING_DISK_TILT_DEG,
-  HERO_MOBILE_MAX_WIDTH_PX,
   SYNTH_RING_PLATE_DESKTOP_PX,
   SYNTH_RING_PLATE_MOBILE_PX,
   SUN_FOCUS_KEY,
@@ -45,6 +48,18 @@ import {
   synthRingMoonRefPx,
   tourDurationMs,
 } from "@/utils/circuit-network-layout";
+import { CURATED_FEATURED_ORDER } from "@/lib/homepage-hero-seed";
+import {
+  HERO_TOUR_WATCHDOG_KEY,
+  MOBILE_FRAME_MIN_MS,
+  heroTourMoonCap,
+  heroTourStopCap,
+  isHeroMobileViewport,
+  moonBakePx,
+  pickMobileTourNodes,
+  previousHeroTourWasKilled,
+  sunBakePx,
+} from "@/utils/hero-tour";
 
 /** First-paint pose: far galaxy, same as cameraTour(0). */
 const OPENING_CAM = cameraTour(0, false);
@@ -171,38 +186,33 @@ const MOON_FOCUS_CSS_PX_MOBILE = 280;
  * Full tour loops a phone plays before the hero parks on the closing
  * wide shot. iOS Safari force-reloads pages that keep the GPU busy
  * indefinitely ("using significant energy"), and every extra loop
- * re-bakes the whole catalog. One loop shows every product once;
- * desktop keeps looping.
+ * re-bakes textures. One short loop, then the hero parks; desktop
+ * keeps looping.
  */
 const TOUR_MOBILE_MAX_LOOPS = 1;
-
-/** sessionStorage key for the crash watchdog. */
-const WATCHDOG_KEY = "hero-tour-watchdog";
+/** Let the first posed frame paint before any canvas bake on a phone. */
+const MOBILE_TEXTURE_DELAY_MS = 280;
 
 /**
- * @brief Close-up bake edge. Desktop matches CSS pixels at 2× DPR; mobile
- * caps below full disk size to limit decode memory on phones.
- * @param compact When true, bake for the mobile focus disk.
- * @returns Strip height in device pixels.
+ * @brief Device pixel ratio clipped to 2× so Retina does not bake 3× strips.
+ * @returns Clipped DPR, or 1 during SSR.
  */
-function moonBakePx(compact = false): number {
-  const dpr =
-    typeof window === "undefined" ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  if (compact) return dpr >= 2 ? 384 : 280;
-  return Math.round(MOON_FOCUS_CSS_PX * dpr);
+function heroBakeDpr(): number {
+  return typeof window === "undefined"
+    ? 1
+    : Math.min(2, window.devicePixelRatio || 1);
 }
 
 /**
- * @brief Sun wrap bake. Matches the 560px disk at device pixels so
- * Retina does not stretch a 768 strip (that stretch is the grain).
- * @param compact When true, bake for the smaller phone sun.
- * @returns Strip height in device pixels.
+ * @brief sessionStorage payload for the crash watchdog, or null.
+ * @returns Raw JSON string, or null when storage is unavailable.
  */
-function sunBakePx(compact = false): number {
-  const dpr =
-    typeof window === "undefined" ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  if (compact) return dpr >= 2 ? 512 : 384;
-  return dpr >= 2 ? 1120 : 560;
+function readHeroWatchdog(): string | null {
+  try {
+    return sessionStorage.getItem(HERO_TOUR_WATCHDOG_KEY);
+  } catch {
+    return null;
+  }
 }
 
 /** A product rendered as a moon. */
@@ -233,6 +243,12 @@ interface CircuitNetworkProps {
    * GPU busy on first paint.
    */
   parkImmediately?: boolean;
+  /**
+   * Recording / debug credit-stop cap (`?tourCap=N`). Overrides the
+   * live phone stop count and raises the moon cap so the recorder
+   * can capture a longer highlight reel.
+   */
+  tourCap?: number;
 }
 
 /**
@@ -1283,6 +1299,7 @@ function poseSynthOscRings(
  * @param cymasynth Closest large moon (optional until loaded).
  * @param nodes Remaining products, one per orbit seat.
  * @param parkImmediately When true, pose one frame then freeze.
+ * @param tourCap Optional recording/debug credit-stop cap.
  * @returns The tour scene.
  * @example
  * <CircuitNetwork cymasynth={synth} nodes={catalog} />
@@ -1292,6 +1309,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   cymasynth,
   nodes,
   parkImmediately = false,
+  tourCap,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
@@ -1348,7 +1366,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const [isMobile, setIsMobile] = useState(
     () =>
       typeof window !== "undefined" &&
-      window.matchMedia(`(max-width: ${HERO_MOBILE_MAX_WIDTH_PX}px)`).matches
+      isHeroMobileViewport(window.innerWidth, window.innerHeight)
   );
   // Start the tour immediately. IntersectionObserver pauses it when the
   // hero leaves the viewport; if IO never fires (embedded previews), the
@@ -1375,7 +1393,18 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const parkedRef = useRef(false);
   const parkImmediatelyRef = useRef(parkImmediately);
   parkImmediatelyRef.current = parkImmediately;
+  /**
+   * Skip canvas bakes/warps after a mid-tour Safari kill. Mobile
+   * only — a dirty watchdog must not blank desktop art.
+   */
+  const liteTourRef = useRef(
+    typeof window !== "undefined" &&
+      isHeroMobileViewport(window.innerWidth, window.innerHeight) &&
+      previousHeroTourWasKilled(readHeroWatchdog())
+  );
   const mobile = isMobile;
+  /** True when this visit should skip canvas warps (mobile + prior kill). */
+  const liteTour = liteTourRef.current && mobile;
 
   // Crash watchdog: a user reload or navigation fires pagehide first,
   // but a Safari memory/energy kill does not — so an entry left
@@ -1384,7 +1413,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   // reload loops (aliveSec + whether the tour had already parked).
   useEffect(() => {
     try {
-      const prev = sessionStorage.getItem(WATCHDOG_KEY);
+      const prev = sessionStorage.getItem(HERO_TOUR_WATCHDOG_KEY);
       if (prev) {
         const rec = JSON.parse(prev) as {
           clean?: boolean;
@@ -1405,7 +1434,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     const write = (clean: boolean) => {
       try {
         sessionStorage.setItem(
-          WATCHDOG_KEY,
+          HERO_TOUR_WATCHDOG_KEY,
           JSON.stringify({
             clean,
             aliveSec: Math.round((Date.now() - startedAtMs) / 1000),
@@ -1428,16 +1457,17 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   }, []);
 
   useEffect(() => {
-    const mql = window.matchMedia(
-      `(max-width: ${HERO_MOBILE_MAX_WIDTH_PX}px)`
-    );
-    setIsMobile(mql.matches);
-    if (mql.matches) {
-      FRAME.lowDetail = true;
-      containerRef.current?.setAttribute("data-low", "true");
-    }
-    const onResize = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mql.addEventListener("change", onResize);
+    const applyMobile = () => {
+      const next = isHeroMobileViewport(window.innerWidth, window.innerHeight);
+      setIsMobile(next);
+      if (next) {
+        FRAME.lowDetail = true;
+        containerRef.current?.setAttribute("data-low", "true");
+      }
+    };
+    applyMobile();
+    window.addEventListener("resize", applyMobile);
+    window.addEventListener("orientationchange", applyMobile);
     const motionMql = window.matchMedia("(prefers-reduced-motion: reduce)");
     setReducedMotion(motionMql.matches);
     const onMotion = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
@@ -1448,7 +1478,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     onPageVis();
     document.addEventListener("visibilitychange", onPageVis);
     return () => {
-      mql.removeEventListener("change", onResize);
+      window.removeEventListener("resize", applyMobile);
+      window.removeEventListener("orientationchange", applyMobile);
       motionMql.removeEventListener("change", onMotion);
       document.removeEventListener("visibilitychange", onPageVis);
     };
@@ -1517,12 +1548,23 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     return () => window.removeEventListener("mousemove", onMove);
   }, [mobile]);
 
+  const moonCap = heroTourMoonCap(mobile, tourCap, !!cymasynth);
+  const tourNodes = useMemo(
+    () =>
+      moonCap == null
+        ? nodes
+        : pickMobileTourNodes(nodes, moonCap, CURATED_FEATURED_ORDER),
+    [moonCap, nodes]
+  );
   const seats = useMemo(
-    () => moonPlacements(nodes.length, mobile),
-    [nodes.length, mobile]
+    () => moonPlacements(tourNodes.length, mobile),
+    [tourNodes.length, mobile]
   );
   const synthSeat = useMemo(() => cymasynthOrbit(mobile), [mobile]);
-  const bakePx = useMemo(() => moonBakePx(mobile), [mobile]);
+  const bakePx = useMemo(
+    () => moonBakePx(mobile, heroBakeDpr()),
+    [mobile]
+  );
 
   const bodies = useMemo(() => {
     const list: Array<{
@@ -1549,7 +1591,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       });
     }
     seats.forEach((seat) => {
-      const node = nodes[seat.index];
+      const node = tourNodes[seat.index];
       if (!node) return;
       // Size and spin are keyed to the product (slug hash), not its fetch
       // position, so a moon keeps its character even if order changes.
@@ -1566,7 +1608,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       });
     });
     return list;
-  }, [bakePx, cymasynth, nodes, seats, synthSeat, mobile]);
+  }, [bakePx, cymasynth, tourNodes, seats, synthSeat, mobile]);
 
   const system = useMemo(() => {
     const w = frameSize?.w ?? 1200;
@@ -1592,9 +1634,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     setStageKeys(seed);
   }, [bodies, mobile]);
 
-  const credits = useMemo<CreditTarget[]>(
-    () =>
-      orderCredits([
+  const credits = useMemo<CreditTarget[]>(() => {
+    const ordered = orderCredits([
         {
           key: SUN_FOCUS_KEY,
           name: cymasphere?.name || "Cymasphere",
@@ -1628,53 +1669,77 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           radiusPx: system.a[i],
           size: body.seat.size.w * (body.synth ? 1.45 : 1),
         })),
-      ]),
-    [bodies, cymasphere, system]
-  );
+      ]);
+    // Curated/capped list: sun → CymaSynth → featured moons. Short
+    // enough that one loop + park finishes before Safari's energy
+    // watchdog reloads the page. `tourCap` raises the slice for the
+    // recorder.
+    const stopCap = heroTourStopCap(mobile, tourCap);
+    return stopCap == null ? ordered : ordered.slice(0, stopCap);
+  }, [bodies, cymasphere, system, mobile, tourCap]);
 
   // Product art is deferred: moons fly as generic tinted spheres and only
   // the featured / next tour stop gets its artwork baked and warped on.
   // This pre-bakes just the first two stops so the opening holds have art
   // ready; later stops bake from the rAF prefetch as the tour advances.
   useEffect(() => {
+    if (liteTour) return;
     const byKey = new Map(bodies.map((body) => [body.key, body]));
     const upcoming = credits
       .filter((credit) => !credit.sun)
-      .slice(0, 2)
+      .slice(0, mobile ? 1 : 2)
       .map((credit) => credit.key);
-    for (const key of upcoming) {
-      const body = byKey.get(key);
-      const wrap = body ? moonWrapUrl(body, mobile) : "";
-      if (!body || !wrap || texturesHiRef.current.has(body.key)) continue;
-      void loadSphereTexture(wrap, body.texSizeHi, moonWrapBakeOpts(body)).then(
-        (tex) => {
-          if (!mountedRef.current) return;
-          if (!tex) {
-            console.warn(
-              `[hero] texture for ${body.key} fell back to an untextured sphere — image host may lack CORS headers.`
-            );
-            return;
+    const start = () => {
+      if (!mountedRef.current) return;
+      for (const key of upcoming) {
+        const body = byKey.get(key);
+        const wrap = body ? moonWrapUrl(body, mobile) : "";
+        if (!body || !wrap || texturesHiRef.current.has(body.key)) continue;
+        void loadSphereTexture(wrap, body.texSizeHi, moonWrapBakeOpts(body)).then(
+          (tex) => {
+            if (!mountedRef.current) return;
+            if (!tex) {
+              console.warn(
+                `[hero] texture for ${body.key} fell back to an untextured sphere — image host may lack CORS headers.`
+              );
+              return;
+            }
+            rememberHiRes(texturesHiRef.current, body.key, tex);
+            warpPhases.current.delete(body.key);
           }
-          rememberHiRes(texturesHiRef.current, body.key, tex);
-          warpPhases.current.delete(body.key);
-        }
-      );
+        );
+      }
+    };
+    if (!mobile) {
+      start();
+      return;
     }
-  }, [bodies, credits]);
+    const timer = window.setTimeout(start, MOBILE_TEXTURE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [bodies, credits, mobile, liteTour]);
 
   useEffect(() => {
-    const size = sunBakePx(mobile);
-    void loadSphereTexture(
-      optimizedImageUrl(CYMASPHERE_SUN_SPHERE, size),
-      size,
-      {
+    if (liteTour) return;
+    const size = sunBakePx(mobile, heroBakeDpr());
+    const src = mobile
+      ? CYMASPHERE_SUN_SPHERE_POSTER
+      : optimizedImageUrl(CYMASPHERE_SUN_SPHERE, size);
+    const start = () => {
+      if (!mountedRef.current) return;
+      void loadSphereTexture(src, size, {
         surfaceShade: false,
-      }
-    ).then((tex) => {
-      if (!mountedRef.current || !tex) return;
-      sunTexRef.current = tex;
-    });
-  }, [mobile]);
+      }).then((tex) => {
+        if (!mountedRef.current || !tex) return;
+        sunTexRef.current = tex;
+      });
+    };
+    if (!mobile) {
+      start();
+      return;
+    }
+    const timer = window.setTimeout(start, MOBILE_TEXTURE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [mobile, liteTour]);
 
   const creditsByKey = useMemo(
     () => new Map(credits.map((credit) => [credit.key, credit])),
@@ -1696,6 +1761,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     frameSize,
     bakePx,
     mobile,
+    liteTour,
   });
   tourLive.current = {
     credits,
@@ -1706,6 +1772,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     frameSize,
     bakePx,
     mobile,
+    liteTour,
   };
 
   useEffect(() => {
@@ -1739,6 +1806,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     ) => {
       // Art is focus-only: a moon without a hi-res bake stays a generic
       // tinted sphere (its canvas remains transparent).
+      if (tourLive.current.liteTour) return false;
       const tex = texturesHiRef.current.get(body.key);
       const canvas = canvasRefs.current.get(body.key);
       if (!tex || !canvas) return false;
@@ -1785,6 +1853,16 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         raf = window.requestAnimationFrame(tick);
         return;
       }
+      // Phones render at ~24fps. Do not touch lastFrameAt here: the gap
+      // between *rendered* frames drives the epoch-shift and easing.
+      if (
+        tourLive.current.mobile &&
+        lastFrameAt.current != null &&
+        now - lastFrameAt.current < MOBILE_FRAME_MIN_MS
+      ) {
+        raf = window.requestAnimationFrame(tick);
+        return;
+      }
       frameNo += 1;
       const {
         credits,
@@ -1795,6 +1873,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         frameSize,
         bakePx,
         mobile,
+        liteTour: skipCanvas,
       } = tourLive.current;
       if (creditLenRef.current !== credits.length) {
         const prevLen = creditLenRef.current;
@@ -1955,7 +2034,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       }
       const sunTex = sunTexRef.current;
       const sunCanvas = sunCanvasRef.current;
-      if (sunTex && sunCanvas) {
+      if (sunTex && sunCanvas && !skipCanvas) {
         const ph = reducedMotion
           ? 0
           : moonSpinPhase(
@@ -2031,6 +2110,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const focusedBody =
           focusedIdx === undefined ? undefined : bodies[focusedIdx];
         const prefetchHi = (body?: (typeof bodies)[number]) => {
+          if (skipCanvas) return;
           const wrap = body ? moonWrapUrl(body, mobile) : "";
           if (!body || !wrap || texturesHiRef.current.has(body.key)) return;
           void loadSphereTexture(
@@ -2341,7 +2421,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           const warped = warpBody(
             body,
             elapsed,
-            featured ? 0.55 / bakePx : 0.002,
+            featured ? 0.55 / bakePx : mobile ? 0.012 : 0.002,
             featured
           );
           if (!featured && warped) ambientWarped = true;
@@ -2537,7 +2617,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       <Scene ref={sceneRef}>
         <RingLayer ref={ringLayerRef}>{ringField}</RingLayer>
         <BodyLayer>
-          {cymasynth ? (
+          {cymasynth && !mobile ? (
             <SynthRingPlate
               ref={synthRingsRef}
               data-compact={mobile ? "true" : undefined}
