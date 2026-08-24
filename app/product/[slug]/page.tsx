@@ -1631,7 +1631,10 @@ export default function ProductPage() {
   const fetchProduct = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/products/slug/${slug}`, { cache: 'no-store' });
+      const response = await fetch(`/api/products/slug/${slug}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(8000),
+      });
       const data = await response.json();
 
       if (data.success) {

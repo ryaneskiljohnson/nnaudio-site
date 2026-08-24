@@ -5,6 +5,7 @@
  * @module app/(marketing)/page
  */
 
+import { Suspense } from "react";
 import EcosystemHero from "@/components/sections/EcosystemHero";
 import HomeBelowFold from "@/components/sections/HomeBelowFold";
 import MarketingCategoryGrid from "@/components/sections/MarketingCategoryGrid";
@@ -18,10 +19,23 @@ import {
 export const revalidate = 3600;
 
 /**
+ * @brief Public homepage shell. Seeded body streams in so the header
+ * is not blocked on Supabase.
+ * @returns Suspense around the catalog snapshot.
+ */
+export default function Home() {
+  return (
+    <Suspense fallback={<section style={{ minHeight: "100svh" }} />}>
+      <HomeCatalog />
+    </Suspense>
+  );
+}
+
+/**
  * @brief Public homepage from the server catalog snapshot.
  * @returns RSC tree with a hero island.
  */
-export default async function Home() {
+async function HomeCatalog() {
   const seed = await getHomepageCatalogSeed();
   const instruments = seed.heroTour.instruments.map(seedRowToCard);
   const effects = seed.heroTour.effects.map(seedRowToCard);

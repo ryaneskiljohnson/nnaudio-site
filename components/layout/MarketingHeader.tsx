@@ -3,6 +3,8 @@
 /**
  * @fileoverview Lightweight homepage header: logo, static nav, cart and
  * login links. No SideCart, auth session, or framer-motion.
+ * Shop routes use prefetch={false} so `/` does not compile the entire
+ * storefront in the background (that freeze is the "stuck loading" loop).
  * @module components/layout/MarketingHeader
  */
 
@@ -37,14 +39,18 @@ export default function MarketingHeader() {
         </Link>
         <nav className="marketing-header-nav" aria-label="Primary">
           {NAV.map((item) => (
-            <Link key={item.href} href={item.href}>
+            <Link key={item.href} href={item.href} prefetch={false}>
               {item.label}
             </Link>
           ))}
         </nav>
         <div className="marketing-header-actions">
-          <Link href="/cart">Cart</Link>
-          <Link href="/login">Login</Link>
+          <Link href="/cart" prefetch={false}>
+            Cart
+          </Link>
+          <Link href="/login" prefetch={false}>
+            Login
+          </Link>
           <button
             type="button"
             className="marketing-header-toggle"
@@ -64,14 +70,19 @@ export default function MarketingHeader() {
         hidden={!open}
       >
         {NAV.map((item) => (
-          <Link key={item.href} href={item.href} onClick={() => setOpen(false)}>
+          <Link
+            key={item.href}
+            href={item.href}
+            prefetch={false}
+            onClick={() => setOpen(false)}
+          >
             {item.label}
           </Link>
         ))}
-        <Link href="/cart" onClick={() => setOpen(false)}>
+        <Link href="/cart" prefetch={false} onClick={() => setOpen(false)}>
           Cart
         </Link>
-        <Link href="/login" onClick={() => setOpen(false)}>
+        <Link href="/login" prefetch={false} onClick={() => setOpen(false)}>
           Login
         </Link>
       </nav>

@@ -12,7 +12,23 @@ import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { shopTheme } from "@/lib/shop-theme";
 
-const ShopLayout = dynamic(() => import("./ShopLayout"));
+const ShopLayout = dynamic(() => import("./ShopLayout"), {
+  loading: () => (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#121212",
+        color: "rgba(255,255,255,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "0.95rem",
+      }}
+    >
+      Loading…
+    </div>
+  ),
+});
 
 /**
  * @brief Chooses marketing pass-through vs shop chrome from the path.

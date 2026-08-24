@@ -1,6 +1,7 @@
 /**
  * @fileoverview Static homepage footer. Links only — no legal modals,
- * framer-motion, or icon packs.
+ * framer-motion, or icon packs. Shop links skip prefetch so `/` does
+ * not compile the storefront in the background.
  * @module components/layout/MarketingFooter
  */
 
@@ -21,16 +22,24 @@ export default function MarketingFooter() {
         <div>
           <p>Shop</p>
           <p>
-            <Link href="/free-tools">Free Tools</Link>
+            <Link href="/free-tools" prefetch={false}>
+              Free Tools
+            </Link>
           </p>
           <p>
-            <Link href="/plugins">Plugins</Link>
+            <Link href="/plugins" prefetch={false}>
+              Plugins
+            </Link>
           </p>
           <p>
-            <Link href="/packs">Packs</Link>
+            <Link href="/packs" prefetch={false}>
+              Packs
+            </Link>
           </p>
           <p>
-            <Link href="/products">All Products</Link>
+            <Link href="/products" prefetch={false}>
+              All Products
+            </Link>
           </p>
         </div>
         <div>
