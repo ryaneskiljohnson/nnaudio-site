@@ -1,6 +1,7 @@
 /**
  * @fileoverview Server-rendered homepage catalog tiles. No framer-motion
- * and no client JS — counts and thumbs come from the catalog seed.
+ * and no client JS — counts and cover art come from the catalog seed.
+ * Product artwork fills each tile; copy sits on a gradient overlay.
  * @module components/sections/MarketingCategoryGrid
  */
 
@@ -40,40 +41,39 @@ export default function MarketingCategoryGrid({
           Every product works on its own. Together they answer to Cymasphere.
         </p>
         <div className="marketing-catalog-grid">
-          {visible.map((tile, index) => (
-            <Link
-              key={tile.key}
-              href={tile.href}
-              className={
-                index < 2
-                  ? "marketing-catalog-tile is-wide"
-                  : "marketing-catalog-tile"
-              }
-              style={
-                {
-                  "--cat": CATEGORY_RGB[tile.key] ?? "108, 99, 255",
-                } as CSSProperties
-              }
-            >
-              {tile.images && tile.images.length > 0 ? (
-                <span className="marketing-catalog-moons" aria-hidden>
-                  {tile.images.slice(0, index < 2 ? 4 : 3).map((src, imageIndex) => (
-                    <img
-                      key={`${tile.key}-${src}-${imageIndex}`}
-                      src={src}
-                      alt=""
-                      loading="lazy"
-                    />
-                  ))}
+          {visible.map((tile, index) => {
+            const cover = tile.images?.[0];
+            return (
+              <Link
+                key={tile.key}
+                href={tile.href}
+                prefetch={false}
+                className={
+                  index < 2
+                    ? "marketing-catalog-tile is-wide"
+                    : "marketing-catalog-tile"
+                }
+                style={
+                  {
+                    "--cat": CATEGORY_RGB[tile.key] ?? "108, 99, 255",
+                  } as CSSProperties
+                }
+              >
+                {cover ? (
+                  <span className="marketing-catalog-cover" aria-hidden>
+                    <img src={cover} alt="" loading="lazy" />
+                  </span>
+                ) : null}
+                <span className="marketing-catalog-copy">
+                  <span className="marketing-catalog-count">{tile.count}</span>
+                  <span className="marketing-catalog-label">{tile.label}</span>
+                  {tile.blurb ? (
+                    <span className="marketing-catalog-blurb">{tile.blurb}</span>
+                  ) : null}
                 </span>
-              ) : null}
-              <span className="marketing-catalog-count">{tile.count}</span>
-              <span className="marketing-catalog-label">{tile.label}</span>
-              {tile.blurb ? (
-                <span className="marketing-catalog-blurb">{tile.blurb}</span>
-              ) : null}
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       </div>
     </section>

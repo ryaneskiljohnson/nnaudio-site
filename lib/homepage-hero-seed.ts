@@ -27,11 +27,24 @@ export const FEATURED_BUNDLE_SLUGS = [
   "beat-lab",
 ];
 
+/** Effects tile cover: Crystal Ball product slugs. */
+export const EFFECTS_COVER_SLUGS = [
+  "crystal-ball",
+  "crystalball",
+] as const;
+
+/** Bundles tile cover: Ultimate Bundle (featured art, not mosaic). */
+export const BUNDLES_COVER_SLUGS = ["ultimate-bundle"] as const;
+
 /** Count + first four artwork URLs for one category tile. */
 export interface HomepageCategorySeed {
   count: number;
   thumbs: string[];
 }
+
+/** Public NNAudio Access art when the product row has no image. */
+export const NNAUDIO_ACCESS_COVER =
+  "https://znecvzfogwkzinkduyuq.supabase.co/storage/v1/object/public/product-images/nnaudio-access.png";
 
 /** Card shape consumed by FeaturedProductsSection. */
 export interface HomepageFeaturedSeed {
@@ -63,7 +76,9 @@ export interface HomepageCatalogSeed {
   midiFx: HomepageCategorySeed;
   packs: HomepageCategorySeed;
   free: HomepageCategorySeed;
-  bundleCount: number;
+  bundles: HomepageCategorySeed;
+  /** NNAudio Access tile — always one product manager. */
+  access: HomepageCategorySeed;
   cymasphere: {
     price?: number;
     salePrice?: number | null;
@@ -112,20 +127,83 @@ export function countHeroCatalogProducts(
 }
 
 /**
- * @brief First four artwork URLs from a slim product list.
- * @param products Rows with optional image fields.
- * @returns Up to four non-empty URLs.
+ * @brief Best rectangular cover for a catalog tile.
+ * Prefers featured / mosaic / background art over logos so the image
+ * can fill the box without a tiny mark stretching.
+ * @param row Artwork fields from a product or bundle.
+ * @returns Cover URL, or empty when none.
+ */
+export function coverImageFromRow(row: {
+  featured_image_url?: string | null;
+  mosaic_image_url?: string | null;
+  background_image_url?: string | null;
+  logo_url?: string | null;
+}): string {
+  return (
+    row.mosaic_image_url ||
+    row.featured_image_url ||
+    row.background_image_url ||
+    row.logo_url ||
+    ""
+  );
+}
+
+/** Artwork row used when picking catalog tile covers. */
+export type CatalogCoverRow = {
+  slug?: string | null;
+  featured_image_url?: string | null;
+  mosaic_image_url?: string | null;
+  background_image_url?: string | null;
+  logo_url?: string | null;
+};
+
+/**
+ * @brief First four cover URLs from a slim product or bundle list.
+ * `preferSlugs` win, then curated bestsellers, so tiles can pin a
+ * specific cover (Crystal Ball, Ultimate Bundle).
+ * @param products Rows with optional slug and image fields.
+ * @param opts Slug priority and whether mosaic art is allowed.
+ * @returns Up to four unique non-empty URLs.
  */
 export function thumbsFromProducts(
-  products: Array<{
-    featured_image_url?: string | null;
-    logo_url?: string | null;
-  }>
+  products: CatalogCoverRow[],
+  opts?: {
+    preferSlugs?: readonly string[];
+    /** When false, skip mosaic so the featured product/bundle art is used. */
+    allowMosaic?: boolean;
+  }
 ): string[] {
-  return products
-    .map((p) => p.featured_image_url || p.logo_url || "")
-    .filter(Boolean)
-    .slice(0, 4);
+  const preferred = opts?.preferSlugs ?? [];
+  const curated = [...CURATED_FEATURED_ORDER, ...FEATURED_BUNDLE_SLUGS];
+  const rankOf = (slug: string) => {
+    const prefer = preferred.findIndex(
+      (key) => slug === key || slug.includes(key)
+    );
+    if (prefer !== -1) return prefer;
+    const curatedIndex = curated.indexOf(slug);
+    return curatedIndex === -1 ? Number.MAX_SAFE_INTEGER : curated.length + curatedIndex;
+  };
+  const pickCover = (row: CatalogCoverRow) =>
+    opts?.allowMosaic === false
+      ? row.featured_image_url ||
+        row.background_image_url ||
+        row.logo_url ||
+        ""
+      : coverImageFromRow(row);
+  const ranked = [...products].sort((a, b) => {
+    return rankOf(String(a.slug || "").toLowerCase()) -
+      rankOf(String(b.slug || "").toLowerCase());
+  });
+  const seen = new Set<string>();
+  const urls: string[] = [];
+  for (const row of ranked) {
+    const src = pickCover(row);
+    if (!src || seen.has(src)) continue;
+    seen.add(src);
+    urls.push(src);
+    if (urls.length >= 4) break;
+  }
+  return urls;
 }
 
 /**
@@ -219,7 +297,8 @@ export function emptyHomepageCatalogSeed(): HomepageCatalogSeed {
     midiFx: { count: 0, thumbs: [] },
     packs: { count: 0, thumbs: [] },
     free: { count: 0, thumbs: [] },
-    bundleCount: 0,
+    bundles: { count: 0, thumbs: [] },
+    access: { count: 1, thumbs: [NNAUDIO_ACCESS_COVER] },
     cymasphere: {},
     featured: [],
     heroTour: {
@@ -331,8 +410,9 @@ export function homepageCategoryTiles(
       key: "bundles",
       label: "Bundles",
       href: "/bundles",
-      count: seed.bundleCount,
+      count: seed.bundles.count,
       blurb: "More products, one better price.",
+      images: seed.bundles.thumbs,
     },
     {
       key: "free",
@@ -344,11 +424,12 @@ export function homepageCategoryTiles(
     },
     {
       key: "access",
-      label: "NNAudio Access",
-      href: "/downloads",
-      count: 1,
+      label: "Product Manager",
+      href: "/product/nnaudio-access",
+      count: seed.access.count || 1,
       alwaysShow: true,
-      blurb: "One app to manage all your products.",
+      blurb: "NNAudio Access — install and update everything you own.",
+      images: seed.access.thumbs,
     },
   ];
 }

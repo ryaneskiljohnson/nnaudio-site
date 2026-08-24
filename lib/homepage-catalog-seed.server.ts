@@ -6,6 +6,7 @@
 
 import "server-only";
 
+import { unstable_cache } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/database.types";
 import {
@@ -15,6 +16,10 @@ import {
   mapRawProductToFeaturedCard,
   sortFeaturedProducts,
   thumbsFromProducts,
+  coverImageFromRow,
+  BUNDLES_COVER_SLUGS,
+  EFFECTS_COVER_SLUGS,
+  NNAUDIO_ACCESS_COVER,
   type HomepageCatalogSeed,
   type HomepageCategorySeed,
   type HomepageProductRow,
@@ -37,9 +42,10 @@ const FEATURED_SELECT =
   "id, slug, name, category, tagline, short_description, featured_image_url, logo_url, background_image_url, background_video_url, price, sale_price";
 
 const HERO_TOUR_SELECT =
-  "id, slug, name, tagline, short_description, featured_image_url, logo_url, price, sale_price";
+  "id, slug, name, tagline, short_description, featured_image_url, logo_url, background_image_url, price, sale_price";
 
-const HERO_TOUR_LIMIT = 80;
+const HERO_TOUR_LIMIT = 24;
+const SEED_TIMEOUT_MS = 4000;
 
 const FREE_SELECT =
   "id, slug, name, category, tagline, short_description, featured_image_url, logo_url, price, sale_price";
@@ -51,12 +57,14 @@ type ShopPromotion = Awaited<ReturnType<typeof fetchActiveShopPromotion>>;
  * @param supabase Anon Supabase client.
  * @param category Product category enum value.
  * @param shopPromotion Active shop promotion for price fields.
+ * @param preferSlugs Slugs that should supply the tile cover first.
  * @returns Category tile seed data plus hero tour rows.
  */
 async function fetchCategoryBucket(
   supabase: ReturnType<typeof createClient<Database>>,
   category: ProductCategory,
-  shopPromotion: ShopPromotion
+  shopPromotion: ShopPromotion,
+  preferSlugs?: readonly string[]
 ): Promise<HomepageCategorySeed & { products: HomepageProductRow[] }> {
   const [countRes, productsRes] = await Promise.all([
     supabase
@@ -80,7 +88,7 @@ async function fetchCategoryBucket(
 
   return {
     count: countRes.count ?? 0,
-    thumbs: thumbsFromProducts(products),
+    thumbs: thumbsFromProducts(products, { preferSlugs }),
     products,
   };
 }
@@ -122,13 +130,54 @@ export async function getHomepageHeroProductCount(): Promise<number> {
 }
 
 /**
+ * @brief Resolves a promise or the fallback if it exceeds `ms`.
+ * @param promise Work that must not block the homepage forever.
+ * @param ms Deadline in milliseconds.
+ * @param fallback Value used when the deadline is missed.
+ * @returns The settled value or the fallback.
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  fallback: T
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/**
  * @brief Slim catalog snapshot for homepage first paint.
+ * Cached for a minute so repeat loads (and HMR refreshes) do not wait
+ * on a dozen Supabase queries. Times out so a hung query cannot stick
+ * the document on "loading".
  * @returns Counts, thumbs, featured cards, free rows, Cymasphere prices,
  * bundle count, and hero-tour product lists.
- * @note Uses the anon key (RLS) and does not read cookies, so the homepage
- * can stay statically cached. Hero tour rows are capped per category.
  */
 export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
+  return withTimeout(
+    unstable_cache(loadHomepageCatalogSeed, ["homepage-catalog-seed"], {
+      revalidate: 60,
+      tags: ["homepage-catalog"],
+    })(),
+    SEED_TIMEOUT_MS,
+    emptyHomepageCatalogSeed()
+  );
+}
+
+/**
+ * @brief Uncached Supabase snapshot used by {@link getHomepageCatalogSeed}.
+ * @returns Fresh seed or the empty snapshot when env is missing.
+ */
+async function loadHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
   const empty = emptyHomepageCatalogSeed();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -145,6 +194,7 @@ export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
     packs,
     free,
     bundlesRes,
+    accessRes,
     featuredRes,
     cymasphereRes,
     cymasphereProductRes,
@@ -155,14 +205,31 @@ export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
       .eq("status", "active")
       .in("category", HERO_CATALOG_CATEGORIES),
     fetchCategoryBucket(supabase, "instrument-plugin", shopPromotion),
-    fetchCategoryBucket(supabase, "audio-fx-plugin", shopPromotion),
+    fetchCategoryBucket(
+      supabase,
+      "audio-fx-plugin",
+      shopPromotion,
+      EFFECTS_COVER_SLUGS
+    ),
     fetchCategoryBucket(supabase, "midi-fx-plugin", shopPromotion),
     fetchCategoryBucket(supabase, "pack", shopPromotion),
     fetchFreeBucket(supabase),
     supabase
       .from("bundles")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "active"),
+      .select(
+        "slug, featured_image_url, mosaic_image_url, background_image_url, logo_url",
+        { count: "exact" }
+      )
+      .eq("status", "active")
+      .order("is_featured", { ascending: false })
+      .order("display_order", { ascending: true })
+      .limit(8),
+    supabase
+      .from("products")
+      .select("featured_image_url, logo_url, background_image_url")
+      .eq("status", "active")
+      .eq("slug", "nnaudio-access")
+      .limit(1),
     supabase
       .from("products")
       .select(FEATURED_SELECT)
@@ -198,6 +265,12 @@ export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
     console.error(
       "Homepage catalog seed bundles failed:",
       bundlesRes.error.message
+    );
+  }
+  if (accessRes.error) {
+    console.error(
+      "Homepage catalog seed access failed:",
+      accessRes.error.message
     );
   }
   if (cymasphereRes.error) {
@@ -255,7 +328,19 @@ export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
       count: free.count,
       thumbs: free.thumbs,
     },
-    bundleCount: bundlesRes.count ?? 0,
+    bundles: {
+      count: bundlesRes.count ?? 0,
+      thumbs: thumbsFromProducts(bundlesRes.data ?? [], {
+        preferSlugs: BUNDLES_COVER_SLUGS,
+        allowMosaic: false,
+      }),
+    },
+    access: {
+      count: 1,
+      thumbs: [
+        coverImageFromRow(accessRes.data?.[0] ?? {}) || NNAUDIO_ACCESS_COVER,
+      ],
+    },
     cymasphere: promotedCymasphere
       ? {
           price: promotedCymasphere.price,

@@ -1,13 +1,16 @@
 import { describe, it, expect } from "vitest";
 import {
   countHeroCatalogProducts,
+  coverImageFromRow,
   emptyHomepageCatalogSeed,
   homepageCategoryTiles,
   isFreeHomepageProduct,
   mapRawProductToFeaturedCard,
   seedRowToCard,
   sortFeaturedProducts,
+  thumbsFromProducts,
   CURATED_FEATURED_ORDER,
+  NNAUDIO_ACCESS_COVER,
 } from "@/lib/homepage-hero-seed";
 
 describe("countHeroCatalogProducts", () => {
@@ -144,6 +147,84 @@ describe("homepageCategoryTiles", () => {
     const tiles = homepageCategoryTiles(seed);
     expect(tiles.find((t) => t.key === "access")?.alwaysShow).toBe(true);
     expect(tiles.find((t) => t.key === "instruments")?.count).toBe(3);
+  });
+
+  it("labels Access as 1 Product Manager and uses cover art", () => {
+    const seed = emptyHomepageCatalogSeed();
+    seed.bundles = {
+      count: 4,
+      thumbs: ["https://example.com/bundle.webp"],
+    };
+    const tiles = homepageCategoryTiles(seed);
+    const access = tiles.find((t) => t.key === "access");
+    expect(access?.count).toBe(1);
+    expect(access?.label).toBe("Product Manager");
+    expect(access?.images).toEqual([NNAUDIO_ACCESS_COVER]);
+    expect(tiles.find((t) => t.key === "bundles")?.images).toEqual([
+      "https://example.com/bundle.webp",
+    ]);
+  });
+});
+
+describe("coverImageFromRow / thumbsFromProducts", () => {
+  it("prefers mosaic, then featured art, over logos", () => {
+    expect(
+      coverImageFromRow({
+        featured_image_url: "https://example.com/feat.webp",
+        logo_url: "https://example.com/logo.png",
+      })
+    ).toBe("https://example.com/feat.webp");
+    expect(
+      coverImageFromRow({
+        mosaic_image_url: "https://example.com/mosaic.webp",
+        featured_image_url: "https://example.com/feat.webp",
+      })
+    ).toBe("https://example.com/mosaic.webp");
+  });
+
+  it("ranks curated slugs first and skips duplicates", () => {
+    expect(
+      thumbsFromProducts([
+        { slug: "other", featured_image_url: "https://example.com/a.webp" },
+        { slug: "reiya", featured_image_url: "https://example.com/reiya.webp" },
+        { slug: "copy", featured_image_url: "https://example.com/reiya.webp" },
+      ])
+    ).toEqual([
+      "https://example.com/reiya.webp",
+      "https://example.com/a.webp",
+    ]);
+  });
+
+  it("pins Crystal Ball and Ultimate Bundle covers when preferred", () => {
+    expect(
+      thumbsFromProducts(
+        [
+          { slug: "freelay", featured_image_url: "https://example.com/free.webp" },
+          {
+            slug: "crystal-ball-magic-multi-effect",
+            featured_image_url: "https://example.com/crystal.webp",
+          },
+        ],
+        { preferSlugs: ["crystal-ball-magic-multi-effect"] }
+      )[0]
+    ).toBe("https://example.com/crystal.webp");
+    expect(
+      thumbsFromProducts(
+        [
+          {
+            slug: "orbitals-bundle",
+            mosaic_image_url: "https://example.com/orb-mosaic.webp",
+            featured_image_url: "https://example.com/orb.webp",
+          },
+          {
+            slug: "ultimate-bundle",
+            mosaic_image_url: "https://example.com/ult-mosaic.webp",
+            featured_image_url: "https://example.com/ultimate.webp",
+          },
+        ],
+        { preferSlugs: ["ultimate-bundle"], allowMosaic: false }
+      )[0]
+    ).toBe("https://example.com/ultimate.webp");
   });
 });
 
