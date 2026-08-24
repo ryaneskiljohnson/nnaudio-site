@@ -71,7 +71,7 @@ const Hero = styled.section`
   background: #02030a;
 `;
 
-const Headline = styled.div.attrs({ "data-hero-headline": true })`
+const Headline = styled.div`
   position: absolute;
   left: 50%;
   bottom: 28px;
@@ -513,7 +513,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
             </PlayTourButton>
           )}
         </BoardFade>
-        <Headline>
+        <Headline data-hero-headline="">
           <Title>
             Worlds of sound.
             <br />
