@@ -8,10 +8,10 @@
  * The sun uses the same spherical wrap as the moons, so its mark rolls
  * instead of sitting as a flat logo.
  * Pose is written from rAF so React does not re-render every frame.
- * Phones (short side ≤ 768px, including landscape) stage only the
- * current moon and the next stop (160px bake, ~15fps, no rings or
- * nebulae). A mid-tour Safari kill switches the next mobile Play
- * to a no-canvas lite tour so the page can finish.
+ * Phones (short side ≤ 768px, including landscape) always run a no-canvas
+ * lite tour: current + next moon only, tinted/CSS art, ~12fps, no rings or
+ * nebulae. That keeps Kepler + CSS 3D without the texture warps that make
+ * iOS Safari reload the tab.
  * @module components/sections/CircuitNetwork
  */
 
@@ -60,7 +60,6 @@ import {
   mobileStageKeys,
   moonBakePx,
   pickMobileTourNodes,
-  previousHeroTourWasKilled,
   sunBakePx,
 } from "@/utils/hero-tour";
 
@@ -1397,16 +1396,15 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const parkImmediatelyRef = useRef(parkImmediately);
   parkImmediatelyRef.current = parkImmediately;
   /**
-   * Skip canvas bakes/warps after a mid-tour Safari kill. Mobile
-   * only — a dirty watchdog must not blank desktop art.
+   * Phones never canvas-warp. Texture strips + GPU blits are what push
+   * iOS Safari into a memory/energy kill mid-tour.
    */
   const liteTourRef = useRef(
     typeof window !== "undefined" &&
-      isHeroMobileViewport(window.innerWidth, window.innerHeight) &&
-      previousHeroTourWasKilled(readHeroWatchdog())
+      isHeroMobileViewport(window.innerWidth, window.innerHeight)
   );
   const mobile = isMobile;
-  /** True when this visit should skip canvas warps (mobile + prior kill). */
+  /** True when this visit should skip canvas warps (every phone Play). */
   const liteTour = liteTourRef.current && mobile;
 
   // Crash watchdog: a user reload or navigation fires pagehide first,
@@ -2466,7 +2464,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
 
       const synthBody = bodies.find((body) => body.synth);
       const ringsEl = synthRingsRef.current;
-      if (synthBody && ringsEl) {
+      if (synthBody && ringsEl && !mobile) {
         const si = bodyIndexByKey.get(synthBody.key);
         if (si !== undefined) {
           const synthEl = moonRefs.current.get(synthBody.key);
@@ -2706,6 +2704,28 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
               }}
             >
               {body.node.image ? (
+                liteTour ? (
+                  <img
+                    src={optimizedImageUrl(
+                      body.synth ? CYMASYNTH_SPHERE : body.node.image,
+                      128
+                    )}
+                    alt=""
+                    width={128}
+                    height={128}
+                    decoding="async"
+                    draggable={false}
+                    style={{
+                      position: "absolute",
+                      inset: "8%",
+                      width: "84%",
+                      height: "84%",
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      opacity: 0.92,
+                    }}
+                  />
+                ) : (
                 <TexCanvas
                   ref={(el: HTMLCanvasElement | null) => {
                     if (el) {
@@ -2731,13 +2751,14 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
                     }
                   }}
                 />
+                )
               ) : (
                 <span>{initials}</span>
               )}
             </MoonTag>
           );
         }),
-    [bodies, stageKeys]
+    [bodies, stageKeys, liteTour]
   );
 
   return (
