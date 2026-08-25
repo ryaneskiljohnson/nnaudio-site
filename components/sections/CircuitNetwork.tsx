@@ -8,10 +8,9 @@
  * The sun uses the same spherical wrap as the moons, so its mark rolls
  * instead of sitting as a flat logo.
  * Pose is written from rAF so React does not re-render every frame.
- * Phones (short side ≤ 768px, including landscape) always run a no-canvas
- * lite tour: current + next moon only, tinted/CSS art, ~12fps, no rings or
- * nebulae. That keeps Kepler + CSS 3D without the texture warps that make
- * iOS Safari reload the tab.
+ * Phones stage current + next moon only, ~12fps, no rings or nebulae.
+ * Sphere wraps still run (GPU blit only). A prior Safari kill falls
+ * back to a no-canvas lite tour.
  * @module components/sections/CircuitNetwork
  */
 
@@ -60,6 +59,7 @@ import {
   mobileStageKeys,
   moonBakePx,
   pickMobileTourNodes,
+  previousHeroTourWasKilled,
   sunBakePx,
 } from "@/utils/hero-tour";
 
@@ -1396,15 +1396,16 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const parkImmediatelyRef = useRef(parkImmediately);
   parkImmediatelyRef.current = parkImmediately;
   /**
-   * Phones never canvas-warp. Texture strips + GPU blits are what push
-   * iOS Safari into a memory/energy kill mid-tour.
+   * Skip canvas warps only after a mid-tour Safari kill. First Play
+   * always gets live sphere wraps (GPU blit, no CPU fallback).
    */
   const liteTourRef = useRef(
     typeof window !== "undefined" &&
-      isHeroMobileViewport(window.innerWidth, window.innerHeight)
+      isHeroMobileViewport(window.innerWidth, window.innerHeight) &&
+      previousHeroTourWasKilled(readHeroWatchdog())
   );
   const mobile = isMobile;
-  /** True when this visit should skip canvas warps (every phone Play). */
+  /** True when this visit should skip canvas warps (mobile + prior kill). */
   const liteTour = liteTourRef.current && mobile;
 
   // Crash watchdog: a user reload or navigation fires pagehide first,
@@ -1885,8 +1886,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const raw = Math.abs(ph - last);
         if (Math.min(raw, 1 - raw) < threshold) return false;
       }
-      // GPU blit path; the per-pixel CPU warp only runs as a fallback.
+      // GPU blit path. Phones skip the CPU bilinear fallback — that
+      // per-pixel walk is what iOS Safari reloads for.
       if (!warpStripToCanvasGpu(tex, ph, canvas)) {
+        if (tourLive.current.mobile) return false;
         warpStripToCanvas(
           tex,
           getWarpLUT(tex.strip.height),
@@ -2703,29 +2706,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
                 } else moonRefs.current.delete(body.key);
               }}
             >
-              {body.node.image ? (
-                liteTour ? (
-                  <img
-                    src={optimizedImageUrl(
-                      body.synth ? CYMASYNTH_SPHERE : body.node.image,
-                      128
-                    )}
-                    alt=""
-                    width={128}
-                    height={128}
-                    decoding="async"
-                    draggable={false}
-                    style={{
-                      position: "absolute",
-                      inset: "8%",
-                      width: "84%",
-                      height: "84%",
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                      opacity: 0.92,
-                    }}
-                  />
-                ) : (
+              {body.node.image && !liteTour ? (
                 <TexCanvas
                   ref={(el: HTMLCanvasElement | null) => {
                     if (el) {
@@ -2734,13 +2715,15 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
                       if (tex) {
                         const ph = warpPhases.current.get(body.key) ?? 0;
                         if (!warpStripToCanvasGpu(tex, ph, el)) {
-                          warpStripToCanvas(
-                            tex,
-                            getWarpLUT(tex.strip.height),
-                            ph,
-                            el,
-                            "bilinear"
-                          );
+                          if (!mobile) {
+                            warpStripToCanvas(
+                              tex,
+                              getWarpLUT(tex.strip.height),
+                              ph,
+                              el,
+                              "bilinear"
+                            );
+                          }
                         }
                         warpPhases.current.set(body.key, ph);
                         el.style.opacity = "1";
@@ -2751,7 +2734,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
                     }
                   }}
                 />
-                )
               ) : (
                 <span>{initials}</span>
               )}

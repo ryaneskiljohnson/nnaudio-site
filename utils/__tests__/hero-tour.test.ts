@@ -172,25 +172,22 @@ describe("resolveHeroTourStart", () => {
 
   it("idles the 3D tour on desktop and shows Play on lite", () => {
     expect(resolveHeroTourStart(idle)).toEqual({
-      desktopTour: false,
-      mobileTour: false,
+      allowTour: false,
       showPlay: false,
       scheduleDesktop: true,
     });
     expect(resolveHeroTourStart({ ...idle, lite: true })).toEqual({
-      desktopTour: false,
-      mobileTour: false,
+      allowTour: false,
       showPlay: true,
       scheduleDesktop: false,
     });
   });
 
-  it("never schedules CircuitNetwork on lite unless the recorder forces 3D", () => {
+  it("starts CircuitNetwork on lite Play / autoTour", () => {
     expect(
       resolveHeroTourStart({ ...idle, lite: true, autoTour: true })
     ).toEqual({
-      desktopTour: false,
-      mobileTour: true,
+      allowTour: true,
       showPlay: false,
       scheduleDesktop: false,
     });
@@ -202,8 +199,7 @@ describe("resolveHeroTourStart", () => {
         force3d: true,
       })
     ).toEqual({
-      desktopTour: true,
-      mobileTour: false,
+      allowTour: true,
       showPlay: false,
       scheduleDesktop: false,
     });
@@ -211,16 +207,14 @@ describe("resolveHeroTourStart", () => {
 
   it("parks on the poster when the user prefers reduced motion", () => {
     expect(resolveHeroTourStart({ ...idle, reduceMotion: true })).toEqual({
-      desktopTour: false,
-      mobileTour: false,
+      allowTour: false,
       showPlay: false,
       scheduleDesktop: false,
     });
     expect(
       resolveHeroTourStart({ ...idle, lite: true, reduceMotion: true })
     ).toEqual({
-      desktopTour: false,
-      mobileTour: false,
+      allowTour: false,
       showPlay: false,
       scheduleDesktop: false,
     });

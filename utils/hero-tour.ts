@@ -284,23 +284,22 @@ export function prefersLiteHeroTour(env: HeroTourEnvironment): boolean {
 
 /** First-paint decision for which hero tour (if any) to mount. */
 export interface HeroTourStart {
-  desktopTour: boolean;
-  mobileTour: boolean;
+  /** Mount CircuitNetwork (desktop idle start or explicit Play). */
+  allowTour: boolean;
   showPlay: boolean;
   scheduleDesktop: boolean;
 }
 
 /**
  * @brief Picks the hero mount without touching the DOM.
- * Lite devices never schedule CircuitNetwork; `force3d` + `autoTour`
- * is the Playwright recorder latch.
+ * Lite devices wait for Play, then mount the same live 3D tour.
  * @param input Lite/motion flags and query flags.
- * @returns Which tour flags to set, or whether to idle-start desktop.
+ * @returns Whether to show Play, start the tour, or idle-start desktop.
  * @example
  * resolveHeroTourStart({
  *   lite: true, reduceMotion: false, autoTour: false, force3d: false,
  * })
- * // { desktopTour: false, mobileTour: false, showPlay: true, scheduleDesktop: false }
+ * // { allowTour: false, showPlay: true, scheduleDesktop: false }
  */
 export function resolveHeroTourStart(input: {
   lite: boolean;
@@ -310,47 +309,34 @@ export function resolveHeroTourStart(input: {
 }): HeroTourStart {
   if (input.reduceMotion) {
     return {
-      desktopTour: false,
-      mobileTour: false,
+      allowTour: false,
       showPlay: false,
       scheduleDesktop: false,
     };
   }
   if (input.lite) {
-    if (input.autoTour && input.force3d) {
-      return {
-        desktopTour: true,
-        mobileTour: false,
-        showPlay: false,
-        scheduleDesktop: false,
-      };
-    }
     if (input.autoTour) {
       return {
-        desktopTour: false,
-        mobileTour: true,
+        allowTour: true,
         showPlay: false,
         scheduleDesktop: false,
       };
     }
     return {
-      desktopTour: false,
-      mobileTour: false,
+      allowTour: false,
       showPlay: true,
       scheduleDesktop: false,
     };
   }
-  if (input.autoTour) {
+  if (input.autoTour || input.force3d) {
     return {
-      desktopTour: true,
-      mobileTour: false,
+      allowTour: true,
       showPlay: false,
       scheduleDesktop: false,
     };
   }
   return {
-    desktopTour: false,
-    mobileTour: false,
+    allowTour: false,
     showPlay: false,
     scheduleDesktop: true,
   };

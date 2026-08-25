@@ -8,14 +8,11 @@
  * paint with the HTML. The h1 stays solid white (no gradient / transparent
  * fill) so hydration cannot restyle the LCP element. Critical #home h1 / CTA
  * rules live in globals.css so the headline is visible before
- * styled-components hydrates. Desktop CircuitNetwork is a dynamic import
- * so its JS is not on the LCP path. Phones, tablets, and touch UAs
- * never download that chunk — Play is a 2D credit reel. CSS 3D + Kepler
- * still trips Safari's energy watchdog even without canvas warps.
- * `?heroAutoTour=1` skips Play. `?hero3d=1` with auto-tour
- * forces CircuitNetwork for the Playwright recorder. `?tourCap=N`
- * caps credit stops. Hero height is reserved in globals.css (#home)
- * so a late sheet cannot collapse-then-expand.
+ * styled-components hydrates. CircuitNetwork is a dynamic import so its
+ * JS is not on the LCP path. Lite devices wait for Play, then mount the
+ * live 3D tour (cheap GPU warps, no CPU fallback). `?heroAutoTour=1`
+ * skips Play. `?tourCap=N` caps credit stops. Hero height is reserved
+ * in globals.css (#home) so a late sheet cannot collapse-then-expand.
  */
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -336,11 +333,6 @@ const CircuitNetwork = dynamic(
   }
 );
 
-const MobileHeroTour = dynamic(() => import("./MobileHeroTour"), {
-  ssr: false,
-  loading: () => <StaticHeroPoster />,
-});
-
 /** Rendered Cymasphere planet for the idle disk (220px). Tour bakes 4K. */
 const CYMASPHERE_SUN_POSTER = "/images/cymasphere-sun-sphere-hero.webp";
 
@@ -367,25 +359,19 @@ function StaticHeroPoster() {
 }
 
 /**
- * @brief Desktop defers CircuitNetwork until idle. Lite devices (phones,
- * tablets, coarse pointer, iPadOS desktop UA) stay on the poster until
- * Play, then mount the 2D reel — never the 3D tour. CSS 3D + Kepler
- * still trips Safari even when canvas warps are off.
+ * @brief Desktop defers CircuitNetwork until idle. Lite devices stay on
+ * the poster until Play, then mount the same live 3D tour.
  * Both sides start with tours off so hydration matches.
- * `?heroAutoTour=1` starts the matching tour immediately.
- * `?hero3d=1` with auto-tour mounts CircuitNetwork on a lite viewport
- * for the Playwright recorder.
- * @returns Desktop/mobile tour flags, Play visibility, and the Play handler.
+ * `?heroAutoTour=1` starts immediately.
+ * @returns Tour mount flags, Play visibility, and the Play handler.
  */
 function useOptInHeroTour(): {
-  desktopTour: boolean;
-  mobileTour: boolean;
+  allowTour: boolean;
   showPlay: boolean;
   tourCap: number | undefined;
   startMobileTour: () => void;
 } {
-  const [desktopTour, setDesktopTour] = useState(false);
-  const [mobileTour, setMobileTour] = useState(false);
+  const [allowTour, setAllowTour] = useState(false);
   const [showPlay, setShowPlay] = useState(false);
   const [tourCap, setTourCap] = useState<number | undefined>(undefined);
 
@@ -399,25 +385,24 @@ function useOptInHeroTour(): {
       autoTour: query.autoTour,
       force3d: query.force3d,
     });
-    if (start.desktopTour) setDesktopTour(true);
-    if (start.mobileTour) setMobileTour(true);
+    if (start.allowTour) setAllowTour(true);
     if (start.showPlay) setShowPlay(true);
     if (!start.scheduleDesktop) return;
     return scheduleDesktopHeroTour(() => {
-      setDesktopTour(true);
+      setAllowTour(true);
       setShowPlay(false);
     }, window);
   }, []);
 
   /**
-   * @brief Starts the 2D phone reel. Does not download CircuitNetwork.
+   * @brief Downloads CircuitNetwork after an explicit tap on a phone.
    */
   const startMobileTour = () => {
-    setMobileTour(true);
+    setAllowTour(true);
     setShowPlay(false);
   };
 
-  return { desktopTour, mobileTour, showPlay, tourCap, startMobileTour };
+  return { allowTour, showPlay, tourCap, startMobileTour };
 }
 
 /**
@@ -473,8 +458,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   productCount = 0,
 }) => {
   const pathname = usePathname();
-  const { desktopTour, mobileTour, showPlay, tourCap, startMobileTour } =
-    useOptInHeroTour();
+  const { allowTour, showPlay, tourCap, startMobileTour } = useOptInHeroTour();
 
   const { cymasynth, nodes } = useMemo(() => {
     const synthProduct = instruments.find((p) => p.slug === "cymasynth");
@@ -525,15 +509,8 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
     <Hero id="home">
       <BoardArea>
         <BoardFade>
-          {desktopTour ? (
+          {allowTour ? (
             <CircuitNetwork
-              cymasphere={cymasphere ? toNode(cymasphere) : null}
-              cymasynth={cymasynth}
-              nodes={nodes}
-              tourCap={tourCap}
-            />
-          ) : mobileTour ? (
-            <MobileHeroTour
               cymasphere={cymasphere ? toNode(cymasphere) : null}
               cymasynth={cymasynth}
               nodes={nodes}
