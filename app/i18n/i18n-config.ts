@@ -2,6 +2,7 @@
 
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { logHeroDebug } from '@/utils/hero-reload-debug';
 
 // Languages we support
 export const languages = ['en', 'es', 'fr', 'it', 'de', 'pt', 'tr', 'zh', 'ja'];
@@ -66,6 +67,11 @@ export const getCurrentLanguage = (): string => {
 export const loadTranslations = async (locale: string) => {
   // Fallback empty translations object
   const fallbackData = {};
+  logHeroDebug('i18n-loadTranslations', {
+    locale,
+    initialized: i18n.isInitialized,
+    path: typeof window !== 'undefined' ? window.location.pathname : '',
+  });
   
   try {
     // Add timestamp to prevent caching

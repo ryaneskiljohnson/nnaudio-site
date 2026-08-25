@@ -1,7 +1,8 @@
 /**
  * @fileoverview Shared helpers for the homepage hero tour: phone
  * viewport detection, lite-tour gating (tablets / iPadOS / desktop-mode
- * phones), Safari-kill watchdog, curated moon picks, bake sizes, and
+ * phones), compact-tour latching so resize cannot rebuild the 3D
+ * system, Safari-kill watchdog, curated moon picks, bake sizes, and
  * recording query flags (`heroAutoTour`, `tourCap`).
  * @module utils/hero-tour
  */
@@ -244,6 +245,65 @@ export function readHeroTourEnvironment(
     userAgent: win.navigator.userAgent ?? "",
     coarsePointer: win.matchMedia("(pointer: coarse)").matches,
   };
+}
+
+/**
+ * @brief Compact-tour flag from a live window. Same predicate as Play
+ * gating so an iPad / "Request Desktop Website" phone still gets the
+ * capped 3D system instead of the full desktop catalog.
+ * @param win `window` or a test double.
+ * @returns True when CircuitNetwork should use the phone-capped path.
+ */
+export function readHeroCompactTour(win: HeroTourEnvironmentSource): boolean {
+  return prefersLiteHeroTour(readHeroTourEnvironment(win));
+}
+
+/**
+ * @brief Holds the first compact-tour measurement.
+ * iOS URL-bar resizes and orientation flicker can cross the 768px
+ * short-side line; flipping mid-tour rebuilds Kepler, uncapped moons,
+ * and the IntersectionObserver — that looks like a page refresh.
+ * @param latched Previous latch, or null before the first measure.
+ * @param measured Latest {@link readHeroCompactTour} / viewport result.
+ * @returns The value to keep, and whether a flip was ignored.
+ * @example
+ * latchHeroCompactTour(true, false) // { compact: true, ignoredFlip: true }
+ */
+export function latchHeroCompactTour(
+  latched: boolean | null,
+  measured: boolean
+): { compact: boolean; ignoredFlip: boolean } {
+  if (latched === null) {
+    return { compact: measured, ignoredFlip: false };
+  }
+  return { compact: latched, ignoredFlip: latched !== measured };
+}
+
+/**
+ * @brief Whether a ResizeObserver box should keep the existing Kepler size.
+ * Tiny jitter is ignored everywhere. On a compact tour, height-only
+ * changes (iOS chrome show/hide) are also ignored so the system does
+ * not rebuild mid-hold.
+ * @param prev Last accepted size.
+ * @param next Newly observed size.
+ * @param compact Phone-capped tour.
+ * @returns True when `prev` should be kept.
+ * @example
+ * shouldKeepHeroFrameSize({ w: 390, h: 844 }, { w: 390, h: 760 }, true) // true
+ */
+export function shouldKeepHeroFrameSize(
+  prev: { w: number; h: number } | null,
+  next: { w: number; h: number },
+  compact: boolean
+): boolean {
+  if (!prev) return false;
+  if (Math.abs(prev.w - next.w) < 12 && Math.abs(prev.h - next.h) < 12) {
+    return true;
+  }
+  if (compact && Math.abs(prev.w - next.w) < 12) {
+    return true;
+  }
+  return false;
 }
 
 /**

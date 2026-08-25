@@ -12,6 +12,7 @@ import ClientLayout from "./ClientLayout";
 import I18nProvider from "@/app/i18n/I18nProvider";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import Analytics from "@/components/analytics/Analytics";
+import HeroReloadDebugProbe from "@/components/HeroReloadDebugProbe";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
@@ -104,6 +105,7 @@ export default function RootLayout({
       {/* suppressHydrationWarning: Cursor browser/snapshot tooling can inject data-cursor-ref into the DOM before/during hydration, causing server/client attribute mismatch. In a normal browser (no Cursor extension) this does not occur. */}
       <body suppressHydrationWarning>
         <Analytics />
+        <HeroReloadDebugProbe />
         <SpeedInsights />
         <StyledComponentsRegistry>
           <LanguageProvider>

@@ -24,9 +24,12 @@ import {
   heroTourMoonCap,
   heroTourStopCap,
   isHeroMobileViewport,
+  latchHeroCompactTour,
   prefersLiteHeroTour,
+  readHeroCompactTour,
   readHeroTourEnvironment,
   resolveHeroTourStart,
+  shouldKeepHeroFrameSize,
   mobileStageKeys,
   moonBakePx,
   parseHeroTourQuery,
@@ -159,6 +162,53 @@ describe("readHeroTourEnvironment", () => {
       userAgent: "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)",
       coarsePointer: true,
     });
+  });
+});
+
+describe("latchHeroCompactTour / shouldKeepHeroFrameSize", () => {
+  it("takes the first measure and then ignores flips", () => {
+    expect(latchHeroCompactTour(null, true)).toEqual({
+      compact: true,
+      ignoredFlip: false,
+    });
+    expect(latchHeroCompactTour(true, false)).toEqual({
+      compact: true,
+      ignoredFlip: true,
+    });
+    expect(latchHeroCompactTour(false, false)).toEqual({
+      compact: false,
+      ignoredFlip: false,
+    });
+  });
+
+  it("keeps Kepler size across iOS chrome height-only resizes", () => {
+    expect(
+      shouldKeepHeroFrameSize({ w: 390, h: 844 }, { w: 390, h: 760 }, true)
+    ).toBe(true);
+    expect(
+      shouldKeepHeroFrameSize({ w: 390, h: 844 }, { w: 844, h: 390 }, true)
+    ).toBe(false);
+    expect(
+      shouldKeepHeroFrameSize({ w: 1280, h: 800 }, { w: 1280, h: 700 }, false)
+    ).toBe(false);
+  });
+});
+
+describe("readHeroCompactTour", () => {
+  it("uses prefersLiteHeroTour so an iPad is compact even when the short side is >768", () => {
+    expect(
+      readHeroCompactTour({
+        innerWidth: 834,
+        innerHeight: 1194,
+        navigator: {
+          maxTouchPoints: 5,
+          userAgent: "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)",
+        },
+        matchMedia: (query: string) => ({
+          matches: query.includes("pointer: coarse"),
+        }),
+      })
+    ).toBe(true);
   });
 });
 

@@ -10,7 +10,7 @@
  * rules live in globals.css so the headline is visible before
  * styled-components hydrates. CircuitNetwork is a dynamic import so its
  * JS is not on the LCP path. Lite devices wait for Play, then mount the
- * live 3D tour (cheap GPU warps, no CPU fallback). `?heroAutoTour=1`
+ * live 3D tour (GPU warps, CPU fallback if the blit fails). `?heroAutoTour=1`
  * skips Play. `?tourCap=N` caps credit stops. Hero height is reserved
  * in globals.css (#home) so a late sheet cannot collapse-then-expand.
  */
@@ -28,6 +28,8 @@ import {
   scheduleDesktopHeroTour,
 } from "@/utils/hero-tour";
 import { scrollToHash } from "@/utils/scrollToHash";
+import HeroReloadDebugMark from "@/components/HeroReloadDebugMark";
+import { logHeroDebug } from "@/utils/hero-reload-debug";
 
 /** Minimal product shape consumed from the homepage fetches. */
 export interface HeroProduct {
@@ -378,17 +380,30 @@ function useOptInHeroTour(): {
   useEffect(() => {
     const query = parseHeroTourQuery(window.location.search);
     setTourCap(query.tourCap);
+    const lite = prefersLiteHeroTour(readHeroTourEnvironment(window));
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
     const start = resolveHeroTourStart({
-      lite: prefersLiteHeroTour(readHeroTourEnvironment(window)),
-      reduceMotion: window.matchMedia("(prefers-reduced-motion: reduce)")
-        .matches,
+      lite,
+      reduceMotion,
       autoTour: query.autoTour,
       force3d: query.force3d,
+    });
+    logHeroDebug("hero-tour-resolve", {
+      lite,
+      allowTour: start.allowTour,
+      showPlay: start.showPlay,
+      scheduleDesktop: start.scheduleDesktop,
+      autoTour: query.autoTour,
+      force3d: query.force3d,
+      reduceMotion,
     });
     if (start.allowTour) setAllowTour(true);
     if (start.showPlay) setShowPlay(true);
     if (!start.scheduleDesktop) return;
     return scheduleDesktopHeroTour(() => {
+      logHeroDebug("hero-desktop-idle-start", {});
       setAllowTour(true);
       setShowPlay(false);
     }, window);
@@ -398,6 +413,7 @@ function useOptInHeroTour(): {
    * @brief Downloads CircuitNetwork after an explicit tap on a phone.
    */
   const startMobileTour = () => {
+    logHeroDebug("hero-play", {});
     setAllowTour(true);
     setShowPlay(false);
   };
@@ -460,6 +476,14 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   const pathname = usePathname();
   const { allowTour, showPlay, tourCap, startMobileTour } = useOptInHeroTour();
 
+  useEffect(() => {
+    logHeroDebug("hero-allowTour", {
+      allowTour,
+      showPlay,
+      tourCap: tourCap ?? null,
+    });
+  }, [allowTour, showPlay, tourCap]);
+
   const { cymasynth, nodes } = useMemo(() => {
     const synthProduct = instruments.find((p) => p.slug === "cymasynth");
     const synthNode = synthProduct ? toNode(synthProduct) : null;
@@ -507,6 +531,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
 
   return (
     <Hero id="home">
+      <HeroReloadDebugMark source="ecosystem-hero" />
       <BoardArea>
         <BoardFade>
           {allowTour ? (

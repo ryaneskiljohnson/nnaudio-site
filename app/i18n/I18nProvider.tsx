@@ -12,6 +12,7 @@ import i18next from 'i18next';
 import useLanguage from '@/hooks/useLanguage';
 // Ensure i18n-config loads early so sync init runs before LegalModal/useTranslation
 import '@/app/i18n/i18n-config';
+import { logHeroDebug } from '@/utils/hero-reload-debug';
 
 interface I18nProviderProps {
   children: React.ReactNode;
@@ -19,15 +20,20 @@ interface I18nProviderProps {
 
 export default function I18nProvider({ children }: I18nProviderProps) {
   const pathname = usePathname();
-  const { currentLanguage } = useLanguage(pathname === "/");
+  const { currentLanguage } = useLanguage(!pathname || pathname === "/");
   
   // Listen for global language change events
   useEffect(() => {
-    // Listen for the global language change event
     const handleGlobalLanguageChange = () => {
-      console.log('[I18nProvider] Detected global language change event');
-      
-      // Force a refresh of all components that use translations
+      logHeroDebug('i18n-window-languageChange', {
+        pathname,
+        currentLanguage,
+        skipped: !pathname || pathname === '/',
+      });
+      // Homepage has no translation consumers that need a forced
+      // refresh. Emitting languageChanged here re-rendered the whole
+      // tree and looked like a mobile reload.
+      if (!pathname || pathname === '/') return;
       if (i18next.isInitialized) {
         i18next.emit('languageChanged', currentLanguage);
       }
@@ -38,7 +44,7 @@ export default function I18nProvider({ children }: I18nProviderProps) {
     return () => {
       window.removeEventListener('languageChange', handleGlobalLanguageChange);
     };
-  }, [currentLanguage]);
+  }, [currentLanguage, pathname]);
   
   // Always render children - do NOT block the entire app on translation loading.
   // Blocking caused a black screen on first load until translations finished.

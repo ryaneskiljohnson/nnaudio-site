@@ -6,10 +6,11 @@
  * @module contexts/LanguageContext
  */
 
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import useLanguageHook from '@/hooks/useLanguage';
 import i18next from 'i18next';
+import { logHeroDebug } from '@/utils/hero-reload-debug';
 
 interface LanguageContextType {
   t: (key: string, options?: any) => string;
@@ -29,25 +30,39 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
  */
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const skipRemote = !pathname || pathname === "/";
   const { currentLanguage, isLoading, changeLanguage, languages } =
-    useLanguageHook(pathname === "/");
+    useLanguageHook(skipRemote);
 
-  const t = (key: string, options?: any): string => {
+  const t = useCallback((key: string, options?: any): string => {
     const result = i18next.t(key, options);
     return typeof result === 'string' ? result : String(result);
-  };
+  }, []);
 
   const translationsLoaded = !isLoading;
-
-  return (
-    <LanguageContext.Provider value={{
+  const value = useMemo(
+    () => ({
       t,
       translationsLoaded,
       isLoading,
       currentLanguage,
       changeLanguage,
-      languages
-    }}>
+      languages,
+    }),
+    [t, translationsLoaded, isLoading, currentLanguage, changeLanguage, languages]
+  );
+
+  useEffect(() => {
+    logHeroDebug("i18n-language-provider", {
+      pathname,
+      skipRemote,
+      currentLanguage,
+      isLoading,
+    });
+  }, [pathname, skipRemote, currentLanguage, isLoading]);
+
+  return (
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );

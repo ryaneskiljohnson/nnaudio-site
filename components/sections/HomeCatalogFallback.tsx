@@ -5,6 +5,8 @@
  * @module components/sections/HomeCatalogFallback
  */
 
+import HeroReloadDebugMark from "@/components/HeroReloadDebugMark";
+
 /** Rendered Cymasphere planet used by the idle hero poster. */
 const CYMASPHERE_SUN_POSTER = "/images/cymasphere-sun-sphere-hero.webp";
 
@@ -15,6 +17,7 @@ const CYMASPHERE_SUN_POSTER = "/images/cymasphere-sun-sphere-hero.webp";
 export default function HomeCatalogFallback() {
   return (
     <>
+      <HeroReloadDebugMark source="home-fallback" />
       <section
         id="home"
         style={{

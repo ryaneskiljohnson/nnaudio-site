@@ -9,8 +9,7 @@
  * instead of sitting as a flat logo.
  * Pose is written from rAF so React does not re-render every frame.
  * Phones stage current + next moon only, ~12fps, no rings or nebulae.
- * Sphere wraps still run (GPU blit only). A prior Safari kill falls
- * back to a no-canvas lite tour.
+ * Sphere wraps run on every device (GPU blit, then CPU fallback).
  * @module components/sections/CircuitNetwork
  */
 
@@ -55,13 +54,16 @@ import {
   heroBoardIsOnScreen,
   heroTourMoonCap,
   heroTourStopCap,
-  isHeroMobileViewport,
+  latchHeroCompactTour,
   mobileStageKeys,
   moonBakePx,
   pickMobileTourNodes,
   previousHeroTourWasKilled,
+  readHeroCompactTour,
+  shouldKeepHeroFrameSize,
   sunBakePx,
 } from "@/utils/hero-tour";
+import { logHeroDebug } from "@/utils/hero-reload-debug";
 
 /** First-paint pose: far galaxy, same as cameraTour(0). */
 const OPENING_CAM = cameraTour(0, false);
@@ -1364,11 +1366,12 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
    */
   const faceAlign = useRef(new Map<string, number>());
   const facedKeys = useRef("");
-  const [isMobile, setIsMobile] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      isHeroMobileViewport(window.innerWidth, window.innerHeight)
+  const compactInitial =
+    typeof window !== "undefined" && readHeroCompactTour(window);
+  const compactLatchedRef = useRef<boolean | null>(
+    typeof window !== "undefined" ? compactInitial : null
   );
+  const [isMobile, setIsMobile] = useState(compactInitial);
   // Start the tour immediately. IntersectionObserver pauses it when the
   // hero leaves the viewport; if IO never fires (embedded previews), the
   // camera and credit card still run.
@@ -1395,18 +1398,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const parkedRef = useRef(false);
   const parkImmediatelyRef = useRef(parkImmediately);
   parkImmediatelyRef.current = parkImmediately;
-  /**
-   * Skip canvas warps only after a mid-tour Safari kill. First Play
-   * always gets live sphere wraps (GPU blit, no CPU fallback).
-   */
-  const liteTourRef = useRef(
-    typeof window !== "undefined" &&
-      isHeroMobileViewport(window.innerWidth, window.innerHeight) &&
-      previousHeroTourWasKilled(readHeroWatchdog())
-  );
   const mobile = isMobile;
-  /** True when this visit should skip canvas warps (mobile + prior kill). */
-  const liteTour = liteTourRef.current && mobile;
 
   // Crash watchdog: a user reload or navigation fires pagehide first,
   // but a Safari memory/energy kill does not — so an entry left
@@ -1427,6 +1419,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             `[hero] Previous visit ended without pagehide after ~${rec.aliveSec ?? "?"}s ` +
               `(tour parked: ${rec.parked ? "yes" : "no"}) — Safari likely killed the page (memory/energy).`
           );
+          logHeroDebug("watchdog-unclean", {
+            aliveSec: rec.aliveSec ?? null,
+            parked: rec.parked === true,
+          });
         }
       }
     } catch {
@@ -1460,9 +1456,24 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
 
   useEffect(() => {
     const applyMobile = () => {
-      const next = isHeroMobileViewport(window.innerWidth, window.innerHeight);
-      setIsMobile(next);
-      if (next) {
+      const measured = readHeroCompactTour(window);
+      const { compact, ignoredFlip } = latchHeroCompactTour(
+        compactLatchedRef.current,
+        measured
+      );
+      if (ignoredFlip) {
+        logHeroDebug("compact-flip-ignored", {
+          latched: compactLatchedRef.current,
+          measured,
+          w: window.innerWidth,
+          h: window.innerHeight,
+        });
+      }
+      if (compactLatchedRef.current !== compact) {
+        compactLatchedRef.current = compact;
+        setIsMobile(compact);
+      }
+      if (compact) {
         FRAME.lowDetail = true;
         containerRef.current?.setAttribute("data-low", "true");
       }
@@ -1489,8 +1500,18 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
 
   useEffect(() => {
     mountedRef.current = true;
+    logHeroDebug("circuit-mount", {
+      mobile,
+      moonCap: heroTourMoonCap(mobile, tourCap, !!cymasynth),
+      nodes: nodes.length,
+      previousKilled: previousHeroTourWasKilled(readHeroWatchdog()),
+    });
     return () => {
       mountedRef.current = false;
+      logHeroDebug("circuit-unmount", {
+        mobile: compactLatchedRef.current,
+        parked: parkedRef.current,
+      });
     };
   }, []);
 
@@ -1500,21 +1521,31 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     const syncOnScreen = () => {
       const r = el.getBoundingClientRect();
       const vh = window.innerHeight || 0;
-      heroOnScreenRef.current = heroBoardIsOnScreen(r, vh);
+      const next = heroBoardIsOnScreen(r, vh);
+      if (next !== heroOnScreenRef.current) {
+        logHeroDebug("hero-on-screen", { onScreen: next, top: r.top, bottom: r.bottom, vh });
+      }
+      heroOnScreenRef.current = next;
     };
     syncOnScreen();
     const observer = new IntersectionObserver(
       (entries) =>
         entries.forEach((e) => {
+          let next = e.isIntersecting;
           if (!e.isIntersecting) {
             const r = e.boundingClientRect;
             const vh = window.innerHeight || 0;
             if (heroBoardIsOnScreen(r, vh)) {
-              heroOnScreenRef.current = true;
-              return;
+              next = true;
             }
           }
-          heroOnScreenRef.current = e.isIntersecting;
+          if (next !== heroOnScreenRef.current) {
+            logHeroDebug("hero-on-screen", {
+              onScreen: next,
+              io: e.isIntersecting,
+            });
+          }
+          heroOnScreenRef.current = next;
         }),
       { threshold: 0 }
     );
@@ -1526,18 +1557,20 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       window.removeEventListener("resize", syncOnScreen);
       window.removeEventListener("orientationchange", syncOnScreen);
     };
-  }, [mobile]);
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const apply = (w: number, h: number) => {
       if (w < 8 || h < 8) return;
-      setFrameSize((prev) =>
-        prev && Math.abs(prev.w - w) < 12 && Math.abs(prev.h - h) < 12
-          ? prev
-          : { w, h }
-      );
+      setFrameSize((prev) => {
+        if (shouldKeepHeroFrameSize(prev, { w, h }, compactLatchedRef.current === true)) {
+          return prev;
+        }
+        logHeroDebug("frame-size", { prev, next: { w, h } });
+        return { w, h };
+      });
     };
     apply(el.getBoundingClientRect().width, el.getBoundingClientRect().height);
     const ro = new ResizeObserver((entries) => {
@@ -1642,6 +1675,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     if (mobile) {
       liveKeysRef.current = [];
       stageKeysRef.current = [];
+      logHeroDebug("stage-keys-seed", { keys: [], reason: "compact-empty" });
       setStageKeys([]);
       return;
     }
@@ -1770,7 +1804,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   // Desktop pre-bakes the first two stops. Phones wait for the rAF
   // window (focus + next only) so Play does not decode a pile at once.
   useEffect(() => {
-    if (liteTour || mobile) return;
+    if (mobile) return;
     const byKey = new Map(bodies.map((body) => [body.key, body]));
     const upcoming = credits
       .filter((credit) => !credit.sun)
@@ -1794,13 +1828,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         }
       );
     }
-  }, [bodies, credits, mobile, liteTour]);
+  }, [bodies, credits, mobile]);
 
   useEffect(() => {
-    // Phones keep the CSS poster only — a second 160px sun bake was
-    // still enough extra canvas to trip Safari's memory watchdog.
-    if (liteTour || mobile) return;
-    const size = sunBakePx(false, heroBakeDpr());
+    const size = sunBakePx(mobile, heroBakeDpr());
     void loadSphereTexture(
       optimizedImageUrl(CYMASPHERE_SUN_SPHERE, size),
       size,
@@ -1809,7 +1840,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       if (!mountedRef.current || !tex) return;
       sunTexRef.current = tex;
     });
-  }, [mobile, liteTour]);
+  }, [mobile]);
 
   const creditsByKey = useMemo(
     () => new Map(credits.map((credit) => [credit.key, credit])),
@@ -1831,7 +1862,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     frameSize,
     bakePx,
     mobile,
-    liteTour,
   });
   tourLive.current = {
     credits,
@@ -1842,7 +1872,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     frameSize,
     bakePx,
     mobile,
-    liteTour,
   };
 
   useEffect(() => {
@@ -1876,7 +1905,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     ) => {
       // Art is focus-only: a moon without a hi-res bake stays a generic
       // tinted sphere (its canvas remains transparent).
-      if (tourLive.current.liteTour) return false;
       const tex = texturesHiRef.current.get(body.key);
       const canvas = canvasRefs.current.get(body.key);
       if (!tex || !canvas) return false;
@@ -1886,10 +1914,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const raw = Math.abs(ph - last);
         if (Math.min(raw, 1 - raw) < threshold) return false;
       }
-      // GPU blit path. Phones skip the CPU bilinear fallback — that
-      // per-pixel walk is what iOS Safari reloads for.
       if (!warpStripToCanvasGpu(tex, ph, canvas)) {
-        if (tourLive.current.mobile) return false;
         warpStripToCanvas(
           tex,
           getWarpLUT(tex.strip.height),
@@ -1990,7 +2015,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         frameSize,
         bakePx,
         mobile,
-        liteTour: skipCanvas,
       } = tourLive.current;
       if (creditLenRef.current !== credits.length) {
         const prevLen = creditLenRef.current;
@@ -2154,7 +2178,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       }
       const sunTex = sunTexRef.current;
       const sunCanvas = sunCanvasRef.current;
-      if (sunTex && sunCanvas && !skipCanvas && !mobile) {
+      if (sunTex && sunCanvas) {
         const ph = reducedMotion
           ? 0
           : moonSpinPhase(
@@ -2230,7 +2254,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const focusedBody =
           focusedIdx === undefined ? undefined : bodies[focusedIdx];
         const prefetchHi = (body?: (typeof bodies)[number]) => {
-          if (skipCanvas) return;
           const wrap = body ? moonWrapUrl(body, mobile) : "";
           if (!body || !wrap || texturesHiRef.current.has(body.key)) return;
           void loadSphereTexture(
@@ -2404,6 +2427,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         nextStage.some((key) => !stageKeysRef.current.includes(key))
       ) {
         stageKeysRef.current = nextStage;
+        if (tourLive.current.mobile) {
+          logHeroDebug("stage-keys", { keys: nextStage });
+        }
         setStageKeys(nextStage);
       }
       moonRefs.current.forEach((el, key) => {
@@ -2706,7 +2732,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
                 } else moonRefs.current.delete(body.key);
               }}
             >
-              {body.node.image && !liteTour ? (
+              {body.node.image ? (
                 <TexCanvas
                   ref={(el: HTMLCanvasElement | null) => {
                     if (el) {
@@ -2715,15 +2741,13 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
                       if (tex) {
                         const ph = warpPhases.current.get(body.key) ?? 0;
                         if (!warpStripToCanvasGpu(tex, ph, el)) {
-                          if (!mobile) {
-                            warpStripToCanvas(
-                              tex,
-                              getWarpLUT(tex.strip.height),
-                              ph,
-                              el,
-                              "bilinear"
-                            );
-                          }
+                          warpStripToCanvas(
+                            tex,
+                            getWarpLUT(tex.strip.height),
+                            ph,
+                            el,
+                            "bilinear"
+                          );
                         }
                         warpPhases.current.set(body.key, ph);
                         el.style.opacity = "1";
@@ -2740,7 +2764,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             </MoonTag>
           );
         }),
-    [bodies, stageKeys, liteTour]
+    [bodies, stageKeys]
   );
 
   return (

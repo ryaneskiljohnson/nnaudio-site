@@ -7,6 +7,7 @@
  */
 
 import { Suspense } from "react";
+import HeroReloadDebugMark from "@/components/HeroReloadDebugMark";
 import EcosystemHero from "@/components/sections/EcosystemHero";
 import HomeBelowFold from "@/components/sections/HomeBelowFold";
 import HomeCatalogFallback from "@/components/sections/HomeCatalogFallback";
@@ -51,6 +52,7 @@ async function HomeCatalog() {
 
   return (
     <>
+      <HeroReloadDebugMark source="home-catalog" />
       <EcosystemHero
         cymasphere={cymasphereProduct}
         instruments={instruments}

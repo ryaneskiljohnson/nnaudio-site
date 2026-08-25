@@ -6,9 +6,10 @@
  * @module hooks/useLanguage
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import i18next from 'i18next';
 import { languages, defaultLanguage, loadTranslations } from '@/app/i18n/i18n-config';
+import { logHeroDebug } from '@/utils/hero-reload-debug';
 
 /** Shared across every `useLanguage()` mount so I18nProvider + LanguageProvider + pages don't each fetch. */
 let languageInitPromise: Promise<string> | null = null;
@@ -64,14 +65,17 @@ export default function useLanguage(skipRemote = false) {
   const [isLoading, setIsLoading] = useState(!skipRemote);
 
   useEffect(() => {
+    logHeroDebug('i18n-useLanguage', { skipRemote, currentLanguage });
     if (skipRemote) {
       setIsLoading(false);
       return;
     }
     let cancelled = false;
+    logHeroDebug('i18n-init-start', { currentLanguage });
     initLanguageOnce()
       .then((lang) => {
         if (cancelled) return;
+        logHeroDebug('i18n-init-done', { lang });
         setCurrentLanguage(lang);
       })
       .finally(() => {
@@ -82,12 +86,13 @@ export default function useLanguage(skipRemote = false) {
     };
   }, [skipRemote]);
   
-  const changeLanguage = async (lang: string) => {
+  const changeLanguage = useCallback(async (lang: string) => {
     if (!languages.includes(lang) || lang === currentLanguage) return;
     
     setIsLoading(true);
     try {
       console.log(`[useLanguage] Changing language to: ${lang}`);
+      logHeroDebug('i18n-changeLanguage', { from: currentLanguage, to: lang });
       await loadTranslations(lang);
       await i18next.changeLanguage(lang);
       localStorage.setItem('i18nextLng', lang);
@@ -99,7 +104,7 @@ export default function useLanguage(skipRemote = false) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentLanguage]);
   
   return {
     currentLanguage,
