@@ -111,6 +111,19 @@ describe("prefersLiteHeroTour", () => {
     ).toBe(true);
   });
 
+  it("treats a touchscreen tablet with a mouse as lite", () => {
+    expect(
+      prefersLiteHeroTour({
+        ...desktopMouse,
+        width: 1440,
+        height: 960,
+        coarsePointer: false,
+        maxTouchPoints: 10,
+        userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      })
+    ).toBe(true);
+  });
+
   it("treats an iPhone Request Desktop Website viewport as lite via UA", () => {
     expect(
       prefersLiteHeroTour({

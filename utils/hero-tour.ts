@@ -274,6 +274,11 @@ export function prefersLiteHeroTour(env: HeroTourEnvironment): boolean {
   if (/iPad|Android/i.test(ua)) return true;
   // iPadOS 13+ reports Macintosh but keeps multi-touch.
   if (/Macintosh/i.test(ua) && env.maxTouchPoints > 1) return true;
+  // Surface-class tablets: fine pointer + mouse, but still a touch slab
+  // that cannot survive CircuitNetwork.
+  if (env.maxTouchPoints > 1 && Math.min(env.width, env.height) <= 1366) {
+    return true;
+  }
   return false;
 }
 
