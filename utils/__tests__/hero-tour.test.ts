@@ -10,11 +10,17 @@ import {
   DESKTOP_TOUR_FALLBACK_DELAY_MS,
   DESKTOP_TOUR_IDLE_TIMEOUT_MS,
   HERO_MOBILE_BAKE_PX,
+  MOBILE_2D_MOON_CAP,
+  MOBILE_2D_SUN_POSTER,
+  MOBILE_2D_SYNTH_POSTER,
   MOBILE_CATALOG_MOON_CAP,
   MOBILE_STAGE_BUDGET,
   MOBILE_TEXTURE_KEEP,
   TOUR_MOBILE_MAX_STOPS,
+  buildMobileTourStops,
   heroBoardIsOnScreen,
+  mobile2dMoonCap,
+  mobileTourIsParked,
   heroTourMoonCap,
   heroTourStopCap,
   isHeroMobileViewport,
@@ -191,10 +197,17 @@ describe("parseHeroTourQuery", () => {
     expect(parseHeroTourQuery("?heroAutoTour=1&tourCap=15")).toEqual({
       autoTour: true,
       tourCap: 15,
+      force3d: false,
     });
     expect(parseHeroTourQuery("heroAutoTour=1")).toEqual({
       autoTour: true,
       tourCap: undefined,
+      force3d: false,
+    });
+    expect(parseHeroTourQuery("?heroAutoTour=1&hero3d=1&tourCap=15")).toEqual({
+      autoTour: true,
+      tourCap: 15,
+      force3d: true,
     });
   });
 
@@ -202,11 +215,107 @@ describe("parseHeroTourQuery", () => {
     expect(parseHeroTourQuery("")).toEqual({
       autoTour: false,
       tourCap: undefined,
+      force3d: false,
     });
     expect(parseHeroTourQuery("?heroAutoTour=yes&tourCap=-3")).toEqual({
       autoTour: false,
       tourCap: undefined,
+      force3d: false,
     });
+  });
+});
+
+describe("buildMobileTourStops", () => {
+  it("puts the sun poster first, then synth, then curated moons", () => {
+    const stops = buildMobileTourStops(
+      { id: "sun", name: "Cymasphere", slug: "cymasphere", price: "$199" },
+      {
+        id: "sy",
+        name: "CymaSynth",
+        slug: "cymasynth",
+        image: "/images/cymasynth-sphere-hero.webp",
+      },
+      [
+        { id: "a", name: "Other", slug: "other", image: "/a.webp" },
+        { id: "b", name: "Reiya", slug: "reiya", image: "/reiya.webp" },
+      ],
+      2,
+      ["reiya"]
+    );
+    expect(stops.map((s) => s.slug)).toEqual([
+      "cymasphere",
+      "cymasynth",
+      "reiya",
+      "other",
+    ]);
+    expect(stops[0]?.image).toBe(MOBILE_2D_SUN_POSTER);
+    expect(stops[0]?.sun).toBe(true);
+    expect(stops[1]?.image).toBe(MOBILE_2D_SYNTH_POSTER);
+  });
+
+  it("uses the synth poster even when the product has other art", () => {
+    const stops = buildMobileTourStops(
+      null,
+      {
+        id: 1,
+        name: "CymaSynth",
+        slug: "cymasynth",
+        image: "https://example.com/huge.webp",
+      },
+      []
+    );
+    expect(stops[1]?.image).toBe(MOBILE_2D_SYNTH_POSTER);
+  });
+
+  it("skips moons without artwork and honors tourCap", () => {
+    const stops = buildMobileTourStops(
+      null,
+      { id: 1, name: "CymaSynth", slug: "cymasynth" },
+      [
+        { id: 2, name: "Blank", slug: "blank" },
+        { id: 3, name: "Reiya", slug: "reiya", image: "/reiya.webp" },
+        { id: 4, name: "Curio", slug: "curio-texture-generator", image: "/c.webp" },
+      ],
+      3,
+      [],
+      3
+    );
+    expect(stops.map((s) => s.slug)).toEqual([
+      "cymasphere",
+      "cymasynth",
+      "reiya",
+    ]);
+    expect(stops.every((s) => s.image.length > 0)).toBe(true);
+  });
+
+  it("falls back to the synth poster and respects the moon cap", () => {
+    const stops = buildMobileTourStops(
+      null,
+      { id: 1, name: "CymaSynth", slug: "cymasynth" },
+      [
+        { id: 2, name: "A", slug: "a", image: "/a.webp" },
+        { id: 3, name: "B", slug: "b", image: "/b.webp" },
+        { id: 4, name: "C", slug: "c", image: "/c.webp" },
+      ],
+      MOBILE_2D_MOON_CAP
+    );
+    expect(stops[0]?.name).toBe("Cymasphere");
+    expect(stops[1]?.image).toBe(MOBILE_2D_SYNTH_POSTER);
+    expect(stops.length).toBe(2 + MOBILE_2D_MOON_CAP);
+  });
+});
+
+describe("mobile2dMoonCap / mobileTourIsParked", () => {
+  it("reserves sun and synth slots when a tourCap is set", () => {
+    expect(mobile2dMoonCap(undefined, true)).toBe(MOBILE_2D_MOON_CAP);
+    expect(mobile2dMoonCap(6, true)).toBe(4);
+    expect(mobile2dMoonCap(2, true)).toBe(0);
+  });
+
+  it("parks on the last still so the recorder can wait for data-parked", () => {
+    expect(mobileTourIsParked(0, 1)).toBe(true);
+    expect(mobileTourIsParked(0, 5)).toBe(false);
+    expect(mobileTourIsParked(4, 5)).toBe(true);
   });
 });
 

@@ -48,6 +48,132 @@ export const MOBILE_TEXTURE_KEEP = MOBILE_STAGE_BUDGET;
 export const MOBILE_STAGE_LINGER_MS = 500;
 
 /**
+ * Live phone Play never mounts CircuitNetwork. This many catalog moons
+ * follow Cymasphere and CymaSynth on the 2D credit reel.
+ */
+export const MOBILE_2D_MOON_CAP = 3;
+
+/** Hold length for one 2D credit on a phone. */
+export const MOBILE_2D_HOLD_MS = 2000;
+
+/** Poster used for the Cymasphere still (not the 4K wrap). */
+export const MOBILE_2D_SUN_POSTER = "/images/cymasphere-sun-sphere-hero.webp";
+
+/** Poster used for the CymaSynth still. */
+export const MOBILE_2D_SYNTH_POSTER = "/images/cymasynth-sphere-hero.webp";
+
+/** One 2D credit on the phone Play reel. */
+export type MobileTourStop = {
+  key: string;
+  name: string;
+  slug: string;
+  price?: string;
+  tagline?: string;
+  image: string;
+  sun?: boolean;
+};
+
+/** Slim product shape used when building the phone reel. */
+export type MobileTourNode = {
+  id: string | number;
+  name: string;
+  slug: string;
+  image?: string;
+  price?: string;
+  tagline?: string;
+};
+
+/**
+ * @brief Cymasphere → CymaSynth → curated moons for the phone 2D tour.
+ * CircuitNetwork is never downloaded on this path — CSS 3D + canvas
+ * warps are what iOS Safari reloads after ~10s of Play.
+ * @param cymasphere Sun credit, if present.
+ * @param cymasynth Closest moon, if present.
+ * @param nodes Remaining catalog products.
+ * @param moonCap Catalog moons after the two flagships when `tourCap` is unset.
+ * @param curatedSlugs Best-seller slug order.
+ * @param tourCap Optional total credit-stop cap (`?tourCap=N`).
+ * @returns Ordered stills, sun first. Moons without artwork are omitted.
+ * @example
+ * buildMobileTourStops(sun, synth, catalog, 3, ["reiya"])
+ */
+/**
+ * @brief Catalog moons to append after sun (and synth) on the 2D reel.
+ * `tourCap` is total credits, same meaning as the 3D recorder flag.
+ * @param tourCap Optional total credit-stop cap.
+ * @param hasSynth Whether CymaSynth occupies a credit slot.
+ * @param fallback Live Play moon count when no cap is set.
+ * @returns Moon count after the flagships.
+ */
+export function mobile2dMoonCap(
+  tourCap: number | undefined,
+  hasSynth: boolean,
+  fallback: number = MOBILE_2D_MOON_CAP
+): number {
+  if (tourCap != null && tourCap > 0) {
+    return Math.max(0, tourCap - 1 - (hasSynth ? 1 : 0));
+  }
+  return fallback;
+}
+
+/**
+ * @brief True when the 2D reel should stop scheduling the next hold.
+ * @param index Current stop index.
+ * @param stopCount Total credits.
+ * @returns True on the last (or only) still.
+ */
+export function mobileTourIsParked(index: number, stopCount: number): boolean {
+  return stopCount <= 1 || index >= stopCount - 1;
+}
+
+export function buildMobileTourStops(
+  cymasphere: MobileTourNode | null | undefined,
+  cymasynth: MobileTourNode | null | undefined,
+  nodes: MobileTourNode[],
+  moonCap: number = MOBILE_2D_MOON_CAP,
+  curatedSlugs: readonly string[] = [],
+  tourCap?: number
+): MobileTourStop[] {
+  const withArt = nodes.filter((node) => Boolean(node.image?.trim()));
+  const moons = mobile2dMoonCap(tourCap, !!cymasynth, moonCap);
+  const stops: MobileTourStop[] = [
+    {
+      key: SUN_FOCUS_KEY,
+      name: cymasphere?.name || "Cymasphere",
+      slug: cymasphere?.slug || "cymasphere",
+      price: cymasphere?.price,
+      tagline: (cymasphere?.tagline || "").trim(),
+      image: MOBILE_2D_SUN_POSTER,
+      sun: true,
+    },
+  ];
+  if (cymasynth) {
+    stops.push({
+      key: `synth-${cymasynth.id}`,
+      name: cymasynth.name,
+      slug: cymasynth.slug,
+      price: cymasynth.price,
+      tagline: (cymasynth.tagline || "").trim(),
+      image: MOBILE_2D_SYNTH_POSTER,
+    });
+  }
+  for (const node of pickMobileTourNodes(withArt, moons, curatedSlugs)) {
+    const image = node.image?.trim() || "";
+    if (!image) continue;
+    stops.push({
+      key: String(node.id),
+      name: node.name,
+      slug: node.slug,
+      price: node.price,
+      tagline: (node.tagline || "").trim(),
+      image,
+    });
+  }
+  if (tourCap != null && tourCap > 0) return stops.slice(0, tourCap);
+  return stops;
+}
+
+/**
  * @brief Whether the hero board still intersects the viewport.
  * Rect-based so flaky IntersectionObserver callbacks do not freeze
  * the tour when the board still fills the screen.
@@ -257,14 +383,17 @@ export function sunBakePx(compact: boolean, dpr: number): number {
  * Read from `window.location.search` (not `useSearchParams`) so the
  * LCP path does not need a Suspense boundary.
  * @param search `window.location.search` (leading `?` optional).
- * @returns Auto-start flag and optional credit-stop cap.
+ * @returns Auto-start flag, optional credit-stop cap, and 3D recorder latch.
  * @example
  * parseHeroTourQuery("?heroAutoTour=1&tourCap=15")
- * // { autoTour: true, tourCap: 15 }
+ * // { autoTour: true, tourCap: 15, force3d: false }
+ * parseHeroTourQuery("?heroAutoTour=1&hero3d=1")
+ * // { autoTour: true, tourCap: undefined, force3d: true }
  */
 export function parseHeroTourQuery(search: string): {
   autoTour: boolean;
   tourCap: number | undefined;
+  force3d: boolean;
 } {
   const q = search.startsWith("?") ? search.slice(1) : search;
   const params = new URLSearchParams(q);
@@ -273,6 +402,7 @@ export function parseHeroTourQuery(search: string): {
   return {
     autoTour: params.get("heroAutoTour") === "1",
     tourCap: Number.isFinite(n) && n > 0 ? n : undefined,
+    force3d: params.get("hero3d") === "1",
   };
 }
 

@@ -130,6 +130,9 @@ import {
   stepOrbitalSystem,
 } from "@/utils/orbital-physics";
 import { optimizedImageUrl } from "@/utils/optimized-image-url";
+import type { CircuitNode } from "./circuit-node";
+
+export type { CircuitNode } from "./circuit-node";
 import {
   type SphereTexture,
   getWarpLUT,
@@ -215,21 +218,6 @@ function readHeroWatchdog(): string | null {
   } catch {
     return null;
   }
-}
-
-/** A product rendered as a moon. */
-export interface CircuitNode {
-  id: string | number;
-  name: string;
-  slug: string;
-  /** Logo or artwork URL shown on the moon. */
-  image: string;
-  /** Display price, e.g. "$99". */
-  price?: string;
-  /** One-line subtitle for the credit card. */
-  tagline?: string;
-  /** Short product description shown in the empty half of a hold. */
-  description?: string;
 }
 
 interface CircuitNetworkProps {

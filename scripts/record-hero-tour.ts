@@ -1,8 +1,9 @@
 /**
  * @fileoverview Records the homepage hero tour as the mobile video asset.
  * Launches headless Chromium at a phone-shaped viewport, loads `/` with
- * `?heroAutoTour=1&tourCap=N` (auto-starts the live tour and caps the
- * credit list), records until the tour parks on its closing wide shot,
+ * `?heroAutoTour=1&hero3d=1&tourCap=N` (auto-starts CircuitNetwork even
+ * at a phone viewport and caps the credit list), records until the tour
+ * parks on its closing wide shot,
  * then transcodes the webm to a faststart H.264 MP4 at
  * `public/videos/hero-tour-mobile.mp4`.
  *
@@ -47,7 +48,7 @@ function argValue(flag: string): string | undefined {
 async function main(): Promise<void> {
   const cap = Number.parseInt(argValue("--cap") ?? "", 10) || DEFAULT_CAP;
   const base = argValue("--url") ?? "http://127.0.0.1:3000";
-  const target = `${base}/?heroAutoTour=1&tourCap=${cap}`;
+  const target = `${base}/?heroAutoTour=1&hero3d=1&tourCap=${cap}`;
   const videoDir = mkdtempSync(path.join(tmpdir(), "hero-tour-"));
 
   console.log(`Recording ${target} at ${VIEWPORT.width}x${VIEWPORT.height}…`);
