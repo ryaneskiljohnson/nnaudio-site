@@ -275,3 +275,45 @@ export function parseHeroTourQuery(search: string): {
     tourCap: Number.isFinite(n) && n > 0 ? n : undefined,
   };
 }
+
+/** Max wait before desktop idle callback forces the tour to start. */
+export const DESKTOP_TOUR_IDLE_TIMEOUT_MS = 3500;
+
+/** Fallback delay when `requestIdleCallback` is unavailable. */
+export const DESKTOP_TOUR_FALLBACK_DELAY_MS = 2500;
+
+/** Minimal timer APIs used by {@link scheduleDesktopHeroTour}. */
+export type DesktopTourScheduler = {
+  requestIdleCallback?: (
+    callback: () => void,
+    options?: { timeout: number }
+  ) => number;
+  cancelIdleCallback?: (handle: number) => void;
+  setTimeout: (callback: () => void, ms: number) => number;
+  clearTimeout: (handle: number) => void;
+};
+
+/**
+ * @brief Defers desktop CircuitNetwork mount until the main thread is idle.
+ * Keeps first paint interactive; `timeout` still starts the tour if the
+ * browser stays busy.
+ * @param start Callback that sets `allowTour` and loads the tour chunk.
+ * @param scheduler Browser timers (injectable for tests).
+ * @returns Cleanup that cancels the pending idle/timeout callback.
+ * @example
+ * const cancel = scheduleDesktopHeroTour(() => setAllowTour(true), window);
+ * cancel();
+ */
+export function scheduleDesktopHeroTour(
+  start: () => void,
+  scheduler: DesktopTourScheduler
+): () => void {
+  if (typeof scheduler.requestIdleCallback === "function") {
+    const idleId = scheduler.requestIdleCallback(start, {
+      timeout: DESKTOP_TOUR_IDLE_TIMEOUT_MS,
+    });
+    return () => scheduler.cancelIdleCallback?.(idleId);
+  }
+  const timerId = scheduler.setTimeout(start, DESKTOP_TOUR_FALLBACK_DELAY_MS);
+  return () => scheduler.clearTimeout(timerId);
+}

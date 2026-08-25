@@ -23,7 +23,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import styled, { keyframes } from "styled-components";
 import type { CircuitNode } from "./CircuitNetwork";
-import { isHeroMobileViewport, parseHeroTourQuery } from "@/utils/hero-tour";
+import { isHeroMobileViewport, parseHeroTourQuery, scheduleDesktopHeroTour } from "@/utils/hero-tour";
 import { scrollToHash } from "@/utils/scrollToHash";
 
 /** Minimal product shape consumed from the homepage fetches. */
@@ -348,9 +348,9 @@ function StaticHeroPoster() {
 }
 
 /**
- * @brief Desktop auto-starts the tour after mount. Mobile stays on the
- * rendered-planet poster until Play, then runs the catalog tour. Both
- * sides start with `allowTour=false` so hydration matches.
+ * @brief Desktop defers the tour until idle so first paint stays interactive.
+ * Mobile stays on the rendered-planet poster until Play, then runs the catalog
+ * tour. Both sides start with `allowTour=false` so hydration matches.
  * `?heroAutoTour=1` starts the live tour on phones (recorder).
  * Landscape phones use the short viewport side, not width-only 768px.
  * @returns Tour mount flags, optional recording cap, and the Play handler.
@@ -373,12 +373,19 @@ function useOptInHeroTour(): {
       "(prefers-reduced-motion: reduce)"
     ).matches;
     if (reduceMotion) return;
-    if (query.autoTour || !mobile) {
+    if (query.autoTour) {
       setAllowTour(true);
       setShowPlay(false);
       return;
     }
-    setShowPlay(true);
+    if (mobile) {
+      setShowPlay(true);
+      return;
+    }
+    return scheduleDesktopHeroTour(() => {
+      setAllowTour(true);
+      setShowPlay(false);
+    }, window);
   }, []);
 
   /**

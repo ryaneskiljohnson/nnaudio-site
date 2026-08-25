@@ -3,10 +3,12 @@
  * @module utils/__tests__/hero-tour.test
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CURATED_FEATURED_ORDER } from "@/lib/homepage-hero-seed";
 import { SUN_FOCUS_KEY } from "@/utils/circuit-network-layout";
 import {
+  DESKTOP_TOUR_FALLBACK_DELAY_MS,
+  DESKTOP_TOUR_IDLE_TIMEOUT_MS,
   HERO_MOBILE_BAKE_PX,
   MOBILE_CATALOG_MOON_CAP,
   MOBILE_STAGE_BUDGET,
@@ -21,6 +23,7 @@ import {
   parseHeroTourQuery,
   pickMobileTourNodes,
   previousHeroTourWasKilled,
+  scheduleDesktopHeroTour,
   sunBakePx,
 } from "@/utils/hero-tour";
 
@@ -204,5 +207,37 @@ describe("parseHeroTourQuery", () => {
       autoTour: false,
       tourCap: undefined,
     });
+  });
+});
+
+describe("scheduleDesktopHeroTour", () => {
+  it("uses requestIdleCallback with the idle timeout when available", () => {
+    const start = vi.fn();
+    const cancelIdleCallback = vi.fn();
+    const requestIdleCallback = vi.fn(() => 7);
+    const cancel = scheduleDesktopHeroTour(start, {
+      requestIdleCallback,
+      cancelIdleCallback,
+      setTimeout: vi.fn(),
+      clearTimeout: vi.fn(),
+    });
+    expect(requestIdleCallback).toHaveBeenCalledWith(start, {
+      timeout: DESKTOP_TOUR_IDLE_TIMEOUT_MS,
+    });
+    cancel();
+    expect(cancelIdleCallback).toHaveBeenCalledWith(7);
+  });
+
+  it("falls back to setTimeout when idle callbacks are missing", () => {
+    const start = vi.fn();
+    const clearTimeout = vi.fn();
+    const setTimeout = vi.fn(() => 11);
+    const cancel = scheduleDesktopHeroTour(start, {
+      setTimeout,
+      clearTimeout,
+    });
+    expect(setTimeout).toHaveBeenCalledWith(start, DESKTOP_TOUR_FALLBACK_DELAY_MS);
+    cancel();
+    expect(clearTimeout).toHaveBeenCalledWith(11);
   });
 });
