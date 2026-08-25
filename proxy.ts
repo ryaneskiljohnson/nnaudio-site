@@ -8,6 +8,7 @@
 
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
+import { shouldSkipHomepageSessionRefresh } from "@/utils/supabase/session-refresh-policy";
 import {
   ATTRIBUTION_COOKIE_MAX_AGE_SECONDS,
   ATTRIBUTION_COOKIE_NAME,
@@ -137,7 +138,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(confirmUrl);
   }
 
-  const { response: supabaseResponse, user } = await updateSession(request);
+  /** Anonymous `/` skips auth refresh; logged-in visitors still refresh. */
+  const skipSessionRefresh = shouldSkipHomepageSessionRefresh(
+    path,
+    request.cookies.getAll().map((cookie) => cookie.name)
+  );
+  const { response: supabaseResponse, user } = skipSessionRefresh
+    ? { response: NextResponse.next({ request }), user: null }
+    : await updateSession(request);
   const isProtected = PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
   const isAuthPage =
     path.startsWith("/login") ||
