@@ -10,7 +10,8 @@
  * rules live in globals.css so the headline is visible before
  * styled-components hydrates. Desktop CircuitNetwork is a dynamic import
  * so its JS is not on the LCP path. Phones, tablets, and touch UAs
- * never download that chunk — Play is a 2D credit reel.
+ * never download that chunk — Play is a 2D credit reel. CSS 3D + Kepler
+ * still trips Safari's energy watchdog even without canvas warps.
  * `?heroAutoTour=1` skips Play. `?hero3d=1` with auto-tour
  * forces CircuitNetwork for the Playwright recorder. `?tourCap=N`
  * caps credit stops. Hero height is reserved in globals.css (#home)
@@ -368,7 +369,8 @@ function StaticHeroPoster() {
 /**
  * @brief Desktop defers CircuitNetwork until idle. Lite devices (phones,
  * tablets, coarse pointer, iPadOS desktop UA) stay on the poster until
- * Play, then mount the 2D reel — never the 3D tour.
+ * Play, then mount the 2D reel — never the 3D tour. CSS 3D + Kepler
+ * still trips Safari even when canvas warps are off.
  * Both sides start with tours off so hydration matches.
  * `?heroAutoTour=1` starts the matching tour immediately.
  * `?hero3d=1` with auto-tour mounts CircuitNetwork on a lite viewport

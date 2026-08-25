@@ -39,8 +39,8 @@ export const HERO_MOBILE_BAKE_PX = 160;
  */
 export const HERO_MOON_FOCUS_CSS_PX = 640;
 
-/** Minimum ms between rendered frames on a phone (~15fps). */
-export const MOBILE_FRAME_MIN_MS = 66;
+/** Minimum ms between rendered frames on a phone (~12fps). */
+export const MOBILE_FRAME_MIN_MS = 83;
 
 /** Hi-res bakes kept on a phone (current + prefetch). */
 export const MOBILE_TEXTURE_KEEP = MOBILE_STAGE_BUDGET;
