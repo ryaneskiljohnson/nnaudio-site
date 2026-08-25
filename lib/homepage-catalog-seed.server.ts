@@ -28,6 +28,7 @@ import {
   fetchActiveShopPromotion,
   withShopPromotionPrices,
 } from "@/utils/promotions/active-shop-promotion";
+import { withTimeout } from "@/utils/with-timeout";
 
 type ProductCategory = Database["public"]["Enums"]["product_category"];
 
@@ -45,6 +46,7 @@ const HERO_TOUR_SELECT =
   "id, slug, name, tagline, short_description, featured_image_url, logo_url, background_image_url, price, sale_price";
 
 const HERO_TOUR_LIMIT = 24;
+/** Soft deadline so a hung Supabase query cannot stick the document. */
 const SEED_TIMEOUT_MS = 4000;
 
 const FREE_SELECT =
@@ -130,47 +132,40 @@ export async function getHomepageHeroProductCount(): Promise<number> {
 }
 
 /**
- * @brief Resolves a promise or the fallback if it exceeds `ms`.
- * @param promise Work that must not block the homepage forever.
- * @param ms Deadline in milliseconds.
- * @param fallback Value used when the deadline is missed.
- * @returns The settled value or the fallback.
- */
-async function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number,
-  fallback: T
-): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((resolve) => {
-        timer = setTimeout(() => resolve(fallback), ms);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
-
-/**
  * @brief Slim catalog snapshot for homepage first paint.
  * Cached for a minute so repeat loads (and HMR refreshes) do not wait
  * on a dozen Supabase queries. Times out so a hung query cannot stick
- * the document on "loading".
+ * the document on "loading". Late query failures after timeout are logged
+ * instead of becoming unhandled rejections.
  * @returns Counts, thumbs, featured cards, free rows, Cymasphere prices,
  * bundle count, and hero-tour product lists.
  */
 export async function getHomepageCatalogSeed(): Promise<HomepageCatalogSeed> {
-  return withTimeout(
-    unstable_cache(loadHomepageCatalogSeed, ["homepage-catalog-seed"], {
-      revalidate: 60,
-      tags: ["homepage-catalog"],
-    })(),
-    SEED_TIMEOUT_MS,
-    emptyHomepageCatalogSeed()
-  );
+  const empty = emptyHomepageCatalogSeed();
+  const load = unstable_cache(loadHomepageCatalogSeed, ["homepage-catalog-seed"], {
+    revalidate: 60,
+    tags: ["homepage-catalog"],
+  })().catch((error: unknown) => {
+    console.error(
+      "Homepage catalog seed failed:",
+      error instanceof Error ? error.message : error
+    );
+    return empty;
+  });
+
+  return withTimeout(load, SEED_TIMEOUT_MS, empty, {
+    onTimeout: () => {
+      console.warn(
+        `Homepage catalog seed timed out after ${SEED_TIMEOUT_MS}ms; using empty snapshot`
+      );
+    },
+    onLateError: (error) => {
+      console.error(
+        "Homepage catalog seed failed after timeout:",
+        error instanceof Error ? error.message : error
+      );
+    },
+  });
 }
 
 /**

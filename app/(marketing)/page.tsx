@@ -1,13 +1,15 @@
 /**
  * @fileoverview Homepage server entry. Seeds the catalog and paints an
  * RSC page: hero client island, static category tiles, then viewport-lazy
- * shop sections.
+ * shop sections. A contentful Suspense fallback keeps the hero headline
+ * visible while Supabase resolves.
  * @module app/(marketing)/page
  */
 
 import { Suspense } from "react";
 import EcosystemHero from "@/components/sections/EcosystemHero";
 import HomeBelowFold from "@/components/sections/HomeBelowFold";
+import HomeCatalogFallback from "@/components/sections/HomeCatalogFallback";
 import MarketingCategoryGrid from "@/components/sections/MarketingCategoryGrid";
 import { getHomepageCatalogSeed } from "@/lib/homepage-catalog-seed.server";
 import {
@@ -19,13 +21,13 @@ import {
 export const revalidate = 3600;
 
 /**
- * @brief Public homepage shell. Seeded body streams in so the header
- * is not blocked on Supabase.
+ * @brief Public homepage shell. Seeded body streams in behind a
+ * contentful fallback so the hero headline is never a blank 100svh hole.
  * @returns Suspense around the catalog snapshot.
  */
 export default function Home() {
   return (
-    <Suspense fallback={<section style={{ minHeight: "100svh" }} />}>
+    <Suspense fallback={<HomeCatalogFallback />}>
       <HomeCatalog />
     </Suspense>
   );
