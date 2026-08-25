@@ -199,12 +199,33 @@ export function logHeroDebug(
   } catch {
     /* ignore */
   }
-  if (detail) {
-    console.info(HERO_RELOAD_DEBUG_PREFIX, kind, detail);
-  } else {
-    console.info(HERO_RELOAD_DEBUG_PREFIX, kind);
+  if (shouldConsoleHeroDebug(kind)) {
+    if (detail) {
+      console.info(HERO_RELOAD_DEBUG_PREFIX, kind, detail);
+    } else {
+      console.info(HERO_RELOAD_DEBUG_PREFIX, kind);
+    }
   }
   listeners.forEach((listener) => listener(event));
+}
+
+const ALWAYS_CONSOLE_KINDS = new Set([
+  "document-start",
+  "pageshow",
+  "pagehide",
+  "watchdog-unclean",
+]);
+
+/**
+ * @brief Whether this event should print. SessionStorage always records.
+ * Homepage and `?heroDebug=1` get the full trail; other routes only
+ * print document lifecycle so shop pages stay quiet.
+ */
+function shouldConsoleHeroDebug(kind: string): boolean {
+  if (typeof window === "undefined") return false;
+  if (ALWAYS_CONSOLE_KINDS.has(kind)) return true;
+  if (heroReloadDebugOverlayEnabled(window.location.search)) return true;
+  return window.location.pathname === "/";
 }
 
 /**
