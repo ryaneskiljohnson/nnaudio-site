@@ -24,6 +24,9 @@ import {
   heroTourMoonCap,
   heroTourStopCap,
   isHeroMobileViewport,
+  prefersLiteHeroTour,
+  readHeroTourEnvironment,
+  resolveHeroTourStart,
   mobileStageKeys,
   moonBakePx,
   parseHeroTourQuery,
@@ -46,6 +49,168 @@ describe("isHeroMobileViewport", () => {
 
   it("uses the short side so a 768-tall landscape tablet is mobile", () => {
     expect(isHeroMobileViewport(1024, 768)).toBe(true);
+  });
+});
+
+describe("prefersLiteHeroTour", () => {
+  const desktopMouse = {
+    width: 1440,
+    height: 900,
+    maxTouchPoints: 0,
+    userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)",
+    coarsePointer: false,
+  };
+
+  it("keeps a mouse desktop on the 3D tour", () => {
+    expect(prefersLiteHeroTour(desktopMouse)).toBe(false);
+  });
+
+  it("treats phones, including landscape, as lite", () => {
+    expect(
+      prefersLiteHeroTour({
+        ...desktopMouse,
+        width: 390,
+        height: 844,
+        coarsePointer: true,
+        maxTouchPoints: 5,
+        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      })
+    ).toBe(true);
+    expect(
+      prefersLiteHeroTour({
+        ...desktopMouse,
+        width: 844,
+        height: 390,
+        coarsePointer: true,
+        maxTouchPoints: 5,
+        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      })
+    ).toBe(true);
+  });
+
+  it("treats iPad and iPadOS desktop-UA as lite even when the short side is >768", () => {
+    expect(
+      prefersLiteHeroTour({
+        ...desktopMouse,
+        width: 834,
+        height: 1194,
+        coarsePointer: true,
+        maxTouchPoints: 5,
+        userAgent: "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)",
+      })
+    ).toBe(true);
+    expect(
+      prefersLiteHeroTour({
+        ...desktopMouse,
+        width: 1024,
+        height: 1366,
+        coarsePointer: false,
+        maxTouchPoints: 5,
+        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)",
+      })
+    ).toBe(true);
+  });
+
+  it("treats an iPhone Request Desktop Website viewport as lite via UA", () => {
+    expect(
+      prefersLiteHeroTour({
+        ...desktopMouse,
+        width: 980,
+        height: 1700,
+        coarsePointer: false,
+        maxTouchPoints: 5,
+        userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+      })
+    ).toBe(true);
+  });
+});
+
+describe("readHeroTourEnvironment", () => {
+  it("copies viewport, touch, UA, and coarse-pointer from the window", () => {
+    expect(
+      readHeroTourEnvironment({
+        innerWidth: 834,
+        innerHeight: 1194,
+        navigator: {
+          maxTouchPoints: 5,
+          userAgent: "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)",
+        },
+        matchMedia: (query: string) => ({
+          matches: query.includes("pointer: coarse"),
+        }),
+      })
+    ).toEqual({
+      width: 834,
+      height: 1194,
+      maxTouchPoints: 5,
+      userAgent: "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)",
+      coarsePointer: true,
+    });
+  });
+});
+
+describe("resolveHeroTourStart", () => {
+  const idle = {
+    lite: false,
+    reduceMotion: false,
+    autoTour: false,
+    force3d: false,
+  };
+
+  it("idles the 3D tour on desktop and shows Play on lite", () => {
+    expect(resolveHeroTourStart(idle)).toEqual({
+      desktopTour: false,
+      mobileTour: false,
+      showPlay: false,
+      scheduleDesktop: true,
+    });
+    expect(resolveHeroTourStart({ ...idle, lite: true })).toEqual({
+      desktopTour: false,
+      mobileTour: false,
+      showPlay: true,
+      scheduleDesktop: false,
+    });
+  });
+
+  it("never schedules CircuitNetwork on lite unless the recorder forces 3D", () => {
+    expect(
+      resolveHeroTourStart({ ...idle, lite: true, autoTour: true })
+    ).toEqual({
+      desktopTour: false,
+      mobileTour: true,
+      showPlay: false,
+      scheduleDesktop: false,
+    });
+    expect(
+      resolveHeroTourStart({
+        ...idle,
+        lite: true,
+        autoTour: true,
+        force3d: true,
+      })
+    ).toEqual({
+      desktopTour: true,
+      mobileTour: false,
+      showPlay: false,
+      scheduleDesktop: false,
+    });
+  });
+
+  it("parks on the poster when the user prefers reduced motion", () => {
+    expect(resolveHeroTourStart({ ...idle, reduceMotion: true })).toEqual({
+      desktopTour: false,
+      mobileTour: false,
+      showPlay: false,
+      scheduleDesktop: false,
+    });
+    expect(
+      resolveHeroTourStart({ ...idle, lite: true, reduceMotion: true })
+    ).toEqual({
+      desktopTour: false,
+      mobileTour: false,
+      showPlay: false,
+      scheduleDesktop: false,
+    });
   });
 });
 

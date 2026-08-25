@@ -1,7 +1,8 @@
 /**
  * @fileoverview Shared helpers for the homepage hero tour: phone
- * viewport detection, Safari-kill watchdog, curated moon picks, bake
- * sizes, and recording query flags (`heroAutoTour`, `tourCap`).
+ * viewport detection, lite-tour gating (tablets / iPadOS / desktop-mode
+ * phones), Safari-kill watchdog, curated moon picks, bake sizes, and
+ * recording query flags (`heroAutoTour`, `tourCap`).
  * @module utils/hero-tour
  */
 
@@ -207,6 +208,147 @@ export function heroBoardIsOnScreen(
  */
 export function isHeroMobileViewport(width: number, height: number): boolean {
   return Math.min(width, height) <= HERO_MOBILE_MAX_WIDTH_PX;
+}
+
+/** Viewport and input snapshot used to decide whether the 3D hero is safe. */
+export interface HeroTourEnvironment {
+  width: number;
+  height: number;
+  maxTouchPoints: number;
+  userAgent: string;
+  coarsePointer: boolean;
+}
+
+/** Browser bits {@link readHeroTourEnvironment} reads. */
+export type HeroTourEnvironmentSource = {
+  innerWidth: number;
+  innerHeight: number;
+  navigator: { maxTouchPoints?: number; userAgent?: string };
+  matchMedia: (query: string) => { matches: boolean };
+};
+
+/**
+ * @brief Reads viewport size, pointer type, and UA from a window-like object.
+ * @param win `window` or a test double.
+ * @returns Snapshot for {@link prefersLiteHeroTour}.
+ * @example
+ * readHeroTourEnvironment(window)
+ */
+export function readHeroTourEnvironment(
+  win: HeroTourEnvironmentSource
+): HeroTourEnvironment {
+  return {
+    width: win.innerWidth,
+    height: win.innerHeight,
+    maxTouchPoints: win.navigator.maxTouchPoints ?? 0,
+    userAgent: win.navigator.userAgent ?? "",
+    coarsePointer: win.matchMedia("(pointer: coarse)").matches,
+  };
+}
+
+/**
+ * @brief Whether CircuitNetwork must not auto-start.
+ * A short-side-only 768px check treated iPads and iPhones on
+ * "Request Desktop Website" as desktop. Safari then killed the tab
+ * (~10s) and reloaded in a loop.
+ * @param env Viewport and input snapshot.
+ * @returns True for phones, tablets, and touch-primary UAs.
+ * @example
+ * prefersLiteHeroTour({
+ *   width: 834, height: 1194, maxTouchPoints: 5,
+ *   userAgent: "Mozilla/5.0 (iPad; CPU OS 17_0)",
+ *   coarsePointer: true,
+ * }) // true
+ */
+export function prefersLiteHeroTour(env: HeroTourEnvironment): boolean {
+  if (isHeroMobileViewport(env.width, env.height)) return true;
+  if (env.coarsePointer) return true;
+  const ua = env.userAgent;
+  if (
+    /iPhone|iPod|Android.+Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
+      ua
+    )
+  ) {
+    return true;
+  }
+  if (/iPad|Android/i.test(ua)) return true;
+  // iPadOS 13+ reports Macintosh but keeps multi-touch.
+  if (/Macintosh/i.test(ua) && env.maxTouchPoints > 1) return true;
+  return false;
+}
+
+/** First-paint decision for which hero tour (if any) to mount. */
+export interface HeroTourStart {
+  desktopTour: boolean;
+  mobileTour: boolean;
+  showPlay: boolean;
+  scheduleDesktop: boolean;
+}
+
+/**
+ * @brief Picks the hero mount without touching the DOM.
+ * Lite devices never schedule CircuitNetwork; `force3d` + `autoTour`
+ * is the Playwright recorder latch.
+ * @param input Lite/motion flags and query flags.
+ * @returns Which tour flags to set, or whether to idle-start desktop.
+ * @example
+ * resolveHeroTourStart({
+ *   lite: true, reduceMotion: false, autoTour: false, force3d: false,
+ * })
+ * // { desktopTour: false, mobileTour: false, showPlay: true, scheduleDesktop: false }
+ */
+export function resolveHeroTourStart(input: {
+  lite: boolean;
+  reduceMotion: boolean;
+  autoTour: boolean;
+  force3d: boolean;
+}): HeroTourStart {
+  if (input.reduceMotion) {
+    return {
+      desktopTour: false,
+      mobileTour: false,
+      showPlay: false,
+      scheduleDesktop: false,
+    };
+  }
+  if (input.lite) {
+    if (input.autoTour && input.force3d) {
+      return {
+        desktopTour: true,
+        mobileTour: false,
+        showPlay: false,
+        scheduleDesktop: false,
+      };
+    }
+    if (input.autoTour) {
+      return {
+        desktopTour: false,
+        mobileTour: true,
+        showPlay: false,
+        scheduleDesktop: false,
+      };
+    }
+    return {
+      desktopTour: false,
+      mobileTour: false,
+      showPlay: true,
+      scheduleDesktop: false,
+    };
+  }
+  if (input.autoTour) {
+    return {
+      desktopTour: true,
+      mobileTour: false,
+      showPlay: false,
+      scheduleDesktop: false,
+    };
+  }
+  return {
+    desktopTour: false,
+    mobileTour: false,
+    showPlay: false,
+    scheduleDesktop: true,
+  };
 }
 
 /**

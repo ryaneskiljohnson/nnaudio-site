@@ -4,9 +4,12 @@
  * @fileoverview Viewport-lazy homepage sections below the catalog grid.
  * Featured/free hydrate ProductCard + cart only when near view. Pricing
  * mounts AuthProvider in the same window so useAuth cannot throw.
+ * The waveform seam is desktop-only — phones skip that chunk so the
+ * Cymasphere hero is not compositing 150 animated bars.
  * @module components/sections/HomeBelowFold
  */
 
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import ViewportLazy from "@/components/common/ViewportLazy";
 import type { HomepageCard, HomepageCatalogSeed } from "@/lib/homepage-hero-seed";
@@ -74,16 +77,24 @@ export default function HomeBelowFold({
 }) {
   const hasCartSections =
     seed.featured.length > 0 || freeProducts.length > 0;
+  const [showWaveform, setShowWaveform] = useState(false);
+  useEffect(() => {
+    setShowWaveform(
+      !window.matchMedia("(max-width: 900px), (pointer: coarse)").matches
+    );
+  }, []);
 
   return (
     <>
-      <ViewportLazy minHeight={0} rootMargin="80px 0px">
-        <WaveformTransition
-          barCount={150}
-          topColor="#080911"
-          bottomColor="#080911"
-        />
-      </ViewportLazy>
+      {showWaveform ? (
+        <ViewportLazy minHeight={0} rootMargin="80px 0px">
+          <WaveformTransition
+            barCount={150}
+            topColor="#080911"
+            bottomColor="#080911"
+          />
+        </ViewportLazy>
+      ) : null}
 
       <ViewportLazy minHeight={640}>
         <CymasphereSpotlight

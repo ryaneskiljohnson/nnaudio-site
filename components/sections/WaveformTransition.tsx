@@ -124,13 +124,17 @@ const WaveformTransition: React.FC<WaveformTransitionProps> = ({
   topColor = '#0a0a0a',
   bottomColor = '#1a1a2e',
 }) => {
+  const skipOnLite =
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 900px), (pointer: coarse)").matches;
   const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const resolvedBarCount = useMemo(() => {
+    if (skipOnLite) return 0;
     if (typeof window === "undefined") return barCount;
     return window.innerWidth <= 768 ? Math.min(barCount, 48) : barCount;
-  }, [barCount]);
+  }, [barCount, skipOnLite]);
   
   // Check for reduced motion preference
   useEffect(() => {
@@ -206,6 +210,10 @@ const WaveformTransition: React.FC<WaveformTransitionProps> = ({
       }
     };
   }, [prefersReducedMotion]);
+
+  // Infinite scaleY bars + box-shadows sit on the hero seam. On phones
+  // and tablets that extra compositor work is enough to hitch the page.
+  if (skipOnLite) return null;
 
   return (
     <WaveformContainer ref={containerRef}>

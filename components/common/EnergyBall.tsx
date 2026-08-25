@@ -96,7 +96,7 @@ const Ball = styled.div`
     opacity: 0.7;
   }
 
-  @media (prefers-reduced-motion: reduce) {
+  @media (prefers-reduced-motion: reduce), (max-width: 900px), (pointer: coarse) {
     animation: none;
 
     &::before {
@@ -116,7 +116,7 @@ const Ring = styled.div`
   border-top: 2px solid rgba(78, 205, 196, 0.8);
   animation: ${rotate} 3s linear infinite;
 
-  @media (prefers-reduced-motion: reduce) {
+  @media (prefers-reduced-motion: reduce), (max-width: 900px), (pointer: coarse) {
     animation: none;
   }
 `;
@@ -154,7 +154,8 @@ interface EnergyBallProps {
  *
  * @note Uses CSS keyframe animations for performance
  * @note Default size is 40px if not specified
- * @note Animations are disabled under prefers-reduced-motion
+ * @note Animations are disabled under prefers-reduced-motion,
+ *   on narrow viewports, and on coarse pointers
  */
 const EnergyBall: React.FC<EnergyBallProps> = ({
   size,

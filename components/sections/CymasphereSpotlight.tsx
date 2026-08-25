@@ -3,7 +3,9 @@
 /**
  * @fileoverview Cymasphere flagship spotlight: real product UI screenshots
  * and copy over the hero-sized Cymasphere sphere, plus feature lines, price, and
- * a single CTA. Visual-first by design.
+ * a single CTA. Visual-first by design. Phones skip the sphere bitmap,
+ * drop-shadow, and backdrop blur so Safari does not keep a full-bleed
+ * filter layer composited (that jank is what feels like a reload).
  * @module components/sections/CymasphereSpotlight
  */
 
@@ -13,6 +15,10 @@ import Image from "next/image";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import EnergyBall from "@/components/common/EnergyBall";
+import {
+  prefersLiteHeroTour,
+  readHeroTourEnvironment,
+} from "@/utils/hero-tour";
 
 interface CymasphereSpotlightProps {
   /** Current list price; falls back to the catalog default. */
@@ -62,8 +68,19 @@ const SphereBackdrop = styled.div`
     background: rgba(8, 9, 17, 0.42);
   }
 
-  @media (max-width: 900px) {
-    width: min(900px, 160%);
+  @media (max-width: 900px), (pointer: coarse) {
+    width: min(520px, 88%);
+    filter: none;
+    background: radial-gradient(
+      circle at 50% 45%,
+      rgba(255, 220, 160, 0.28) 0%,
+      rgba(108, 99, 255, 0.2) 36%,
+      transparent 70%
+    );
+
+    &::after {
+      display: none;
+    }
   }
 `;
 
@@ -138,9 +155,12 @@ const Copy = styled(motion.div)`
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 
-  @media (max-width: 900px) {
+  @media (max-width: 900px), (pointer: coarse) {
     order: 1;
     padding: 1.6rem 1.4rem;
+    background: rgba(8, 9, 17, 0.92);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 `;
 
@@ -282,18 +302,25 @@ const CymasphereSpotlight: React.FC<CymasphereSpotlightProps> = ({
 }) => {
   const [song, setSong] = useState(SONG_VIEW);
   const [palette, setPalette] = useState(PALETTE_VIEW);
+  const [liteVisuals] = useState(() =>
+    typeof window !== "undefined"
+      ? prefersLiteHeroTour(readHeroTourEnvironment(window))
+      : false
+  );
   return (
     <Section id="cymasphere">
       <SphereBackdrop>
-        <Image
-          src={SUN_SPHERE}
-          alt=""
-          width={1024}
-          height={1024}
-          sizes="(max-width: 900px) 100vw, 70vw"
-          loading="lazy"
-          aria-hidden
-        />
+        {liteVisuals ? null : (
+          <Image
+            src={SUN_SPHERE}
+            alt=""
+            width={1024}
+            height={1024}
+            sizes="(max-width: 900px) 100vw, 70vw"
+            loading="lazy"
+            aria-hidden
+          />
+        )}
       </SphereBackdrop>
       <Inner>
         <ScreenshotStack {...reveal}>
