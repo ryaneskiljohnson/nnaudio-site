@@ -29,6 +29,14 @@
  */
 
 import { imageUrlNeedsCrossOrigin } from "@/utils/optimized-image-url";
+import type { HeroQuality } from "@/utils/hero-tour";
+
+/** Warp tessellation scale per adaptive hero tier. */
+const WARP_QUALITY_SCALE: Record<HeroQuality, number> = {
+  high: 1,
+  medium: 0.65,
+  low: 0.45,
+};
 
 /** Raw strip pixels; a plain record so the bake core is unit-testable. */
 export interface StripPixels {
@@ -304,19 +312,29 @@ const WARP_BANDS_MAX = 288;
  * @example
  * warpDensityForSize(1280).bands > warpDensityForSize(640).bands
  */
-export function warpDensityForSize(size: number): {
+export function warpDensityForSize(
+  size: number,
+  quality: HeroQuality = "high"
+): {
   slices: number;
   bands: number;
 } {
   const edge = Math.max(1, size);
+  const scale = WARP_QUALITY_SCALE[quality];
   return {
     slices: Math.min(
       WARP_SLICES_MAX,
-      Math.max(WARP_SLICES_MIN, Math.round(edge / 3.4))
+      Math.max(
+        WARP_SLICES_MIN,
+        Math.round((edge / 3.4) * scale)
+      )
     ),
     bands: Math.min(
       WARP_BANDS_MAX,
-      Math.max(WARP_BANDS_MIN, Math.round(edge / 4.5))
+      Math.max(
+        WARP_BANDS_MIN,
+        Math.round((edge / 4.5) * scale)
+      )
     ),
   };
 }
@@ -484,7 +502,8 @@ function rimMask(size: number): HTMLCanvasElement | null {
 export function warpStripToCanvasGpu(
   tex: SphereTexture,
   phase: number,
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
+  quality: HeroQuality = "high"
 ): boolean {
   const strip = vWarpedStrip(tex);
   if (!strip) return false;
@@ -515,7 +534,7 @@ export function warpStripToCanvasGpu(
     canvas.height = size;
   }
 
-  const density = warpDensityForSize(size);
+  const density = warpDensityForSize(size, quality);
   let slices = sliceCache.get(density.slices);
   if (!slices) {
     slices = warpSliceRanges(density.slices);

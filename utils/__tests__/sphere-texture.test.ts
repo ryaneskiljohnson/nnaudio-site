@@ -90,6 +90,15 @@ describe("warpDensityForSize", () => {
     expect(1280 / retina.slices).toBeLessThanOrEqual(4);
     expect(1280 / retina.bands).toBeLessThanOrEqual(5);
   });
+
+  it("uses fewer slices and bands on medium and low quality", () => {
+    const high = warpDensityForSize(1280, "high");
+    const medium = warpDensityForSize(1280, "medium");
+    const low = warpDensityForSize(1280, "low");
+    expect(medium.slices).toBeLessThan(high.slices);
+    expect(low.slices).toBeLessThan(medium.slices);
+    expect(low.bands).toBeLessThan(medium.bands);
+  });
 });
 
 describe("warpSliceRanges", () => {
