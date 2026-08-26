@@ -41,9 +41,10 @@ Stripe (payments, via Supabase Stripe Wrapper), SendGrid (email), and Meta/Faceb
 
 ### Gotchas
 
-- The homepage hero uses a heavy WebGL/particle animation that can freeze or crash an automated
-  Chrome tab during prolonged scrolling. For GUI/manual testing, keep time on `/` brief and drive
-  actions on lighter routes (e.g. `/signup`, `/cart`, `/products`).
+- The homepage hero uses **EcosystemHero** with two tour paths:
+  - **Desktop / `?hero3d=1`:** dynamic **CircuitNetwork** (CSS 3D + Canvas 2D sphere warps). Adaptive quality tiers (`high` → `medium` → `low`) throttle warps, moon budget, and sky effects when frame EMA is high.
+  - **Lite devices (phones/tablets):** **Play** mounts **MobileHeroTour** — a lightweight 2D credit reel (static images + crossfade). CircuitNetwork is not downloaded unless `?hero3d=1`.
+- The homepage hero WebGL/particle animation can freeze automated Chrome during prolonged scrolling; for GUI tests on `/`, keep time brief or use `/signup`-style routes. Lite Play should never load CircuitNetwork.
 - `scripts/` contains hundreds of one-off operational TypeScript scripts (product sync, image
   processing, Stripe/Supabase maintenance) that require real credentials; they are not part of the
   normal dev loop.
