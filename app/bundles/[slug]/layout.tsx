@@ -11,13 +11,17 @@ type BundleSeoRow = {
 };
 
 async function loadBundleBySlug(slug: string): Promise<BundleSeoRow | null> {
-  const supabase = await createSupabaseServiceRole();
-  const { data } = await supabase
-    .from("bundles")
-    .select("name, tagline, short_description, featured_image_url, status")
-    .eq("slug", slug)
-    .maybeSingle();
-  return (data as BundleSeoRow | null) ?? null;
+  try {
+    const supabase = await createSupabaseServiceRole();
+    const { data } = await supabase
+      .from("bundles")
+      .select("name, tagline, short_description, featured_image_url, status")
+      .eq("slug", slug)
+      .maybeSingle();
+    return (data as BundleSeoRow | null) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({

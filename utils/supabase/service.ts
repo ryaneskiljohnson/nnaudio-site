@@ -1,7 +1,6 @@
 "use server";
 
-import { Database } from "@/database.types";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceRoleClient } from "@/utils/supabase/service-role-client";
 
 /**
  * Creates a Supabase client with the service role key
@@ -9,10 +8,7 @@ import { createClient } from "@supabase/supabase-js";
  * like accessing the private stripe_tables schema
  */
 export async function createSupabaseServiceRole() {
-  return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  return getServiceRoleClient();
 }
 
 /**

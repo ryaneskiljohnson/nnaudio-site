@@ -7,12 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { getServiceRoleClient } from "@/utils/supabase/service-role-client";
 
 /** SendGrid event payload: array of event objects. */
 type SendGridEvent = {
@@ -79,7 +74,7 @@ function getMessageIds(evt: SendGridEvent): string[] {
  */
 async function findEmailSendByMessageIds(messageIds: string[]) {
   if (messageIds.length === 0) return { data: null, error: null };
-  const { data, error } = await supabase
+  const { data, error } = await getServiceRoleClient()
     .from("email_sends")
     .select("*")
     .in("message_id", messageIds)
@@ -140,7 +135,7 @@ export async function POST(request: NextRequest) {
         email: evt.email,
       });
 
-      await supabase.from("email_webhook_logs").insert({
+      await getServiceRoleClient().from("email_webhook_logs").insert({
         provider: "sendgrid",
         event_type: eventType,
         webhook_data: evt as unknown as Record<string, unknown>,
@@ -160,18 +155,18 @@ export async function POST(request: NextRequest) {
 
       switch (eventType) {
         case "processed":
-          await supabase
+          await getServiceRoleClient()
             .from("email_sends")
             .update({ status: "sent", sent_at: ts })
             .eq("id", emailSend.id);
           break;
         case "delivered":
-          await supabase
+          await getServiceRoleClient()
             .from("email_sends")
             .update({ status: "delivered", delivered_at: ts })
             .eq("id", emailSend.id);
           if (emailSend.campaign_id) {
-            await supabase.rpc("increment_campaign_delivered", {
+            await getServiceRoleClient().rpc("increment_campaign_delivered", {
               campaign_id: emailSend.campaign_id,
             });
           }
@@ -180,7 +175,7 @@ export async function POST(request: NextRequest) {
         case "blocked": {
           const reason =
             evt.reason || evt.bounce_classification || "Unknown bounce";
-          await supabase
+          await getServiceRoleClient()
             .from("email_sends")
             .update({
               status: "bounced",
@@ -189,12 +184,12 @@ export async function POST(request: NextRequest) {
             })
             .eq("id", emailSend.id);
           if (emailSend.campaign_id) {
-            await supabase.rpc("increment_campaign_bounced", {
+            await getServiceRoleClient().rpc("increment_campaign_bounced", {
               campaign_id: emailSend.campaign_id,
             });
           }
           if (emailSend.subscriber_id) {
-            await supabase
+            await getServiceRoleClient()
               .from("subscribers")
               .update({
                 status: "bounced",
@@ -207,7 +202,7 @@ export async function POST(request: NextRequest) {
         }
         case "dropped": {
           const reason = evt.reason || "Dropped by SendGrid";
-          await supabase
+          await getServiceRoleClient()
             .from("email_sends")
             .update({
               status: "rejected",
@@ -215,7 +210,7 @@ export async function POST(request: NextRequest) {
             })
             .eq("id", emailSend.id);
           if (emailSend.subscriber_id) {
-            await supabase
+            await getServiceRoleClient()
               .from("subscribers")
               .update({
                 status: "bounced",
@@ -228,13 +223,13 @@ export async function POST(request: NextRequest) {
         }
         case "spamreport":
           if (emailSend.subscriber_id) {
-            await supabase
+            await getServiceRoleClient()
               .from("subscribers")
               .update({ status: "complained", complained_at: ts })
               .eq("id", emailSend.subscriber_id);
           }
           if (emailSend.campaign_id) {
-            await supabase.rpc("increment_campaign_spam", {
+            await getServiceRoleClient().rpc("increment_campaign_spam", {
               campaign_id: emailSend.campaign_id,
             });
           }
@@ -242,7 +237,7 @@ export async function POST(request: NextRequest) {
         case "unsubscribe":
         case "group_unsubscribe":
           if (emailSend.subscriber_id) {
-            await supabase
+            await getServiceRoleClient()
               .from("subscribers")
               .update({
                 status: "unsubscribed",
@@ -258,7 +253,7 @@ export async function POST(request: NextRequest) {
       // type path is added without explicit subscriber status handling in the switch.
       const suppressionStatus = getSuppressionStatusForEvent(eventType);
       if (suppressionStatus && emailSend?.subscriber_id) {
-        await supabase
+        await getServiceRoleClient()
           .from("subscribers")
           .update({ status: suppressionStatus })
           .eq("id", emailSend.subscriber_id);

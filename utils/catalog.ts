@@ -50,21 +50,26 @@ const PUBLIC_PRODUCT_SELECT = `
 export async function getActiveProductsByCategories(
   categories: string[]
 ): Promise<CatalogProduct[]> {
-  const supabase = await createAdminClient();
+  try {
+    const supabase = await createAdminClient();
 
-  const { data, error } = await (supabase as any)
-    .from("products")
-    .select(PUBLIC_PRODUCT_SELECT)
-    .eq("status", "active")
-    .in("category", categories)
-    .order("name", { ascending: true });
+    const { data, error } = await (supabase as any)
+      .from("products")
+      .select(PUBLIC_PRODUCT_SELECT)
+      .eq("status", "active")
+      .in("category", categories)
+      .order("name", { ascending: true });
 
-  if (error) {
+    if (error) {
+      console.error("Error loading category products:", error);
+      return [];
+    }
+
+    return (data ?? []) as CatalogProduct[];
+  } catch (error) {
     console.error("Error loading category products:", error);
     return [];
   }
-
-  return (data ?? []) as CatalogProduct[];
 }
 
 /**
@@ -72,19 +77,24 @@ export async function getActiveProductsByCategories(
  * @returns Array of free active products.
  */
 export async function getFreeProducts(): Promise<CatalogProduct[]> {
-  const supabase = await createAdminClient();
+  try {
+    const supabase = await createAdminClient();
 
-  const { data, error } = await (supabase as any)
-    .from("products")
-    .select(PUBLIC_PRODUCT_SELECT)
-    .eq("status", "active")
-    .or("price.eq.0,sale_price.eq.0")
-    .order("name", { ascending: true });
+    const { data, error } = await (supabase as any)
+      .from("products")
+      .select(PUBLIC_PRODUCT_SELECT)
+      .eq("status", "active")
+      .or("price.eq.0,sale_price.eq.0")
+      .order("name", { ascending: true });
 
-  if (error) {
+    if (error) {
+      console.error("Error loading free products:", error);
+      return [];
+    }
+
+    return (data ?? []) as CatalogProduct[];
+  } catch (error) {
     console.error("Error loading free products:", error);
     return [];
   }
-
-  return (data ?? []) as CatalogProduct[];
 }

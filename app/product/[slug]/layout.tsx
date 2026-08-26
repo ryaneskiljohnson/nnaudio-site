@@ -13,15 +13,19 @@ type ProductSeoRow = {
 };
 
 async function loadProductBySlug(slug: string): Promise<ProductSeoRow | null> {
-  const supabase = await createSupabaseServiceRole();
-  const { data } = await supabase
-    .from("products")
-    .select(
-      "name, meta_title, meta_description, short_description, tagline, featured_image_url, status"
-    )
-    .eq("slug", slug)
-    .maybeSingle();
-  return (data as ProductSeoRow | null) ?? null;
+  try {
+    const supabase = await createSupabaseServiceRole();
+    const { data } = await supabase
+      .from("products")
+      .select(
+        "name, meta_title, meta_description, short_description, tagline, featured_image_url, status"
+      )
+      .eq("slug", slug)
+      .maybeSingle();
+    return (data as ProductSeoRow | null) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({

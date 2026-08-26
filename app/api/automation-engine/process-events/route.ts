@@ -1,18 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { isAuthorizedCronRequest } from '@/utils/auth/require-cron';
-
-// Initialize Supabase with service role for automation processing
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+import { getServiceRoleClient } from '@/utils/supabase/service-role-client';
 
 interface AutomationEvent {
   id: string;
@@ -47,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Get unprocessed events
-    const { data: events, error: eventsError } = await supabase
+    const { data: events, error: eventsError } = await getServiceRoleClient()
       .from('automation_events')
       .select('*')
       .eq('processed', false)
@@ -87,7 +75,7 @@ export async function POST(request: NextRequest) {
           processedCount++;
           
           // Mark event as processed
-          await supabase
+          await getServiceRoleClient()
             .from('automation_events')
             .update({ 
               processed: true,
@@ -134,7 +122,7 @@ async function processAutomationEvent(event: AutomationEvent) {
   
   try {
     // Find automations that match this event type
-    const { data: automations, error: automationsError } = await supabase
+    const { data: automations, error: automationsError } = await getServiceRoleClient()
       .from('email_automations')
       .select('*')
       .eq('trigger_type', event.event_type)
@@ -239,7 +227,7 @@ async function evaluateTriggerConditions(
   const matchType = conditions.match_type || 'all';
   
   // Get subscriber data for evaluation
-  const { data: subscriber, error } = await supabase
+  const { data: subscriber, error } = await getServiceRoleClient()
     .from('subscribers')
     .select(`
       *,
@@ -337,7 +325,7 @@ async function checkEnrollmentLimits(automation: Automation, subscriberId: strin
     return true;
   }
   
-  const { data: existingEnrollments, error } = await supabase
+  const { data: existingEnrollments, error } = await getServiceRoleClient()
     .from('email_automation_enrollments')
     .select('id')
     .eq('automation_id', automation.id)
@@ -359,7 +347,7 @@ async function enrollSubscriberInAutomation(
 ) {
   try {
     // Create enrollment record
-    const { data: enrollment, error: enrollmentError } = await supabase
+    const { data: enrollment, error: enrollmentError } = await getServiceRoleClient()
       .from('email_automation_enrollments')
       .insert({
         automation_id: automation.id,
@@ -378,7 +366,7 @@ async function enrollSubscriberInAutomation(
     }
     
     // Update automation stats
-    await supabase
+    await getServiceRoleClient()
       .from('email_automations')
       .update({
         total_enrollments: automation.total_enrollments + 1,
@@ -387,7 +375,7 @@ async function enrollSubscriberInAutomation(
       .eq('id', automation.id);
     
     // Schedule initial automation step
-    const { data: job, error: jobError } = await supabase
+    const { data: job, error: jobError } = await getServiceRoleClient()
       .from('automation_jobs')
       .insert({
         job_type: 'step_execution',

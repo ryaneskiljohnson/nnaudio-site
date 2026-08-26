@@ -1,19 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getPublicSiteUrlForEmail } from '@/utils/public-site-url';
 import { isAuthorizedCronRequest } from '@/utils/auth/require-cron';
-
-// Initialize Supabase with service role for automation processing
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+import { getServiceRoleClient } from '@/utils/supabase/service-role-client';
 
 interface AutomationJob {
   job_id: string;
@@ -44,7 +32,7 @@ export async function POST(request: NextRequest) {
     
     while (hasMoreJobs && processedJobs < 100) { // Limit to 100 jobs per run
       // Get next batch of pending jobs
-      const { data: jobs, error: jobsError } = await supabase
+      const { data: jobs, error: jobsError } = await getServiceRoleClient()
         .rpc('get_next_automation_job')
         .limit(batchSize);
       
@@ -68,7 +56,7 @@ export async function POST(request: NextRequest) {
           console.error(`❌ Error processing job ${job.id}:`, jobError);
           
           // Mark job as failed
-          await supabase.rpc('complete_automation_job', {
+          await getServiceRoleClient().rpc('complete_automation_job', {
             p_job_id: job.id,
             p_status: 'failed',
             p_error_message: jobError instanceof Error ? jobError.message : 'Unknown error'
@@ -152,7 +140,7 @@ async function executeAutomationStep(job: AutomationJob) {
     }
     
     // Log step execution
-    await supabase
+    await getServiceRoleClient()
       .from('automation_step_executions')
       .insert({
         enrollment_id: job.enrollment_id,
@@ -174,7 +162,7 @@ async function executeAutomationStep(job: AutomationJob) {
     }
     
     // Mark job as completed
-    await supabase.rpc('complete_automation_job', {
+    await getServiceRoleClient().rpc('complete_automation_job', {
       p_job_id: job.job_id,
       p_status: stepResult.success ? 'completed' : 'failed',
       p_result: stepResult,
@@ -185,7 +173,7 @@ async function executeAutomationStep(job: AutomationJob) {
     console.error(`❌ Step execution error:`, error);
     
     // Log failed step execution
-    await supabase
+    await getServiceRoleClient()
       .from('automation_step_executions')
       .insert({
         enrollment_id: job.enrollment_id,
@@ -207,7 +195,7 @@ async function executeAutomationStep(job: AutomationJob) {
 
 async function executeEmailStep(job: AutomationJob): Promise<any> {
   // Get subscriber details
-  const { data: subscriber, error: subscriberError } = await supabase
+  const { data: subscriber, error: subscriberError } = await getServiceRoleClient()
     .from('subscribers')
     .select('*')
     .eq('id', job.payload.subscriber_id)
@@ -227,7 +215,7 @@ async function executeEmailStep(job: AutomationJob): Promise<any> {
   };
   
   if (stepConfig.template_id) {
-    const { data: template, error: templateError } = await supabase
+    const { data: template, error: templateError } = await getServiceRoleClient()
       .from('email_templates')
       .select('*')
       .eq('id', stepConfig.template_id)
@@ -241,7 +229,7 @@ async function executeEmailStep(job: AutomationJob): Promise<any> {
       };
       
       // Update template last used and increment usage count
-      await supabase
+      await getServiceRoleClient()
         .from('email_templates')
         .update({ 
           last_used_at: new Date().toISOString(),
@@ -263,7 +251,7 @@ async function executeEmailStep(job: AutomationJob): Promise<any> {
   
   if (emailResult.success) {
     // Increment emails sent counter
-    await supabase.rpc('increment_enrollment_emails_sent', {
+    await getServiceRoleClient().rpc('increment_enrollment_emails_sent', {
       enrollment_id: job.enrollment_id
     });
   }
@@ -294,7 +282,7 @@ async function executeDelayStep(job: AutomationJob): Promise<any> {
   const nextActionTime = new Date(Date.now() + delayMs).toISOString();
   
   // Update enrollment next action time
-  await supabase
+  await getServiceRoleClient()
     .from('email_automation_enrollments')
     .update({ next_action_at: nextActionTime })
     .eq('id', job.enrollment_id);
@@ -316,7 +304,7 @@ async function executeAudienceAddStep(job: AutomationJob): Promise<any> {
   }
   
   // Use the database function to add subscriber to audience
-  const { data: result, error } = await supabase
+  const { data: result, error } = await getServiceRoleClient()
     .rpc('add_subscriber_to_audience', {
       p_subscriber_id: job.payload.subscriber_id,
       p_audience_id: audienceId
@@ -343,7 +331,7 @@ async function executeAudienceRemoveStep(job: AutomationJob): Promise<any> {
   }
   
   // Use the database function to remove subscriber from audience
-  const { data: result, error } = await supabase
+  const { data: result, error } = await getServiceRoleClient()
     .rpc('remove_subscriber_from_audience', {
       p_subscriber_id: job.payload.subscriber_id,
       p_audience_id: audienceId
@@ -370,7 +358,7 @@ async function executeTagAddStep(job: AutomationJob): Promise<any> {
   }
   
   // Add tag to subscriber - first check if tag doesn't already exist
-  const { data: currentSubscriber } = await supabase
+  const { data: currentSubscriber } = await getServiceRoleClient()
     .from('subscribers')
     .select('tags')
     .eq('id', job.payload.subscriber_id)
@@ -378,7 +366,7 @@ async function executeTagAddStep(job: AutomationJob): Promise<any> {
   
   if (currentSubscriber && !currentSubscriber.tags?.includes(tagName)) {
     const newTags = [...(currentSubscriber.tags || []), tagName];
-    const { error } = await supabase
+    const { error } = await getServiceRoleClient()
       .from('subscribers')
       .update({
         tags: newTags,
@@ -408,7 +396,7 @@ async function executeTagRemoveStep(job: AutomationJob): Promise<any> {
   }
   
   // Remove tag from subscriber
-  const { data: currentSubscriber } = await supabase
+  const { data: currentSubscriber } = await getServiceRoleClient()
     .from('subscribers')
     .select('tags')
     .eq('id', job.payload.subscriber_id)
@@ -416,7 +404,7 @@ async function executeTagRemoveStep(job: AutomationJob): Promise<any> {
   
   if (currentSubscriber && currentSubscriber.tags?.includes(tagName)) {
     const newTags = currentSubscriber.tags.filter((tag: string) => tag !== tagName);
-    const { error } = await supabase
+    const { error } = await getServiceRoleClient()
       .from('subscribers')
       .update({
         tags: newTags,
@@ -446,7 +434,7 @@ async function executeConditionStep(job: AutomationJob): Promise<any> {
   }
   
   // Evaluate conditions using the database function
-  const { data: conditionMet, error } = await supabase
+  const { data: conditionMet, error } = await getServiceRoleClient()
     .rpc('evaluate_automation_conditions', {
       p_conditions: conditions,
       p_subscriber_id: job.payload.subscriber_id,
@@ -471,7 +459,7 @@ async function scheduleNextStep(job: AutomationJob) {
   }
   
   // Get automation workflow to find next step
-  const { data: automation, error: automationError } = await supabase
+  const { data: automation, error: automationError } = await getServiceRoleClient()
     .from('email_automations')
     .select('workflow_definition')
     .eq('id', job.automation_id)
@@ -490,7 +478,7 @@ async function scheduleNextStep(job: AutomationJob) {
     const nextStep = steps[nextStepIndex];
     
     // Schedule next step
-    await supabase.rpc('schedule_automation_job', {
+    await getServiceRoleClient().rpc('schedule_automation_job', {
       p_job_type: 'step_execution',
       p_automation_id: job.automation_id,
       p_enrollment_id: job.enrollment_id,
@@ -502,7 +490,7 @@ async function scheduleNextStep(job: AutomationJob) {
     });
   } else {
     // Mark enrollment as completed
-    await supabase
+    await getServiceRoleClient()
       .from('email_automation_enrollments')
       .update({
         status: 'completed',
@@ -517,7 +505,7 @@ async function processEmailSend(job: AutomationJob) {
   // For now, we'll just mark it as completed
   console.log('📧 Processing email send job:', job.job_id);
   
-  await supabase.rpc('complete_automation_job', {
+  await getServiceRoleClient().rpc('complete_automation_job', {
     p_job_id: job.job_id,
     p_status: 'completed',
     p_result: { success: true, message: 'Email send processed' }
@@ -580,7 +568,7 @@ async function sendAutomationEmail(subscriber: any, content: any, automationId: 
     console.log(`📧 Sending automation email to: ${recipientEmail} ${recipientEmail !== subscriber.email ? `(overridden from ${subscriber.email})` : ''}`);
     
     // Create email_sends record for tracking
-    const { data: emailSend, error: emailSendError } = await supabase
+    const { data: emailSend, error: emailSendError } = await getServiceRoleClient()
       .from('email_sends')
       .insert({
         subscriber_id: subscriber.id,
@@ -625,7 +613,7 @@ async function sendAutomationEmail(subscriber: any, content: any, automationId: 
 
     if (emailResult.success) {
       // Update email_sends record with success
-      await supabase
+      await getServiceRoleClient()
         .from('email_sends')
         .update({
           status: 'sent',
@@ -649,7 +637,7 @@ async function sendAutomationEmail(subscriber: any, content: any, automationId: 
       };
     } else {
       // Update email_sends record with failure
-      await supabase
+      await getServiceRoleClient()
         .from('email_sends')
         .update({
           status: 'failed',
