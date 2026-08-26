@@ -38,6 +38,7 @@ export const CreditSlot = styled.div`
   max-width: min(38vw, 420px);
   pointer-events: none;
   opacity: 0;
+  isolation: isolate;
   text-align: left;
 
   &[data-side="right"] {
@@ -69,6 +70,7 @@ export const CreditCard = styled(Link).attrs({ className: "hero-credit" })`
   gap: 20px;
   text-decoration: none;
   color: inherit;
+  cursor: pointer;
   text-shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
 
   @media (max-width: 768px) {
@@ -206,7 +208,7 @@ export function HeroCreditOverlay({
       data-credit-key={credit.key}
       style={{
         opacity,
-        pointerEvents: opacity > 0.2 ? "auto" : "none",
+        pointerEvents: opacity > 0 ? "auto" : "none",
       }}
     >
       <CreditCard

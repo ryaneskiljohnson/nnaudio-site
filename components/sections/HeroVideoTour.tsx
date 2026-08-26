@@ -7,6 +7,7 @@
  */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import styled from "styled-components";
 import type { CircuitNode } from "./circuit-node";
 import { HeroCreditOverlay } from "./HeroCreditCard";
@@ -79,8 +80,10 @@ const HeroVideoTour: React.FC<HeroVideoTourProps> = ({
   const [reduceMotion, setReduceMotion] = useState(false);
   const [tourMs, setTourMs] = useState(0);
   const [videoFailed, setVideoFailed] = useState(false);
+  const [overlayHost, setOverlayHost] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
+    setOverlayHost(document.getElementById("home"));
     setCompact(readHeroCompactTour(window));
     setStageReady(true);
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -113,16 +116,30 @@ const HeroVideoTour: React.FC<HeroVideoTourProps> = ({
     const video = videoRef.current;
     let raf = 0;
     let fallbackOrigin = 0;
+    let lastStamp = "";
+
+    const publish = (ms: number) => {
+      const next = creditCueAtTourMs(cues, ms);
+      const holdMs = next ? next.endMs - next.startMs : 0;
+      const local = next ? ms - next.startMs : 0;
+      const opacity = !next
+        ? 0
+        : Math.max(0, Math.min(1, local / 320, (holdMs - local) / 320));
+      const stamp = `${next?.key ?? ""}|${opacity.toFixed(2)}`;
+      if (stamp === lastStamp) return;
+      lastStamp = stamp;
+      setTourMs(ms);
+    };
 
     const sampleVideo = () => {
       if (!video || video.paused || video.ended) return;
-      setTourMs(heroTourMsFromVideoTime(video.currentTime));
+      publish(heroTourMsFromVideoTime(video.currentTime));
       raf = window.requestAnimationFrame(sampleVideo);
     };
 
     const sampleClock = (now: number) => {
       if (!fallbackOrigin) fallbackOrigin = now;
-      setTourMs((now - fallbackOrigin) % Math.max(1, loopMs));
+      publish((now - fallbackOrigin) % Math.max(1, loopMs));
       raf = window.requestAnimationFrame(sampleClock);
     };
 
@@ -141,7 +158,7 @@ const HeroVideoTour: React.FC<HeroVideoTourProps> = ({
 
     raf = window.requestAnimationFrame(sampleClock);
     return () => window.cancelAnimationFrame(raf);
-  }, [reduceMotion, videoFailed, src, loopMs]);
+  }, [reduceMotion, videoFailed, src, loopMs, cues]);
 
   const cue = reduceMotion ? null : creditCueAtTourMs(cues, tourMs);
   const credit = cue
@@ -171,7 +188,12 @@ const HeroVideoTour: React.FC<HeroVideoTourProps> = ({
           onError={() => setVideoFailed(true)}
         />
       )}
-      <HeroCreditOverlay credit={credit} opacity={opacity} />
+      {overlayHost
+        ? createPortal(
+            <HeroCreditOverlay credit={credit} opacity={opacity} />,
+            overlayHost
+          )
+        : null}
     </Stage>
   );
 };
