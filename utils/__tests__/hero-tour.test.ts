@@ -10,6 +10,10 @@ import {
   DESKTOP_TOUR_FALLBACK_DELAY_MS,
   DESKTOP_TOUR_IDLE_TIMEOUT_MS,
   HERO_MOBILE_BAKE_PX,
+  HERO_TOUR_RECORD_CAP,
+  HERO_TOUR_VIDEO_HEAD_TRIM_SEC,
+  heroTourMsFromVideoTime,
+  heroTourVideoSrc,
   MOBILE_2D_MOON_CAP,
   MOBILE_2D_SUN_POSTER,
   MOBILE_2D_SYNTH_POSTER,
@@ -220,26 +224,29 @@ describe("resolveHeroTourStart", () => {
     force3d: false,
   };
 
-  it("idles the 3D tour on desktop and shows Play on lite", () => {
+  it("plays the recorded video on desktop and lite by default", () => {
     expect(resolveHeroTourStart(idle)).toEqual({
       allowTour: false,
       showPlay: false,
-      scheduleDesktop: true,
+      scheduleDesktop: false,
+      playVideo: true,
     });
     expect(resolveHeroTourStart({ ...idle, lite: true })).toEqual({
       allowTour: false,
-      showPlay: true,
+      showPlay: false,
       scheduleDesktop: false,
+      playVideo: true,
     });
   });
 
-  it("starts CircuitNetwork on lite Play / autoTour", () => {
+  it("mounts CircuitNetwork only for ?hero3d=1", () => {
     expect(
       resolveHeroTourStart({ ...idle, lite: true, autoTour: true })
     ).toEqual({
-      allowTour: true,
+      allowTour: false,
       showPlay: false,
       scheduleDesktop: false,
+      playVideo: true,
     });
     expect(
       resolveHeroTourStart({
@@ -252,6 +259,7 @@ describe("resolveHeroTourStart", () => {
       allowTour: true,
       showPlay: false,
       scheduleDesktop: false,
+      playVideo: false,
     });
   });
 
@@ -260,6 +268,7 @@ describe("resolveHeroTourStart", () => {
       allowTour: false,
       showPlay: false,
       scheduleDesktop: false,
+      playVideo: false,
     });
     expect(
       resolveHeroTourStart({ ...idle, lite: true, reduceMotion: true })
@@ -267,6 +276,19 @@ describe("resolveHeroTourStart", () => {
       allowTour: false,
       showPlay: false,
       scheduleDesktop: false,
+      playVideo: false,
+    });
+    expect(
+      resolveHeroTourStart({
+        ...idle,
+        reduceMotion: true,
+        force3d: true,
+      })
+    ).toEqual({
+      allowTour: true,
+      showPlay: false,
+      scheduleDesktop: false,
+      playVideo: false,
     });
   });
 });
@@ -420,16 +442,27 @@ describe("parseHeroTourQuery", () => {
       autoTour: true,
       tourCap: 15,
       force3d: false,
+      heroPark: false,
     });
     expect(parseHeroTourQuery("heroAutoTour=1")).toEqual({
       autoTour: true,
       tourCap: undefined,
       force3d: false,
+      heroPark: false,
     });
     expect(parseHeroTourQuery("?heroAutoTour=1&hero3d=1&tourCap=15")).toEqual({
       autoTour: true,
       tourCap: 15,
       force3d: true,
+      heroPark: false,
+    });
+    expect(
+      parseHeroTourQuery("?heroAutoTour=1&hero3d=1&heroPark=1&tourCap=15")
+    ).toEqual({
+      autoTour: true,
+      tourCap: 15,
+      force3d: true,
+      heroPark: true,
     });
   });
 
@@ -438,12 +471,25 @@ describe("parseHeroTourQuery", () => {
       autoTour: false,
       tourCap: undefined,
       force3d: false,
+      heroPark: false,
     });
     expect(parseHeroTourQuery("?heroAutoTour=yes&tourCap=-3")).toEqual({
       autoTour: false,
       tourCap: undefined,
       force3d: false,
+      heroPark: false,
     });
+  });
+});
+
+describe("hero tour video clock", () => {
+  it("adds the recorder head trim and picks compact vs desktop files", () => {
+    expect(HERO_TOUR_RECORD_CAP).toBe(15);
+    expect(HERO_TOUR_VIDEO_HEAD_TRIM_SEC).toBe(1);
+    expect(heroTourMsFromVideoTime(0)).toBe(1000);
+    expect(heroTourMsFromVideoTime(5.2)).toBe(6200);
+    expect(heroTourVideoSrc(true)).toBe("/videos/hero-tour-mobile.mp4");
+    expect(heroTourVideoSrc(false)).toBe("/videos/hero-tour-desktop.mp4");
   });
 });
 

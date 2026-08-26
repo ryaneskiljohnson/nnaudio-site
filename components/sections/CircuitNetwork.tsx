@@ -36,7 +36,6 @@ import {
   moonDiameter,
   moonPlacements,
   orbitRadiusPx,
-  orderCredits,
   hideSynthForSunApproach,
   isStableMoonHold,
   pickVisibleMoons,
@@ -47,13 +46,22 @@ import {
 } from "@/utils/circuit-network-layout";
 import { CURATED_FEATURED_ORDER } from "@/lib/homepage-hero-seed";
 import {
+  CreditBlurb,
+  CreditCard,
+  CreditName,
+  CreditPrice,
+  CreditRole,
+  CreditSlot,
+  CreditText,
+  CreditThumb,
+} from "./HeroCreditCard";
+import {
   HERO_TOUR_WATCHDOG_KEY,
   MOBILE_FRAME_MIN_MS,
   MOBILE_STAGE_LINGER_MS,
   MOBILE_TEXTURE_KEEP,
   heroBoardIsOnScreen,
   heroTourMoonCap,
-  heroTourStopCap,
   latchHeroCompactTour,
   mobileStageKeys,
   moonBakePx,
@@ -63,6 +71,12 @@ import {
   shouldKeepHeroFrameSize,
   sunBakePx,
 } from "@/utils/hero-tour";
+import {
+  CYMASPHERE_CREDIT_ICON,
+  CYMASYNTH_CREDIT_MARK,
+  buildHeroCreditDrafts,
+  featuredProductBlurb,
+} from "@/utils/hero-tour-credits";
 import { logHeroDebug } from "@/utils/hero-reload-debug";
 
 /** First-paint pose: far galaxy, same as cameraTour(0). */
@@ -150,7 +164,7 @@ import {
  * Official Cymasphere app icon — JUCE `IconFile` / `cm-logo-icon.png`.
  * @note Copied into public so credit thumbs match the Mac/Linux/Android icon.
  */
-const CYMASPHERE_APP_ICON = "/images/cymasphere-app-icon.png";
+const CYMASPHERE_APP_ICON = CYMASPHERE_CREDIT_ICON;
 /**
  * Same official mark with the baked-in black plate knocked out.
  * There is no transparent JUCE icon; this is the sun overlay.
@@ -167,7 +181,7 @@ const CYMASPHERE_SUN_SPHERE_POSTER = "/images/cymasphere-sun-sphere-hero.webp";
 /**
  * Official CymaSynth app icon (Seed of Life / cymatic mark) for credit thumbs.
  */
-const CYMASYNTH_MARK = "/images/cymasynth-mark.png";
+const CYMASYNTH_MARK = CYMASYNTH_CREDIT_MARK;
 /**
  * Downscaled CymaSynth planet for the hero wrap. 4K lives at
  * `/images/cymasynth-sphere.jpg` for the spotlight.
@@ -240,6 +254,11 @@ interface CircuitNetworkProps {
    * can capture a longer highlight reel.
    */
   tourCap?: number;
+  /**
+   * Park after one loop on desktop too (`?heroPark=1`). Needed so the
+   * 1920×1080 recorder can wait for `[data-parked]`.
+   */
+  heroPark?: boolean;
 }
 
 /**
@@ -272,41 +291,6 @@ function moonWrapUrl(
  */
 function moonWrapBakeOpts(body: { synth: boolean }) {
   return body.synth ? { surfaceShade: false as const } : undefined;
-}
-
-/**
- * @brief Strips tags and collapses whitespace from catalog HTML copy.
- * @param raw Product description or tagline.
- * @returns Plain text, or an empty string.
- */
-function plainProductCopy(raw?: string): string {
-  if (!raw) return "";
-  return raw
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/**
- * @brief Description shown in the empty half of a featured hold.
- * @param credit Current tour credit.
- * @param synth Whether this is the CymaSynth moon.
- * @returns Short plain-text blurb.
- */
-function featuredProductBlurb(
-  credit: Pick<CreditTarget, "sun" | "description" | "subtitle">,
-  synth: boolean
-): string {
-  const copy = plainProductCopy(credit.description || credit.subtitle);
-  if (copy) return copy;
-  if (credit.sun) {
-    return "Cymasphere writes the harmony, voicings, and patterns at the center of the system.";
-  }
-  if (synth) {
-    return "A professional wavetable synthesizer built for the Cymasphere ecosystem.";
-  }
-  return "";
 }
 
 const Board = styled.div`
@@ -350,158 +334,11 @@ const Vignette = styled.div`
     radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(2, 3, 10, 0.72) 100%);
 `;
 
-/**
- * Overlay slot for the tour credit. A plain div so rAF can write opacity
- * onto a real DOM node — `styled(Link)` refs are not reliable in Next 16.
- */
-const CreditSlot = styled.div`
-  position: absolute;
-  left: 6.5%;
-  right: auto;
-  top: 40%;
-  transform: translateY(-58%);
-  z-index: 40;
-  max-width: min(38vw, 420px);
-  pointer-events: none;
-  opacity: 0;
-  text-align: left;
-
-  &[data-side="right"] {
-    left: auto;
-    right: 6.5%;
-    text-align: left;
-  }
-
-  @media (max-width: 768px) {
-    left: 4%;
-    right: auto;
-    top: calc(
-      env(safe-area-inset-top, 0px) + var(--site-header-height) +
-        var(--site-promo-strip-height) + 0.625rem
-    );
-    transform: none;
-    max-width: min(88vw, 340px);
-
-    &[data-side="right"] {
-      left: 4%;
-      right: auto;
-    }
-  }
-`;
-
-const CreditCard = styled(Link).attrs({ className: "hero-credit" })`
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  text-decoration: none;
-  color: inherit;
-  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
-
-  @media (max-width: 768px) {
-    gap: 14px;
-  }
-`;
-
-const CreditThumb = styled.img`
-  width: 112px;
-  height: 112px;
-  flex-shrink: 0;
-  padding: 14px;
-  border-radius: 50%;
-  object-fit: contain;
-  image-rendering: auto;
-  background: radial-gradient(
-    circle at 32% 28%,
-    rgba(255, 255, 255, 0.12) 0%,
-    rgba(20, 18, 38, 0.9) 60%,
-    rgba(5, 5, 10, 1) 100%
-  );
-  box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.55),
-    0 0 26px rgba(108, 99, 255, 0.28);
-
-  @media (max-width: 768px) {
-    width: 56px;
-    height: 56px;
-    padding: 8px;
-  }
-
-  &[data-sun="true"] {
-    padding: 0;
-    object-fit: cover;
-    background: #05050a;
-  }
-`;
-
 const SunMark = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
   pointer-events: none;
-`;
-
-const CreditText = styled.div`
-  min-width: 0;
-`;
-
-const CreditRole = styled.span`
-  display: block;
-  margin-bottom: 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1.5;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(255, 214, 170, 0.78);
-`;
-
-const CreditName = styled.span`
-  display: block;
-  font-size: clamp(1.6rem, 4.2vw, 3.1rem);
-  font-weight: 800;
-  line-height: 0.95;
-  letter-spacing: -0.03em;
-  color: #fff;
-  overflow-wrap: anywhere;
-
-  @media (max-width: 768px) {
-    font-size: clamp(1.15rem, 6vw, 1.55rem);
-  }
-
-  ${CreditCard}:hover & {
-    text-decoration: underline;
-    text-underline-offset: 0.12em;
-  }
-`;
-
-const CreditPrice = styled.span`
-  display: block;
-  margin-top: 10px;
-  font-size: 0.86rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.62);
-`;
-
-const CreditBlurb = styled.p`
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  overflow: hidden;
-  margin: 14px 0 0;
-  max-width: 36ch;
-  font-size: clamp(0.92rem, 1.5vw, 1.08rem);
-  font-weight: 500;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.72);
-
-  @media (max-width: 768px) {
-    -webkit-line-clamp: 3;
-    margin-top: 8px;
-    font-size: 0.86rem;
-    max-width: none;
-  }
 `;
 
 const Scene = styled.div`
@@ -1303,6 +1140,7 @@ function poseSynthOscRings(
  * @param nodes Remaining products, one per orbit seat.
  * @param parkImmediately When true, pose one frame then freeze.
  * @param tourCap Optional recording/debug credit-stop cap.
+ * @param heroPark When true, park after one loop on desktop as well.
  * @returns The tour scene.
  * @example
  * <CircuitNetwork cymasynth={synth} nodes={catalog} />
@@ -1313,6 +1151,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   nodes,
   parkImmediately = false,
   tourCap,
+  heroPark = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
@@ -1398,6 +1237,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const parkedRef = useRef(false);
   const parkImmediatelyRef = useRef(parkImmediately);
   parkImmediatelyRef.current = parkImmediately;
+  const heroParkRef = useRef(heroPark);
+  heroParkRef.current = heroPark;
   const mobile = isMobile;
 
   // Crash watchdog: a user reload or navigation fires pagehide first,
@@ -1689,48 +1530,47 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   }, [bodies, mobile]);
 
   const credits = useMemo<CreditTarget[]>(() => {
-    const ordered = orderCredits([
-        {
-          key: SUN_FOCUS_KEY,
-          name: cymasphere?.name || "Cymasphere",
-          slug: cymasphere?.slug || "cymasphere",
-          price: cymasphere?.price,
-          subtitle: (cymasphere?.tagline || "").trim(),
-          description: (cymasphere?.description || "").trim(),
-          image: CYMASPHERE_APP_ICON,
-          sun: true,
-          weight: 1.5,
+    const drafts = buildHeroCreditDrafts({
+      cymasphere,
+      cymasynth,
+      nodes,
+      compact: mobile,
+      tourCap,
+    });
+    const bodyByKey = new Map(bodies.map((body) => [body.key, body] as const));
+    const indexByKey = new Map(bodies.map((body, i) => [body.key, i] as const));
+    return drafts.map((draft) => {
+      if (draft.sun) {
+        return {
+          ...draft,
           startDeg: 0,
           periodSec: 1,
           radius: 0,
           radiusPx: 0,
-          size: 0,
-        },
-        ...bodies.map((body, i) => ({
-          key: body.key,
-          name: body.node.name,
-          slug: body.node.slug,
-          price: body.node.price,
-          subtitle: (body.node.tagline || "").trim(),
-          description: (body.node.description || "").trim(),
-          image: body.node.image,
-          weight: body.synth ? 2 : 1,
-          startDeg: body.seat.startDeg,
-          // Apparent angular rate includes apsidal precession, so the
-          // credits camera keeps aiming true as orbits slowly rotate.
-          periodSec: (2 * Math.PI) / (system.n[i] + system.prec[i]),
-          radius: body.seat.radius,
-          radiusPx: system.a[i],
-          size: body.seat.size.w * (body.synth ? 1.45 : 1),
-        })),
-      ]);
-    // Curated/capped list: sun → CymaSynth → featured moons. Short
-    // enough that one loop + park finishes before Safari's energy
-    // watchdog reloads the page. `tourCap` raises the slice for the
-    // recorder.
-    const stopCap = heroTourStopCap(mobile, tourCap);
-    return stopCap == null ? ordered : ordered.slice(0, stopCap);
-  }, [bodies, cymasphere, system, mobile, tourCap]);
+        };
+      }
+      const body = bodyByKey.get(draft.key);
+      const i = indexByKey.get(draft.key);
+      if (!body || i === undefined) {
+        return {
+          ...draft,
+          startDeg: 0,
+          periodSec: 1,
+          radius: 0,
+          radiusPx: 0,
+        };
+      }
+      return {
+        ...draft,
+        startDeg: body.seat.startDeg,
+        // Apparent angular rate includes apsidal precession, so the
+        // credits camera keeps aiming true as orbits slowly rotate.
+        periodSec: (2 * Math.PI) / (system.n[i] + system.prec[i]),
+        radius: body.seat.radius,
+        radiusPx: system.a[i],
+      };
+    });
+  }, [bodies, cymasphere, cymasynth, nodes, system, mobile, tourCap]);
 
   /**
    * @brief Moon keys whose bakes must not be evicted mid-hold.
@@ -2054,7 +1894,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       if (
         !parkedRef.current &&
         (parkImmediatelyRef.current ||
-          (mobile &&
+          ((mobile || heroParkRef.current) &&
             credits.length > 1 &&
             elapsed >= tourDurationMs(credits) * TOUR_MOBILE_MAX_LOOPS))
       ) {

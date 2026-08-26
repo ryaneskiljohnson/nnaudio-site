@@ -3,7 +3,9 @@
  * viewport detection, lite-tour gating (tablets / iPadOS / desktop-mode
  * phones), compact-tour latching so resize cannot rebuild the 3D
  * system, Safari-kill watchdog, curated moon picks, bake sizes, and
- * recording query flags (`heroAutoTour`, `tourCap`).
+ * recording query flags (`heroAutoTour`, `tourCap`, `hero3d`, `heroPark`).
+ * Default homepage plays a recorded MP4; CircuitNetwork is the recorder
+ * behind `?hero3d=1`.
  * @module utils/hero-tour
  */
 
@@ -344,22 +346,25 @@ export function prefersLiteHeroTour(env: HeroTourEnvironment): boolean {
 
 /** First-paint decision for which hero tour (if any) to mount. */
 export interface HeroTourStart {
-  /** Mount CircuitNetwork (desktop idle start or explicit Play). */
+  /** Mount CircuitNetwork (`?hero3d=1` recorder). */
   allowTour: boolean;
   showPlay: boolean;
   scheduleDesktop: boolean;
+  /** Play the prerendered tour MP4 with HTML credits. */
+  playVideo: boolean;
 }
 
 /**
  * @brief Picks the hero mount without touching the DOM.
- * Lite devices wait for Play, then mount the same live 3D tour.
+ * Default is the recorded video. Live CircuitNetwork only when
+ * `?hero3d=1`. Reduced motion keeps the static poster.
  * @param input Lite/motion flags and query flags.
- * @returns Whether to show Play, start the tour, or idle-start desktop.
+ * @returns Whether to mount 3D, play video, or show the poster.
  * @example
  * resolveHeroTourStart({
  *   lite: true, reduceMotion: false, autoTour: false, force3d: false,
  * })
- * // { allowTour: false, showPlay: true, scheduleDesktop: false }
+ * // { allowTour: false, showPlay: false, scheduleDesktop: false, playVideo: true }
  */
 export function resolveHeroTourStart(input: {
   lite: boolean;
@@ -367,38 +372,27 @@ export function resolveHeroTourStart(input: {
   autoTour: boolean;
   force3d: boolean;
 }): HeroTourStart {
+  if (input.force3d) {
+    return {
+      allowTour: true,
+      showPlay: false,
+      scheduleDesktop: false,
+      playVideo: false,
+    };
+  }
   if (input.reduceMotion) {
     return {
       allowTour: false,
       showPlay: false,
       scheduleDesktop: false,
-    };
-  }
-  if (input.lite) {
-    if (input.autoTour) {
-      return {
-        allowTour: true,
-        showPlay: false,
-        scheduleDesktop: false,
-      };
-    }
-    return {
-      allowTour: false,
-      showPlay: true,
-      scheduleDesktop: false,
-    };
-  }
-  if (input.autoTour || input.force3d) {
-    return {
-      allowTour: true,
-      showPlay: false,
-      scheduleDesktop: false,
+      playVideo: false,
     };
   }
   return {
     allowTour: false,
     showPlay: false,
-    scheduleDesktop: true,
+    scheduleDesktop: false,
+    playVideo: true,
   };
 }
 
@@ -576,17 +570,18 @@ export function sunBakePx(compact: boolean, dpr: number): number {
  * Read from `window.location.search` (not `useSearchParams`) so the
  * LCP path does not need a Suspense boundary.
  * @param search `window.location.search` (leading `?` optional).
- * @returns Auto-start flag, optional credit-stop cap, and 3D recorder latch.
+ * @returns Auto-start flag, optional credit-stop cap, 3D latch, and park.
  * @example
  * parseHeroTourQuery("?heroAutoTour=1&tourCap=15")
- * // { autoTour: true, tourCap: 15, force3d: false }
- * parseHeroTourQuery("?heroAutoTour=1&hero3d=1")
- * // { autoTour: true, tourCap: undefined, force3d: true }
+ * // { autoTour: true, tourCap: 15, force3d: false, heroPark: false }
+ * parseHeroTourQuery("?heroAutoTour=1&hero3d=1&heroPark=1")
+ * // { autoTour: true, tourCap: undefined, force3d: true, heroPark: true }
  */
 export function parseHeroTourQuery(search: string): {
   autoTour: boolean;
   tourCap: number | undefined;
   force3d: boolean;
+  heroPark: boolean;
 } {
   const q = search.startsWith("?") ? search.slice(1) : search;
   const params = new URLSearchParams(q);
@@ -596,7 +591,42 @@ export function parseHeroTourQuery(search: string): {
     autoTour: params.get("heroAutoTour") === "1",
     tourCap: Number.isFinite(n) && n > 0 ? n : undefined,
     force3d: params.get("hero3d") === "1",
+    heroPark: params.get("heroPark") === "1",
   };
+}
+
+/** Credit stops in the checked-in hero MP4s (sun + synth + featured moons). */
+export const HERO_TOUR_RECORD_CAP = 15;
+
+/** Seconds ffmpeg trims from the capture head (poster / first paint). */
+export const HERO_TOUR_VIDEO_HEAD_TRIM_SEC = 1;
+
+/** Desktop 16:9 recording served on the default homepage. */
+export const HERO_TOUR_DESKTOP_SRC = "/videos/hero-tour-desktop.mp4";
+
+/** Portrait recording for compact viewports. */
+export const HERO_TOUR_MOBILE_SRC = "/videos/hero-tour-mobile.mp4";
+
+/** Poster while the MP4 loads, or when motion is reduced. */
+export const HERO_TOUR_POSTER = "/images/cymasphere-sun-sphere-hero.webp";
+
+/**
+ * @brief Converts `<video>.currentTime` to the live tour clock.
+ * The recorder trims {@link HERO_TOUR_VIDEO_HEAD_TRIM_SEC} from the file.
+ * @param currentTimeSec `HTMLVideoElement.currentTime`.
+ * @returns Tour milliseconds for {@link creditCueAtTourMs}.
+ */
+export function heroTourMsFromVideoTime(currentTimeSec: number): number {
+  return (currentTimeSec + HERO_TOUR_VIDEO_HEAD_TRIM_SEC) * 1000;
+}
+
+/**
+ * @brief Which recorded file to play.
+ * @param compact Phone-capped / portrait hero.
+ * @returns Public MP4 path.
+ */
+export function heroTourVideoSrc(compact: boolean): string {
+  return compact ? HERO_TOUR_MOBILE_SRC : HERO_TOUR_DESKTOP_SRC;
 }
 
 /** Max wait before desktop idle callback forces the tour to start. */
