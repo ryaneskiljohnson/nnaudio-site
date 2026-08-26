@@ -48,20 +48,27 @@ import {
 import { CURATED_FEATURED_ORDER } from "@/lib/homepage-hero-seed";
 import {
   HERO_TOUR_WATCHDOG_KEY,
+  HERO_QUALITY_STAR_COUNT,
+  HERO_QUALITY_FRAME_MIN_MS,
+  HERO_QUALITY_UPGRADE_EMA_MS,
   MOBILE_FRAME_MIN_MS,
   MOBILE_STAGE_LINGER_MS,
   MOBILE_TEXTURE_KEEP,
+  downgradeHeroQuality,
   heroBoardIsOnScreen,
+  heroQualityMoonBudget,
   heroTourMoonCap,
   heroTourStopCap,
   latchHeroCompactTour,
   mobileStageKeys,
-  moonBakePx,
+  moonBakePxForQuality,
   pickMobileTourNodes,
   previousHeroTourWasKilled,
   readHeroCompactTour,
   shouldKeepHeroFrameSize,
-  sunBakePx,
+  sunBakePxForQuality,
+  upgradeHeroQuality,
+  type HeroQuality,
 } from "@/utils/hero-tour";
 import { logHeroDebug } from "@/utils/hero-reload-debug";
 
@@ -156,14 +163,13 @@ const CYMASPHERE_APP_ICON = "/images/cymasphere-app-icon.png";
  * There is no transparent JUCE icon; this is the sun overlay.
  */
 const CYMASPHERE_SUN_MARK = "/images/cymasphere-sun-mark.png";
-/**
- * 4K Cymasphere planet for the hero wrap bake. The visible fallback
- * (`CYMASPHERE_SUN_SPHERE_POSTER`) is the 1280 webp so Play is not bald
- * while the 4K decode finishes.
- */
-const CYMASPHERE_SUN_SPHERE = "/images/cymasphere-sun-sphere.jpg";
-/** Same render at 1280 — idle poster and SunMark while the 4K bake runs. */
+/** Same render at 1280 — idle poster and SunMark while the bake runs. */
 const CYMASPHERE_SUN_SPHERE_POSTER = "/images/cymasphere-sun-sphere-hero.webp";
+/**
+ * 1280 webp planet for the hero sun wrap bake (not the 4K JPEG).
+ * The poster is shown while the bake runs.
+ */
+const CYMASPHERE_SUN_BAKE = CYMASPHERE_SUN_SPHERE_POSTER;
 /**
  * Official CymaSynth app icon (Seed of Life / cymatic mark) for credit thumbs.
  */
@@ -1107,7 +1113,9 @@ const FRAME = {
   creditsW: 0,
   /** Half the board width plus margin, for horizontal frustum culling. */
   viewHalfW: 600,
-  /** Latched on slow devices: drops the blur filter, the top paint cost. */
+  /** Adaptive render tier; latched from frame EMA on desktop. */
+  quality: "high" as HeroQuality,
+  /** @deprecated Use quality === "low". Kept for styled-component hooks. */
   lowDetail: false,
 };
 
@@ -1382,6 +1390,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const tourWasPausedRef = useRef(false);
   const pageHiddenRef = useRef(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [renderQuality, setRenderQuality] = useState<HeroQuality>("high");
+  const qualityRef = useRef<HeroQuality>("high");
+  const goodFrameStreakRef = useRef(0);
   const [frameSize, setFrameSize] = useState<{ w: number; h: number } | null>(
     null
   );
@@ -1474,7 +1485,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         setIsMobile(compact);
       }
       if (compact) {
+        qualityRef.current = "low";
+        FRAME.quality = "low";
         FRAME.lowDetail = true;
+        setRenderQuality("low");
         containerRef.current?.setAttribute("data-low", "true");
       }
     };
@@ -1607,8 +1621,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   );
   const synthSeat = useMemo(() => cymasynthOrbit(mobile), [mobile]);
   const bakePx = useMemo(
-    () => moonBakePx(mobile, heroBakeDpr()),
-    [mobile]
+    () => moonBakePxForQuality(mobile, renderQuality),
+    [mobile, renderQuality]
   );
 
   const bodies = useMemo(() => {
@@ -1831,16 +1845,16 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   }, [bodies, credits, mobile]);
 
   useEffect(() => {
-    const size = sunBakePx(mobile, heroBakeDpr());
+    const size = sunBakePxForQuality(mobile, renderQuality);
     void loadSphereTexture(
-      optimizedImageUrl(CYMASPHERE_SUN_SPHERE, size),
+      optimizedImageUrl(CYMASPHERE_SUN_BAKE, size),
       size,
       { surfaceShade: false }
     ).then((tex) => {
       if (!mountedRef.current || !tex) return;
       sunTexRef.current = tex;
     });
-  }, [mobile]);
+  }, [mobile, renderQuality]);
 
   const creditsByKey = useMemo(
     () => new Map(credits.map((credit) => [credit.key, credit])),
@@ -1862,6 +1876,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     frameSize,
     bakePx,
     mobile,
+    quality: renderQuality,
   });
   tourLive.current = {
     credits,
@@ -1872,6 +1887,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     frameSize,
     bakePx,
     mobile,
+    quality: qualityRef.current,
   };
 
   useEffect(() => {
@@ -1914,7 +1930,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const raw = Math.abs(ph - last);
         if (Math.min(raw, 1 - raw) < threshold) return false;
       }
-      if (!warpStripToCanvasGpu(tex, ph, canvas)) {
+      if (!warpStripToCanvasGpu(tex, ph, canvas, qualityRef.current)) {
         warpStripToCanvas(
           tex,
           getWarpLUT(tex.strip.height),
@@ -1994,13 +2010,14 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         raf = window.requestAnimationFrame(tick);
         return;
       }
-      // Phones draw at ~15fps. Skip without touching lastFrameAt so
-      // the next drawn frame gets a real dt. Still rAF, not setTimeout
-      // — a throttled timer looked like a pause and froze the tour.
+      // Adaptive frame pacing: phones stay ~12fps; desktop throttles by tier.
+      const frameMinMs = mobile
+        ? MOBILE_FRAME_MIN_MS
+        : HERO_QUALITY_FRAME_MIN_MS[qualityRef.current];
       if (
-        tourLive.current.mobile &&
+        frameMinMs > 0 &&
         lastFrameAt.current != null &&
-        now - lastFrameAt.current < MOBILE_FRAME_MIN_MS
+        now - lastFrameAt.current < frameMinMs
       ) {
         raf = window.requestAnimationFrame(tick);
         return;
@@ -2038,10 +2055,35 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       lastFrameAt.current = now;
       const gapClamped = Math.min(64, Math.max(8, gap));
       const ease = 1 - Math.exp(-gapClamped / 140);
-      // Sustained slow frames latch low-detail mode: blur (the top paint
-      // cost) is dropped for the rest of the session on this device.
+      // Sustained slow frames step down adaptive quality on desktop.
       frameEma.current += (gapClamped - frameEma.current) * 0.05;
-      if (!FRAME.lowDetail && frameNo > 40 && frameEma.current > 22) {
+      if (frameNo > 40 && !mobile) {
+        if (frameEma.current < HERO_QUALITY_UPGRADE_EMA_MS) {
+          goodFrameStreakRef.current += 1;
+        } else {
+          goodFrameStreakRef.current = 0;
+        }
+        const prevQ = qualityRef.current;
+        let nextQ = downgradeHeroQuality(frameEma.current, prevQ);
+        nextQ = upgradeHeroQuality(
+          frameEma.current,
+          nextQ,
+          goodFrameStreakRef.current
+        );
+        if (nextQ !== prevQ) {
+          qualityRef.current = nextQ;
+          FRAME.quality = nextQ;
+          tourLive.current.quality = nextQ;
+          FRAME.lowDetail = nextQ === "low";
+          if (nextQ === "low") {
+            containerRef.current?.setAttribute("data-low", "true");
+          } else if (nextQ === "high") {
+            containerRef.current?.removeAttribute("data-low");
+          }
+          setRenderQuality(nextQ);
+          if (nextQ !== "high") goodFrameStreakRef.current = 0;
+        }
+      } else if (frameNo > 40 && frameEma.current > 22 && !FRAME.lowDetail) {
         FRAME.lowDetail = true;
         containerRef.current?.setAttribute("data-low", "true");
       }
@@ -2197,7 +2239,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
                 1 - Math.abs(ph - lastSunPhase)
               );
         if (raw >= 0.4 / sunTex.strip.height) {
-          if (!warpStripToCanvasGpu(sunTex, ph, sunCanvas)) {
+          if (!warpStripToCanvasGpu(sunTex, ph, sunCanvas, qualityRef.current)) {
             warpStripToCanvas(
               sunTex,
               getWarpLUT(sunTex.strip.height),
@@ -2383,7 +2425,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           sunFocus,
           dollyZ: cam.translateZ,
           viewHalfW: FRAME.viewHalfW,
-          budget: VISIBLE_MOON_BUDGET,
+          budget: heroQualityMoonBudget(qualityRef.current),
           previous: liveKeysRef.current,
           hideSynth,
         });
@@ -2663,9 +2705,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     // Far sheets are wide so the sky still fills the frame when the
     // camera dollies out or yaws across the system.
     // Shadows stay static; Sky's transform is what zooms/slides them.
-    const sheets = mobile
-      ? [sheet(20, 900, 700, 0, 0.5)]
-      : [sheet(120, 1800, 1100, 0, 0.62)];
+    const starCount = mobile
+      ? 20
+      : HERO_QUALITY_STAR_COUNT[renderQuality];
+    const sheets = [sheet(starCount, 1800, 1100, 0, 0.62)];
     return sheets.map((s, i) => (
       <StarSheet
         key={i}
@@ -2675,7 +2718,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         }}
       />
     ));
-  }, [mobile]);
+  }, [mobile, renderQuality]);
 
   const ringField = useMemo(
     () =>
@@ -2740,7 +2783,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
                       const tex = texturesHiRef.current.get(body.key);
                       if (tex) {
                         const ph = warpPhases.current.get(body.key) ?? 0;
-                        if (!warpStripToCanvasGpu(tex, ph, el)) {
+                        if (!warpStripToCanvasGpu(tex, ph, el, qualityRef.current)) {
                           warpStripToCanvas(
                             tex,
                             getWarpLUT(tex.strip.height),
@@ -2771,7 +2814,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     <Board ref={containerRef}>
       <Sky ref={skyRef}>
         {starField}
-        {!mobile ? (
+        {!mobile && renderQuality === "high" ? (
           <>
             <NebulaViolet $x={28} $y={38} $w={58} $h={48} />
             <NebulaGold $x={62} $y={52} $w={50} $h={42} />
@@ -2780,9 +2823,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         ) : null}
       </Sky>
       <Scene ref={sceneRef}>
-        <RingLayer ref={ringLayerRef}>{mobile ? null : ringField}</RingLayer>
+        <RingLayer ref={ringLayerRef}>
+          {mobile || renderQuality === "low" ? null : ringField}
+        </RingLayer>
         <BodyLayer>
-          {cymasynth && !mobile ? (
+          {cymasynth && !mobile && renderQuality === "high" ? (
             <SynthRingPlate
               ref={synthRingsRef}
               data-compact={mobile ? "true" : undefined}
@@ -2808,7 +2853,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           {moonField}
 
           <SunWrap ref={sunRef}>
-            {!mobile ? (
+            {!mobile && renderQuality !== "low" ? (
               <>
                 <SunNebulaViolet />
                 <SunNebulaGold />
