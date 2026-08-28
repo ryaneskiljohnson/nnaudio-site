@@ -233,15 +233,17 @@ const CreditRole = styled.span`
 
 const CreditName = styled.span`
   display: block;
-  font-size: clamp(1.6rem, 4.2vw, 3.1rem);
+  font-size: clamp(1.35rem, 3vw, 2.35rem);
   font-weight: 800;
-  line-height: 0.95;
+  line-height: 1.05;
   letter-spacing: -0.03em;
   color: #fff;
-  overflow-wrap: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 
   @media (max-width: 768px) {
-    font-size: clamp(1.15rem, 6vw, 1.55rem);
+    font-size: clamp(1.15rem, 5.2vw, 1.55rem);
   }
 
   ${CreditCard}:hover & {

@@ -40,8 +40,11 @@ describe("hero source contracts", () => {
   });
 
   it("wraps credit names at whitespace, not mid-letter", () => {
-    expect(circuit).toContain("overflow-wrap: break-word");
+    expect(circuit).toContain("overflow-wrap: normal");
+    expect(circuit).toContain("word-break: normal");
+    expect(circuit).toContain("hyphens: none");
     expect(circuit).not.toContain("overflow-wrap: anywhere");
+    expect(circuit).not.toContain("overflow-wrap: break-word");
   });
 
   it("keeps the CSS visibility budget and sunScale cheat", () => {
