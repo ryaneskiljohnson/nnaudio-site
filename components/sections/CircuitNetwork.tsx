@@ -1131,9 +1131,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         );
       }
 
-      scene.setOrbitsVisible(
-        credits.length === 0 || (cam.focusKey == null && !cam.traveling)
-      );
+      scene.setOrbitsVisible(credits.length === 0);
       scene.poseSunScale(sunScaleFromCamera(follow.tz));
       scene.applyCamera({
         ...cam,

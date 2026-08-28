@@ -15,6 +15,22 @@ import {
 import { HERO_SUN_DIAMETER_PX } from "@/components/hero-gl/caps";
 import { createSphereWrapMaterial } from "@/components/hero-gl/sphereWrapMaterial";
 
+describe("createBodyMesh", () => {
+  it("hides catalog moons until the tour stages them", () => {
+    const moon = createBodyMesh({
+      key: "n",
+      slug: "n",
+      name: "n",
+      kind: "moon",
+      diameter: 48,
+      spinDur: 40,
+      spinRev: false,
+    });
+    expect(moon.mesh.visible).toBe(false);
+    expect(createSunMesh().mesh.visible).toBe(true);
+  });
+});
+
 describe("heroBodyRadius", () => {
   it("matches the old CSS 0.96 + focus boost", () => {
     expect(heroBodyRadius(100, 0)).toBeCloseTo(48, 5);

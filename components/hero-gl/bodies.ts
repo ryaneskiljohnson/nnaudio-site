@@ -82,6 +82,7 @@ export function createBodyMesh(def: HeroBodyDef): HeroBodyHandle {
   const prelit = def.kind === "sun" || def.kind === "synth";
   const mesh = new Mesh(geo, prelit ? prelitMaterial() : tintMaterial());
   mesh.scale.setScalar(Math.max(4, def.diameter / 2));
+  mesh.visible = def.kind === "sun";
   mesh.name = def.key;
   mesh.userData = { key: def.key, slug: def.slug, kind: def.kind };
   return {

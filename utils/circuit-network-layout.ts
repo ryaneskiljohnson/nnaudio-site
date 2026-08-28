@@ -1177,7 +1177,9 @@ export function cameraTour(
   viewHalfW = 620
 ): TourCamera {
   const frameOf = (credit: CreditTarget) => holdFrameOffset(credit.key, viewHalfW);
-  const holdTargetPx = Math.min(560, Math.max(220, viewHalfW * 1.55));
+  // Keep the disk inside the frame (credit card + eclipse offset).
+  // 560px on a ~640px-tall board clipped the planet through the camera.
+  const holdTargetPx = Math.min(400, Math.max(200, viewHalfW * 0.68));
   if (reducedMotion) {
     return {
       rotateX: 22,

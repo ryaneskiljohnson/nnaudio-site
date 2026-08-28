@@ -607,7 +607,7 @@ describe("cameraTour", () => {
     );
     const elapsed = TOUR_INTRO_MS + CREDIT_MS / 2;
     const frame = holdFrameOffset("x");
-    const aimed = lookAtMoon(400, 80, 0, 80, elapsed, frame.x, frame.y);
+    const aimed = lookAtMoon(400, 80, 0, 80, elapsed, frame.x, frame.y, 400);
     expect(cam.rotateY).toBeCloseTo(aimed.rotateY, 5);
     expect(cam.rotateX).toBeCloseTo(aimed.rotateX, 5);
     expect(cam.rotateZ).toBe(0);
@@ -645,7 +645,7 @@ describe("cameraTour", () => {
     // The moon is pinned off frame center; the sun (origin) projects to
     // translate(X, Y), which only sways by the small inspection truck.
     // Together the planet no longer eclipses Cymasphere.
-    const mag = closeupMagnification(64);
+    const mag = closeupMagnification(64, 400);
     const frame = holdFrameOffset("x");
     const onScreen = projectThroughCamera(x, height, z, cam);
     expect(onScreen.x).toBeCloseTo(frame.x / mag, 3);
@@ -856,7 +856,7 @@ describe("cameraTour", () => {
     expect(poseTravel(a, b)).toBeGreaterThan(0.04);
     expect(poseTravel(a, b)).toBeLessThan(0.2);
     // The framing offset holds steady while the camera creeps.
-    const off = holdFrameOffset("x").x / closeupMagnification(80);
+    const off = holdFrameOffset("x").x / closeupMagnification(80, 400);
     const onA = projectThroughCamera(400, 80, 0, a);
     const onB = projectThroughCamera(400, 80, 0, b);
     expect(onA.x).toBeCloseTo(off, 3);
