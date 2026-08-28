@@ -59,4 +59,10 @@ describe("createSphereWrapMaterial", () => {
     expect(mat.uniforms.uPhase?.value).toBe(0);
     mat.dispose();
   });
+
+  it("fills the camera-facing hemisphere so wraps are not black", () => {
+    const mat = createSphereWrapMaterial(new Texture(), true);
+    expect(mat.uniforms.uCamFill?.value).toBe(1);
+    mat.dispose();
+  });
 });

@@ -37,6 +37,7 @@ import {
   heroTourMoonCap,
   heroTourStopCap,
   latchHeroCompactTour,
+  MOBILE_STAGE_LINGER_MS,
   mobileStageKeys,
   pickMobileTourNodes,
   previousHeroTourWasKilled,
@@ -349,6 +350,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const facedKeys = useRef("");
   const candidatePool = useRef<VisibleMoonCandidate[]>([]);
   const liveKeysRef = useRef<string[]>([]);
+  const lingerAt = useRef(new Map<string, number>());
   const focusWeights = useRef(new Map<string, number>());
   const sunBoostRef = useRef(0);
   const sunAlignRef = useRef(0);
@@ -866,11 +868,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         rafRef.current = 0;
         return;
       }
-      if (shouldSkipHeroFrame(now, lastDrawAt.current)) {
-        raf = window.requestAnimationFrame(tick);
-        rafRef.current = raf;
-        return;
-      }
+      const skipDraw = shouldSkipHeroFrame(now, lastDrawAt.current);
       const {
         credits,
         bodies,
@@ -894,7 +892,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         tourWasPausedRef.current = false;
       }
       lastFrameAt.current = now;
-      lastDrawAt.current = now;
       const gapClamped = Math.min(64, Math.max(8, gap));
       const ease = 1 - Math.exp(-gapClamped / 140);
       const elapsed = now - startedAt.current;
@@ -1070,7 +1067,21 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         });
       }
       liveKeysRef.current = visible;
+      if (!sunFocus) {
+        for (const key of visible) lingerAt.current.set(key, now);
+      }
+      if (hideSynth) {
+        const synthKey = bodies.find((body) => body.synth)?.key;
+        if (synthKey) lingerAt.current.delete(synthKey);
+      }
+      const lingerMs = compact ? MOBILE_STAGE_LINGER_MS : 2500;
+      lingerAt.current.forEach((seen, key) => {
+        if (now - seen >= lingerMs) lingerAt.current.delete(key);
+      });
       const visibleSet = new Set(visible);
+      if (!sunFocus) {
+        lingerAt.current.forEach((_, key) => visibleSet.add(key));
+      }
       for (const body of bodies) {
         const onStage = visibleSet.has(body.key);
         scene.setBodyVisible(body.key, onStage);
@@ -1137,7 +1148,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       });
       scene.billboardFacingCamera();
       writeCredit(cam, viewHalfW);
-      scene.render();
+      if (!skipDraw) {
+        lastDrawAt.current = now;
+        scene.render();
+      }
 
       if (parkedRef.current) {
         raf = 0;

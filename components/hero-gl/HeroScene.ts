@@ -7,6 +7,7 @@
 
 import {
   AmbientLight,
+  DirectionalLight,
   Group,
   MeshLambertMaterial,
   PerspectiveCamera,
@@ -55,7 +56,7 @@ import {
 import {
   applyCssPerspectiveCamera,
   applyTourWorldMatrix,
-  billboardPlusZToward,
+  lookPlusZToward,
   keplerToThree,
 } from "./tourCameraRig";
 
@@ -108,7 +109,6 @@ export class HeroScene {
   private cssHeight = 1;
   private disposed = false;
   private readonly camWorld = new Vector3();
-  private readonly meshWorld = new Vector3();
   private readonly glowBase = { x: 980, y: 820 };
 
   private constructor(canvas: HTMLCanvasElement, compact: boolean) {
@@ -133,10 +133,15 @@ export class HeroScene {
     this.camera.add(this.sky);
     this.scene.add(this.camera);
 
-    this.scene.add(new AmbientLight(0x2a2048, 0.42));
+    this.scene.add(new AmbientLight(0x4a3d72, 0.85));
     this.light = new PointLight(0xffe6c8, 2.4, 0, 1.15);
     this.light.position.set(0, 0, 0);
     this.world.add(this.light);
+    const key = new DirectionalLight(0xfff6ea, 1.55);
+    key.position.set(0.15, 0.2, 1);
+    key.target.position.set(0, 0, -1);
+    this.camera.add(key);
+    this.camera.add(key.target);
 
     this.sun = createSunMesh();
     this.world.add(this.sun.mesh);
@@ -296,13 +301,7 @@ export class HeroScene {
 
   private billboardHandle(handle: HeroBodyHandle): void {
     handle.mesh.updateMatrixWorld(true);
-    handle.mesh.getWorldPosition(this.meshWorld);
-    billboardPlusZToward(
-      handle.mesh,
-      this.world.matrixWorld,
-      this.camWorld,
-      this.meshWorld
-    );
+    lookPlusZToward(handle.mesh, this.camWorld);
   }
 
   poseSynth(

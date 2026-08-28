@@ -235,6 +235,17 @@ export function billboardPlusZToward(
 }
 
 /**
+ * @brief Faces a mesh at a world-space point using lookAt (+Z toward it).
+ * More stable across frames than a raw setFromUnitVectors snap.
+ */
+export function lookPlusZToward(
+  object: Object3D,
+  towardWorld: { x: number; y: number; z: number }
+): void {
+  object.lookAt(towardWorld.x, towardWorld.y, towardWorld.z);
+}
+
+/**
  * @brief Places the viewer like CSS perspective on the board.
  * FOV uses CSS height, not the 1080p drawing buffer.
  * @param camera Perspective camera.

@@ -12,6 +12,7 @@ import {
 import { Matrix4, Mesh, SphereGeometry, Vector3 } from "three";
 import {
   billboardPlusZToward,
+  lookPlusZToward,
   composeCssTourMatrix,
   cssMatrixToYUp,
   cssPerspectiveFovDeg,
@@ -161,5 +162,16 @@ describe("billboardPlusZToward", () => {
     expect(facing.x).toBeCloseTo(1, 5);
     expect(facing.y).toBeCloseTo(0, 5);
     expect(facing.z).toBeCloseTo(0, 5);
+  });
+});
+
+describe("lookPlusZToward", () => {
+  it("points +Z at a camera on +Z", () => {
+    const mesh = new Mesh(new SphereGeometry(1, 4, 4));
+    lookPlusZToward(mesh, { x: 0, y: 0, z: 900 });
+    const facing = new Vector3(0, 0, 1).applyQuaternion(mesh.quaternion);
+    expect(facing.x).toBeCloseTo(0, 5);
+    expect(facing.y).toBeCloseTo(0, 5);
+    expect(facing.z).toBeCloseTo(1, 5);
   });
 });

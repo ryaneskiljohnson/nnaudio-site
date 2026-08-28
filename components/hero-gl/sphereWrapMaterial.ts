@@ -9,9 +9,11 @@ import { ShaderMaterial, type Texture } from "three";
 
 const VERT = /* glsl */ `
 varying vec3 vObjectPos;
+varying vec3 vViewNormal;
 
 void main() {
   vObjectPos = position;
+  vViewNormal = normalize(normalMatrix * normal);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
@@ -20,8 +22,10 @@ const FRAG = /* glsl */ `
 uniform sampler2D uMap;
 uniform float uPhase;
 uniform float uSurfaceShade;
+uniform float uCamFill;
 
 varying vec3 vObjectPos;
+varying vec3 vViewNormal;
 
 const float PI = 3.141592653589793;
 
@@ -36,6 +40,10 @@ void main() {
     float lit = 0.82 + 0.18 * cos((uStrip - 0.5) * 2.0 * PI);
     color.rgb *= lit;
   }
+  // Headlight from the camera so the facing hemisphere reads, not a new moon.
+  float facing = max(0.0, normalize(vViewNormal).z);
+  float fill = 0.38 + 0.62 * facing;
+  color.rgb *= mix(1.0, fill, clamp(uCamFill, 0.0, 1.0));
   gl_FragColor = vec4(color.rgb, 1.0);
 }
 `;
@@ -54,6 +62,7 @@ export function createSphereWrapMaterial(
       uMap: { value: map },
       uPhase: { value: 0 },
       uSurfaceShade: { value: surfaceShade ? 1 : 0 },
+      uCamFill: { value: 1 },
     },
     vertexShader: VERT,
     fragmentShader: FRAG,

@@ -20,6 +20,10 @@ const caps = readFileSync(
   resolve(process.cwd(), "components/hero-gl/caps.ts"),
   "utf8"
 );
+const wrap = readFileSync(
+  resolve(process.cwd(), "components/hero-gl/sphereWrapMaterial.ts"),
+  "utf8"
+);
 
 describe("hero source contracts", () => {
   it("does not decode the 4K sun or synth JPGs", () => {
@@ -39,6 +43,12 @@ describe("hero source contracts", () => {
     expect(circuit).toContain("pickVisibleMoons");
     expect(circuit).toContain("poseSunScale");
     expect(circuit).toContain("billboardFacingCamera");
+  });
+
+  it("lights bodies from the camera so holds are not a new moon", () => {
+    expect(scene).toContain("DirectionalLight");
+    expect(wrap).toContain("vViewNormal");
+    expect(wrap).toContain("uCamFill");
   });
 });
 
