@@ -4,7 +4,7 @@ const nextConfig = {
   compiler: {
     styledComponents: true,
   },
-  transpilePackages: ['react-icons', 'three'],
+  transpilePackages: ['react-icons'],
   // Next.js 16 uses Turbopack by default; we use webpack for build (see script --webpack).
   // Empty turbopack so Next doesn't error when it sees a webpack config.
   turbopack: {
