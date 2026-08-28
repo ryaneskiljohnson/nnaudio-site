@@ -48,6 +48,7 @@ describe("hero source contracts", () => {
   it("lights bodies from the camera so holds are not a new moon", () => {
     expect(scene).toContain("DirectionalLight");
     expect(wrap).toContain("vViewNormal");
+    expect(wrap).toContain("vViewPos");
     expect(wrap).toContain("uCamFill");
   });
 });
