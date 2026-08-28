@@ -831,8 +831,71 @@ function smoothstep(t: number): number {
  * @param credit Target.
  * @returns Duration in milliseconds.
  */
-export function creditHoldMs(credit: CreditTarget): number {
+export function creditHoldMs(credit: { weight?: number }): number {
   return CREDIT_MS * Math.max(0.5, credit.weight ?? 1);
+}
+
+/**
+ * How long the HTML credit card stays visible during one stop.
+ * Matches `creditTimeline`: opacity hits 0 when the travel leg starts.
+ */
+export function creditVisibleMs(credit: { weight?: number }): number {
+  return Math.max(0, creditHoldMs(credit) - CREDIT_TRAVEL_MS);
+}
+
+/** One hold window on the recorded / live camera tour. */
+export interface CreditHoldCue {
+  key: string;
+  slug: string;
+  startMs: number;
+  endMs: number;
+  startSec: number;
+  endSec: number;
+}
+
+/**
+ * @brief Hold windows for the HTML credit overlay (live tour or video).
+ * Starts after the intro fly-in. Each cue ends when `creditTimeline`
+ * hides the card (`CREDIT_TRAVEL_MS` before the next stop).
+ * @param credits Ordered tour credits (same list `cameraTour` uses).
+ * @returns Cues with millisecond and second bounds.
+ * @example
+ * creditHoldCues([{ key: "sun-cymasphere", slug: "cymasphere", weight: 1.5 }])[0].startMs === TOUR_INTRO_MS
+ */
+export function creditHoldCues(
+  credits: Array<{ key: string; slug?: string; weight?: number }>
+): CreditHoldCue[] {
+  let cursor = TOUR_INTRO_MS;
+  return credits.map((credit) => {
+    const hold = creditHoldMs(credit);
+    const startMs = cursor;
+    const endMs = cursor + creditVisibleMs(credit);
+    cursor += hold;
+    return {
+      key: credit.key,
+      slug: credit.slug ?? "",
+      startMs,
+      endMs,
+      startSec: startMs / 1000,
+      endSec: endMs / 1000,
+    };
+  });
+}
+
+/**
+ * @brief Which hold is on screen at a tour-clock time.
+ * @param cues Output of {@link creditHoldCues}.
+ * @param tourMs Elapsed tour milliseconds (`cameraTour` / video + trim).
+ * @returns The active cue, or null during intro, travel, or outro.
+ */
+export function creditCueAtTourMs(
+  cues: CreditHoldCue[],
+  tourMs: number
+): CreditHoldCue | null {
+  for (const cue of cues) {
+    if (tourMs >= cue.startMs && tourMs < cue.endMs) return cue;
+  }
+  return null;
 }
 
 /**
@@ -840,7 +903,7 @@ export function creditHoldMs(credit: CreditTarget): number {
  * @param credits Ordered credits.
  * @returns Span in milliseconds.
  */
-export function creditsSpanMs(credits: CreditTarget[]): number {
+export function creditsSpanMs(credits: Array<{ weight?: number }>): number {
   return credits.reduce((sum, credit) => sum + creditHoldMs(credit), 0);
 }
 
@@ -850,7 +913,7 @@ export function creditsSpanMs(credits: CreditTarget[]): number {
  * @returns Duration in milliseconds.
  */
 export function tourDurationMs(
-  countOrCredits: number | CreditTarget[]
+  countOrCredits: number | Array<{ weight?: number }>
 ): number {
   const span =
     typeof countOrCredits === "number"

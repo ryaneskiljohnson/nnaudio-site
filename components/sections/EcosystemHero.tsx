@@ -8,11 +8,11 @@
  * paint with the HTML. The h1 stays solid white (no gradient / transparent
  * fill) so hydration cannot restyle the LCP element. Critical #home h1 / CTA
  * rules live in globals.css so the headline is visible before
- * styled-components hydrates. CircuitNetwork is a dynamic import so its
- * JS is not on the LCP path. Lite devices wait for Play, then mount the
- * live 3D tour (GPU warps, CPU fallback if the blit fails). `?heroAutoTour=1`
- * skips Play. `?tourCap=N` caps credit stops. Hero height is reserved
- * in globals.css (#home) so a late sheet cannot collapse-then-expand.
+ * styled-components hydrates. CircuitNetwork is a dynamic import used
+ * only for `?hero3d=1` (re-recording). The default homepage plays a
+ * prerendered MP4 with HTML credit cards synced to the hold cue table.
+ * `?tourCap=N` caps credit stops. Hero height is reserved in globals.css
+ * (#home) so a late sheet cannot collapse-then-expand.
  */
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -25,11 +25,11 @@ import {
   prefersLiteHeroTour,
   readHeroTourEnvironment,
   resolveHeroTourStart,
-  scheduleDesktopHeroTour,
 } from "@/utils/hero-tour";
 import { scrollToHash } from "@/utils/scrollToHash";
 import HeroReloadDebugMark from "@/components/HeroReloadDebugMark";
 import { logHeroDebug } from "@/utils/hero-reload-debug";
+import HeroVideoTour from "./HeroVideoTour";
 
 /** Minimal product shape consumed from the homepage fetches. */
 export interface HeroProduct {
@@ -296,37 +296,6 @@ const PosterMoon = styled.div<{ $x: string; $y: string; $size: string }>`
   opacity: 0.7;
 `;
 
-const PlayTourButton = styled.button`
-  position: absolute;
-  left: 50%;
-  top: 46%;
-  z-index: 5;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 10px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 999px;
-  background: rgba(5, 6, 16, 0.55);
-  color: #fff;
-  font-size: 0.88rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  transform: translate(-50%, 92px);
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-
-  &:hover,
-  &:focus-visible {
-    border-color: rgba(201, 180, 255, 0.8);
-    outline: none;
-  }
-
-  @media (max-width: 900px), (pointer: coarse) {
-    backdrop-filter: none;
-    background: rgba(5, 6, 16, 0.82);
-  }
-`;
-
 const CircuitNetwork = dynamic(
   () => import(/* webpackPrefetch: false */ "./CircuitNetwork"),
   {
@@ -361,25 +330,26 @@ function StaticHeroPoster() {
 }
 
 /**
- * @brief Desktop defers CircuitNetwork until idle. Lite devices stay on
- * the poster until Play, then mount the same live 3D tour.
- * Both sides start with tours off so hydration matches.
- * `?heroAutoTour=1` starts immediately.
- * @returns Tour mount flags, Play visibility, and the Play handler.
+ * @brief Default homepage plays the recorded video. Live CircuitNetwork
+ * mounts only for `?hero3d=1` (re-recording). Reduced motion uses the
+ * static poster.
+ * @returns Live/video flags, recording cap, and desktop park latch.
  */
-function useOptInHeroTour(): {
-  allowTour: boolean;
-  showPlay: boolean;
+function useHeroTourStage(): {
+  live3d: boolean;
+  playVideo: boolean;
   tourCap: number | undefined;
-  startMobileTour: () => void;
+  heroPark: boolean;
 } {
-  const [allowTour, setAllowTour] = useState(false);
-  const [showPlay, setShowPlay] = useState(false);
+  const [live3d, setLive3d] = useState(false);
+  const [playVideo, setPlayVideo] = useState(true);
   const [tourCap, setTourCap] = useState<number | undefined>(undefined);
+  const [heroPark, setHeroPark] = useState(false);
 
   useEffect(() => {
     const query = parseHeroTourQuery(window.location.search);
     setTourCap(query.tourCap);
+    setHeroPark(query.heroPark);
     const lite = prefersLiteHeroTour(readHeroTourEnvironment(window));
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
@@ -393,32 +363,17 @@ function useOptInHeroTour(): {
     logHeroDebug("hero-tour-resolve", {
       lite,
       allowTour: start.allowTour,
-      showPlay: start.showPlay,
-      scheduleDesktop: start.scheduleDesktop,
+      playVideo: start.playVideo,
       autoTour: query.autoTour,
       force3d: query.force3d,
+      heroPark: query.heroPark,
       reduceMotion,
     });
-    if (start.allowTour) setAllowTour(true);
-    if (start.showPlay) setShowPlay(true);
-    if (!start.scheduleDesktop) return;
-    return scheduleDesktopHeroTour(() => {
-      logHeroDebug("hero-desktop-idle-start", {});
-      setAllowTour(true);
-      setShowPlay(false);
-    }, window);
+    setLive3d(start.allowTour);
+    setPlayVideo(start.playVideo);
   }, []);
 
-  /**
-   * @brief Downloads CircuitNetwork after an explicit tap on a phone.
-   */
-  const startMobileTour = () => {
-    logHeroDebug("hero-play", {});
-    setAllowTour(true);
-    setShowPlay(false);
-  };
-
-  return { allowTour, showPlay, tourCap, startMobileTour };
+  return { live3d, playVideo, tourCap, heroPark };
 }
 
 /**
@@ -474,15 +429,16 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   productCount = 0,
 }) => {
   const pathname = usePathname();
-  const { allowTour, showPlay, tourCap, startMobileTour } = useOptInHeroTour();
+  const { live3d, playVideo, tourCap, heroPark } = useHeroTourStage();
 
   useEffect(() => {
-    logHeroDebug("hero-allowTour", {
-      allowTour,
-      showPlay,
+    logHeroDebug("hero-stage", {
+      live3d,
+      playVideo,
       tourCap: tourCap ?? null,
+      heroPark,
     });
-  }, [allowTour, showPlay, tourCap]);
+  }, [live3d, playVideo, tourCap, heroPark]);
 
   const { cymasynth, nodes } = useMemo(() => {
     const synthProduct = instruments.find((p) => p.slug === "cymasynth");
@@ -534,8 +490,16 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
       <HeroReloadDebugMark source="ecosystem-hero" />
       <BoardArea>
         <BoardFade>
-          {allowTour ? (
+          {live3d ? (
             <CircuitNetwork
+              cymasphere={cymasphere ? toNode(cymasphere) : null}
+              cymasynth={cymasynth}
+              nodes={nodes}
+              tourCap={tourCap}
+              heroPark={heroPark}
+            />
+          ) : playVideo ? (
+            <HeroVideoTour
               cymasphere={cymasphere ? toNode(cymasphere) : null}
               cymasynth={cymasynth}
               nodes={nodes}
@@ -543,11 +507,6 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
             />
           ) : (
             <StaticHeroPoster />
-          )}
-          {showPlay && (
-            <PlayTourButton type="button" onClick={startMobileTour}>
-              Play tour
-            </PlayTourButton>
           )}
         </BoardFade>
         <Headline data-hero-headline="">

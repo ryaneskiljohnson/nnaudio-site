@@ -9,6 +9,9 @@ import {
   TOUR_OUTRO_MS,
   angleDelta,
   creditHoldMs,
+  creditHoldCues,
+  creditCueAtTourMs,
+  creditVisibleMs,
   aimYawAt,
   cameraTour,
   closeupMagnification,
@@ -943,5 +946,80 @@ describe("pickVisibleMoons", () => {
       }
     );
     expect(keys).not.toContain("synth-1");
+  });
+});
+
+describe("creditHoldCues", () => {
+  const credits = orderCredits([
+    {
+      key: SUN_FOCUS_KEY,
+      name: "Cymasphere",
+      slug: "cymasphere",
+      startDeg: 0,
+      periodSec: 1,
+      radius: 0,
+      size: 0,
+      sun: true,
+      weight: 1.5,
+    },
+    {
+      key: "synth",
+      name: "CymaSynth",
+      slug: "cymasynth",
+      startDeg: 90,
+      periodSec: 24,
+      radius: 0.2,
+      size: 108,
+      weight: 2,
+    },
+    {
+      key: "pack",
+      name: "Pack",
+      slug: "pack",
+      startDeg: 0,
+      periodSec: 40,
+      radius: 0.8,
+      size: 80,
+      weight: 1,
+    },
+  ]);
+
+  it("starts after the intro and ends when the travel leg begins", () => {
+    const cues = creditHoldCues(credits);
+    expect(cues.map((c) => c.slug)).toEqual([
+      "cymasphere",
+      "cymasynth",
+      "pack",
+    ]);
+    expect(cues[0]?.startMs).toBe(TOUR_INTRO_MS);
+    expect(cues[0]?.endMs).toBe(
+      TOUR_INTRO_MS + creditVisibleMs(credits[0])
+    );
+    expect(cues[0]?.endMs - cues[0]!.startMs).toBe(
+      creditHoldMs(credits[0]) - CREDIT_TRAVEL_MS
+    );
+    expect(cues[1]?.startMs).toBe(TOUR_INTRO_MS + creditHoldMs(credits[0]));
+    const lastEnd = cues[2]!.endMs + CREDIT_TRAVEL_MS;
+    expect(tourDurationMs(credits)).toBe(lastEnd + TOUR_OUTRO_MS);
+  });
+
+  it("matches cameraTour card visibility on holds and travel", () => {
+    const cues = creditHoldCues(credits);
+    const sunHold = TOUR_INTRO_MS + 400;
+    expect(cameraTour(sunHold, false, credits).creditOpacity).toBeGreaterThan(
+      0.5
+    );
+    expect(creditCueAtTourMs(cues, sunHold)?.key).toBe(SUN_FOCUS_KEY);
+
+    const travel =
+      TOUR_INTRO_MS + creditHoldMs(credits[0]) - CREDIT_TRAVEL_MS / 2;
+    expect(cameraTour(travel, false, credits).creditOpacity).toBe(0);
+    expect(creditCueAtTourMs(cues, travel)).toBeNull();
+
+    const synthHold = TOUR_INTRO_MS + creditHoldMs(credits[0]) + 400;
+    expect(creditCueAtTourMs(cues, synthHold)?.slug).toBe("cymasynth");
+    expect(cameraTour(synthHold, false, credits).creditOpacity).toBeGreaterThan(
+      0.5
+    );
   });
 });
