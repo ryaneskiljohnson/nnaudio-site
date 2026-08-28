@@ -10,7 +10,7 @@
  * rules live in globals.css so the headline is visible before
  * styled-components hydrates. CircuitNetwork is a dynamic import so its
  * JS is not on the LCP path. Lite devices wait for Play, then mount the
- * live Three.js tour. `?heroAutoTour=1`
+ * live 3D tour (GPU warps, CPU fallback if the blit fails). `?heroAutoTour=1`
  * skips Play. `?tourCap=N` caps credit stops. Hero height is reserved
  * in globals.css (#home) so a late sheet cannot collapse-then-expand.
  */
