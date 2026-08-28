@@ -12,6 +12,7 @@ import {
   aimYawAt,
   cameraTour,
   closeupMagnification,
+  creditStageKeys,
   lookAtMoon,
   hideSynthForSunApproach,
   holdFrameOffset,
@@ -63,9 +64,10 @@ function projectThroughCamera(
   let pz = z;
   const x1 = px * Math.cos(rz) - py * Math.sin(rz);
   const y1 = px * Math.sin(rz) + py * Math.cos(rz);
-  px = x1 * Math.cos(ry) + pz * Math.sin(ry);
+  // CSS rotateY(+90) sends +X toward +Z (same as composeCssTourMatrix).
+  px = x1 * Math.cos(ry) - pz * Math.sin(ry);
   py = y1;
-  pz = -x1 * Math.sin(ry) + pz * Math.cos(ry);
+  pz = x1 * Math.sin(ry) + pz * Math.cos(ry);
   const y2 = py * Math.cos(rx) - pz * Math.sin(rx);
   return { x: px + cam.translateX, y: y2 + cam.translateY };
 }
@@ -266,21 +268,63 @@ describe("isStableMoonHold", () => {
 });
 
 describe("closeupMagnification", () => {
-  it("caps well below 9× so outer moons do not rumble", () => {
-    expect(closeupMagnification(22)).toBeLessThanOrEqual(5.8);
-    expect(closeupMagnification(22)).toBeGreaterThanOrEqual(2.6);
+  it("fills the target disk instead of an orbit-scale 230px hold", () => {
+    expect(80 * closeupMagnification(80, 560)).toBeCloseTo(560, 5);
+    expect(120 * closeupMagnification(120, 560)).toBeCloseTo(560, 5);
   });
 
-  it("clamps at 5.8 for very small moons", () => {
-    expect(closeupMagnification(10)).toBe(5.8);
+  it("caps so the camera stays outside a tiny moon", () => {
+    expect(closeupMagnification(10)).toBeLessThanOrEqual(14);
+    expect(closeupMagnification(10)).toBeGreaterThan(5.8);
   });
 
-  it("clamps at 2.6 for very large moons", () => {
-    expect(closeupMagnification(500)).toBe(2.6);
-  });
-
-  it("scales inversely with size between clamps", () => {
+  it("still dollies farther for small moons than big ones", () => {
     expect(closeupMagnification(28)).toBeGreaterThan(closeupMagnification(120));
+  });
+});
+
+describe("creditStageKeys", () => {
+  it("hides every moon until a product is featured", () => {
+    expect(
+      creditStageKeys({ focusKey: null, nextKey: "a", traveling: false })
+    ).toEqual([]);
+  });
+
+  it("mounts only the held moon — the next one does not exist yet", () => {
+    expect(
+      creditStageKeys({
+        focusKey: "a",
+        nextKey: "b",
+        traveling: false,
+      })
+    ).toEqual(["a"]);
+  });
+
+  it("creates the next moon when the hop starts", () => {
+    expect(
+      creditStageKeys({
+        focusKey: "a",
+        nextKey: "b",
+        traveling: true,
+      })
+    ).toEqual(["a", "b"]);
+  });
+
+  it("keeps the stage empty on the sun", () => {
+    expect(
+      creditStageKeys({
+        focusKey: SUN_FOCUS_KEY,
+        nextKey: "a",
+        traveling: false,
+      })
+    ).toEqual([]);
+    expect(
+      creditStageKeys({
+        focusKey: SUN_FOCUS_KEY,
+        nextKey: "a",
+        traveling: true,
+      })
+    ).toEqual(["a"]);
   });
 });
 
@@ -535,7 +579,7 @@ describe("cameraTour", () => {
       ]);
     const small = closeup(28);
     const large = closeup(120);
-    expect(small.translateZ).toBeGreaterThan(large.translateZ + 150);
+    expect(small.translateZ).toBeGreaterThan(large.translateZ + 80);
     // Both are genuine close-ups: far beyond the old ~150px push-in.
     expect(large.translateZ).toBeGreaterThan(-50);
     expect(small.focusKey).toBe("x");
@@ -569,6 +613,8 @@ describe("cameraTour", () => {
     expect(cam.rotateZ).toBe(0);
     expect(cam.translateX).toBeCloseTo(aimed.translateX, 5);
     expect(cam.translateY).toBeCloseTo(aimed.translateY, 5);
+    expect(cam.translateZ).toBeCloseTo(aimed.translateZ, 5);
+    expect(cam.traveling).toBe(false);
     // With the eclipse offset zeroed, the yaw is a pure look-at.
     expect(aimYawAt(400, 0).rotateY).toBeCloseTo(
       lookAtMoon(400, 80, 0, 80, 0, 0, 0).rotateY,
@@ -779,6 +825,9 @@ describe("cameraTour", () => {
     const yawGap = (a: number, b: number) =>
       Math.abs(((((b - a) % 360) + 540) % 360) - 180);
     // Still tracking A while pulling back — A does not fly past.
+    expect(early.traveling).toBe(true);
+    expect(creditStageKeys(early)).toEqual(["a", "b"]);
+    expect(creditStageKeys(holdA)).toEqual(["a"]);
     expect(yawGap(early.rotateY, holdA.rotateY)).toBeLessThan(8);
     expect(early.translateZ).toBeLessThan(holdA.translateZ - 20);
     // Then tracking B on the way in.

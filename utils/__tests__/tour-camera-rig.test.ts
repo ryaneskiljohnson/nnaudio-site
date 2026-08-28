@@ -118,6 +118,16 @@ describe("projectKeplerToBoard", () => {
     expect(hit.y).toBeCloseTo(400, 0);
   });
 
+  it("dollies until the moon itself fills the target disk", () => {
+    const size = 80;
+    const target = 560;
+    const pose = lookAtMoon(400, 0, 0, size, 0, 0, 0, target);
+    const css = composeCssTourMatrix(pose);
+    const p = transformCssPoint(css, 400, 0, 0);
+    const mag = TOUR_PERSPECTIVE_PX / Math.max(1, TOUR_PERSPECTIVE_PX - p.z);
+    expect(size * mag).toBeGreaterThan(target * 0.9);
+  });
+
   it("keeps the sun at center for a pure Z dolly", () => {
     const hit = projectKeplerToBoard(
       {

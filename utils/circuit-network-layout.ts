@@ -302,7 +302,9 @@ export interface MoonWorldPos {
 export function aimYawAt(x: number, z: number): { rotateY: number; range: number } {
   const range = Math.max(80, Math.hypot(x, z));
   return {
-    rotateY: (Math.atan2(-x, z) * 180) / Math.PI,
+    // CSS rotateY(+90) sends +X toward the camera; match that so the
+    // moon sits between the sun and the viewer, not behind the sun.
+    rotateY: (Math.atan2(x, z) * 180) / Math.PI,
     range,
   };
 }
@@ -365,9 +367,12 @@ export function holdFrameOffset(
  */
 export function closeupMagnification(size: number, targetPx = 560): number {
   const target = Math.max(220, targetPx);
-  // Cap well below 9×: outer/small moons at 9× turned 0.01px Kepler
-  // steps (and CSS rounding) into visible rumble.
-  return Math.min(5.8, Math.max(2.6, target / Math.max(24, size * 2.4)));
+  const disk = Math.max(24, size);
+  // Apparent size is `size * mag`. Dividing by `size * 2.4` only filled
+  // ~230px — an orbit flyby. Aim at `target` so the hold is the planet.
+  const mag = target / disk;
+  const maxMag = Math.min(14, TOUR_PERSPECTIVE_PX / (disk * 0.55 + 12));
+  return Math.min(maxMag, Math.max(3.4, mag));
 }
 
 /**
@@ -441,8 +446,8 @@ function viewRotate(
 ): { x: number; y: number; z: number } {
   const ry = (rotateY * Math.PI) / 180;
   const rx = (rotateX * Math.PI) / 180;
-  const x1 = px * Math.cos(ry) + pz * Math.sin(ry);
-  const z1 = -px * Math.sin(ry) + pz * Math.cos(ry);
+  const x1 = px * Math.cos(ry) - pz * Math.sin(ry);
+  const z1 = px * Math.sin(ry) + pz * Math.cos(ry);
   return {
     x: x1,
     y: py * Math.cos(rx) - z1 * Math.sin(rx),
@@ -468,7 +473,7 @@ function viewRotate(
  * @returns Pose framing the moon just off the sun's screen position.
  * @example
  * const pose = lookAtMoon(400, 80, 0, 64, 0, 0, 0);
- * // pose.rotateY === -90, pose.rotateX === atan2(-80, 400) in deg
+ * // pose.rotateY === 90, pose.rotateX === atan2(-80, 400) in deg
  */
 export function lookAtMoon(
   x: number,
@@ -514,7 +519,7 @@ export function lookAtMoon(
     Math.min(0.45, eclipseYPx / mag / lookDist)
   );
   const rotateY =
-    (Math.atan2(-lx, lz) * 180) / Math.PI + (yawOff * 180) / Math.PI;
+    (Math.atan2(lx, lz) * 180) / Math.PI - (yawOff * 180) / Math.PI;
   const rotateX =
     (Math.atan2(-lh, range) * 180) / Math.PI - (pitchOff * 180) / Math.PI;
   const dollyToMoon = TOUR_PERSPECTIVE_PX * (1 - 1 / mag);
@@ -622,6 +627,29 @@ export function hideSynthForSunApproach(
 ): boolean {
   if (focusKey === SUN_FOCUS_KEY && creditOpacity > 0.12) return true;
   return focusKey == null && nextKey === SUN_FOCUS_KEY;
+}
+
+/**
+ * @brief Moons that should exist this frame of the credit show.
+ * Holds mount only the featured body. The next planet is created when
+ * the hop starts — it does not sit on stage for the whole previous hold.
+ * @param cam Live tour sample.
+ * @returns Product keys to draw, in stage order.
+ * @example
+ * creditStageKeys({ focusKey: "a", nextKey: "b", traveling: false }) // ["a"]
+ */
+export function creditStageKeys(
+  cam: Pick<TourCamera, "focusKey" | "nextKey" | "traveling">
+): string[] {
+  const moon = (key: string | null) =>
+    key && key !== SUN_FOCUS_KEY ? key : null;
+  const focus = moon(cam.focusKey);
+  const next = moon(cam.nextKey);
+  if (!cam.traveling) return focus ? [focus] : [];
+  const keys: string[] = [];
+  if (focus) keys.push(focus);
+  if (next && next !== focus) keys.push(next);
+  return keys;
 }
 
 export function pickVisibleMoons(
@@ -777,6 +805,8 @@ export interface TourCamera {
   nextKey: string | null;
   /** Credit title card opacity. */
   creditOpacity: number;
+  /** True during a hop between credits. */
+  traveling: boolean;
 }
 
 interface TourKey {
@@ -916,6 +946,7 @@ function poseForCredit(
       focusKey: credit.key,
       nextKey: null,
       creditOpacity: 0,
+      traveling: false,
     };
   }
   const theta = moonTheta(credit.startDeg, credit.periodSec, elapsedMs);
@@ -948,6 +979,7 @@ function poseForCredit(
     focusKey: credit.key,
     nextKey: null,
     creditOpacity: 0,
+    traveling: false,
   };
 }
 
@@ -1033,6 +1065,7 @@ function poseFromKeys(u: number): TourCamera {
     focusKey: null,
     nextKey: null,
     creditOpacity: 0,
+    traveling: false,
   };
 }
 
@@ -1079,6 +1112,7 @@ function mixPose(a: TourCamera, b: TourCamera, t: number, ease = true): TourCame
     focusKey: s > 0.45 ? b.focusKey : a.focusKey,
     nextKey: s > 0.45 ? b.nextKey : a.nextKey,
     creditOpacity: a.creditOpacity + (b.creditOpacity - a.creditOpacity) * s,
+    traveling: s > 0.45 ? b.traveling : a.traveling,
   };
 }
 
@@ -1157,6 +1191,7 @@ export function cameraTour(
       focusKey: null,
       nextKey: null,
       creditOpacity: 0,
+      traveling: false,
     };
   }
 
@@ -1254,6 +1289,7 @@ export function cameraTour(
   pose.focusKey = timeline.key;
   pose.nextKey = timeline.nextKey;
   pose.creditOpacity = timeline.opacity;
+  pose.traveling = traveling;
   // Holds keep the current product pinned at its framed offset. During
   // travel the lock is released so the hop can zoom out on the outgoing
   // moon, follow across, then push in on the next.
@@ -1286,6 +1322,7 @@ export function cameraTour(
     pose.rotateZ = 0;
     pose.translateX = locked.translateX;
     pose.translateY = locked.translateY;
+    pose.translateZ = locked.translateZ;
   }
   pose.sunScale = sunScaleFromCamera(pose.translateZ);
   return pose;

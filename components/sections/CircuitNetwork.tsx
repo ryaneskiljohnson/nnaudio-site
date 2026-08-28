@@ -23,6 +23,7 @@ import {
   moonDiameter,
   moonPlacements,
   orbitRadiusPx,
+  creditStageKeys,
   orderCredits,
   pickVisibleMoons,
   sunScaleFromCamera,
@@ -37,7 +38,6 @@ import {
   heroTourMoonCap,
   heroTourStopCap,
   latchHeroCompactTour,
-  MOBILE_STAGE_LINGER_MS,
   mobileStageKeys,
   pickMobileTourNodes,
   previousHeroTourWasKilled,
@@ -350,7 +350,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const facedKeys = useRef("");
   const candidatePool = useRef<VisibleMoonCandidate[]>([]);
   const liveKeysRef = useRef<string[]>([]);
-  const lingerAt = useRef(new Map<string, number>());
   const keepArtSig = useRef("");
   const focusWeights = useRef(new Map<string, number>());
   const sunBoostRef = useRef(0);
@@ -930,8 +929,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       const lookScale = 1 - creditsW;
       let camX = cam.rotateX + look.current.y * lookScale;
       let camY = cam.rotateY + look.current.x * lookScale;
-      const trackingMoon =
-        cam.focusKey != null && cam.focusKey !== SUN_FOCUS_KEY;
+      const staged = creditStageKeys(cam);
+      const trackingMoon = staged.length > 0;
       const follow = camFollow.current;
       if (!follow.armed) {
         follow.x = camX;
@@ -1018,7 +1017,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       const cosYaw = Math.cos(yawRad);
       const sinYaw = Math.sin(yawRad);
       let visible: string[];
-      if (compact) {
+      if (credits.length > 0) {
+        visible = staged;
+      } else if (compact) {
         visible = mobileStageKeys(cam.focusKey, cam.nextKey, sunFocus);
         if (hideSynth) {
           const synthKey = bodies.find((body) => body.synth)?.key;
@@ -1057,21 +1058,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         });
       }
       liveKeysRef.current = visible;
-      if (!sunFocus) {
-        for (const key of visible) lingerAt.current.set(key, now);
-      }
-      if (hideSynth) {
-        const synthKey = bodies.find((body) => body.synth)?.key;
-        if (synthKey) lingerAt.current.delete(synthKey);
-      }
-      const lingerMs = compact ? MOBILE_STAGE_LINGER_MS : 2500;
-      lingerAt.current.forEach((seen, key) => {
-        if (now - seen >= lingerMs) lingerAt.current.delete(key);
-      });
       const visibleSet = new Set(visible);
-      if (!sunFocus) {
-        lingerAt.current.forEach((_, key) => visibleSet.add(key));
-      }
       const keepArt = new Set(visibleSet);
       if (cam.focusKey && cam.focusKey !== SUN_FOCUS_KEY) {
         keepArt.add(cam.focusKey);
@@ -1144,7 +1131,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         );
       }
 
-      scene.setOrbitsVisible(!sunFocus && !(cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY));
+      scene.setOrbitsVisible(
+        credits.length === 0 || (cam.focusKey == null && !cam.traveling)
+      );
       scene.poseSunScale(sunScaleFromCamera(follow.tz));
       scene.applyCamera({
         ...cam,
