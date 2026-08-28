@@ -33,6 +33,7 @@ import {
   orbitRadiusPx,
   orderCredits,
   pickVisibleMoons,
+  tourVisibleMoonKeys,
   skyParallaxCss,
   tourDurationMs,
   type TourCamera,
@@ -1046,5 +1047,68 @@ describe("pickVisibleMoons", () => {
       }
     );
     expect(keys).not.toContain("synth-1");
+  });
+});
+
+describe("tourVisibleMoonKeys", () => {
+  const moons = [
+    { key: "synth", synth: true, camSpaceX: 40, camSpaceZ: 80, aPx: 180 },
+    { key: "a", camSpaceX: 120, camSpaceZ: 40, aPx: 280 },
+    { key: "b", camSpaceX: -90, camSpaceZ: 60, aPx: 320 },
+    { key: "c", camSpaceX: 20, camSpaceZ: -40, aPx: 400 },
+  ];
+  const base = { dollyZ: 0, viewHalfW: 600, budget: 6 };
+
+  it("keeps catalog moons on stage during the intro", () => {
+    const keys = tourVisibleMoonKeys(moons, {
+      ...base,
+      focusKey: null,
+      nextKey: SUN_FOCUS_KEY,
+      traveling: false,
+    });
+    expect(keys.length).toBeGreaterThan(1);
+    expect(keys).not.toContain(SUN_FOCUS_KEY);
+  });
+
+  it("clears the stage during the Cymasphere hold", () => {
+    expect(
+      tourVisibleMoonKeys(moons, {
+        ...base,
+        focusKey: SUN_FOCUS_KEY,
+        nextKey: "synth",
+        traveling: false,
+      })
+    ).toEqual([]);
+  });
+
+  it("creates the next moon when leaving Cymasphere", () => {
+    const keys = tourVisibleMoonKeys(moons, {
+      ...base,
+      focusKey: SUN_FOCUS_KEY,
+      nextKey: "synth",
+      traveling: true,
+    });
+    expect(keys).toContain("synth");
+  });
+
+  it("keeps other planets during a moon hold", () => {
+    const keys = tourVisibleMoonKeys(moons, {
+      ...base,
+      focusKey: "a",
+      nextKey: "b",
+      traveling: false,
+    });
+    expect(keys).toContain("a");
+    expect(keys.length).toBeGreaterThan(1);
+  });
+
+  it("forces outgoing and incoming on a hop", () => {
+    const keys = tourVisibleMoonKeys(moons, {
+      ...base,
+      focusKey: "a",
+      nextKey: "b",
+      traveling: true,
+    });
+    expect(keys).toEqual(expect.arrayContaining(["a", "b"]));
   });
 });

@@ -52,6 +52,7 @@ describe("hero source contracts", () => {
 
   it("keeps the CSS visibility budget and sunScale cheat", () => {
     expect(circuit).toContain("creditStageKeys");
+    expect(circuit).toContain("tourVisibleMoonKeys");
     expect(circuit).toContain("poseSunScale");
     expect(circuit).toContain("billboardFacingCamera");
   });

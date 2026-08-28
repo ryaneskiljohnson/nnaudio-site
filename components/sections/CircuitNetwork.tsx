@@ -25,10 +25,11 @@ import {
   orbitRadiusPx,
   creditStageKeys,
   orderCredits,
-  pickVisibleMoons,
   sunScaleFromCamera,
   tourDurationMs,
+  tourVisibleMoonKeys,
   VISIBLE_MOON_BUDGET,
+  MOBILE_STAGE_BUDGET,
   type VisibleMoonCandidate,
 } from "@/utils/circuit-network-layout";
 import { CURATED_FEATURED_ORDER } from "@/lib/homepage-hero-seed";
@@ -38,7 +39,6 @@ import {
   heroTourMoonCap,
   heroTourStopCap,
   latchHeroCompactTour,
-  mobileStageKeys,
   pickMobileTourNodes,
   previousHeroTourWasKilled,
   readHeroCompactTour,
@@ -1044,47 +1044,36 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       const yawRad = (camY * Math.PI) / 180;
       const cosYaw = Math.cos(yawRad);
       const sinYaw = Math.sin(yawRad);
-      let visible: string[];
-      if (credits.length > 0) {
-        visible = staged;
-      } else if (compact) {
-        visible = mobileStageKeys(cam.focusKey, cam.nextKey, sunFocus);
-        if (hideSynth) {
-          const synthKey = bodies.find((body) => body.synth)?.key;
-          if (synthKey) visible = visible.filter((key) => key !== synthKey);
-        }
-      } else {
-        const pool = candidatePool.current;
-        if (pool.length !== bodies.length) pool.length = bodies.length;
-        for (let i = 0; i < bodies.length; i += 1) {
-          const body = bodies[i];
-          if (!body) continue;
-          const wx = pos[i * 3];
-          const wz = pos[i * 3 + 2];
-          const slot = pool[i] ?? {
-            key: "",
-            camSpaceX: 0,
-            camSpaceZ: 0,
-            aPx: 0,
-          };
-          slot.key = body.key;
-          slot.synth = body.synth;
-          slot.camSpaceX = wx * cosYaw + wz * sinYaw;
-          slot.camSpaceZ = wz * cosYaw - wx * sinYaw;
-          slot.aPx = system.a[i];
-          pool[i] = slot;
-        }
-        visible = pickVisibleMoons(pool, {
-          focusKey: cam.focusKey,
-          nextKey: cam.nextKey,
-          sunFocus,
-          dollyZ: follow.tz,
-          viewHalfW,
-          budget: VISIBLE_MOON_BUDGET,
-          previous: liveKeysRef.current,
-          hideSynth,
-        });
+      const pool = candidatePool.current;
+      if (pool.length !== bodies.length) pool.length = bodies.length;
+      for (let i = 0; i < bodies.length; i += 1) {
+        const body = bodies[i];
+        if (!body) continue;
+        const wx = pos[i * 3];
+        const wz = pos[i * 3 + 2];
+        const slot = pool[i] ?? {
+          key: "",
+          camSpaceX: 0,
+          camSpaceZ: 0,
+          aPx: 0,
+        };
+        slot.key = body.key;
+        slot.synth = body.synth;
+        slot.camSpaceX = wx * cosYaw + wz * sinYaw;
+        slot.camSpaceZ = wz * cosYaw - wx * sinYaw;
+        slot.aPx = system.a[i];
+        pool[i] = slot;
       }
+      const visible = tourVisibleMoonKeys(pool, {
+        focusKey: cam.focusKey,
+        nextKey: cam.nextKey,
+        traveling: cam.traveling,
+        dollyZ: follow.tz,
+        viewHalfW,
+        budget: compact ? MOBILE_STAGE_BUDGET : VISIBLE_MOON_BUDGET,
+        previous: liveKeysRef.current,
+        hideSynth,
+      });
       liveKeysRef.current = visible;
       const visibleSet = new Set(visible);
       const keepArt = new Set(visibleSet);
@@ -1159,7 +1148,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         );
       }
 
-      scene.setOrbitsVisible(credits.length === 0);
+      scene.setOrbitsVisible(!(sunFocus && !cam.traveling));
       scene.poseSunScale(sunScaleFromCamera(follow.tz));
       scene.applyCamera({
         ...cam,

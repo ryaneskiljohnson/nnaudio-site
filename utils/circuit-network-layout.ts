@@ -664,18 +664,24 @@ export function pickVisibleMoons(
     previous?: readonly string[];
     /** Drop CymaSynth (intro / Cymasphere hold). */
     hideSynth?: boolean;
+    /**
+     * When false, the upcoming credit is not forced on stage. Holds pass
+     * false so the next planet is created at the hop, not the whole hold.
+     */
+    forceNext?: boolean;
   }
 ): string[] {
   const pool = opts.hideSynth ? moons.filter((moon) => !moon.synth) : moons;
   const present = new Set(pool.map((moon) => moon.key));
   const forced = new Set<string>();
   if (opts.focusKey && present.has(opts.focusKey)) forced.add(opts.focusKey);
+  const forceNext = opts.forceNext ?? !opts.sunFocus;
   // During the Cymasphere hold, do not force the next planet on stage —
   // an untextured disk against the sun reads as a black glitch.
-  if (opts.nextKey && present.has(opts.nextKey) && !opts.sunFocus) {
+  if (opts.nextKey && present.has(opts.nextKey) && forceNext) {
     forced.add(opts.nextKey);
   }
-  if (opts.sunFocus) return [...forced];
+  if (opts.sunFocus && !forceNext) return [...forced];
   const budget = Math.max(forced.size, opts.budget ?? VISIBLE_MOON_BUDGET);
   const prev = new Set(opts.previous ?? []);
   const scored = pool.map((moon) => {
@@ -713,6 +719,50 @@ export function pickVisibleMoons(
     }
   }
   return picked;
+}
+
+/**
+ * @brief Moons to draw this tour frame. Intro and moon holds keep a
+ * handful of catalog bodies on stage. The Cymasphere hold is empty so
+ * disks cannot silhouette the sun. The next credit is created when the
+ * hop starts, not for the whole previous hold.
+ * @param moons Live Kepler candidates.
+ * @param opts Tour camera + previous stage.
+ * @returns Keys to mount this frame.
+ * @example
+ * tourVisibleMoonKeys(moons, { focusKey: SUN_FOCUS_KEY, traveling: false })
+ * // []
+ */
+export function tourVisibleMoonKeys(
+  moons: VisibleMoonCandidate[],
+  opts: {
+    focusKey: string | null;
+    nextKey: string | null;
+    traveling: boolean;
+    dollyZ: number;
+    viewHalfW: number;
+    budget?: number;
+    previous?: readonly string[];
+    hideSynth?: boolean;
+  }
+): string[] {
+  const sunHold = opts.focusKey === SUN_FOCUS_KEY && !opts.traveling;
+  if (sunHold) return [];
+  const focus =
+    opts.focusKey && opts.focusKey !== SUN_FOCUS_KEY ? opts.focusKey : null;
+  const next =
+    opts.nextKey && opts.nextKey !== SUN_FOCUS_KEY ? opts.nextKey : null;
+  return pickVisibleMoons(moons, {
+    focusKey: focus,
+    nextKey: next,
+    sunFocus: false,
+    forceNext: opts.traveling,
+    dollyZ: opts.dollyZ,
+    viewHalfW: opts.viewHalfW,
+    budget: opts.budget,
+    previous: opts.previous,
+    hideSynth: opts.hideSynth,
+  });
 }
 
 /** CSS perspective of the board; camera dolly math depends on it. */
