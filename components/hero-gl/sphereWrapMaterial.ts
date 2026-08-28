@@ -9,15 +9,10 @@ import { ShaderMaterial, type Texture } from "three";
 
 const VERT = /* glsl */ `
 varying vec3 vObjectPos;
-varying vec3 vViewNormal;
-varying vec3 vViewPos;
 
 void main() {
   vObjectPos = position;
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  vViewPos = mv.xyz;
-  vViewNormal = normalize(normalMatrix * normal);
-  gl_Position = projectionMatrix * mv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
 
@@ -28,8 +23,6 @@ uniform float uSurfaceShade;
 uniform float uCamFill;
 
 varying vec3 vObjectPos;
-varying vec3 vViewNormal;
-varying vec3 vViewPos;
 
 const float PI = 3.141592653589793;
 
@@ -44,11 +37,13 @@ void main() {
     float lit = 0.82 + 0.18 * cos((uStrip - 0.5) * 2.0 * PI);
     color.rgb *= lit;
   }
-  // Light from the camera: N · (-viewPos).
-  float facing = max(0.0, dot(normalize(vViewNormal), normalize(-vViewPos)));
+  // Billboard puts object +Z toward the camera, so n.z is the headlight.
+  // Floor the add so a dark poster cannot collapse to a silhouette.
+  float facing = max(0.0, n.z);
   float key = clamp(uCamFill, 0.0, 1.0);
-  color.rgb *= mix(1.0, 0.7 + 0.5 * facing, key);
-  color.rgb += vec3(0.36, 0.32, 0.48) * facing * key;
+  float lift = mix(0.4, facing, key);
+  color.rgb *= mix(1.0, 0.8 + 0.35 * facing, key);
+  color.rgb += vec3(0.42, 0.38, 0.55) * lift;
   gl_FragColor = vec4(color.rgb, 1.0);
 }
 `;
