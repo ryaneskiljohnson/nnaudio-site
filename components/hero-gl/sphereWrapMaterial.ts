@@ -48,14 +48,14 @@ void main() {
       color.rgb *= lit;
     }
     // Old CSS moons sat on a tinted globe so dark posters still read.
-    vec3 globe = vec3(0.52, 0.44, 0.70) * (0.42 + 0.70 * max(0.0, n.z));
-    color.rgb = mix(globe, color.rgb, 0.62);
+    vec3 globe = vec3(0.62, 0.52, 0.82) * (0.55 + 0.55 * max(0.0, n.z));
+    color.rgb = max(color.rgb, globe * 0.5);
+    color.rgb = mix(globe, color.rgb, 0.55);
   }
-  // Billboard +Z faces the camera. Floor the key so limbs stay readable.
-  float facing = mix(0.80, 1.12, max(0.0, n.z));
+  // Billboard +Z faces the camera. Keep the disk in the light.
+  float facing = mix(0.95, 1.2, max(0.0, n.z));
   float key = clamp(uCamFill, 0.0, 1.0);
   color.rgb *= mix(1.0, facing, key);
-  color.rgb += vec3(0.12, 0.10, 0.16) * key;
   gl_FragColor = vec4(color.rgb, 1.0);
 }
 `;
