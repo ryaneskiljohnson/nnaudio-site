@@ -59,9 +59,9 @@ describe("hero source contracts", () => {
     expect(circuit).toContain("sunScaleFromCamera(follow.tz)");
   });
 
-  it("draws at 60 FPS and snaps the camera onto a live moon hold", () => {
+  it("draws at 60 FPS and tracks a moon for the whole hold and hop", () => {
     expect(caps).toContain("HERO_FPS = 60");
-    expect(circuit).toContain("holdingMoon");
+    expect(circuit).toContain("trackingMoon");
     expect(circuit).toContain("jump > 10 ? 32");
   });
 });

@@ -20,7 +20,6 @@ import {
   cymasynthOrbit,
   hideSynthForSunApproach,
   holdFrameOffset,
-  isStableMoonHold,
   moonDiameter,
   moonPlacements,
   orbitRadiusPx,
@@ -931,7 +930,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       const lookScale = 1 - creditsW;
       let camX = cam.rotateX + look.current.y * lookScale;
       let camY = cam.rotateY + look.current.x * lookScale;
-      const holdingMoon = isStableMoonHold(cam, creditsW);
+      const trackingMoon =
+        cam.focusKey != null && cam.focusKey !== SUN_FOCUS_KEY;
       const follow = camFollow.current;
       if (!follow.armed) {
         follow.x = camX;
@@ -948,10 +948,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const sunApproach =
           cam.focusKey === SUN_FOCUS_KEY ||
           (cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY);
-        // Moon holds track the live Kepler seat so the planet cannot
-        // fly past while we ease. Travel uses a short tau so the
-        // zoom-out-then-follow hop stays on the moon.
-        if (holdingMoon) {
+        // Hold + hop use the live look-at / zoom-out-follow pose.
+        // Easing yaw while the dolly lagged is what let moons fly past.
+        if (trackingMoon) {
           follow.x = camX;
           follow.y = camY;
           follow.z = cam.rotateZ;
