@@ -120,6 +120,9 @@ const Support = styled.p`
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.7);
   text-shadow: 0 4px 18px rgba(5, 6, 13, 0.9);
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 
   @media (max-width: 768px) {
     display: none;
@@ -167,6 +170,9 @@ const PrimaryCta = styled.a`
   font-weight: 600;
   font-size: 1.02rem;
   text-decoration: none;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
   box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
   transition: box-shadow 0.3s ease, transform 0.2s ease;
 
@@ -520,10 +526,10 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
     };
   }, [instruments, effects, packs, midiFx]);
 
-  const supportLine =
+  const supportRest =
     productCount > 0
-      ? `Cymasphere writes from the center: harmony, voicings, and patterns - melodies, groove, and texture. In orbit: CymaSynth and ${productCount}+ instruments, effects, and packs.`
-      : "Cymasphere writes from the center: harmony, voicings, and patterns - melodies, groove, and texture. In orbit: CymaSynth and a catalog of instruments, effects, and packs.";
+      ? ` writes from the center: harmony, voicings, and patterns - melodies, groove, and texture. In orbit: CymaSynth and ${productCount}+ instruments, effects, and packs.`
+      : " writes from the center: harmony, voicings, and patterns - melodies, groove, and texture. In orbit: CymaSynth and a catalog of instruments, effects, and packs.";
   const supportLineMobile =
     productCount > 0
       ? `Harmony, voicings, and patterns from the center. CymaSynth and ${productCount}+ more in orbit.`
@@ -556,14 +562,17 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
             <br />
             Orbiting in harmony.
           </Title>
-          <Support>{supportLine}</Support>
+          <Support>
+            <span className="hero-nowrap">Cymasphere</span>
+            {supportRest}
+          </Support>
           <SupportMobile>{supportLineMobile}</SupportMobile>
           <Ctas>
             <PrimaryCta
               className="hero-cta hero-cta-primary"
               href="/product/cymasphere"
             >
-              Explore Cymasphere
+              Explore <span className="hero-nowrap">Cymasphere</span>
             </PrimaryCta>
             <SecondaryCta
               className="hero-cta hero-cta-secondary"

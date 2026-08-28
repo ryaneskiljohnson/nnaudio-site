@@ -111,6 +111,25 @@ function featuredProductBlurb(
   return "";
 }
 
+/**
+ * @brief Sets a credit title so it wraps at spaces, never mid-word.
+ * "Cymasphere" stays one token; "Tetrad Guitars" can still break.
+ */
+function fillNameWords(el: HTMLSpanElement, name: string) {
+  el.replaceChildren();
+  for (const part of name.split(/(\s+)/)) {
+    if (!part) continue;
+    if (/^\s+$/.test(part)) {
+      el.append(document.createTextNode(part));
+      continue;
+    }
+    const word = document.createElement("span");
+    word.className = "hero-nowrap";
+    word.textContent = part;
+    el.append(word);
+  }
+}
+
 const Board = styled.div`
   position: relative;
   flex: 1 1 auto;
@@ -151,7 +170,7 @@ const CreditSlot = styled.div`
   top: 40%;
   transform: translateY(-58%);
   z-index: 40;
-  max-width: min(38vw, 420px);
+  max-width: min(46vw, 420px);
   pointer-events: none;
   opacity: 0;
   text-align: left;
@@ -241,6 +260,10 @@ const CreditName = styled.span`
   overflow-wrap: normal;
   word-break: normal;
   hyphens: none;
+
+  span {
+    white-space: nowrap;
+  }
 
   @media (max-width: 768px) {
     font-size: clamp(1.15rem, 5.2vw, 1.55rem);
@@ -820,7 +843,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         creditLinkRef.current.href = `/product/${focused.slug}`;
         creditLinkRef.current.setAttribute("aria-label", `Open ${focused.name}`);
       }
-      if (creditNameRef.current) creditNameRef.current.textContent = focused.name;
+      if (creditNameRef.current) fillNameWords(creditNameRef.current, focused.name);
       if (creditRoleRef.current) {
         creditRoleRef.current.textContent = focused.subtitle || "";
         creditRoleRef.current.style.display = focused.subtitle ? "" : "none";
