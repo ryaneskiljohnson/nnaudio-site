@@ -50,11 +50,11 @@ export interface HeroBodyHandle {
   texture: Texture | null;
 }
 
-function tintMaterial(hex = 0x6c6388): MeshLambertMaterial {
+function tintMaterial(): MeshLambertMaterial {
   return new MeshLambertMaterial({
-    color: new Color(0xb4a8d8),
-    emissive: new Color(0x5a4e88),
-    emissiveIntensity: 0.95,
+    color: new Color(0xc4b8e8),
+    emissive: new Color(0x6a5a9a),
+    emissiveIntensity: 1.1,
   });
 }
 

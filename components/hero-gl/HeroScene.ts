@@ -56,8 +56,8 @@ import {
 import {
   applyCssPerspectiveCamera,
   applyTourWorldMatrix,
-  billboardPlusZToward,
   keplerToThree,
+  lookPlusZToward,
 } from "./tourCameraRig";
 
 export interface HeroPick {
@@ -109,7 +109,6 @@ export class HeroScene {
   private cssHeight = 1;
   private disposed = false;
   private readonly camWorld = new Vector3();
-  private readonly meshWorld = new Vector3();
   private readonly glowBase = { x: 980, y: 820 };
 
   private constructor(canvas: HTMLCanvasElement, compact: boolean) {
@@ -134,12 +133,13 @@ export class HeroScene {
     this.camera.add(this.sky);
     this.scene.add(this.camera);
 
-    this.scene.add(new AmbientLight(0x6a5a9a, 1.15));
+    this.scene.add(new AmbientLight(0x8a7ab8, 1.35));
     this.light = new PointLight(0xffe6c8, 2.8, 0, 1.05);
     this.light.position.set(0, 0, 0);
     this.world.add(this.light);
-    const key = new DirectionalLight(0xfff6ea, 2.4);
-    key.position.set(0.2, 0.28, 1);
+    // Headlight: sit on the camera and shine toward the planets (−Z).
+    const key = new DirectionalLight(0xfff6ea, 3.2);
+    key.position.set(0.15, 0.22, 0);
     key.target.position.set(0, 0, -1);
     this.camera.add(key);
     this.camera.add(key.target);
@@ -302,13 +302,7 @@ export class HeroScene {
 
   private billboardHandle(handle: HeroBodyHandle): void {
     handle.mesh.updateMatrixWorld(true);
-    handle.mesh.getWorldPosition(this.meshWorld);
-    billboardPlusZToward(
-      handle.mesh,
-      this.world.matrixWorld,
-      this.camWorld,
-      this.meshWorld
-    );
+    lookPlusZToward(handle.mesh, this.camWorld);
   }
 
   poseSynth(
@@ -363,7 +357,11 @@ export class HeroScene {
         handle.wrap.dispose();
         handle.wrap = null;
         const prev = handle.mesh.material;
-        handle.mesh.material = new MeshLambertMaterial({ color: 0x6c6388 });
+        handle.mesh.material = new MeshLambertMaterial({
+          color: 0xc4b8e8,
+          emissive: 0x5a4e88,
+          emissiveIntensity: 0.95,
+        });
         if (prev && !Array.isArray(prev)) prev.dispose();
       }
     }

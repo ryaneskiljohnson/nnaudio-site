@@ -37,13 +37,12 @@ void main() {
     float lit = 0.82 + 0.18 * cos((uStrip - 0.5) * 2.0 * PI);
     color.rgb *= lit;
   }
-  // Billboard puts object +Z toward the camera, so n.z is the headlight.
-  // Floor the add so a dark poster cannot collapse to a silhouette.
-  float facing = max(0.0, n.z);
+  // Camera directional: billboard +Z faces the viewer. Keep the disk
+  // almost flat-lit so distant moons (mostly silhouette pixels) stay
+  // readable instead of collapsing to a new-moon black.
+  float facing = mix(0.86, 1.08, max(0.0, n.z));
   float key = clamp(uCamFill, 0.0, 1.0);
-  float lift = mix(0.4, facing, key);
-  color.rgb *= mix(1.0, 0.8 + 0.35 * facing, key);
-  color.rgb += vec3(0.42, 0.38, 0.55) * lift;
+  color.rgb *= mix(1.0, facing, key);
   gl_FragColor = vec4(color.rgb, 1.0);
 }
 `;

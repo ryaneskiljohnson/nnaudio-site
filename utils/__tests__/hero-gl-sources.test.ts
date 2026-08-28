@@ -47,8 +47,13 @@ describe("hero source contracts", () => {
 
   it("lights bodies from the camera so holds are not a new moon", () => {
     expect(scene).toContain("DirectionalLight");
+    expect(scene).toContain("lookPlusZToward");
     expect(wrap).toContain("uCamFill");
-    expect(wrap).toContain("float facing = max(0.0, n.z);");
+    expect(wrap).toContain("facing = mix(0.86, 1.08, max(0.0, n.z))");
+  });
+
+  it("scales the sun from the smoothed dolly, not the raw tour key", () => {
+    expect(circuit).toContain("sunScaleFromCamera(follow.tz)");
   });
 });
 

@@ -26,6 +26,7 @@ import {
   orbitRadiusPx,
   orderCredits,
   pickVisibleMoons,
+  sunScaleFromCamera,
   tourDurationMs,
   VISIBLE_MOON_BUDGET,
   type VisibleMoonCandidate,
@@ -959,7 +960,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const sunApproach =
           cam.focusKey === SUN_FOCUS_KEY ||
           (cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY);
-        const tau = sunApproach ? 320 : jump > 10 ? 32 : 150;
+        const tau = sunApproach ? 320 : jump > 10 ? 90 : 160;
         const followK = 1 - Math.exp(-gapClamped / tau);
         follow.x += angleDelta(follow.x, camX) * followK;
         follow.y += angleDelta(follow.y, camY) * followK;
@@ -987,16 +988,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         };
         latchFaceOn(cam.focusKey);
         latchFaceOn(cam.nextKey);
-        const byKey = new Map(bodyDefs.map((d) => [d.key, d]));
-        for (const key of [cam.focusKey, cam.nextKey]) {
-          if (!key || key === SUN_FOCUS_KEY) continue;
-          const def = byKey.get(key);
-          if (def) void scene.loadBodyArt(def);
-        }
-        const keep = new Set<string>();
-        if (cam.focusKey) keep.add(cam.focusKey);
-        if (cam.nextKey) keep.add(cam.nextKey);
-        scene.evictArt(keep);
       }
 
       const sunFeatured = cam.focusKey === SUN_FOCUS_KEY;
@@ -1082,6 +1073,19 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       if (!sunFocus) {
         lingerAt.current.forEach((_, key) => visibleSet.add(key));
       }
+      const keepArt = new Set(visibleSet);
+      if (cam.focusKey && cam.focusKey !== SUN_FOCUS_KEY) {
+        keepArt.add(cam.focusKey);
+      }
+      if (cam.nextKey && cam.nextKey !== SUN_FOCUS_KEY) {
+        keepArt.add(cam.nextKey);
+      }
+      const byKey = new Map(bodyDefs.map((d) => [d.key, d]));
+      for (const key of keepArt) {
+        const def = byKey.get(key);
+        if (def) void scene.loadBodyArt(def);
+      }
+      scene.evictArt(keepArt);
       for (const body of bodies) {
         const onStage = visibleSet.has(body.key);
         scene.setBodyVisible(body.key, onStage);
@@ -1136,7 +1140,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       }
 
       scene.setOrbitsVisible(!sunFocus && !(cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY));
-      scene.poseSunScale(cam.sunScale);
+      scene.poseSunScale(sunScaleFromCamera(follow.tz));
       scene.applyCamera({
         ...cam,
         rotateX: camX,
