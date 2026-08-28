@@ -40,10 +40,11 @@ void main() {
     float lit = 0.82 + 0.18 * cos((uStrip - 0.5) * 2.0 * PI);
     color.rgb *= lit;
   }
-  // Headlight from the camera so the facing hemisphere reads, not a new moon.
+  // Camera key: multiply AND add so dark posters still read as a globe.
   float facing = max(0.0, normalize(vViewNormal).z);
-  float fill = 0.38 + 0.62 * facing;
-  color.rgb *= mix(1.0, fill, clamp(uCamFill, 0.0, 1.0));
+  float key = clamp(uCamFill, 0.0, 1.0);
+  color.rgb *= mix(1.0, 0.62 + 0.55 * facing, key);
+  color.rgb += vec3(0.32, 0.28, 0.42) * facing * key;
   gl_FragColor = vec4(color.rgb, 1.0);
 }
 `;

@@ -53,8 +53,8 @@ export interface HeroBodyHandle {
 function tintMaterial(hex = 0x6c6388): MeshLambertMaterial {
   return new MeshLambertMaterial({
     color: new Color(hex),
-    emissive: new Color(0x1c1730),
-    emissiveIntensity: 0.4,
+    emissive: new Color(0x2a2450),
+    emissiveIntensity: 0.65,
   });
 }
 
