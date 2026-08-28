@@ -1,7 +1,7 @@
 /**
- * @fileoverview Catalog-moon wrap: samples square artwork with the same
- * longitude / latitude map as stripUFrac / stripV so the face shows the
- * full image at phase 0 and rolls as the moon spins.
+ * @fileoverview Camera-facing disk wrap for hero posters. The visible
+ * hemisphere shows a circular crop of the square artwork (the old CSS
+ * billboard disk). Phase spins that crop in the plane of the disk.
  * @module components/hero-gl/sphereWrapMaterial
  */
 
@@ -28,29 +28,30 @@ const float PI = 3.141592653589793;
 
 void main() {
   vec3 n = normalize(vObjectPos);
-  float lon = atan(n.x, n.z);
-  float uStrip = fract(0.5 + lon / (2.0 * PI) + uPhase);
-  float srcU = fract(uStrip * 2.0 - 0.5);
-  float srcV = 0.5 + asin(clamp(n.y, -1.0, 1.0)) / PI;
-  vec4 color = texture2D(uMap, vec2(srcU, srcV));
+  float angle = uPhase * 2.0 * PI;
+  float c = cos(angle);
+  float s = sin(angle);
+  vec2 disk = vec2(c * n.x - s * n.y, s * n.x + c * n.y);
+  vec2 uv = disk * 0.5 + 0.5;
+  vec4 color = texture2D(uMap, uv);
   if (uSurfaceShade > 0.5) {
-    float lit = 0.82 + 0.18 * cos((uStrip - 0.5) * 2.0 * PI);
+    float lit = 0.88 + 0.12 * max(0.0, n.z);
     color.rgb *= lit;
   }
-  // Camera directional: billboard +Z faces the viewer. Keep the disk
-  // almost flat-lit so distant moons (mostly silhouette pixels) stay
-  // readable instead of collapsing to a new-moon black.
-  float facing = mix(0.86, 1.08, max(0.0, n.z));
+  // Camera directional: the disk faces the viewer after billboard.
+  // Keep a high floor so dark posters and silhouette pixels stay readable.
+  float facing = mix(0.82, 1.12, max(0.0, n.z));
   float key = clamp(uCamFill, 0.0, 1.0);
   color.rgb *= mix(1.0, facing, key);
+  color.rgb += vec3(0.10, 0.09, 0.14) * key;
   gl_FragColor = vec4(color.rgb, 1.0);
 }
 `;
 
 /**
- * @brief Shader that wraps a square texture onto a sphere like the old bake.
+ * @brief Shader that puts square art on the camera-facing disk.
  * @param map Artwork texture.
- * @param surfaceShade When true, a lit meridian rotates with the art.
+ * @param surfaceShade When true, a little limb falloff on catalog moons.
  */
 export function createSphereWrapMaterial(
   map: Texture,

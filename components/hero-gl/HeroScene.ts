@@ -9,7 +9,7 @@ import {
   AmbientLight,
   DirectionalLight,
   Group,
-  MeshLambertMaterial,
+  MeshBasicMaterial,
   PerspectiveCamera,
   NoToneMapping,
   PointLight,
@@ -357,11 +357,7 @@ export class HeroScene {
         handle.wrap.dispose();
         handle.wrap = null;
         const prev = handle.mesh.material;
-        handle.mesh.material = new MeshLambertMaterial({
-          color: 0xc4b8e8,
-          emissive: 0x5a4e88,
-          emissiveIntensity: 0.95,
-        });
+        handle.mesh.material = new MeshBasicMaterial({ color: 0xc4b8e8 });
         if (prev && !Array.isArray(prev)) prev.dispose();
       }
     }

@@ -7,7 +7,6 @@ import {
   Color,
   Mesh,
   MeshBasicMaterial,
-  MeshLambertMaterial,
   SphereGeometry,
   SRGBColorSpace,
   Texture,
@@ -50,11 +49,9 @@ export interface HeroBodyHandle {
   texture: Texture | null;
 }
 
-function tintMaterial(): MeshLambertMaterial {
-  return new MeshLambertMaterial({
+function tintMaterial(): MeshBasicMaterial {
+  return new MeshBasicMaterial({
     color: new Color(0xc4b8e8),
-    emissive: new Color(0x6a5a9a),
-    emissiveIntensity: 1.1,
   });
 }
 
@@ -153,7 +150,7 @@ export function heroSunRadius(sunScale: number): number {
 
 /**
  * @brief Applies a loaded map. Sun, synth, and catalog moons all use
- * the wrap shader — the posters are square art, not equirectangular.
+ * the wrap shader — square art on the camera-facing disk.
  */
 export function applyBodyTexture(
   handle: HeroBodyHandle,
