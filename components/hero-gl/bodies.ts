@@ -129,7 +129,27 @@ export function loadHeroTexture(url: string): Promise<Texture | null> {
 }
 
 /**
- * @brief Applies a loaded map. Catalog moons get the wrap shader.
+ * @brief World-space sphere radius. Featured moons grow like the old
+ * CSS `0.96 + focusW * 0.5` boost so holds match the billboard disk.
+ * @param diameter Kepler seat diameter in px.
+ * @param focusW Eased 0–1 close-up weight.
+ */
+export function heroBodyRadius(diameter: number, focusW = 0): number {
+  const visual = diameter * (0.96 + Math.min(1, Math.max(0, focusW)) * 0.5);
+  return Math.max(4, visual / 2);
+}
+
+/**
+ * @brief Sun radius after the CSS `sunScaleFromCamera` cheat.
+ * @param sunScale Multiplier from the tour pose (≈0.42 far, ≈1.55 close).
+ */
+export function heroSunRadius(sunScale: number): number {
+  return Math.max(4, (HERO_SUN_DIAMETER_PX / 2) * Math.max(0.14, sunScale));
+}
+
+/**
+ * @brief Applies a loaded map. Sun, synth, and catalog moons all use
+ * the wrap shader — the posters are square art, not equirectangular.
  */
 export function applyBodyTexture(
   handle: HeroBodyHandle,
@@ -137,24 +157,17 @@ export function applyBodyTexture(
 ): void {
   handle.texture?.dispose();
   handle.texture = texture;
-  if (handle.kind === "moon") {
-    handle.wrap?.dispose();
-    const wrap = createSphereWrapMaterial(texture, true);
-    handle.wrap = wrap;
-    const prev = handle.mesh.material;
-    handle.mesh.material = wrap;
-    if (prev && prev !== wrap && !Array.isArray(prev)) prev.dispose();
-    return;
-  }
-  handle.wrap = null;
-  const mat = prelitMaterial(texture);
+  handle.wrap?.dispose();
+  const wrap = createSphereWrapMaterial(texture, handle.kind === "moon");
+  handle.wrap = wrap;
+  handle.mesh.rotation.set(0, 0, 0);
   const prev = handle.mesh.material;
-  handle.mesh.material = mat;
-  if (prev && prev !== mat && !Array.isArray(prev)) prev.dispose();
+  handle.mesh.material = wrap;
+  if (prev && prev !== wrap && !Array.isArray(prev)) prev.dispose();
 }
 
 /**
- * @brief Sets wrap phase or Y spin for pre-lit globes.
+ * @brief Advances wrap phase (shader) or Y spin before art loads.
  */
 export function poseBodySpin(handle: HeroBodyHandle, phase: number): void {
   if (handle.wrap) {

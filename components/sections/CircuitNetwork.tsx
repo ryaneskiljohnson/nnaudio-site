@@ -25,7 +25,10 @@ import {
   moonPlacements,
   orbitRadiusPx,
   orderCredits,
+  pickVisibleMoons,
   tourDurationMs,
+  VISIBLE_MOON_BUDGET,
+  type VisibleMoonCandidate,
 } from "@/utils/circuit-network-layout";
 import { CURATED_FEATURED_ORDER } from "@/lib/homepage-hero-seed";
 import {
@@ -34,6 +37,7 @@ import {
   heroTourMoonCap,
   heroTourStopCap,
   latchHeroCompactTour,
+  mobileStageKeys,
   pickMobileTourNodes,
   previousHeroTourWasKilled,
   readHeroCompactTour,
@@ -343,6 +347,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const spinBoost = useRef(new Map<string, number>());
   const faceAlign = useRef(new Map<string, number>());
   const facedKeys = useRef("");
+  const candidatePool = useRef<VisibleMoonCandidate[]>([]);
+  const liveKeysRef = useRef<string[]>([]);
+  const focusWeights = useRef(new Map<string, number>());
   const sunBoostRef = useRef(0);
   const sunAlignRef = useRef(0);
   const compactInitial =
@@ -1014,8 +1021,66 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       );
 
       scene.poseBodies(pos, system.keys);
+      const hideSynth = hideSynthForSunApproach(
+        cam.focusKey,
+        cam.nextKey,
+        cam.creditOpacity
+      );
+      const sunFocus = cam.focusKey === SUN_FOCUS_KEY;
+      const yawRad = (camY * Math.PI) / 180;
+      const cosYaw = Math.cos(yawRad);
+      const sinYaw = Math.sin(yawRad);
+      let visible: string[];
+      if (compact) {
+        visible = mobileStageKeys(cam.focusKey, cam.nextKey, sunFocus);
+        if (hideSynth) {
+          const synthKey = bodies.find((body) => body.synth)?.key;
+          if (synthKey) visible = visible.filter((key) => key !== synthKey);
+        }
+      } else {
+        const pool = candidatePool.current;
+        if (pool.length !== bodies.length) pool.length = bodies.length;
+        for (let i = 0; i < bodies.length; i += 1) {
+          const body = bodies[i];
+          if (!body) continue;
+          const wx = pos[i * 3];
+          const wz = pos[i * 3 + 2];
+          const slot = pool[i] ?? {
+            key: "",
+            camSpaceX: 0,
+            camSpaceZ: 0,
+            aPx: 0,
+          };
+          slot.key = body.key;
+          slot.synth = body.synth;
+          slot.camSpaceX = wx * cosYaw + wz * sinYaw;
+          slot.camSpaceZ = wz * cosYaw - wx * sinYaw;
+          slot.aPx = system.a[i];
+          pool[i] = slot;
+        }
+        visible = pickVisibleMoons(pool, {
+          focusKey: cam.focusKey,
+          nextKey: cam.nextKey,
+          sunFocus,
+          dollyZ: follow.tz,
+          viewHalfW,
+          budget: VISIBLE_MOON_BUDGET,
+          previous: liveKeysRef.current,
+          hideSynth,
+        });
+      }
+      liveKeysRef.current = visible;
+      const visibleSet = new Set(visible);
       for (const body of bodies) {
+        const onStage = visibleSet.has(body.key);
+        scene.setBodyVisible(body.key, onStage);
         const featured = body.key === cam.focusKey;
+        const focusTarget = featured ? 1 : 0;
+        let focusW =
+          (focusWeights.current.get(body.key) ?? 0) * (1 - ease) +
+          focusTarget * ease;
+        if (Math.abs(focusW - focusTarget) < 0.005) focusW = focusTarget;
+        focusWeights.current.set(body.key, focusW);
         if (featured && !reducedMotion) {
           spinBoost.current.set(
             body.key,
@@ -1024,6 +1089,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
               1
           );
         }
+        scene.poseBodyFocusScale(body.key, body.seat.size.w, focusW);
         scene.poseBodySpinByKey(
           body.key,
           reducedMotion
@@ -1039,14 +1105,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         );
       }
 
-      const hideSynth = hideSynthForSunApproach(
-        cam.focusKey,
-        cam.nextKey,
-        cam.creditOpacity
-      );
       const synthBody = bodies.find((body) => body.synth);
       if (synthBody) {
-        scene.setBodyVisible(synthBody.key, !hideSynth);
         const si = bodyIndexByKey.get(synthBody.key);
         const wp =
           si === undefined
@@ -1060,10 +1120,12 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           wp,
           synthBody.seat.size.w,
           reducedMotion ? 0 : (elapsed / 90) % 360,
-          !hideSynth && !compact
+          visibleSet.has(synthBody.key) && !compact
         );
       }
 
+      scene.setOrbitsVisible(!sunFocus && !(cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY));
+      scene.poseSunScale(cam.sunScale);
       scene.applyCamera({
         ...cam,
         rotateX: camX,
@@ -1073,6 +1135,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         translateY: follow.ty,
         translateZ: follow.tz,
       });
+      scene.billboardFacingCamera();
       writeCredit(cam, viewHalfW);
       scene.render();
 

@@ -34,6 +34,12 @@ describe("hero source contracts", () => {
     expect(circuit).not.toContain("warpStripToCanvas");
     expect(circuit).not.toContain("TexCanvas");
   });
+
+  it("keeps the CSS visibility budget and sunScale cheat", () => {
+    expect(circuit).toContain("pickVisibleMoons");
+    expect(circuit).toContain("poseSunScale");
+    expect(circuit).toContain("billboardFacingCamera");
+  });
 });
 
 describe("heroWebglAvailable", () => {

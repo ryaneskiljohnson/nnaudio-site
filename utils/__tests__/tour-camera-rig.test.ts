@@ -9,7 +9,9 @@ import {
   TOUR_PERSPECTIVE_PX,
   lookAtMoon,
 } from "@/utils/circuit-network-layout";
+import { Matrix4, Mesh, SphereGeometry, Vector3 } from "three";
 import {
+  billboardPlusZToward,
   composeCssTourMatrix,
   cssMatrixToYUp,
   cssPerspectiveFovDeg,
@@ -133,5 +135,31 @@ describe("projectKeplerToBoard", () => {
     );
     expect(hit.x).toBeCloseTo(600, 5);
     expect(hit.y).toBeCloseTo(400, 5);
+  });
+});
+
+describe("billboardPlusZToward", () => {
+  it("leaves +Z facing a camera on +Z when the parent is identity", () => {
+    const mesh = new Mesh(new SphereGeometry(1, 4, 4));
+    const parent = new Matrix4();
+    billboardPlusZToward(mesh, parent, { x: 0, y: 0, z: 900 }, { x: 0, y: 0, z: 0 });
+    const facing = new Vector3(0, 0, 1).applyQuaternion(mesh.quaternion);
+    expect(facing.x).toBeCloseTo(0, 5);
+    expect(facing.y).toBeCloseTo(0, 5);
+    expect(facing.z).toBeCloseTo(1, 5);
+  });
+
+  it("yaws so +Z faces a camera on +X", () => {
+    const mesh = new Mesh(new SphereGeometry(1, 4, 4));
+    billboardPlusZToward(
+      mesh,
+      new Matrix4(),
+      { x: 900, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 }
+    );
+    const facing = new Vector3(0, 0, 1).applyQuaternion(mesh.quaternion);
+    expect(facing.x).toBeCloseTo(1, 5);
+    expect(facing.y).toBeCloseTo(0, 5);
+    expect(facing.z).toBeCloseTo(0, 5);
   });
 });

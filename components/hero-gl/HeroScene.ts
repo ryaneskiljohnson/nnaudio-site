@@ -15,6 +15,7 @@ import {
   Raycaster,
   Scene,
   Vector2,
+  Vector3,
   WebGLRenderer,
 } from "three";
 import {
@@ -34,7 +35,9 @@ import {
   createBodyMesh,
   createSunMesh,
   disposeBodyHandle,
+  heroBodyRadius,
   heroBodyTextureUrl,
+  heroSunRadius,
   loadHeroTexture,
   poseBodySpin,
   type HeroBodyDef,
@@ -52,6 +55,7 @@ import {
 import {
   applyCssPerspectiveCamera,
   applyTourWorldMatrix,
+  billboardPlusZToward,
   keplerToThree,
 } from "./tourCameraRig";
 
@@ -103,6 +107,9 @@ export class HeroScene {
   private cssWidth = 1;
   private cssHeight = 1;
   private disposed = false;
+  private readonly camWorld = new Vector3();
+  private readonly meshWorld = new Vector3();
+  private readonly glowBase = { x: 980, y: 820 };
 
   private constructor(canvas: HTMLCanvasElement, compact: boolean) {
     this.canvas = canvas;
@@ -243,6 +250,59 @@ export class HeroScene {
     const sky = skyParallaxCss(pose.translateZ, pose.rotateX, pose.rotateY);
     this.sky.position.set(sky.x, -sky.y, -2400);
     this.sky.scale.setScalar(Math.max(0.7, sky.scale) * 2.2);
+  }
+
+  /**
+   * @brief Applies the CSS sunScale cheat so far shots stay a star and
+   * close-ups fill the frame like the old billboard disk.
+   */
+  poseSunScale(sunScale: number): void {
+    const r = heroSunRadius(sunScale);
+    this.sun.mesh.scale.setScalar(r);
+    const baseR = heroSunRadius(1);
+    this.sunGlow.scale.set(
+      this.glowBase.x * (r / baseR),
+      this.glowBase.y * (r / baseR),
+      1
+    );
+  }
+
+  /**
+   * @brief Featured-hold size boost matching the old CSS disk scale.
+   */
+  poseBodyFocusScale(key: string, diameter: number, focusW: number): void {
+    const handle = this.bodies.get(key);
+    if (!handle) return;
+    handle.mesh.scale.setScalar(heroBodyRadius(diameter, focusW));
+  }
+
+  setOrbitsVisible(visible: boolean): void {
+    if (this.orbits) this.orbits.visible = visible;
+  }
+
+  /**
+   * @brief Inverse-billboards every body so wrap art faces the camera.
+   * Call after {@link applyCamera} so the world matrix is current.
+   */
+  billboardFacingCamera(): void {
+    this.world.updateMatrixWorld(true);
+    this.camera.updateMatrixWorld(true);
+    this.camera.getWorldPosition(this.camWorld);
+    this.billboardHandle(this.sun);
+    for (const handle of this.bodies.values()) {
+      if (handle.mesh.visible) this.billboardHandle(handle);
+    }
+  }
+
+  private billboardHandle(handle: HeroBodyHandle): void {
+    handle.mesh.updateMatrixWorld(true);
+    handle.mesh.getWorldPosition(this.meshWorld);
+    billboardPlusZToward(
+      handle.mesh,
+      this.world.matrixWorld,
+      this.camWorld,
+      this.meshWorld
+    );
   }
 
   poseSynth(

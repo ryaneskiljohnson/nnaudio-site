@@ -8,6 +8,7 @@ import {
   Group,
   Matrix4,
   PerspectiveCamera,
+  Vector3,
   type Object3D,
 } from "three";
 import {
@@ -199,6 +200,38 @@ export function applyTourWorldMatrix(
   world.matrix.copy(scratch);
   world.matrixAutoUpdate = false;
   world.matrixWorldNeedsUpdate = true;
+}
+
+const _plusZ = new Vector3(0, 0, 1);
+const _billboardDir = new Vector3();
+const _billboardInv = new Matrix4();
+
+/**
+ * @brief Rotates a mesh so object +Z faces a world-space point.
+ * Matches the old CSS inverse-billboard so wrap art stays face-on.
+ * @param object Mesh in the tour world group.
+ * @param parentWorldMatrix World matrix of the parent group.
+ * @param towardWorld Point to face (usually the camera).
+ * @param objectWorld Current world position of the mesh.
+ */
+export function billboardPlusZToward(
+  object: Object3D,
+  parentWorldMatrix: Matrix4,
+  towardWorld: { x: number; y: number; z: number },
+  objectWorld: { x: number; y: number; z: number }
+): void {
+  _billboardDir.set(
+    towardWorld.x - objectWorld.x,
+    towardWorld.y - objectWorld.y,
+    towardWorld.z - objectWorld.z
+  );
+  if (_billboardDir.lengthSq() < 1e-10) return;
+  _billboardDir.normalize();
+  _billboardInv.copy(parentWorldMatrix).invert();
+  _billboardDir.transformDirection(_billboardInv);
+  if (_billboardDir.lengthSq() < 1e-10) return;
+  _billboardDir.normalize();
+  object.quaternion.setFromUnitVectors(_plusZ, _billboardDir);
 }
 
 /**
