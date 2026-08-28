@@ -49,12 +49,19 @@ describe("hero source contracts", () => {
     expect(scene).toContain("DirectionalLight");
     expect(scene).toContain("lookPlusZToward");
     expect(wrap).toContain("uCamFill");
-    expect(wrap).toContain("facing = mix(0.82, 1.12, max(0.0, n.z))");
-    expect(wrap).toContain("disk * 0.5 + 0.5");
+    expect(wrap).toContain("facing = mix(0.80, 1.10, max(0.0, n.z))");
+    expect(wrap).toContain("uPlanar");
+    expect(wrap).toContain("atan(n.x, n.z)");
   });
 
   it("scales the sun from the smoothed dolly, not the raw tour key", () => {
     expect(circuit).toContain("sunScaleFromCamera(follow.tz)");
+  });
+
+  it("draws at 60 FPS and eases the camera even on holds", () => {
+    expect(caps).toContain("HERO_FPS = 60");
+    expect(circuit).toContain("holdingMoon");
+    expect(circuit).toContain("? 48");
   });
 });
 

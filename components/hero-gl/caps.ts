@@ -1,13 +1,13 @@
 /**
- * @fileoverview Engine defaults for the homepage Three.js hero: 30 FPS
+ * @fileoverview Engine defaults for the homepage Three.js hero: 60 FPS
  * and a 1080p drawing-buffer / texture ceiling (never 4K).
  * @module components/hero-gl/caps
  */
 
 /** Target frame rate for the hero loop. */
-export const HERO_FPS = 30;
+export const HERO_FPS = 60;
 
-/** Minimum milliseconds between rendered frames (~30 FPS). */
+/** Minimum milliseconds between rendered frames (~60 FPS). */
 export const HERO_FRAME_MIN_MS = 1000 / HERO_FPS;
 
 /** Drawing-buffer width cap (1080p). */
@@ -63,7 +63,7 @@ export function heroDrawingBufferSize(
 }
 
 /**
- * @brief Whether this rAF should skip the GPU draw (30 FPS cap).
+ * @brief Whether this rAF should skip the GPU draw (60 FPS cap).
  * Physics still uses the real timestamp when a frame is drawn.
  * @param now rAF time.
  * @param lastDrawAt Previous drawn frame time, or null on the first draw.

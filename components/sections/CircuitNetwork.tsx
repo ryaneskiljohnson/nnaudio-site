@@ -2,7 +2,7 @@
 
 /**
  * @fileoverview Homepage solar-system tour: Three.js scene + HTML credits.
- * Kepler and cameraTour are unchanged; the renderer is a 1080p / 30 FPS
+ * Kepler and cameraTour are unchanged; the renderer is a 1080p / 60 FPS
  * WebGL game loop. Lite / Play gating stays in EcosystemHero.
  * @module components/sections/CircuitNetwork
  */
@@ -352,6 +352,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const candidatePool = useRef<VisibleMoonCandidate[]>([]);
   const liveKeysRef = useRef<string[]>([]);
   const lingerAt = useRef(new Map<string, number>());
+  const keepArtSig = useRef("");
   const focusWeights = useRef(new Map<string, number>());
   const sunBoostRef = useRef(0);
   const sunAlignRef = useRef(0);
@@ -946,13 +947,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         follow.ty = cam.translateY;
         follow.tz = cam.translateZ;
         follow.armed = true;
-      } else if (holdingMoon) {
-        follow.x = camX;
-        follow.y = camY;
-        follow.z = cam.rotateZ;
-        follow.tx = cam.translateX;
-        follow.ty = cam.translateY;
-        follow.tz = cam.translateZ;
       } else {
         const jump =
           Math.abs(angleDelta(follow.y, camY)) +
@@ -960,7 +954,13 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const sunApproach =
           cam.focusKey === SUN_FOCUS_KEY ||
           (cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY);
-        const tau = sunApproach ? 320 : jump > 10 ? 90 : 160;
+        const tau = holdingMoon
+          ? 48
+          : sunApproach
+            ? 280
+            : jump > 10
+              ? 90
+              : 150;
         const followK = 1 - Math.exp(-gapClamped / tau);
         follow.x += angleDelta(follow.x, camX) * followK;
         follow.y += angleDelta(follow.y, camY) * followK;
@@ -1085,7 +1085,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const def = byKey.get(key);
         if (def) void scene.loadBodyArt(def);
       }
-      scene.evictArt(keepArt);
+      const keepSig = [...keepArt].sort().join("\0");
+      if (keepSig !== keepArtSig.current) {
+        keepArtSig.current = keepSig;
+        scene.evictArt(keepArt);
+      }
       for (const body of bodies) {
         const onStage = visibleSet.has(body.key);
         scene.setBodyVisible(body.key, onStage);

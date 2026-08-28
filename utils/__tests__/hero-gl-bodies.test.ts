@@ -36,6 +36,7 @@ describe("applyBodyTexture", () => {
     applyBodyTexture(sun, new Texture());
     expect(sun.wrap).not.toBeNull();
     expect(sun.wrap?.uniforms.uSurfaceShade?.value).toBe(0);
+    expect(sun.wrap?.uniforms.uPlanar?.value).toBe(1);
   });
 
   it("shades catalog moons along the wrap meridian", () => {
@@ -50,6 +51,7 @@ describe("applyBodyTexture", () => {
     });
     applyBodyTexture(moon, new Texture());
     expect(moon.wrap?.uniforms.uSurfaceShade?.value).toBe(1);
+    expect(moon.wrap?.uniforms.uPlanar?.value).toBe(0);
   });
 });
 

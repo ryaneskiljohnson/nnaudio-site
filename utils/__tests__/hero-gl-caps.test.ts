@@ -1,5 +1,5 @@
 /**
- * @fileoverview Engine caps: 30 FPS skip and 1080p drawing buffer.
+ * @fileoverview Engine caps: 60 FPS skip and 1080p drawing buffer.
  * @module utils/__tests__/hero-gl-caps.test
  */
 
@@ -47,8 +47,8 @@ describe("shouldSkipHeroFrame", () => {
     expect(shouldSkipHeroFrame(16, null)).toBe(false);
   });
 
-  it("skips draws closer than ~33ms", () => {
-    expect(shouldSkipHeroFrame(1016, 1000)).toBe(true);
+  it("skips draws closer than one 60 FPS frame", () => {
+    expect(shouldSkipHeroFrame(1008, 1000)).toBe(true);
     expect(shouldSkipHeroFrame(1000 + HERO_FRAME_MIN_MS + 1, 1000)).toBe(false);
   });
 });

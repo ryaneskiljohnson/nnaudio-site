@@ -1,7 +1,8 @@
 /**
- * @fileoverview Camera-facing disk wrap for hero posters. The visible
- * hemisphere shows a circular crop of the square artwork (the old CSS
- * billboard disk). Phase spins that crop in the plane of the disk.
+ * @fileoverview Hero body shader. Catalog moons use the same longitude /
+ * latitude map as stripUFrac / stripV so square art rolls around the
+ * globe. Sun and CymaSynth posters are already painted spheres, so those
+ * use a circular crop. A camera-key fill keeps the facing disk readable.
  * @module components/hero-gl/sphereWrapMaterial
  */
 
@@ -21,6 +22,7 @@ uniform sampler2D uMap;
 uniform float uPhase;
 uniform float uSurfaceShade;
 uniform float uCamFill;
+uniform float uPlanar;
 
 varying vec3 vObjectPos;
 
@@ -28,34 +30,43 @@ const float PI = 3.141592653589793;
 
 void main() {
   vec3 n = normalize(vObjectPos);
-  float angle = uPhase * 2.0 * PI;
-  float c = cos(angle);
-  float s = sin(angle);
-  vec2 disk = vec2(c * n.x - s * n.y, s * n.x + c * n.y);
-  vec2 uv = disk * 0.5 + 0.5;
-  vec4 color = texture2D(uMap, uv);
-  if (uSurfaceShade > 0.5) {
-    float lit = 0.88 + 0.12 * max(0.0, n.z);
-    color.rgb *= lit;
+  vec4 color;
+  if (uPlanar > 0.5) {
+    float angle = uPhase * 2.0 * PI;
+    float c = cos(angle);
+    float s = sin(angle);
+    vec2 disk = vec2(c * n.x - s * n.y, s * n.x + c * n.y);
+    color = texture2D(uMap, disk * 0.5 + 0.5);
+  } else {
+    float lon = atan(n.x, n.z);
+    float uStrip = fract(0.5 + lon / (2.0 * PI) + uPhase);
+    float srcU = fract(uStrip * 2.0 - 0.5);
+    float srcV = 0.5 + asin(clamp(n.y, -1.0, 1.0)) / PI;
+    color = texture2D(uMap, vec2(srcU, srcV));
+    if (uSurfaceShade > 0.5) {
+      float lit = 0.82 + 0.18 * cos((uStrip - 0.5) * 2.0 * PI);
+      color.rgb *= lit;
+    }
   }
-  // Camera directional: the disk faces the viewer after billboard.
-  // Keep a high floor so dark posters and silhouette pixels stay readable.
-  float facing = mix(0.82, 1.12, max(0.0, n.z));
+  // Billboard +Z faces the camera. Floor the key so limbs stay readable.
+  float facing = mix(0.80, 1.10, max(0.0, n.z));
   float key = clamp(uCamFill, 0.0, 1.0);
   color.rgb *= mix(1.0, facing, key);
-  color.rgb += vec3(0.10, 0.09, 0.14) * key;
+  color.rgb += vec3(0.08, 0.07, 0.12) * key;
   gl_FragColor = vec4(color.rgb, 1.0);
 }
 `;
 
 /**
- * @brief Shader that puts square art on the camera-facing disk.
+ * @brief Shader that wraps square art onto the camera-facing globe.
  * @param map Artwork texture.
- * @param surfaceShade When true, a little limb falloff on catalog moons.
+ * @param surfaceShade When true, a lit meridian rotates with catalog art.
+ * @param planar When true, crop the poster as a disk (painted-sphere photos).
  */
 export function createSphereWrapMaterial(
   map: Texture,
-  surfaceShade = true
+  surfaceShade = true,
+  planar = false
 ): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {
@@ -63,6 +74,7 @@ export function createSphereWrapMaterial(
       uPhase: { value: 0 },
       uSurfaceShade: { value: surfaceShade ? 1 : 0 },
       uCamFill: { value: 1 },
+      uPlanar: { value: planar ? 1 : 0 },
     },
     vertexShader: VERT,
     fragmentShader: FRAG,
