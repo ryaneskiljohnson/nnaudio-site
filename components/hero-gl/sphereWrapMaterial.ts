@@ -47,10 +47,6 @@ void main() {
       float lit = 0.82 + 0.18 * cos((uStrip - 0.5) * 2.0 * PI);
       color.rgb *= lit;
     }
-    // Old CSS moons sat on a tinted globe so dark posters still read.
-    vec3 globe = vec3(0.62, 0.52, 0.82) * (0.55 + 0.55 * max(0.0, n.z));
-    color.rgb = max(color.rgb, globe * 0.5);
-    color.rgb = mix(globe, color.rgb, 0.55);
   }
   // Billboard +Z faces the camera. Keep the disk in the light.
   float facing = mix(0.95, 1.2, max(0.0, n.z));

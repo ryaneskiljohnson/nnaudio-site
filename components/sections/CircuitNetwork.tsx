@@ -238,7 +238,7 @@ const CreditName = styled.span`
   line-height: 0.95;
   letter-spacing: -0.03em;
   color: #fff;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 
   @media (max-width: 768px) {
     font-size: clamp(1.15rem, 6vw, 1.55rem);

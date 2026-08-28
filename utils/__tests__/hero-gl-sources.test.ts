@@ -39,6 +39,11 @@ describe("hero source contracts", () => {
     expect(circuit).not.toContain("TexCanvas");
   });
 
+  it("wraps credit names at whitespace, not mid-letter", () => {
+    expect(circuit).toContain("overflow-wrap: break-word");
+    expect(circuit).not.toContain("overflow-wrap: anywhere");
+  });
+
   it("keeps the CSS visibility budget and sunScale cheat", () => {
     expect(circuit).toContain("creditStageKeys");
     expect(circuit).toContain("poseSunScale");
@@ -52,7 +57,8 @@ describe("hero source contracts", () => {
     expect(wrap).toContain("facing = mix(0.95, 1.2, max(0.0, n.z))");
     expect(wrap).toContain("uPlanar");
     expect(wrap).toContain("atan(n.x, n.z)");
-    expect(wrap).toContain("mix(globe, color.rgb, 0.55)");
+    expect(wrap).not.toContain("mix(globe, color.rgb");
+    expect(wrap).not.toContain("vec3(0.62, 0.52, 0.82)");
   });
 
   it("scales the sun from the smoothed dolly, not the raw tour key", () => {

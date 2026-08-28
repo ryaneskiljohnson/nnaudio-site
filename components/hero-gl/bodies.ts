@@ -51,7 +51,7 @@ export interface HeroBodyHandle {
 
 function tintMaterial(): MeshBasicMaterial {
   return new MeshBasicMaterial({
-    color: new Color(0xc4b8e8),
+    color: new Color(0x7a7688),
   });
 }
 

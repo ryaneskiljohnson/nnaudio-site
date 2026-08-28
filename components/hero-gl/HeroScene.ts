@@ -357,7 +357,7 @@ export class HeroScene {
         handle.wrap.dispose();
         handle.wrap = null;
         const prev = handle.mesh.material;
-        handle.mesh.material = new MeshBasicMaterial({ color: 0xc4b8e8 });
+        handle.mesh.material = new MeshBasicMaterial({ color: 0x7a7688 });
         if (prev && !Array.isArray(prev)) prev.dispose();
       }
     }
