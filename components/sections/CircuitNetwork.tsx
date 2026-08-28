@@ -762,14 +762,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
-    const upcoming = credits
-      .filter((credit) => !credit.sun)
-      .slice(0, 2)
-      .map((credit) => credit.key);
-    const byKey = new Map(bodyDefs.map((d) => [d.key, d]));
-    for (const key of upcoming) {
-      const def = byKey.get(key);
-      if (def) void scene.loadBodyArt(def);
+    for (const def of bodyDefs) {
+      void scene.loadBodyArt(def);
     }
   }, [credits, bodyDefs]);
 
@@ -1085,10 +1079,12 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const def = byKey.get(key);
         if (def) void scene.loadBodyArt(def);
       }
-      const keepSig = [...keepArt].sort().join("\0");
-      if (keepSig !== keepArtSig.current) {
-        keepArtSig.current = keepSig;
-        scene.evictArt(keepArt);
+      if (bodies.length > 8) {
+        const keepSig = [...keepArt].sort().join("\0");
+        if (keepSig !== keepArtSig.current) {
+          keepArtSig.current = keepSig;
+          scene.evictArt(keepArt);
+        }
       }
       for (const body of bodies) {
         const onStage = visibleSet.has(body.key);

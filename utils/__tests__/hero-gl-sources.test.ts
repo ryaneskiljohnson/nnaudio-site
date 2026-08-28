@@ -49,9 +49,10 @@ describe("hero source contracts", () => {
     expect(scene).toContain("DirectionalLight");
     expect(scene).toContain("lookPlusZToward");
     expect(wrap).toContain("uCamFill");
-    expect(wrap).toContain("facing = mix(0.80, 1.10, max(0.0, n.z))");
+    expect(wrap).toContain("facing = mix(0.80, 1.12, max(0.0, n.z))");
     expect(wrap).toContain("uPlanar");
     expect(wrap).toContain("atan(n.x, n.z)");
+    expect(wrap).toContain("mix(globe, color.rgb, 0.62)");
   });
 
   it("scales the sun from the smoothed dolly, not the raw tour key", () => {
