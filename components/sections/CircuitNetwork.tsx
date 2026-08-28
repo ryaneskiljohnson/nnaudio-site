@@ -948,22 +948,28 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const sunApproach =
           cam.focusKey === SUN_FOCUS_KEY ||
           (cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY);
-        const tau = holdingMoon
-          ? 48
-          : sunApproach
-            ? 280
-            : jump > 10
-              ? 90
-              : 150;
-        const followK = 1 - Math.exp(-gapClamped / tau);
-        follow.x += angleDelta(follow.x, camX) * followK;
-        follow.y += angleDelta(follow.y, camY) * followK;
-        follow.z += angleDelta(follow.z, cam.rotateZ) * followK;
-        follow.tx += (cam.translateX - follow.tx) * followK;
-        follow.ty += (cam.translateY - follow.ty) * followK;
-        follow.tz += (cam.translateZ - follow.tz) * followK;
-        camX = follow.x;
-        camY = follow.y;
+        // Moon holds track the live Kepler seat so the planet cannot
+        // fly past while we ease. Travel uses a short tau so the
+        // zoom-out-then-follow hop stays on the moon.
+        if (holdingMoon) {
+          follow.x = camX;
+          follow.y = camY;
+          follow.z = cam.rotateZ;
+          follow.tx = cam.translateX;
+          follow.ty = cam.translateY;
+          follow.tz = cam.translateZ;
+        } else {
+          const tau = sunApproach ? 320 : jump > 10 ? 32 : 150;
+          const followK = 1 - Math.exp(-gapClamped / tau);
+          follow.x += angleDelta(follow.x, camX) * followK;
+          follow.y += angleDelta(follow.y, camY) * followK;
+          follow.z += angleDelta(follow.z, cam.rotateZ) * followK;
+          follow.tx += (cam.translateX - follow.tx) * followK;
+          follow.ty += (cam.translateY - follow.ty) * followK;
+          follow.tz += (cam.translateZ - follow.tz) * followK;
+          camX = follow.x;
+          camY = follow.y;
+        }
       }
 
       const facePair = `${cam.focusKey ?? ""}|${cam.nextKey ?? ""}`;

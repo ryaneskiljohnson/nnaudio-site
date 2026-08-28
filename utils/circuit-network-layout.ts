@@ -1065,8 +1065,8 @@ function lerpAngle(a: number, b: number, t: number): number {
  * @param t Linear mix, eased internally.
  * @returns Mixed pose.
  */
-function mixPose(a: TourCamera, b: TourCamera, t: number): TourCamera {
-  const s = smoothstep(t);
+function mixPose(a: TourCamera, b: TourCamera, t: number, ease = true): TourCamera {
+  const s = ease ? smoothstep(t) : Math.min(1, Math.max(0, t));
   return {
     rotateX: lerpAngle(a.rotateX, b.rotateX, s),
     rotateY: lerpAngle(a.rotateY, b.rotateY, s),
@@ -1080,6 +1080,44 @@ function mixPose(a: TourCamera, b: TourCamera, t: number): TourCamera {
     nextKey: s > 0.45 ? b.nextKey : a.nextKey,
     creditOpacity: a.creditOpacity + (b.creditOpacity - a.creditOpacity) * s,
   };
+}
+
+/**
+ * @brief Dolly a look-at pose back so the framed moon stays on screen
+ * while the camera can see the rest of the hop.
+ * @param pose Live look-at of one moon.
+ * @param pullOut Extra pull-back in px.
+ */
+function withPullOut(pose: TourCamera, pullOut: number): TourCamera {
+  const translateZ = pose.translateZ - pullOut;
+  return {
+    ...pose,
+    translateZ,
+    sunScale: sunScaleFromCamera(translateZ),
+  };
+}
+
+/**
+ * @brief Hop: zoom out while tracking the outgoing moon, sweep at that
+ * wide dolly onto the next moon, then push in. Blending two close-ups
+ * let planets fly past the camera mid-leg.
+ * @param from Look-at of the outgoing moon.
+ * @param to Look-at of the incoming moon.
+ * @param leg 0–1 travel progress.
+ * @param pullOut Mid-leg pull-back in px.
+ */
+function travelHopPose(
+  from: TourCamera,
+  to: TourCamera,
+  leg: number,
+  pullOut: number
+): TourCamera {
+  const u = Math.min(1, Math.max(0, leg));
+  const wideFrom = withPullOut(from, pullOut);
+  const wideTo = withPullOut(to, pullOut);
+  if (u < 0.32) return mixPose(from, wideFrom, u / 0.32);
+  if (u < 0.68) return mixPose(wideFrom, wideTo, (u - 0.32) / 0.36, false);
+  return mixPose(wideTo, to, (u - 0.68) / 0.32);
 }
 
 /**
@@ -1183,9 +1221,6 @@ export function cameraTour(
         holdTargetPx,
         t
       );
-      pose = mixPose(current, next, leg);
-      // Journey arc: pull out mid-flight, farther for distant stops, so
-      // hopping across the system reads as travel instead of a cut.
       const sweep = angleDelta(current.rotateY, next.rotateY);
       const gapDeg = Math.abs(sweep);
       const gapR = Math.abs(
@@ -1193,7 +1228,7 @@ export function cameraTour(
           ((credits[index + 1].radiusPx ?? credits[index + 1].radius * 420) || 0)
       );
       const pullOut = Math.min(3200, 180 + gapDeg * 3.2 + gapR * 0.28);
-      pose.translateZ -= pullOut * Math.sin(Math.PI * leg);
+      pose = travelHopPose(current, next, leg, pullOut);
       // Bank into the turn like a craft; strongest mid-leg, gone at
       // both endpoints so holds stay level.
       pose.rotateZ +=
@@ -1220,9 +1255,8 @@ export function cameraTour(
   pose.nextKey = timeline.nextKey;
   pose.creditOpacity = timeline.opacity;
   // Holds keep the current product pinned at its framed offset. During
-  // travel the lock is released so the aim sweeps from the outgoing
-  // planet to the next one — overriding it there made hops read as a
-  // zoom-out / hard cut / zoom-in instead of a flight.
+  // travel the lock is released so the hop can zoom out on the outgoing
+  // moon, follow across, then push in on the next.
   const focused = timeline.key
     ? credits.find((credit) => credit.key === timeline.key)
     : undefined;

@@ -732,6 +732,60 @@ describe("cameraTour", () => {
     expect(Math.abs(Math.abs(aMid.x) - off)).toBeGreaterThan(10);
   });
 
+  it("zooms out on the outgoing moon, then follows the next", () => {
+    const world = new Map([
+      ["a", { x: 300, height: 40, z: 80 }],
+      ["b", { x: -200, height: -30, z: 420 }],
+    ]);
+    const credits = [
+      {
+        key: "a",
+        name: "A",
+        startDeg: 0,
+        periodSec: 60,
+        radius: 0.5,
+        radiusPx: 300,
+        size: 40,
+      },
+      {
+        key: "b",
+        name: "B",
+        startDeg: 140,
+        periodSec: 90,
+        radius: 1.2,
+        radiusPx: 600,
+        size: 110,
+      },
+    ];
+    const holdA = cameraTour(TOUR_INTRO_MS + 200, false, credits, world);
+    const holdB = cameraTour(
+      TOUR_INTRO_MS + CREDIT_MS + 200,
+      false,
+      credits,
+      world
+    );
+    const early = cameraTour(
+      TOUR_INTRO_MS + CREDIT_MS - CREDIT_TRAVEL_MS * 0.82,
+      false,
+      credits,
+      world
+    );
+    const late = cameraTour(
+      TOUR_INTRO_MS + CREDIT_MS - CREDIT_TRAVEL_MS * 0.18,
+      false,
+      credits,
+      world
+    );
+    const yawGap = (a: number, b: number) =>
+      Math.abs(((((b - a) % 360) + 540) % 360) - 180);
+    // Still tracking A while pulling back — A does not fly past.
+    expect(yawGap(early.rotateY, holdA.rotateY)).toBeLessThan(8);
+    expect(early.translateZ).toBeLessThan(holdA.translateZ - 20);
+    // Then tracking B on the way in.
+    expect(yawGap(late.rotateY, holdB.rotateY)).toBeLessThan(8);
+    expect(late.translateZ).toBeLessThan(holdB.translateZ - 20);
+  });
+
   it("keeps creeping during a focus instead of parking", () => {
     const world = new Map([["x", { x: 400, height: 80, z: 0 }]]);
     const credits = [
