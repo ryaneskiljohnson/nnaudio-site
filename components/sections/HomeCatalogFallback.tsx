@@ -85,7 +85,7 @@ export default function HomeCatalogFallback() {
             }}
           >
             <a className="hero-cta hero-cta-primary" href="/product/cymasphere">
-              Explore <span className="hero-nowrap">Cymasphere</span>
+              Explore <span className="hero-nowrap whitespace-nowrap">Cymasphere</span>
             </a>
             <a className="hero-cta hero-cta-secondary" href="#catalog">
               Browse The Universe

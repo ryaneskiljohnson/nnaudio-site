@@ -44,7 +44,7 @@ describe("hero source contracts", () => {
     expect(circuit).toContain("word-break: normal");
     expect(circuit).toContain("hyphens: none");
     expect(circuit).toContain("fillNameWords");
-    expect(circuit).toContain('word.className = "hero-nowrap"');
+    expect(circuit).toContain('word.className = "hero-nowrap whitespace-nowrap"');
     expect(circuit).toContain("white-space: nowrap");
     expect(circuit).not.toContain("overflow-wrap: anywhere");
     expect(circuit).not.toContain("overflow-wrap: break-word");

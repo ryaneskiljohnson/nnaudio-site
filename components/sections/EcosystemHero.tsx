@@ -124,6 +124,10 @@ const Support = styled.p`
   word-break: normal;
   hyphens: none;
 
+  .hero-nowrap {
+    white-space: nowrap;
+  }
+
   @media (max-width: 768px) {
     display: none;
   }
@@ -190,6 +194,10 @@ const PrimaryCta = styled.a`
     min-height: 44px;
     font-size: 0.95rem;
     text-align: center;
+  }
+
+  .hero-nowrap {
+    white-space: nowrap;
   }
 `;
 
@@ -563,7 +571,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
             Orbiting in harmony.
           </Title>
           <Support>
-            <span className="hero-nowrap">Cymasphere</span>
+            <span className="hero-nowrap whitespace-nowrap">Cymasphere</span>
             {supportRest}
           </Support>
           <SupportMobile>{supportLineMobile}</SupportMobile>
@@ -572,7 +580,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
               className="hero-cta hero-cta-primary"
               href="/product/cymasphere"
             >
-              Explore <span className="hero-nowrap">Cymasphere</span>
+              Explore <span className="hero-nowrap whitespace-nowrap">Cymasphere</span>
             </PrimaryCta>
             <SecondaryCta
               className="hero-cta hero-cta-secondary"

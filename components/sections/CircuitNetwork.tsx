@@ -124,7 +124,7 @@ function fillNameWords(el: HTMLSpanElement, name: string) {
       continue;
     }
     const word = document.createElement("span");
-    word.className = "hero-nowrap";
+    word.className = "hero-nowrap whitespace-nowrap";
     word.textContent = part;
     el.append(word);
   }
@@ -290,6 +290,9 @@ const CreditBlurb = styled.p`
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
   overflow: hidden;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
   margin: 14px 0 0;
   max-width: 36ch;
   font-size: clamp(0.92rem, 1.5vw, 1.08rem);
