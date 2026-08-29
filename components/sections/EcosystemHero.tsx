@@ -19,7 +19,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import styled, { keyframes } from "styled-components";
-import type { CircuitNode } from "./circuit-node";
+import { DEFAULT_CYMASYNTH_NODE, type CircuitNode } from "./circuit-node";
+import {
+  partitionHeroTourProducts,
+  seedRowToCard,
+  type HomepageProductRow,
+} from "@/lib/homepage-hero-seed";
 import {
   parseHeroTourQuery,
   prefersLiteHeroTour,
@@ -120,6 +125,13 @@ const Support = styled.p`
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.7);
   text-shadow: 0 4px 18px rgba(5, 6, 13, 0.9);
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+
+  .hero-nowrap {
+    white-space: nowrap;
+  }
 
   @media (max-width: 768px) {
     display: none;
@@ -167,6 +179,9 @@ const PrimaryCta = styled.a`
   font-weight: 600;
   font-size: 1.02rem;
   text-decoration: none;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
   box-shadow: 0 4px 20px rgba(138, 43, 226, 0.4);
   transition: box-shadow 0.3s ease, transform 0.2s ease;
 
@@ -184,6 +199,10 @@ const PrimaryCta = styled.a`
     min-height: 44px;
     font-size: 0.95rem;
     text-align: center;
+  }
+
+  .hero-nowrap {
+    white-space: nowrap;
   }
 `;
 
@@ -475,6 +494,13 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
 }) => {
   const pathname = usePathname();
   const { allowTour, showPlay, tourCap, startMobileTour } = useOptInHeroTour();
+  const [liveCatalog, setLiveCatalog] = useState<{
+    instruments: HeroProduct[];
+    effects: HeroProduct[];
+    packs: HeroProduct[];
+    midiFx: HeroProduct[];
+    cymasphere: HeroProduct | null;
+  } | null>(null);
 
   useEffect(() => {
     logHeroDebug("hero-allowTour", {
@@ -484,9 +510,55 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
     });
   }, [allowTour, showPlay, tourCap]);
 
+  const seedEmpty =
+    instruments.length + effects.length + packs.length + midiFx.length === 0;
+
+  useEffect(() => {
+    if (!seedEmpty) {
+      setLiveCatalog(null);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await fetch("/api/products?status=active&limit=200");
+        const data = (await response.json()) as {
+          success?: boolean;
+          products?: HomepageProductRow[];
+        };
+        if (cancelled || !data.success || !data.products?.length) return;
+        const split = partitionHeroTourProducts(data.products);
+        setLiveCatalog({
+          instruments: split.instruments.map(seedRowToCard),
+          effects: split.effects.map(seedRowToCard),
+          packs: split.packs.map(seedRowToCard),
+          midiFx: split.midiFx.map(seedRowToCard),
+          cymasphere: split.cymasphere ? seedRowToCard(split.cymasphere) : null,
+        });
+      } catch (error) {
+        console.error("Hero tour catalog fetch failed:", error);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [seedEmpty]);
+
+  const tourInstruments = seedEmpty ? liveCatalog?.instruments ?? [] : instruments;
+  const tourEffects = seedEmpty ? liveCatalog?.effects ?? [] : effects;
+  const tourPacks = seedEmpty ? liveCatalog?.packs ?? [] : packs;
+  const tourMidiFx = seedEmpty ? liveCatalog?.midiFx ?? [] : midiFx;
+  const tourCymasphere =
+    cymasphere ?? (seedEmpty ? liveCatalog?.cymasphere ?? null : null);
+
   const { cymasynth, nodes } = useMemo(() => {
-    const synthProduct = instruments.find((p) => p.slug === "cymasynth");
-    const synthNode = synthProduct ? toNode(synthProduct) : null;
+    const synthProduct = tourInstruments.find(
+      (p) => (p.slug || "").toLowerCase() === "cymasynth"
+    );
+    const synthNode = synthProduct
+      ? toNode(synthProduct)
+      : DEFAULT_CYMASYNTH_NODE;
 
     const skip = new Set(["cymasynth", "cymasphere", "nnaudio-access"]);
     const pick = (list: HeroProduct[]): CircuitNode[] =>
@@ -495,10 +567,10 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
         .map((p) => toNode(p));
 
     const buckets = [
-      pick(instruments),
-      pick(effects),
-      pick(midiFx),
-      pick(packs),
+      pick(tourInstruments),
+      pick(tourEffects),
+      pick(tourMidiFx),
+      pick(tourPacks),
     ];
     const seen = new Set<string>();
     const mixed: CircuitNode[] = [];
@@ -518,12 +590,12 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
       cymasynth: synthNode,
       nodes: mixed,
     };
-  }, [instruments, effects, packs, midiFx]);
+  }, [tourInstruments, tourEffects, tourPacks, tourMidiFx]);
 
-  const supportLine =
+  const supportRest =
     productCount > 0
-      ? `Cymasphere writes from the center: harmony, voicings, and patterns - melodies, groove, and texture. In orbit: CymaSynth and ${productCount}+ instruments, effects, and packs.`
-      : "Cymasphere writes from the center: harmony, voicings, and patterns - melodies, groove, and texture. In orbit: CymaSynth and a catalog of instruments, effects, and packs.";
+      ? ` writes from the center: harmony, voicings, and patterns - melodies, groove, and texture. In orbit: CymaSynth and ${productCount}+ instruments, effects, and packs.`
+      : " writes from the center: harmony, voicings, and patterns - melodies, groove, and texture. In orbit: CymaSynth and a catalog of instruments, effects, and packs.";
   const supportLineMobile =
     productCount > 0
       ? `Harmony, voicings, and patterns from the center. CymaSynth and ${productCount}+ more in orbit.`
@@ -536,7 +608,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
         <BoardFade>
           {allowTour ? (
             <CircuitNetwork
-              cymasphere={cymasphere ? toNode(cymasphere) : null}
+              cymasphere={tourCymasphere ? toNode(tourCymasphere) : null}
               cymasynth={cymasynth}
               nodes={nodes}
               tourCap={tourCap}
@@ -556,14 +628,17 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
             <br />
             Orbiting in harmony.
           </Title>
-          <Support>{supportLine}</Support>
+          <Support>
+            <span className="hero-nowrap whitespace-nowrap">Cymasphere</span>
+            {supportRest}
+          </Support>
           <SupportMobile>{supportLineMobile}</SupportMobile>
           <Ctas>
             <PrimaryCta
               className="hero-cta hero-cta-primary"
               href="/product/cymasphere"
             >
-              Explore Cymasphere
+              Explore <span className="hero-nowrap whitespace-nowrap">Cymasphere</span>
             </PrimaryCta>
             <SecondaryCta
               className="hero-cta hero-cta-secondary"

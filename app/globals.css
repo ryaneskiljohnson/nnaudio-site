@@ -324,6 +324,11 @@ a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit),
   text-shadow: 0 8px 24px rgba(5, 6, 13, 0.85);
 }
 
+.hero-nowrap,
+#home .hero-nowrap {
+  white-space: nowrap;
+}
+
 #home .hero-cta {
   display: inline-block;
   padding: 12px 28px;
@@ -333,6 +338,9 @@ a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit),
   font-size: 1.02rem;
   text-decoration: none;
   text-align: center;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 #home .hero-cta-primary {

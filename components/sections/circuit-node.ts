@@ -19,3 +19,12 @@ export interface CircuitNode {
   /** Short product description shown in the empty half of a hold. */
   description?: string;
 }
+
+/** Flagship synth when the catalog seed omitted CymaSynth. */
+export const DEFAULT_CYMASYNTH_NODE: CircuitNode = {
+  id: "cymasynth",
+  name: "CymaSynth",
+  slug: "cymasynth",
+  image: "/images/cymasynth-sphere-hero.webp",
+  tagline: "Professional Wavetable Synthesizer",
+};

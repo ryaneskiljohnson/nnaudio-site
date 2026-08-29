@@ -190,6 +190,28 @@ export const CYMASYNTH_OSC_RINGS: ReadonlyArray<{
 export const CYMASYNTH_RING_DISK_TILT_DEG = 52;
 
 /**
+ * @brief Euler XYZ for the oscillator nest: tilt the disk, then spin
+ * around its local Z (the plane normal). Spinning the untilted group
+ * around Z tumbles the nest as a rigid body.
+ * @param spinDeg In-plane turn in degrees.
+ * @returns Radians for `Object3D.rotation` with order XYZ.
+ * @example
+ * synthOscDiskEulerRad(0).x * 180 / Math.PI // 52
+ * synthOscDiskEulerRad(90).z * 180 / Math.PI // 90
+ */
+export function synthOscDiskEulerRad(spinDeg: number): {
+  x: number;
+  y: number;
+  z: number;
+} {
+  return {
+    x: (CYMASYNTH_RING_DISK_TILT_DEG * Math.PI) / 180,
+    y: 0,
+    z: (spinDeg * Math.PI) / 180,
+  };
+}
+
+/**
  * CSS box the oscillator plate is authored against (matches desktop
  * CymaSynth moon diameter). Pose scale is `visualDiameter / moonRef`.
  */
@@ -233,6 +255,153 @@ export function cymasynthOrbit(mobile: boolean): MoonPlacement {
     periodSec: keplerPeriodSec(Math.max(0.32, radius * 0.18)),
     size: mobile ? { w: 78, h: 78 } : { w: 108, h: 108 },
   };
+}
+
+/**
+ * Fixed catalog moons beyond CymaSynth. Kepler seats never change;
+ * only wrap art cycles as the tour walks the catalog.
+ */
+export const CATALOG_ORBIT_SLOTS = 5;
+
+/**
+ * @brief Stable mesh / world-pos key for one catalog orbit slot.
+ * @param slot 0 .. {@link CATALOG_ORBIT_SLOTS}-1.
+ */
+export function catalogSlotKey(slot: number): string {
+  return `catalog-slot-${slot}`;
+}
+
+/**
+ * @brief Five hardcoded catalog orbits, one moon each, outside CymaSynth.
+ * @param mobile Compact radii and disk sizes.
+ * @returns Seats in slot order.
+ * @example
+ * catalogOrbitSeats(false).length // 5
+ * catalogOrbitSeats(false)[0].radius > cymasynthOrbit(false).radius
+ */
+export function catalogOrbitSeats(mobile: boolean): MoonPlacement[] {
+  const specs = mobile
+    ? [
+        { radius: 1.85, startDeg: 22 },
+        { radius: 2.9, startDeg: 94 },
+        { radius: 4.15, startDeg: 166 },
+        { radius: 5.6, startDeg: 238 },
+        { radius: 7.3, startDeg: 310 },
+      ]
+    : [
+        { radius: 2.35, startDeg: 18 },
+        { radius: 3.7, startDeg: 92 },
+        { radius: 5.4, startDeg: 164 },
+        { radius: 7.4, startDeg: 236 },
+        { radius: 9.8, startDeg: 308 },
+      ];
+  return specs.map((spec, slot) => ({
+    index: slot,
+    ring: slot,
+    radius: spec.radius,
+    startDeg: spec.startDeg,
+    periodSec: keplerPeriodSec(Math.max(0.32, spec.radius * 0.18)),
+    size: {
+      w: moonDiameter(slot, slot, mobile),
+      h: moonDiameter(slot, slot, mobile),
+    },
+  }));
+}
+
+/**
+ * @brief Catalog stop (not the sun or CymaSynth).
+ * @param credit Tour credit.
+ */
+export function isCatalogCredit(credit: CreditTarget): boolean {
+  return !credit.sun && (credit.weight ?? 1) < 2;
+}
+
+/**
+ * @brief How many catalog stops precede `index` in the credit list.
+ * @param credits Ordered tour credits.
+ * @param index Credit index.
+ */
+export function catalogCreditOrdinal(
+  credits: CreditTarget[],
+  index: number
+): number {
+  let n = 0;
+  for (let i = 0; i < index && i < credits.length; i += 1) {
+    if (isCatalogCredit(credits[i])) n += 1;
+  }
+  return n;
+}
+
+/**
+ * @brief Pins each catalog credit to a fixed orbit slot (round-robin).
+ * @param credits Ordered credits (sun / synth already placed).
+ * @returns Copy with `bodyKey` set.
+ */
+export function assignCatalogSlotKeys(credits: CreditTarget[]): CreditTarget[] {
+  let n = 0;
+  return credits.map((credit) => {
+    if (!isCatalogCredit(credit)) {
+      return { ...credit, bodyKey: credit.key };
+    }
+    const slotted = {
+      ...credit,
+      bodyKey: catalogSlotKey(n % CATALOG_ORBIT_SLOTS),
+    };
+    n += 1;
+    return slotted;
+  });
+}
+
+/**
+ * @brief First catalog index of the batch that should wrap the five slots.
+ * Looks ahead from the current credit so a sun/synth return can
+ * re-skin the next five planets before the camera gets there.
+ * @param credits Ordered credits.
+ * @param creditIndex `cameraTour` credit index.
+ */
+export function catalogBatchStart(
+  credits: CreditTarget[],
+  creditIndex: number | null | undefined
+): number {
+  const scanFrom =
+    creditIndex == null
+      ? 0
+      : Math.min(Math.max(0, creditIndex), Math.max(0, credits.length - 1));
+  for (let i = scanFrom; i < credits.length; i += 1) {
+    if (isCatalogCredit(credits[i])) {
+      return (
+        Math.floor(catalogCreditOrdinal(credits, i) / CATALOG_ORBIT_SLOTS) *
+        CATALOG_ORBIT_SLOTS
+      );
+    }
+  }
+  for (let i = scanFrom; i >= 0; i -= 1) {
+    if (isCatalogCredit(credits[i])) {
+      return (
+        Math.floor(catalogCreditOrdinal(credits, i) / CATALOG_ORBIT_SLOTS) *
+        CATALOG_ORBIT_SLOTS
+      );
+    }
+  }
+  return 0;
+}
+
+/**
+ * @brief Catalog credits parked on the five slots for this batch.
+ * @param credits Ordered credits.
+ * @param batchStart {@link catalogBatchStart} result.
+ */
+export function catalogSlotOccupants(
+  credits: CreditTarget[],
+  batchStart: number
+): Array<CreditTarget | null> {
+  const catalog = credits.filter(isCatalogCredit);
+  if (catalog.length === 0) {
+    return Array.from({ length: CATALOG_ORBIT_SLOTS }, () => null);
+  }
+  return Array.from({ length: CATALOG_ORBIT_SLOTS }, (_, slot) => {
+    return catalog[(batchStart + slot) % catalog.length] ?? null;
+  });
 }
 
 /**
@@ -302,7 +471,9 @@ export interface MoonWorldPos {
 export function aimYawAt(x: number, z: number): { rotateY: number; range: number } {
   const range = Math.max(80, Math.hypot(x, z));
   return {
-    rotateY: (Math.atan2(-x, z) * 180) / Math.PI,
+    // CSS rotateY(+90) sends +X toward the camera; match that so the
+    // moon sits between the sun and the viewer, not behind the sun.
+    rotateY: (Math.atan2(x, z) * 180) / Math.PI,
     range,
   };
 }
@@ -365,9 +536,12 @@ export function holdFrameOffset(
  */
 export function closeupMagnification(size: number, targetPx = 560): number {
   const target = Math.max(220, targetPx);
-  // Cap well below 9×: outer/small moons at 9× turned 0.01px Kepler
-  // steps (and CSS rounding) into visible rumble.
-  return Math.min(5.8, Math.max(2.6, target / Math.max(24, size * 2.4)));
+  const disk = Math.max(24, size);
+  // Apparent size is `size * mag`. Dividing by `size * 2.4` only filled
+  // ~230px — an orbit flyby. Aim at `target` so the hold is the planet.
+  const mag = target / disk;
+  const maxMag = Math.min(14, TOUR_PERSPECTIVE_PX / (disk * 0.55 + 12));
+  return Math.min(maxMag, Math.max(3.4, mag));
 }
 
 /**
@@ -441,8 +615,8 @@ function viewRotate(
 ): { x: number; y: number; z: number } {
   const ry = (rotateY * Math.PI) / 180;
   const rx = (rotateX * Math.PI) / 180;
-  const x1 = px * Math.cos(ry) + pz * Math.sin(ry);
-  const z1 = -px * Math.sin(ry) + pz * Math.cos(ry);
+  const x1 = px * Math.cos(ry) - pz * Math.sin(ry);
+  const z1 = px * Math.sin(ry) + pz * Math.cos(ry);
   return {
     x: x1,
     y: py * Math.cos(rx) - z1 * Math.sin(rx),
@@ -468,7 +642,7 @@ function viewRotate(
  * @returns Pose framing the moon just off the sun's screen position.
  * @example
  * const pose = lookAtMoon(400, 80, 0, 64, 0, 0, 0);
- * // pose.rotateY === -90, pose.rotateX === atan2(-80, 400) in deg
+ * // pose.rotateY === 90, pose.rotateX === atan2(-80, 400) in deg
  */
 export function lookAtMoon(
   x: number,
@@ -514,7 +688,7 @@ export function lookAtMoon(
     Math.min(0.45, eclipseYPx / mag / lookDist)
   );
   const rotateY =
-    (Math.atan2(-lx, lz) * 180) / Math.PI + (yawOff * 180) / Math.PI;
+    (Math.atan2(lx, lz) * 180) / Math.PI - (yawOff * 180) / Math.PI;
   const rotateX =
     (Math.atan2(-lh, range) * 180) / Math.PI - (pitchOff * 180) / Math.PI;
   const dollyToMoon = TOUR_PERSPECTIVE_PX * (1 - 1 / mag);
@@ -531,6 +705,58 @@ export function lookAtMoon(
 
 /** How many moons to mount at once on desktop. */
 export const VISIBLE_MOON_BUDGET = 6;
+/** Fade in/out when a moon joins or leaves the stage. */
+export const HERO_BODY_FADE_TAU_MS = 320;
+/** Follow tautness while locked on a featured moon. */
+export const HERO_CAMERA_TRACK_TAU_MS = 140;
+/** Follow tautness while flying into or holding the sun. */
+export const HERO_CAMERA_SUN_TAU_MS = 380;
+/** Follow tautness after a large pose jump (intro / outro). */
+export const HERO_CAMERA_JUMP_TAU_MS = 220;
+/** Follow tautness on the free galaxy path. */
+export const HERO_CAMERA_FREE_TAU_MS = 180;
+
+/**
+ * @brief Exponential fade toward a 0–1 opacity target.
+ * @param current Last opacity.
+ * @param target Desired opacity.
+ * @param dtMs Frame delta, already clamped.
+ * @param tauMs Time constant.
+ * @returns Next opacity.
+ * @example
+ * stepHeroOpacity(0, 1, 16, 320) > 0
+ */
+export function stepHeroOpacity(
+  current: number,
+  target: number,
+  dtMs: number,
+  tauMs: number = HERO_BODY_FADE_TAU_MS
+): number {
+  const k = 1 - Math.exp(-Math.max(0, dtMs) / Math.max(1, tauMs));
+  const next = current + (target - current) * k;
+  return Math.abs(next - target) < 0.01 ? target : next;
+}
+
+/**
+ * @brief Camera-follow time constant. Holds still ease — a 32ms jump
+ * read as a cut.
+ * @param trackingMoon Credit hold or hop onto a catalog moon.
+ * @param sunApproach Flying into or holding Cymasphere.
+ * @param jump Combined yaw + dolly discontinuity.
+ * @returns Tau in milliseconds.
+ * @example
+ * heroCameraFollowTau(true, false, 0) // 140
+ */
+export function heroCameraFollowTau(
+  trackingMoon: boolean,
+  sunApproach: boolean,
+  jump: number
+): number {
+  if (trackingMoon) return HERO_CAMERA_TRACK_TAU_MS;
+  if (sunApproach) return HERO_CAMERA_SUN_TAU_MS;
+  if (jump > 10) return HERO_CAMERA_JUMP_TAU_MS;
+  return HERO_CAMERA_FREE_TAU_MS;
+}
 /**
  * Phone stage: the focused moon and the next credit only. Also caps
  * hi-res bakes ({@link MOBILE_TEXTURE_KEEP} in hero-tour aliases this).
@@ -624,6 +850,29 @@ export function hideSynthForSunApproach(
   return focusKey == null && nextKey === SUN_FOCUS_KEY;
 }
 
+/**
+ * @brief Moons that should exist this frame of the credit show.
+ * Holds mount only the featured body. The next planet is created when
+ * the hop starts — it does not sit on stage for the whole previous hold.
+ * @param cam Live tour sample.
+ * @returns Product keys to draw, in stage order.
+ * @example
+ * creditStageKeys({ focusKey: "a", nextKey: "b", traveling: false }) // ["a"]
+ */
+export function creditStageKeys(
+  cam: Pick<TourCamera, "focusKey" | "nextKey" | "traveling">
+): string[] {
+  const moon = (key: string | null) =>
+    key && key !== SUN_FOCUS_KEY ? key : null;
+  const focus = moon(cam.focusKey);
+  const next = moon(cam.nextKey);
+  if (!cam.traveling) return focus ? [focus] : [];
+  const keys: string[] = [];
+  if (focus) keys.push(focus);
+  if (next && next !== focus) keys.push(next);
+  return keys;
+}
+
 export function pickVisibleMoons(
   moons: VisibleMoonCandidate[],
   opts: {
@@ -636,18 +885,24 @@ export function pickVisibleMoons(
     previous?: readonly string[];
     /** Drop CymaSynth (intro / Cymasphere hold). */
     hideSynth?: boolean;
+    /**
+     * When false, the upcoming credit is not forced on stage. Holds pass
+     * false so the next planet is created at the hop, not the whole hold.
+     */
+    forceNext?: boolean;
   }
 ): string[] {
   const pool = opts.hideSynth ? moons.filter((moon) => !moon.synth) : moons;
   const present = new Set(pool.map((moon) => moon.key));
   const forced = new Set<string>();
   if (opts.focusKey && present.has(opts.focusKey)) forced.add(opts.focusKey);
+  const forceNext = opts.forceNext ?? !opts.sunFocus;
   // During the Cymasphere hold, do not force the next planet on stage —
   // an untextured disk against the sun reads as a black glitch.
-  if (opts.nextKey && present.has(opts.nextKey) && !opts.sunFocus) {
+  if (opts.nextKey && present.has(opts.nextKey) && forceNext) {
     forced.add(opts.nextKey);
   }
-  if (opts.sunFocus) return [...forced];
+  if (opts.sunFocus && !forceNext) return [...forced];
   const budget = Math.max(forced.size, opts.budget ?? VISIBLE_MOON_BUDGET);
   const prev = new Set(opts.previous ?? []);
   const scored = pool.map((moon) => {
@@ -685,6 +940,50 @@ export function pickVisibleMoons(
     }
   }
   return picked;
+}
+
+/**
+ * @brief Moons to draw this tour frame. Intro and moon holds keep a
+ * handful of catalog bodies on stage. The Cymasphere hold is empty so
+ * disks cannot silhouette the sun. The next credit is created when the
+ * hop starts, not for the whole previous hold.
+ * @param moons Live Kepler candidates.
+ * @param opts Tour camera + previous stage.
+ * @returns Keys to mount this frame.
+ * @example
+ * tourVisibleMoonKeys(moons, { focusKey: SUN_FOCUS_KEY, traveling: false })
+ * // []
+ */
+export function tourVisibleMoonKeys(
+  moons: VisibleMoonCandidate[],
+  opts: {
+    focusKey: string | null;
+    nextKey: string | null;
+    traveling: boolean;
+    dollyZ: number;
+    viewHalfW: number;
+    budget?: number;
+    previous?: readonly string[];
+    hideSynth?: boolean;
+  }
+): string[] {
+  const sunHold = opts.focusKey === SUN_FOCUS_KEY && !opts.traveling;
+  if (sunHold) return [];
+  const focus =
+    opts.focusKey && opts.focusKey !== SUN_FOCUS_KEY ? opts.focusKey : null;
+  const next =
+    opts.nextKey && opts.nextKey !== SUN_FOCUS_KEY ? opts.nextKey : null;
+  return pickVisibleMoons(moons, {
+    focusKey: focus,
+    nextKey: next,
+    sunFocus: false,
+    forceNext: opts.traveling,
+    dollyZ: opts.dollyZ,
+    viewHalfW: opts.viewHalfW,
+    budget: opts.budget,
+    previous: opts.previous,
+    hideSynth: opts.hideSynth,
+  });
 }
 
 /** CSS perspective of the board; camera dolly math depends on it. */
@@ -725,6 +1024,8 @@ export const INTRO_PATH_U = 0.28;
 export const INTRO_BLEND_MS = 1800;
 /** Base time on a catalog product: hold plus the journey to the next stop. */
 export const CREDIT_MS = 4400;
+/** Catalog moons between Cymasphere + CymaSynth returns. */
+export const HERO_TOUR_CATALOG_BATCH = 5;
 /** Reserved focus key for the Cymasphere sun hold. */
 export const SUN_FOCUS_KEY = "sun-cymasphere";
 /** Travel leg at the end of each credit — the flight to the next moon. */
@@ -737,6 +1038,11 @@ export const TOUR_DURATION_MS = 28000;
 /** One product the camera can hold on like a credit card. */
 export interface CreditTarget {
   key: string;
+  /**
+   * Kepler / mesh key. Catalog credits share five slot keys;
+   * `key` stays unique per product.
+   */
+  bodyKey?: string;
   name: string;
   /** Product page slug for the credit-card link. */
   slug?: string;
@@ -777,6 +1083,10 @@ export interface TourCamera {
   nextKey: string | null;
   /** Credit title card opacity. */
   creditOpacity: number;
+  /** True during a hop between credits. */
+  traveling: boolean;
+  /** Index into the current credit list, when a tour is playing. */
+  creditIndex?: number | null;
 }
 
 interface TourKey {
@@ -876,6 +1186,76 @@ export function orderCredits(credits: CreditTarget[]): CreditTarget[] {
 }
 
 /**
+ * @brief True for Cymasphere and CymaSynth — the stops we revisit.
+ * @param credit Tour credit.
+ */
+function isFlagshipCredit(credit: CreditTarget): boolean {
+  return Boolean(credit.sun) || (credit.weight ?? 1) >= 2;
+}
+
+/**
+ * @brief Revisits Cymasphere and CymaSynth after every catalog batch.
+ * The last batch is not followed by a return — the tour outro already
+ * loops back to the opening fly-in.
+ * @param credits Ordered list (flagships first).
+ * @param batchSize Catalog moons between flagship returns.
+ * @returns The same credits with flagships copied before each later batch.
+ * @example
+ * weaveFlagshipReturns([sun, synth, m1, m2, m3, m4, m5, m6]).map((c) => c.key)
+ * // [sun, synth, m1…m5, sun, synth, m6]
+ */
+export function weaveFlagshipReturns(
+  credits: CreditTarget[],
+  batchSize: number = HERO_TOUR_CATALOG_BATCH
+): CreditTarget[] {
+  if (credits.length === 0 || batchSize <= 0) return credits;
+  const flagships: CreditTarget[] = [];
+  const catalog: CreditTarget[] = [];
+  for (const credit of credits) {
+    if (isFlagshipCredit(credit)) flagships.push(credit);
+    else catalog.push(credit);
+  }
+  if (flagships.length === 0 || catalog.length <= batchSize) return credits;
+
+  const woven: CreditTarget[] = [];
+  for (let i = 0; i < catalog.length; i += batchSize) {
+    woven.push(...flagships);
+    woven.push(...catalog.slice(i, i + batchSize));
+  }
+  return woven;
+}
+
+/**
+ * @brief Credit stops for the camera tour. A sun-only list is not a
+ * tour — cameraTour would intro, hold Cymasphere, outro, and loop.
+ * Need at least one moon (CymaSynth / catalog) before the sun is added.
+ * After every {@link HERO_TOUR_CATALOG_BATCH} catalog moons the tour
+ * returns to Cymasphere and CymaSynth, then continues the catalog.
+ * @param sun Cymasphere credit.
+ * @param moons CymaSynth and catalog stops.
+ * @param stopCap Optional slice (`?tourCap` / phone cap). Never 1.
+ * Applied before weaving so the cap still means unique ordered stops.
+ * @returns Ordered credits, or `[]` so the galaxy path plays instead.
+ * @example
+ * buildHeroCredits(sun, []).length // 0
+ * buildHeroCredits(sun, [synth]).map((c) => c.key)
+ * // [sun-cymasphere, synth]
+ */
+export function buildHeroCredits(
+  sun: CreditTarget,
+  moons: CreditTarget[],
+  stopCap?: number | null
+): CreditTarget[] {
+  if (moons.length === 0) return [];
+  const ordered = orderCredits([sun, ...moons]);
+  const capped =
+    stopCap == null || stopCap <= 0
+      ? ordered
+      : ordered.slice(0, Math.max(2, stopCap));
+  return weaveFlagshipReturns(capped);
+}
+
+/**
  * @brief Camera that frames one moon up close, like a guided tour stop.
  * The yaw puts the moon dead ahead between the sun and the viewer, then
  * the dolly pushes deep enough that the moon reaches a target apparent
@@ -916,6 +1296,7 @@ function poseForCredit(
       focusKey: credit.key,
       nextKey: null,
       creditOpacity: 0,
+      traveling: false,
     };
   }
   const theta = moonTheta(credit.startDeg, credit.periodSec, elapsedMs);
@@ -948,6 +1329,7 @@ function poseForCredit(
     focusKey: credit.key,
     nextKey: null,
     creditOpacity: 0,
+    traveling: false,
   };
 }
 
@@ -1033,6 +1415,7 @@ function poseFromKeys(u: number): TourCamera {
     focusKey: null,
     nextKey: null,
     creditOpacity: 0,
+    traveling: false,
   };
 }
 
@@ -1065,8 +1448,8 @@ function lerpAngle(a: number, b: number, t: number): number {
  * @param t Linear mix, eased internally.
  * @returns Mixed pose.
  */
-function mixPose(a: TourCamera, b: TourCamera, t: number): TourCamera {
-  const s = smoothstep(t);
+function mixPose(a: TourCamera, b: TourCamera, t: number, ease = true): TourCamera {
+  const s = ease ? smoothstep(t) : Math.min(1, Math.max(0, t));
   return {
     rotateX: lerpAngle(a.rotateX, b.rotateX, s),
     rotateY: lerpAngle(a.rotateY, b.rotateY, s),
@@ -1079,7 +1462,46 @@ function mixPose(a: TourCamera, b: TourCamera, t: number): TourCamera {
     focusKey: s > 0.45 ? b.focusKey : a.focusKey,
     nextKey: s > 0.45 ? b.nextKey : a.nextKey,
     creditOpacity: a.creditOpacity + (b.creditOpacity - a.creditOpacity) * s,
+    traveling: s > 0.45 ? b.traveling : a.traveling,
   };
+}
+
+/**
+ * @brief Dolly a look-at pose back so the framed moon stays on screen
+ * while the camera can see the rest of the hop.
+ * @param pose Live look-at of one moon.
+ * @param pullOut Extra pull-back in px.
+ */
+function withPullOut(pose: TourCamera, pullOut: number): TourCamera {
+  const translateZ = pose.translateZ - pullOut;
+  return {
+    ...pose,
+    translateZ,
+    sunScale: sunScaleFromCamera(translateZ),
+  };
+}
+
+/**
+ * @brief Hop: zoom out while tracking the outgoing moon, sweep at that
+ * wide dolly onto the next moon, then push in. Blending two close-ups
+ * let planets fly past the camera mid-leg.
+ * @param from Look-at of the outgoing moon.
+ * @param to Look-at of the incoming moon.
+ * @param leg 0–1 travel progress.
+ * @param pullOut Mid-leg pull-back in px.
+ */
+function travelHopPose(
+  from: TourCamera,
+  to: TourCamera,
+  leg: number,
+  pullOut: number
+): TourCamera {
+  const u = Math.min(1, Math.max(0, leg));
+  const wideFrom = withPullOut(from, pullOut);
+  const wideTo = withPullOut(to, pullOut);
+  if (u < 0.32) return mixPose(from, wideFrom, u / 0.32);
+  if (u < 0.68) return mixPose(wideFrom, wideTo, (u - 0.32) / 0.36, false);
+  return mixPose(wideTo, to, (u - 0.68) / 0.32);
 }
 
 /**
@@ -1105,7 +1527,9 @@ export function cameraTour(
   viewHalfW = 620
 ): TourCamera {
   const frameOf = (credit: CreditTarget) => holdFrameOffset(credit.key, viewHalfW);
-  const holdTargetPx = Math.min(560, Math.max(220, viewHalfW * 1.55));
+  // Keep the disk inside the frame (credit card + eclipse offset).
+  // 560px on a ~640px-tall board clipped the planet through the camera.
+  const holdTargetPx = Math.min(400, Math.max(200, viewHalfW * 0.68));
   if (reducedMotion) {
     return {
       rotateX: 22,
@@ -1119,6 +1543,7 @@ export function cameraTour(
       focusKey: null,
       nextKey: null,
       creditOpacity: 0,
+      traveling: false,
     };
   }
 
@@ -1183,9 +1608,6 @@ export function cameraTour(
         holdTargetPx,
         t
       );
-      pose = mixPose(current, next, leg);
-      // Journey arc: pull out mid-flight, farther for distant stops, so
-      // hopping across the system reads as travel instead of a cut.
       const sweep = angleDelta(current.rotateY, next.rotateY);
       const gapDeg = Math.abs(sweep);
       const gapR = Math.abs(
@@ -1193,7 +1615,7 @@ export function cameraTour(
           ((credits[index + 1].radiusPx ?? credits[index + 1].radius * 420) || 0)
       );
       const pullOut = Math.min(3200, 180 + gapDeg * 3.2 + gapR * 0.28);
-      pose.translateZ -= pullOut * Math.sin(Math.PI * leg);
+      pose = travelHopPose(current, next, leg, pullOut);
       // Bank into the turn like a craft; strongest mid-leg, gone at
       // both endpoints so holds stay level.
       pose.rotateZ +=
@@ -1219,10 +1641,10 @@ export function cameraTour(
   pose.focusKey = timeline.key;
   pose.nextKey = timeline.nextKey;
   pose.creditOpacity = timeline.opacity;
+  pose.traveling = traveling;
   // Holds keep the current product pinned at its framed offset. During
-  // travel the lock is released so the aim sweeps from the outgoing
-  // planet to the next one — overriding it there made hops read as a
-  // zoom-out / hard cut / zoom-in instead of a flight.
+  // travel the lock is released so the hop can zoom out on the outgoing
+  // moon, follow across, then push in on the next.
   const focused = timeline.key
     ? credits.find((credit) => credit.key === timeline.key)
     : undefined;
@@ -1252,7 +1674,11 @@ export function cameraTour(
     pose.rotateZ = 0;
     pose.translateX = locked.translateX;
     pose.translateY = locked.translateY;
+    pose.translateZ = locked.translateZ;
   }
   pose.sunScale = sunScaleFromCamera(pose.translateZ);
+  const locatedNow = locateCredit(creditT, credits);
+  pose.creditIndex =
+    locatedNow?.index ?? (t < TOUR_INTRO_MS ? 0 : Math.max(0, credits.length - 1));
   return pose;
 }

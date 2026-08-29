@@ -171,7 +171,7 @@ export function buildMobileTourStops(
       image,
     });
   }
-  if (tourCap != null && tourCap > 0) return stops.slice(0, tourCap);
+  if (tourCap != null && tourCap > 0) return stops.slice(0, Math.max(2, tourCap));
   return stops;
 }
 

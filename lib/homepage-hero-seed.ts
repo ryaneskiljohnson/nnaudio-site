@@ -341,6 +341,38 @@ export interface HomepageCategoryTile {
 }
 
 /**
+ * @brief Splits a flat product list into the hero tour buckets.
+ * @param products Active catalog rows.
+ * @returns Category lists plus the Cymasphere row when present.
+ * @example
+ * partitionHeroTourProducts([{ slug: "cymasynth", category: "instrument-plugin" }])
+ *   .instruments[0].slug // "cymasynth"
+ */
+export function partitionHeroTourProducts(products: HomepageProductRow[]): {
+  instruments: HomepageProductRow[];
+  effects: HomepageProductRow[];
+  packs: HomepageProductRow[];
+  midiFx: HomepageProductRow[];
+  cymasphere: HomepageProductRow | null;
+} {
+  const instruments: HomepageProductRow[] = [];
+  const effects: HomepageProductRow[] = [];
+  const packs: HomepageProductRow[] = [];
+  const midiFx: HomepageProductRow[] = [];
+  let cymasphere: HomepageProductRow | null = null;
+  for (const row of products) {
+    const slug = (row.slug || "").toLowerCase();
+    if (slug === "cymasphere") cymasphere = row;
+    const category = row.category || "";
+    if (category === "instrument-plugin") instruments.push(row);
+    else if (category === "audio-fx-plugin") effects.push(row);
+    else if (category === "midi-fx-plugin") midiFx.push(row);
+    else if (category === "pack") packs.push(row);
+  }
+  return { instruments, effects, packs, midiFx, cymasphere };
+}
+
+/**
  * @brief Maps a server seed row to the card shape used by the hero and
  * free collection.
  * @param row Slim product from the homepage catalog seed.
