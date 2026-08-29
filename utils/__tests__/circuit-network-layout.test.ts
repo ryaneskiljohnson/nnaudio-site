@@ -22,9 +22,11 @@ import {
   moonHoldNetCss,
   cymasynthOrbit,
   CYMASYNTH_OSC_RINGS,
+  CYMASYNTH_RING_DISK_TILT_DEG,
   SYNTH_RING_PLATE_DESKTOP_PX,
   SYNTH_RING_PLATE_MOBILE_PX,
   sineOscillatorRingPath,
+  synthOscDiskEulerRad,
   synthRingMoonRefPx,
   sunScaleFromCamera,
   moonDepth,
@@ -371,6 +373,16 @@ describe("sineOscillatorRingPath", () => {
     );
     expect(CYMASYNTH_OSC_RINGS.every((r) => Math.abs(r.tiltX) <= 3)).toBe(true);
     expect(CYMASYNTH_OSC_RINGS.every((r) => Math.abs(r.tiltZ) <= 4)).toBe(true);
+  });
+
+  it("tilts the disk on X and spins in-plane on Z", () => {
+    const rest = synthOscDiskEulerRad(0);
+    expect((rest.x * 180) / Math.PI).toBeCloseTo(CYMASYNTH_RING_DISK_TILT_DEG);
+    expect(rest.y).toBe(0);
+    expect(rest.z).toBe(0);
+    const quarter = synthOscDiskEulerRad(90);
+    expect(quarter.x).toBeCloseTo(rest.x);
+    expect((quarter.z * 180) / Math.PI).toBeCloseTo(90);
   });
 });
 

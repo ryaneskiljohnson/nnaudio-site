@@ -21,8 +21,8 @@ import {
 import {
   CYMASYNTH_OSC_GREEN,
   CYMASYNTH_OSC_RINGS,
-  CYMASYNTH_RING_DISK_TILT_DEG,
   CYMASYNTH_RING_PLATE_MOON_PX,
+  synthOscDiskEulerRad,
   type MoonWorldPos,
 } from "@/utils/circuit-network-layout";
 import {
@@ -228,7 +228,8 @@ export function createSynthOscRings(): Group {
       depthWrite: false,
     });
     const line = new Line(geo, mat);
-    line.rotation.x = ((ring.tiltX + CYMASYNTH_RING_DISK_TILT_DEG) * Math.PI) / 180;
+    // Shared 52° disk tilt lives on the group so Z spin stays in-plane.
+    line.rotation.x = (ring.tiltX * Math.PI) / 180;
     line.rotation.z = (ring.tiltZ * Math.PI) / 180;
     group.add(line);
   }
@@ -240,7 +241,7 @@ export function createSynthOscRings(): Group {
  * @param group Synth ring group.
  * @param world Live Kepler seat.
  * @param diameter Moon diameter in world px.
- * @param spinDeg Slow disk precession.
+ * @param spinDeg In-plane turn around the disk normal (degrees).
  * @param visible When false the nest is hidden (sun approach).
  */
 export function poseSynthOscRings(
@@ -254,8 +255,9 @@ export function poseSynthOscRings(
   group.position.set(p.x, p.y, p.z);
   const scale = diameter / CYMASYNTH_RING_PLATE_MOON_PX;
   group.scale.setScalar(Math.max(0.01, scale));
-  group.rotation.y = 0;
-  group.rotation.z = (spinDeg * Math.PI) / 180;
+  const euler = synthOscDiskEulerRad(spinDeg);
+  group.rotation.order = "XYZ";
+  group.rotation.set(euler.x, euler.y, euler.z);
   group.visible = visible;
 }
 

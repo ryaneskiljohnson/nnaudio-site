@@ -190,6 +190,28 @@ export const CYMASYNTH_OSC_RINGS: ReadonlyArray<{
 export const CYMASYNTH_RING_DISK_TILT_DEG = 52;
 
 /**
+ * @brief Euler XYZ for the oscillator nest: tilt the disk, then spin
+ * around its local Z (the plane normal). Spinning the untilted group
+ * around Z tumbles the nest as a rigid body.
+ * @param spinDeg In-plane turn in degrees.
+ * @returns Radians for `Object3D.rotation` with order XYZ.
+ * @example
+ * synthOscDiskEulerRad(0).x * 180 / Math.PI // 52
+ * synthOscDiskEulerRad(90).z * 180 / Math.PI // 90
+ */
+export function synthOscDiskEulerRad(spinDeg: number): {
+  x: number;
+  y: number;
+  z: number;
+} {
+  return {
+    x: (CYMASYNTH_RING_DISK_TILT_DEG * Math.PI) / 180,
+    y: 0,
+    z: (spinDeg * Math.PI) / 180,
+  };
+}
+
+/**
  * CSS box the oscillator plate is authored against (matches desktop
  * CymaSynth moon diameter). Pose scale is `visualDiameter / moonRef`.
  */
