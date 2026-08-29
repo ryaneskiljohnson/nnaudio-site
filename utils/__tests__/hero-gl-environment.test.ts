@@ -4,6 +4,7 @@
  * @module utils/__tests__/hero-gl-environment.test
  */
 
+import { TubeGeometry } from "three";
 import { describe, expect, it } from "vitest";
 import {
   createSynthOscRings,
@@ -42,6 +43,10 @@ describe("poseSynthOscRings", () => {
         expect(line.rotation.y).toBeCloseTo(0);
         expect(line.rotation.z).toBeCloseTo(
           synthOscRingSpinRad(3500, ring.periodSec)
+        );
+        expect(line).toHaveProperty("geometry");
+        expect((line as { geometry?: unknown }).geometry).toBeInstanceOf(
+          TubeGeometry
         );
       }
     }

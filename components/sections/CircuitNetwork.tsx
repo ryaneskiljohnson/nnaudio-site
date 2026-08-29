@@ -21,7 +21,6 @@ import {
   hideSynthForSunApproach,
   holdFrameOffset,
   heroSunFitDiameterPx,
-  heroSunScaleCap,
   moonDiameter,
   orbitRadiusPx,
   creditStageKeys,
@@ -1177,11 +1176,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       );
       scene.poseOrbitsOpacity(orbitFade.current);
       scene.poseSunScale(
-        heroSunScaleCap(
-          sunScaleFromCamera(follow.tz),
-          compact,
-          cam.focusKey === SUN_FOCUS_KEY && !cam.traveling
-        ),
+        sunScaleFromCamera(follow.tz),
         heroSunFitDiameterPx(
           frameSize?.w ?? 1200,
           frameSize?.h ?? 640,

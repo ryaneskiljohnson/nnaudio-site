@@ -18,9 +18,7 @@ import {
   hideSynthForSunApproach,
   holdFrameOffset,
   heroSunFitDiameterPx,
-  heroSunScaleCap,
   HERO_SUN_AUTHOR_DIAMETER_PX,
-  HERO_SUN_SCALE_PEAK,
   holdOriginCss,
   isStableMoonHold,
   moonHoldNetCss,
@@ -190,10 +188,12 @@ describe("cymasynthOrbit", () => {
     expect(catalogOrbitSeats(false)[0].radius).toBeGreaterThan(synth.radius + 0.7);
   });
 
-  it("sits farther from the sun on phones so the disk cannot enclose it", () => {
-    const synth = cymasynthOrbit(true);
-    expect(synth.radius).toBeGreaterThan(1.2);
-    expect(synth.radius).toBeLessThan(catalogOrbitSeats(true)[0].radius);
+  it("uses the same orbit fraction on phones; only the disk px scales", () => {
+    expect(cymasynthOrbit(true).radius).toBe(cymasynthOrbit(false).radius);
+    expect(cymasynthOrbit(true).size.w).toBeLessThan(cymasynthOrbit(false).size.w);
+    expect(cymasynthOrbit(true).radius).toBeLessThan(
+      catalogOrbitSeats(true)[0].radius
+    );
   });
 });
 
@@ -504,18 +504,6 @@ describe("sunScaleFromCamera", () => {
   });
 });
 
-describe("heroSunScaleCap", () => {
-  it("leaves desktop close-ups unchanged", () => {
-    expect(heroSunScaleCap(1.4, false, false)).toBe(1.4);
-  });
-
-  it("keeps a phone moon hold from inflating the sun", () => {
-    expect(heroSunScaleCap(1.4, true, false)).toBe(0.5);
-    expect(heroSunScaleCap(0.42, true, false)).toBe(0.42);
-    expect(heroSunScaleCap(1.4, true, true)).toBe(1);
-  });
-});
-
 describe("orbitRadiusPx", () => {
   it("grows with the board so moons use the section", () => {
     expect(orbitRadiusPx(0.86, 1800, 800)).toBeGreaterThan(
@@ -531,7 +519,7 @@ describe("heroSunFitDiameterPx", () => {
     );
   });
 
-  it("shrinks on a phone so the scaled sun cannot swallow CymaSynth", () => {
+  it("scales the same way on a phone, without crushing the disk", () => {
     const frames = [
       [390, 700],
       [390, 844],
@@ -540,12 +528,10 @@ describe("heroSunFitDiameterPx", () => {
     for (const [w, h] of frames) {
       const synth = cymasynthOrbit(true);
       const orbit = orbitRadiusPx(synth.radius, w, h);
-      const sunR =
-        (heroSunFitDiameterPx(w, h, true) / 2) * HERO_SUN_SCALE_PEAK;
-      expect(sunR).toBeLessThan(orbit - synth.size.w / 2);
-      expect(heroSunFitDiameterPx(w, h, true)).toBeLessThan(
-        HERO_SUN_AUTHOR_DIAMETER_PX
-      );
+      const fitted = heroSunFitDiameterPx(w, h, true);
+      expect(fitted).toBeGreaterThan(200);
+      expect(fitted).toBeLessThan(HERO_SUN_AUTHOR_DIAMETER_PX);
+      expect(fitted / 2).toBeLessThan(orbit - synth.size.w / 2);
     }
   });
 });

@@ -277,6 +277,12 @@ export const SYNTH_RING_PLATE_DESKTOP_PX = 1280;
 /** Smaller plate on phones to limit GPU memory. */
 export const SYNTH_RING_PLATE_MOBILE_PX = 512;
 
+/**
+ * World-space tube radius in the same units as {@link CymasynthOscRing.radius}.
+ * Scales with the moon so close-ups stay as thick as far shots.
+ */
+export const SYNTH_RING_TUBE_RADIUS = 0.9;
+
 /** Matches hero tour `matchMedia` and styled-component mobile rules. */
 export const HERO_MOBILE_MAX_WIDTH_PX = 768;
 
@@ -297,7 +303,7 @@ export function synthRingMoonRefPx(platePx: number): number {
  * @returns Moon placement for the flagship synth (index unused).
  */
 export function cymasynthOrbit(mobile: boolean): MoonPlacement {
-  const radius = mobile ? 1.34 : 1.26;
+  const radius = 1.26;
   return {
     index: -1,
     ring: -1,
@@ -484,12 +490,11 @@ export const HERO_SUN_AUTHOR_DIAMETER_PX = 560;
 export const HERO_SUN_SCALE_PEAK = 1.7;
 
 /**
- * @brief World-space sun diameter that stays inside CymaSynth's orbit.
- * Desktop boards keep the 560px disk. Narrow phones shrink it so a
- * close fly-in cannot enclose the flagship moon.
+ * @brief World-space sun diameter. Same rule on every board: fill most
+ * of the short edge, stay inside CymaSynth's orbit, never exceed 560.
  * @param width Board CSS width.
  * @param height Board CSS height.
- * @param mobile Compact CymaSynth seat.
+ * @param mobile Compact CymaSynth seat (pixel orbit only).
  * @returns Diameter in the same px as Kepler seats.
  * @example
  * heroSunFitDiameterPx(390, 700, true) < HERO_SUN_AUTHOR_DIAMETER_PX
@@ -501,15 +506,14 @@ export function heroSunFitDiameterPx(
 ): number {
   const synth = cymasynthOrbit(mobile);
   const orbit = orbitRadiusPx(synth.radius, width, height);
-  const clearance = synth.size.w / 2 + (mobile ? 20 : 28);
+  const clearance = synth.size.w / 2 + 24;
   const maxScaledR = Math.max(48, orbit - clearance);
-  const orbitFit = (maxScaledR / HERO_SUN_SCALE_PEAK) * 2;
+  const orbitFit = (maxScaledR / 1.25) * 2;
   const shortEdge = Math.min(Math.max(1, width), Math.max(1, height));
-  const viewportFit = mobile ? shortEdge * 0.48 : HERO_SUN_AUTHOR_DIAMETER_PX;
   return Math.min(
     HERO_SUN_AUTHOR_DIAMETER_PX,
-    Math.max(96, orbitFit),
-    viewportFit
+    Math.max(200, orbitFit),
+    shortEdge * 0.72
   );
 }
 
@@ -1218,23 +1222,6 @@ export function sunScaleFromCamera(translateZ: number): number {
     HERO_SUN_SCALE_PEAK,
     Math.max(0.14, 1.55 * (220 / (220 + dist * 0.42)))
   );
-}
-
-/**
- * @brief Phone close-ups sit next to the sun; the desktop sunScale
- * cheat would inflate Cymasphere until it swallows CymaSynth.
- * Featured sun holds may fill more of the board.
- * @param sunScale Raw {@link sunScaleFromCamera} value.
- * @param mobile Compact tour.
- * @param sunHold True while Cymasphere is the hold (not a travel hop).
- */
-export function heroSunScaleCap(
-  sunScale: number,
-  mobile: boolean,
-  sunHold: boolean
-): number {
-  if (!mobile) return sunScale;
-  return Math.min(sunScale, sunHold ? 1 : 0.5);
 }
 
 function smoothstep(t: number): number {

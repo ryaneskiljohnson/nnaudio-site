@@ -7,21 +7,26 @@ import {
   AdditiveBlending,
   BufferGeometry,
   CanvasTexture,
+  CatmullRomCurve3,
   Color,
   Float32BufferAttribute,
   Group,
-  Line,
   LineBasicMaterial,
   LineLoop,
+  Mesh,
+  MeshBasicMaterial,
   Points,
   PointsMaterial,
   Sprite,
   SpriteMaterial,
+  TubeGeometry,
+  Vector3,
 } from "three";
 import {
   CYMASYNTH_OSC_GREEN,
   CYMASYNTH_OSC_RING_SETS,
   CYMASYNTH_RING_PLATE_MOON_PX,
+  SYNTH_RING_TUBE_RADIUS,
   synthOscDiskEulerRad,
   synthOscRingSpinRad,
 } from "@/utils/circuit-network-layout";
@@ -211,6 +216,7 @@ export function createSynthOscRings(): Group {
   const group = new Group();
   group.name = "hero-synth-rings";
   const color = new Color(CYMASYNTH_OSC_GREEN);
+  const steps = 128;
   for (const set of CYMASYNTH_OSC_RING_SETS) {
     const plate = new Group();
     plate.name = "hero-synth-ring-set";
@@ -218,27 +224,31 @@ export function createSynthOscRings(): Group {
     plate.rotation.x = (set.tiltX * Math.PI) / 180;
     plate.rotation.z = (set.tiltZ * Math.PI) / 180;
     for (const ring of set.rings) {
-      const steps = 96;
-      const pos = new Float32Array((steps + 1) * 3);
-      for (let i = 0; i <= steps; i += 1) {
+      const pts: Vector3[] = [];
+      for (let i = 0; i < steps; i += 1) {
         const t = (i / steps) * Math.PI * 2;
         const r = ring.radius + ring.amplitude * Math.sin(ring.cycles * t);
-        pos[i * 3] = Math.cos(t) * r;
-        pos[i * 3 + 1] = Math.sin(t) * r;
-        pos[i * 3 + 2] = 0;
+        pts.push(new Vector3(Math.cos(t) * r, Math.sin(t) * r, 0));
       }
-      const geo = new BufferGeometry();
-      geo.setAttribute("position", new Float32BufferAttribute(pos, 3));
-      const mat = new LineBasicMaterial({
+      const curve = new CatmullRomCurve3(pts, true, "catmullrom", 0);
+      const geo = new TubeGeometry(
+        curve,
+        steps,
+        SYNTH_RING_TUBE_RADIUS,
+        6,
+        true
+      );
+      const mat = new MeshBasicMaterial({
         color,
         transparent: true,
         opacity: 0.92,
         depthWrite: false,
+        toneMapped: false,
       });
-      const line = new Line(geo, mat);
-      line.userData.baseOpacity = 0.92;
-      line.userData.periodSec = ring.periodSec;
-      plate.add(line);
+      const mesh = new Mesh(geo, mat);
+      mesh.userData.baseOpacity = 0.92;
+      mesh.userData.periodSec = ring.periodSec;
+      plate.add(mesh);
     }
     group.add(plate);
   }
