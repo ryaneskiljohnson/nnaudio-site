@@ -6,7 +6,9 @@
 import { Texture } from "three";
 import { describe, expect, it } from "vitest";
 import {
+  applyBodyOpacity,
   applyBodyTexture,
+  bodyOpacity,
   createBodyMesh,
   createSunMesh,
   heroBodyRadius,
@@ -27,7 +29,25 @@ describe("createBodyMesh", () => {
       spinRev: false,
     });
     expect(moon.mesh.visible).toBe(false);
+    expect(bodyOpacity(moon)).toBe(0);
     expect(createSunMesh().mesh.visible).toBe(true);
+  });
+
+  it("fades a moon instead of toggling visibility as a cut", () => {
+    const moon = createBodyMesh({
+      key: "n",
+      slug: "n",
+      name: "n",
+      kind: "moon",
+      diameter: 48,
+      spinDur: 40,
+      spinRev: false,
+    });
+    applyBodyOpacity(moon, 0.4);
+    expect(moon.mesh.visible).toBe(true);
+    expect(bodyOpacity(moon)).toBeCloseTo(0.4);
+    applyBodyOpacity(moon, 0);
+    expect(moon.mesh.visible).toBe(false);
   });
 });
 
@@ -81,6 +101,13 @@ describe("createSphereWrapMaterial", () => {
   it("fills the camera-facing hemisphere so wraps are not black", () => {
     const mat = createSphereWrapMaterial(new Texture(), true);
     expect(mat.uniforms.uCamFill?.value).toBe(1);
+    mat.dispose();
+  });
+
+  it("exposes opacity so staged moons can fade", () => {
+    const mat = createSphereWrapMaterial(new Texture(), true);
+    expect(mat.uniforms.uOpacity?.value).toBe(1);
+    expect(mat.transparent).toBe(true);
     mat.dispose();
   });
 });

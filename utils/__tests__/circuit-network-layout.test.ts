@@ -32,11 +32,23 @@ import {
   moonDepth,
   moonDiameter,
   moonPlacements,
+  catalogOrbitSeats,
+  catalogSlotKey,
+  catalogBatchStart,
+  catalogSlotOccupants,
+  assignCatalogSlotKeys,
+  CATALOG_ORBIT_SLOTS,
   moonTheta,
   orbitRadiusPx,
   orderCredits,
   buildHeroCredits,
   weaveFlagshipReturns,
+  heroCameraFollowTau,
+  HERO_CAMERA_TRACK_TAU_MS,
+  HERO_CAMERA_SUN_TAU_MS,
+  HERO_CAMERA_JUMP_TAU_MS,
+  HERO_CAMERA_FREE_TAU_MS,
+  stepHeroOpacity,
   pickVisibleMoons,
   tourVisibleMoonKeys,
   skyParallaxCss,
@@ -169,6 +181,73 @@ describe("cymasynthOrbit", () => {
     const synth = cymasynthOrbit(false);
     expect(synth.radius).toBeGreaterThan(1.15);
     expect(moonPlacements(8, false)[0].radius).toBeGreaterThan(synth.radius + 0.7);
+    expect(catalogOrbitSeats(false)[0].radius).toBeGreaterThan(synth.radius + 0.7);
+  });
+});
+
+describe("catalog orbit slots", () => {
+  it("hardcodes five seats outside CymaSynth", () => {
+    const seats = catalogOrbitSeats(false);
+    expect(seats).toHaveLength(CATALOG_ORBIT_SLOTS);
+    expect(CATALOG_ORBIT_SLOTS).toBe(HERO_TOUR_CATALOG_BATCH);
+    expect(new Set(seats.map((s) => s.radius)).size).toBe(5);
+    expect(catalogSlotKey(0)).toBe("catalog-slot-0");
+    expect(seats[0].radius).toBeLessThan(seats[4].radius);
+  });
+
+  it("pins catalog credits to slots and advances the batch after five", () => {
+    const sun = {
+      key: SUN_FOCUS_KEY,
+      name: "Cymasphere",
+      sun: true as const,
+      weight: 1.5,
+      startDeg: 0,
+      periodSec: 1,
+      radius: 0,
+      size: 0,
+    };
+    const synth = {
+      key: "synth",
+      name: "CymaSynth",
+      weight: 2,
+      startDeg: 90,
+      periodSec: 24,
+      radius: 0.2,
+      size: 108,
+    };
+    const moons = Array.from({ length: 8 }, (_, i) => ({
+      key: `m${i + 1}`,
+      name: `Moon ${i + 1}`,
+      startDeg: 0,
+      periodSec: 40,
+      radius: 0.8,
+      size: 80 - i,
+      weight: 1,
+    }));
+    const credits = assignCatalogSlotKeys(
+      buildHeroCredits(sun, [synth, ...moons])
+    );
+    const catalog = credits.filter((c) => !c.sun && (c.weight ?? 1) < 2);
+    expect(catalog.map((c) => c.bodyKey)).toEqual([
+      "catalog-slot-0",
+      "catalog-slot-1",
+      "catalog-slot-2",
+      "catalog-slot-3",
+      "catalog-slot-4",
+      "catalog-slot-0",
+      "catalog-slot-1",
+      "catalog-slot-2",
+    ]);
+    expect(catalogBatchStart(credits, 0)).toBe(0);
+    const fifthCatalog = credits.findIndex((c) => c.key === catalog[4]?.key);
+    expect(catalogBatchStart(credits, fifthCatalog)).toBe(0);
+    const secondSun = credits.findIndex(
+      (c, i) => c.key === SUN_FOCUS_KEY && i > 2
+    );
+    expect(catalogBatchStart(credits, secondSun)).toBe(5);
+    expect(
+      catalogSlotOccupants(credits, 5).map((c) => c?.key)
+    ).toEqual(["m6", "m7", "m8", "m1", "m2"]);
   });
 });
 
@@ -286,6 +365,23 @@ describe("closeupMagnification", () => {
 
   it("still dollies farther for small moons than big ones", () => {
     expect(closeupMagnification(28)).toBeGreaterThan(closeupMagnification(120));
+  });
+});
+
+describe("stepHeroOpacity / heroCameraFollowTau", () => {
+  it("eases toward the target instead of snapping", () => {
+    const mid = stepHeroOpacity(0, 1, 16, 320);
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(0.2);
+    expect(stepHeroOpacity(0.995, 1, 16, 320)).toBe(1);
+  });
+
+  it("keeps moon holds smooth and never uses a 32ms cut", () => {
+    expect(heroCameraFollowTau(true, false, 0)).toBe(HERO_CAMERA_TRACK_TAU_MS);
+    expect(heroCameraFollowTau(false, true, 40)).toBe(HERO_CAMERA_SUN_TAU_MS);
+    expect(heroCameraFollowTau(false, false, 40)).toBe(HERO_CAMERA_JUMP_TAU_MS);
+    expect(heroCameraFollowTau(false, false, 1)).toBe(HERO_CAMERA_FREE_TAU_MS);
+    expect(HERO_CAMERA_JUMP_TAU_MS).toBeGreaterThan(100);
   });
 });
 

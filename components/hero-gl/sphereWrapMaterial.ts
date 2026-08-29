@@ -23,6 +23,7 @@ uniform float uPhase;
 uniform float uSurfaceShade;
 uniform float uCamFill;
 uniform float uPlanar;
+uniform float uOpacity;
 
 varying vec3 vObjectPos;
 
@@ -52,7 +53,7 @@ void main() {
   float facing = mix(0.95, 1.2, max(0.0, n.z));
   float key = clamp(uCamFill, 0.0, 1.0);
   color.rgb *= mix(1.0, facing, key);
-  gl_FragColor = vec4(color.rgb, 1.0);
+  gl_FragColor = vec4(color.rgb, uOpacity);
 }
 `;
 
@@ -74,9 +75,12 @@ export function createSphereWrapMaterial(
       uSurfaceShade: { value: surfaceShade ? 1 : 0 },
       uCamFill: { value: 1 },
       uPlanar: { value: planar ? 1 : 0 },
+      uOpacity: { value: 1 },
     },
     vertexShader: VERT,
     fragmentShader: FRAG,
+    transparent: true,
+    depthWrite: true,
     toneMapped: false,
   });
 }
@@ -92,4 +96,20 @@ export function setSphereWrapPhase(
 ): void {
   const uniform = material.uniforms.uPhase;
   if (uniform) uniform.value = ((phase % 1) + 1) % 1;
+}
+
+/**
+ * @brief Sets wrap alpha so moons can fade instead of popping.
+ * @param material Wrap shader.
+ * @param opacity 0–1.
+ */
+export function setSphereWrapOpacity(
+  material: ShaderMaterial,
+  opacity: number
+): void {
+  const uniform = material.uniforms.uOpacity;
+  const o = Math.min(1, Math.max(0, opacity));
+  if (uniform) uniform.value = o;
+  material.transparent = true;
+  material.depthWrite = o > 0.94;
 }

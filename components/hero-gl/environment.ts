@@ -182,6 +182,7 @@ export function createOrbitRing(system: OrbitalSystem, index: number): LineLoop 
   });
   const line = new LineLoop(geo, mat);
   line.name = `orbit-${system.keys[index]}`;
+  line.userData.baseOpacity = alpha;
   line.frustumCulled = false;
   return line;
 }
@@ -231,6 +232,7 @@ export function createSynthOscRings(): Group {
     // Shared 52° disk tilt lives on the group so Z spin stays in-plane.
     line.rotation.x = (ring.tiltX * Math.PI) / 180;
     line.rotation.z = (ring.tiltZ * Math.PI) / 180;
+    line.userData.baseOpacity = 0.82;
     group.add(line);
   }
   return group;
@@ -242,14 +244,14 @@ export function createSynthOscRings(): Group {
  * @param world Live Kepler seat.
  * @param diameter Moon diameter in world px.
  * @param spinDeg In-plane turn around the disk normal (degrees).
- * @param visible When false the nest is hidden (sun approach).
+ * @param opacity 0–1 fade. Hidden when alpha is ~0.
  */
 export function poseSynthOscRings(
   group: Group,
   world: MoonWorldPos,
   diameter: number,
   spinDeg: number,
-  visible: boolean
+  opacity: number
 ): void {
   const p = keplerToThree(world.x, world.height, world.z);
   group.position.set(p.x, p.y, p.z);
@@ -258,7 +260,36 @@ export function poseSynthOscRings(
   const euler = synthOscDiskEulerRad(spinDeg);
   group.rotation.order = "XYZ";
   group.rotation.set(euler.x, euler.y, euler.z);
-  group.visible = visible;
+  fadeLineGroup(group, opacity, 0.82);
+}
+
+/**
+ * @brief Fades Kepler orbit lines without rebuilding them.
+ * @param group Orbit-ring group.
+ * @param opacity 0–1.
+ */
+export function poseOrbitRingsOpacity(group: Group, opacity: number): void {
+  fadeLineGroup(group, opacity, 0.28);
+}
+
+function fadeLineGroup(
+  group: Group,
+  opacity: number,
+  defaultBase: number
+): void {
+  const f = Math.min(1, Math.max(0, opacity));
+  group.visible = f > 0.02;
+  group.traverse((obj) => {
+    const line = obj as {
+      material?: { opacity?: number; transparent?: boolean };
+      userData?: { baseOpacity?: number };
+    };
+    const mat = line.material;
+    if (!mat || typeof mat.opacity !== "number") return;
+    const base = line.userData?.baseOpacity ?? defaultBase;
+    mat.transparent = true;
+    mat.opacity = base * f;
+  });
 }
 
 /**

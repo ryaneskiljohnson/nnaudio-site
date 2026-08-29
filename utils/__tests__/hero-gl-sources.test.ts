@@ -52,7 +52,8 @@ describe("hero source contracts", () => {
 
   it("keeps the CSS visibility budget and sunScale cheat", () => {
     expect(circuit).toContain("creditStageKeys");
-    expect(circuit).toContain("tourVisibleMoonKeys");
+    expect(circuit).toContain("catalogOrbitSeats");
+    expect(circuit).toContain("catalogSlotOccupants");
     expect(circuit).toContain("buildHeroCredits");
     expect(circuit).toContain("DEFAULT_CYMASYNTH_NODE");
     expect(circuit).toContain("poseSunScale");
@@ -63,6 +64,7 @@ describe("hero source contracts", () => {
     expect(scene).toContain("DirectionalLight");
     expect(scene).toContain("lookPlusZToward");
     expect(wrap).toContain("uCamFill");
+    expect(wrap).toContain("uOpacity");
     expect(wrap).toContain("facing = mix(0.95, 1.2, max(0.0, n.z))");
     expect(wrap).toContain("uPlanar");
     expect(wrap).toContain("atan(n.x, n.z)");
@@ -74,10 +76,12 @@ describe("hero source contracts", () => {
     expect(circuit).toContain("sunScaleFromCamera(follow.tz)");
   });
 
-  it("draws at 60 FPS and tracks a moon for the whole hold and hop", () => {
+  it("draws at 60 FPS and eases the camera through holds and hops", () => {
     expect(caps).toContain("HERO_FPS = 60");
     expect(circuit).toContain("trackingMoon");
-    expect(circuit).toContain("jump > 10 ? 32");
+    expect(circuit).toContain("heroCameraFollowTau");
+    expect(circuit).toContain("poseBodyOpacity");
+    expect(circuit).not.toContain("jump > 10 ? 32");
   });
 });
 

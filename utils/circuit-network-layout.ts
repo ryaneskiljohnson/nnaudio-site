@@ -258,6 +258,153 @@ export function cymasynthOrbit(mobile: boolean): MoonPlacement {
 }
 
 /**
+ * Fixed catalog moons beyond CymaSynth. Kepler seats never change;
+ * only wrap art cycles as the tour walks the catalog.
+ */
+export const CATALOG_ORBIT_SLOTS = 5;
+
+/**
+ * @brief Stable mesh / world-pos key for one catalog orbit slot.
+ * @param slot 0 .. {@link CATALOG_ORBIT_SLOTS}-1.
+ */
+export function catalogSlotKey(slot: number): string {
+  return `catalog-slot-${slot}`;
+}
+
+/**
+ * @brief Five hardcoded catalog orbits, one moon each, outside CymaSynth.
+ * @param mobile Compact radii and disk sizes.
+ * @returns Seats in slot order.
+ * @example
+ * catalogOrbitSeats(false).length // 5
+ * catalogOrbitSeats(false)[0].radius > cymasynthOrbit(false).radius
+ */
+export function catalogOrbitSeats(mobile: boolean): MoonPlacement[] {
+  const specs = mobile
+    ? [
+        { radius: 1.85, startDeg: 22 },
+        { radius: 2.9, startDeg: 94 },
+        { radius: 4.15, startDeg: 166 },
+        { radius: 5.6, startDeg: 238 },
+        { radius: 7.3, startDeg: 310 },
+      ]
+    : [
+        { radius: 2.35, startDeg: 18 },
+        { radius: 3.7, startDeg: 92 },
+        { radius: 5.4, startDeg: 164 },
+        { radius: 7.4, startDeg: 236 },
+        { radius: 9.8, startDeg: 308 },
+      ];
+  return specs.map((spec, slot) => ({
+    index: slot,
+    ring: slot,
+    radius: spec.radius,
+    startDeg: spec.startDeg,
+    periodSec: keplerPeriodSec(Math.max(0.32, spec.radius * 0.18)),
+    size: {
+      w: moonDiameter(slot, slot, mobile),
+      h: moonDiameter(slot, slot, mobile),
+    },
+  }));
+}
+
+/**
+ * @brief Catalog stop (not the sun or CymaSynth).
+ * @param credit Tour credit.
+ */
+export function isCatalogCredit(credit: CreditTarget): boolean {
+  return !credit.sun && (credit.weight ?? 1) < 2;
+}
+
+/**
+ * @brief How many catalog stops precede `index` in the credit list.
+ * @param credits Ordered tour credits.
+ * @param index Credit index.
+ */
+export function catalogCreditOrdinal(
+  credits: CreditTarget[],
+  index: number
+): number {
+  let n = 0;
+  for (let i = 0; i < index && i < credits.length; i += 1) {
+    if (isCatalogCredit(credits[i])) n += 1;
+  }
+  return n;
+}
+
+/**
+ * @brief Pins each catalog credit to a fixed orbit slot (round-robin).
+ * @param credits Ordered credits (sun / synth already placed).
+ * @returns Copy with `bodyKey` set.
+ */
+export function assignCatalogSlotKeys(credits: CreditTarget[]): CreditTarget[] {
+  let n = 0;
+  return credits.map((credit) => {
+    if (!isCatalogCredit(credit)) {
+      return { ...credit, bodyKey: credit.key };
+    }
+    const slotted = {
+      ...credit,
+      bodyKey: catalogSlotKey(n % CATALOG_ORBIT_SLOTS),
+    };
+    n += 1;
+    return slotted;
+  });
+}
+
+/**
+ * @brief First catalog index of the batch that should wrap the five slots.
+ * Looks ahead from the current credit so a sun/synth return can
+ * re-skin the next five planets before the camera gets there.
+ * @param credits Ordered credits.
+ * @param creditIndex `cameraTour` credit index.
+ */
+export function catalogBatchStart(
+  credits: CreditTarget[],
+  creditIndex: number | null | undefined
+): number {
+  const scanFrom =
+    creditIndex == null
+      ? 0
+      : Math.min(Math.max(0, creditIndex), Math.max(0, credits.length - 1));
+  for (let i = scanFrom; i < credits.length; i += 1) {
+    if (isCatalogCredit(credits[i])) {
+      return (
+        Math.floor(catalogCreditOrdinal(credits, i) / CATALOG_ORBIT_SLOTS) *
+        CATALOG_ORBIT_SLOTS
+      );
+    }
+  }
+  for (let i = scanFrom; i >= 0; i -= 1) {
+    if (isCatalogCredit(credits[i])) {
+      return (
+        Math.floor(catalogCreditOrdinal(credits, i) / CATALOG_ORBIT_SLOTS) *
+        CATALOG_ORBIT_SLOTS
+      );
+    }
+  }
+  return 0;
+}
+
+/**
+ * @brief Catalog credits parked on the five slots for this batch.
+ * @param credits Ordered credits.
+ * @param batchStart {@link catalogBatchStart} result.
+ */
+export function catalogSlotOccupants(
+  credits: CreditTarget[],
+  batchStart: number
+): Array<CreditTarget | null> {
+  const catalog = credits.filter(isCatalogCredit);
+  if (catalog.length === 0) {
+    return Array.from({ length: CATALOG_ORBIT_SLOTS }, () => null);
+  }
+  return Array.from({ length: CATALOG_ORBIT_SLOTS }, (_, slot) => {
+    return catalog[(batchStart + slot) % catalog.length] ?? null;
+  });
+}
+
+/**
  * @brief Converts an orbit radius fraction into pixels for the measured
  * board. The span mixes both dimensions (biased to the smaller) so wide
  * screens spread the system horizontally, and radii above 1.0 land
@@ -558,6 +705,58 @@ export function lookAtMoon(
 
 /** How many moons to mount at once on desktop. */
 export const VISIBLE_MOON_BUDGET = 6;
+/** Fade in/out when a moon joins or leaves the stage. */
+export const HERO_BODY_FADE_TAU_MS = 320;
+/** Follow tautness while locked on a featured moon. */
+export const HERO_CAMERA_TRACK_TAU_MS = 140;
+/** Follow tautness while flying into or holding the sun. */
+export const HERO_CAMERA_SUN_TAU_MS = 380;
+/** Follow tautness after a large pose jump (intro / outro). */
+export const HERO_CAMERA_JUMP_TAU_MS = 220;
+/** Follow tautness on the free galaxy path. */
+export const HERO_CAMERA_FREE_TAU_MS = 180;
+
+/**
+ * @brief Exponential fade toward a 0–1 opacity target.
+ * @param current Last opacity.
+ * @param target Desired opacity.
+ * @param dtMs Frame delta, already clamped.
+ * @param tauMs Time constant.
+ * @returns Next opacity.
+ * @example
+ * stepHeroOpacity(0, 1, 16, 320) > 0
+ */
+export function stepHeroOpacity(
+  current: number,
+  target: number,
+  dtMs: number,
+  tauMs: number = HERO_BODY_FADE_TAU_MS
+): number {
+  const k = 1 - Math.exp(-Math.max(0, dtMs) / Math.max(1, tauMs));
+  const next = current + (target - current) * k;
+  return Math.abs(next - target) < 0.01 ? target : next;
+}
+
+/**
+ * @brief Camera-follow time constant. Holds still ease — a 32ms jump
+ * read as a cut.
+ * @param trackingMoon Credit hold or hop onto a catalog moon.
+ * @param sunApproach Flying into or holding Cymasphere.
+ * @param jump Combined yaw + dolly discontinuity.
+ * @returns Tau in milliseconds.
+ * @example
+ * heroCameraFollowTau(true, false, 0) // 140
+ */
+export function heroCameraFollowTau(
+  trackingMoon: boolean,
+  sunApproach: boolean,
+  jump: number
+): number {
+  if (trackingMoon) return HERO_CAMERA_TRACK_TAU_MS;
+  if (sunApproach) return HERO_CAMERA_SUN_TAU_MS;
+  if (jump > 10) return HERO_CAMERA_JUMP_TAU_MS;
+  return HERO_CAMERA_FREE_TAU_MS;
+}
 /**
  * Phone stage: the focused moon and the next credit only. Also caps
  * hi-res bakes ({@link MOBILE_TEXTURE_KEEP} in hero-tour aliases this).
@@ -839,6 +1038,11 @@ export const TOUR_DURATION_MS = 28000;
 /** One product the camera can hold on like a credit card. */
 export interface CreditTarget {
   key: string;
+  /**
+   * Kepler / mesh key. Catalog credits share five slot keys;
+   * `key` stays unique per product.
+   */
+  bodyKey?: string;
   name: string;
   /** Product page slug for the credit-card link. */
   slug?: string;
@@ -881,6 +1085,8 @@ export interface TourCamera {
   creditOpacity: number;
   /** True during a hop between credits. */
   traveling: boolean;
+  /** Index into the current credit list, when a tour is playing. */
+  creditIndex?: number | null;
 }
 
 interface TourKey {
@@ -1471,5 +1677,8 @@ export function cameraTour(
     pose.translateZ = locked.translateZ;
   }
   pose.sunScale = sunScaleFromCamera(pose.translateZ);
+  const locatedNow = locateCredit(creditT, credits);
+  pose.creditIndex =
+    locatedNow?.index ?? (t < TOUR_INTRO_MS ? 0 : Math.max(0, credits.length - 1));
   return pose;
 }

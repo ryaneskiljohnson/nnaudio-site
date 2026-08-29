@@ -18,6 +18,7 @@ import {
 import { HERO_SUN_DIAMETER_PX, HERO_TEXTURE_MAX_PX } from "./caps";
 import {
   createSphereWrapMaterial,
+  setSphereWrapOpacity,
   setSphereWrapPhase,
 } from "./sphereWrapMaterial";
 
@@ -47,11 +48,16 @@ export interface HeroBodyHandle {
   spinRev: boolean;
   wrap: ReturnType<typeof createSphereWrapMaterial> | null;
   texture: Texture | null;
+  /** Last wrap URL so a slot can swap catalog art. */
+  artUrl: string | null;
 }
 
 function tintMaterial(): MeshBasicMaterial {
   return new MeshBasicMaterial({
     color: new Color(0x7a7688),
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
   });
 }
 
@@ -59,6 +65,9 @@ function prelitMaterial(map?: Texture): MeshBasicMaterial {
   return new MeshBasicMaterial({
     map: map ?? null,
     color: map ? 0xffffff : 0xffd7a0,
+    transparent: true,
+    opacity: 1,
+    depthWrite: true,
   });
 }
 
@@ -83,6 +92,10 @@ export function createBodyMesh(def: HeroBodyDef): HeroBodyHandle {
   const mesh = new Mesh(geo, prelit ? prelitMaterial() : tintMaterial());
   mesh.scale.setScalar(Math.max(4, def.diameter / 2));
   mesh.visible = def.kind === "sun";
+  if (def.kind !== "sun" && mesh.material && !Array.isArray(mesh.material)) {
+    mesh.material.opacity = 0;
+    mesh.material.depthWrite = false;
+  }
   mesh.name = def.key;
   mesh.userData = { key: def.key, slug: def.slug, kind: def.kind };
   return {
@@ -95,6 +108,7 @@ export function createBodyMesh(def: HeroBodyDef): HeroBodyHandle {
     spinRev: def.spinRev,
     wrap: null,
     texture: null,
+    artUrl: null,
   };
 }
 
@@ -157,6 +171,7 @@ export function applyBodyTexture(
   handle: HeroBodyHandle,
   texture: Texture
 ): void {
+  const prevOpacity = bodyOpacity(handle);
   handle.texture?.dispose();
   handle.texture = texture;
   handle.wrap?.dispose();
@@ -170,6 +185,43 @@ export function applyBodyTexture(
   const prev = handle.mesh.material;
   handle.mesh.material = wrap;
   if (prev && prev !== wrap && !Array.isArray(prev)) prev.dispose();
+  applyBodyOpacity(handle, prevOpacity);
+}
+
+/**
+ * @brief Current fade of a body (wrap uniform or basic material).
+ * @param handle Body handle.
+ */
+export function bodyOpacity(handle: HeroBodyHandle): number {
+  if (handle.wrap) {
+    const value = handle.wrap.uniforms.uOpacity?.value;
+    return typeof value === "number" ? value : 1;
+  }
+  const mat = handle.mesh.material;
+  if (mat && !Array.isArray(mat) && "opacity" in mat) {
+    return typeof mat.opacity === "number" ? mat.opacity : 1;
+  }
+  return handle.mesh.visible ? 1 : 0;
+}
+
+/**
+ * @brief Fades a moon without unmounting it. Hidden only when alpha is ~0.
+ * @param handle Body handle.
+ * @param opacity 0–1.
+ */
+export function applyBodyOpacity(handle: HeroBodyHandle, opacity: number): void {
+  const o = Math.min(1, Math.max(0, opacity));
+  handle.mesh.visible = o > 0.02;
+  if (handle.wrap) {
+    setSphereWrapOpacity(handle.wrap, o);
+    return;
+  }
+  const mat = handle.mesh.material;
+  if (mat && !Array.isArray(mat) && "opacity" in mat) {
+    mat.transparent = true;
+    mat.opacity = o;
+    mat.depthWrite = o > 0.94;
+  }
 }
 
 /**

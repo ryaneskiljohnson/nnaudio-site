@@ -21,16 +21,18 @@ import {
   hideSynthForSunApproach,
   holdFrameOffset,
   moonDiameter,
-  moonPlacements,
   orbitRadiusPx,
   creditStageKeys,
   buildHeroCredits,
+  assignCatalogSlotKeys,
+  catalogBatchStart,
+  catalogOrbitSeats,
+  catalogSlotKey,
+  catalogSlotOccupants,
+  heroCameraFollowTau,
+  stepHeroOpacity,
   sunScaleFromCamera,
   tourDurationMs,
-  tourVisibleMoonKeys,
-  VISIBLE_MOON_BUDGET,
-  MOBILE_STAGE_BUDGET,
-  type VisibleMoonCandidate,
 } from "@/utils/circuit-network-layout";
 import { CURATED_FEATURED_ORDER } from "@/lib/homepage-hero-seed";
 import {
@@ -376,10 +378,13 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const spinBoost = useRef(new Map<string, number>());
   const faceAlign = useRef(new Map<string, number>());
   const facedKeys = useRef("");
-  const candidatePool = useRef<VisibleMoonCandidate[]>([]);
-  const liveKeysRef = useRef<string[]>([]);
-  const keepArtSig = useRef("");
   const focusWeights = useRef(new Map<string, number>());
+  const bodyFade = useRef(new Map<string, number>());
+  const orbitFade = useRef(1);
+  const slotShown = useRef(new Map<string, string>());
+  const [keplerSize, setKeplerSize] = useState<{ w: number; h: number } | null>(
+    null
+  );
   const sunBoostRef = useRef(0);
   const sunAlignRef = useRef(0);
   const compactInitial =
@@ -573,6 +578,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         logHeroDebug("frame-size", { prev, next: { w, h } });
         return { w, h };
       });
+      setKeplerSize((locked) => locked ?? { w, h });
     };
     apply(el.getBoundingClientRect().width, el.getBoundingClientRect().height);
     const ro = new ResizeObserver((entries) => {
@@ -603,12 +609,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         : pickMobileTourNodes(nodes, moonCap, CURATED_FEATURED_ORDER),
     [moonCap, nodes]
   );
-  const seats = useMemo(
-    () => moonPlacements(tourNodes.length, mobile),
-    [tourNodes.length, mobile]
-  );
-  const synthSeat = useMemo(() => cymasynthOrbit(mobile), [mobile]);
   const synthNode = cymasynth ?? DEFAULT_CYMASYNTH_NODE;
+  const seats = useMemo(() => catalogOrbitSeats(mobile), [mobile]);
+  const synthSeat = useMemo(() => cymasynthOrbit(mobile), [mobile]);
 
   const bodies = useMemo(() => {
     const list: Array<{
@@ -627,26 +630,28 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       spinDur: SYNTH_SPIN_SEC,
       spinRev: false,
     });
-    seats.forEach((seat) => {
-      const node = tourNodes[seat.index];
-      if (!node) return;
-      const hash = hashOrbitKey(node.slug || String(node.id));
-      const d = moonDiameter(hash, seat.ring, mobile);
+    seats.forEach((seat, slot) => {
+      const hash = hashOrbitKey(catalogSlotKey(slot));
       list.push({
-        key: String(node.id),
-        node,
-        seat: { ...seat, size: { w: d, h: d } },
+        key: catalogSlotKey(slot),
+        node: {
+          id: catalogSlotKey(slot),
+          name: "",
+          slug: "",
+          image: "",
+        },
+        seat,
         synth: false,
         spinDur: MOON_SPIN_SEC_MIN + ((hash % 1000) / 1000) * MOON_SPIN_SEC_SPAN,
         spinRev: ((hash >>> 3) & 1) === 1,
       });
     });
     return list;
-  }, [synthNode, tourNodes, seats, synthSeat, mobile]);
+  }, [synthNode, seats, synthSeat]);
 
   const system = useMemo(() => {
-    const w = frameSize?.w ?? 1200;
-    const h = frameSize?.h ?? 640;
+    const w = keplerSize?.w ?? 1200;
+    const h = keplerSize?.h ?? 640;
     return createOrbitalSystem(
       bodies.map((body) => ({
         key: body.key,
@@ -655,7 +660,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         periodSec: body.seat.periodSec,
       }))
     );
-  }, [bodies, frameSize]);
+  }, [bodies, keplerSize]);
 
   const credits = useMemo<CreditTarget[]>(() => {
     const sun: CreditTarget = {
@@ -674,26 +679,64 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       radiusPx: 0,
       size: 0,
     };
-    const moons: CreditTarget[] = bodies.map((body, i) => {
-      const rate = system.n[i] + system.prec[i];
+    const synthRate = system.n[0] + system.prec[0];
+    const synthCredit: CreditTarget = {
+      key: `synth-${synthNode.id}`,
+      bodyKey: `synth-${synthNode.id}`,
+      name: synthNode.name,
+      slug: synthNode.slug,
+      price: synthNode.price,
+      subtitle: (synthNode.tagline || "").trim(),
+      description: (synthNode.description || "").trim(),
+      image: synthNode.image,
+      weight: 2,
+      startDeg: synthSeat.startDeg,
+      periodSec: synthRate > 0 ? (2 * Math.PI) / synthRate : synthSeat.periodSec,
+      radius: synthSeat.radius,
+      radiusPx: system.a[0],
+      size: synthSeat.size.w * 1.45,
+    };
+    const catalogCredits: CreditTarget[] = tourNodes.map((node) => {
+      const hash = hashOrbitKey(node.slug || String(node.id));
       return {
-        key: body.key,
-        name: body.node.name,
-        slug: body.node.slug,
-        price: body.node.price,
-        subtitle: (body.node.tagline || "").trim(),
-        description: (body.node.description || "").trim(),
-        image: body.node.image,
-        weight: body.synth ? 2 : 1,
-        startDeg: body.seat.startDeg,
-        periodSec: rate > 0 ? (2 * Math.PI) / rate : body.seat.periodSec,
-        radius: body.seat.radius,
-        radiusPx: system.a[i],
-        size: body.seat.size.w * (body.synth ? 1.45 : 1),
+        key: String(node.id),
+        name: node.name,
+        slug: node.slug,
+        price: node.price,
+        subtitle: (node.tagline || "").trim(),
+        description: (node.description || "").trim(),
+        image: node.image,
+        weight: 1,
+        startDeg: 0,
+        periodSec: 40,
+        radius: seats[0]?.radius ?? 2.35,
+        radiusPx: system.a[1] ?? 0,
+        size: moonDiameter(hash, 0, mobile),
       };
     });
-    return buildHeroCredits(sun, moons, heroTourStopCap(mobile, tourCap));
-  }, [bodies, cymasphere, system, mobile, tourCap]);
+    const ordered = buildHeroCredits(
+      sun,
+      [synthCredit, ...catalogCredits],
+      heroTourStopCap(mobile, tourCap)
+    );
+    let catalogN = 0;
+    return assignCatalogSlotKeys(ordered).map((credit) => {
+      if ((credit.weight ?? 1) >= 2 || credit.sun) return credit;
+      const slot = catalogN % seats.length;
+      catalogN += 1;
+      const seat = seats[slot];
+      const bodyIndex = 1 + slot;
+      const rate = system.n[bodyIndex] + system.prec[bodyIndex];
+      return {
+        ...credit,
+        startDeg: seat.startDeg,
+        periodSec: rate > 0 ? (2 * Math.PI) / rate : seat.periodSec,
+        radius: seat.radius,
+        radiusPx: system.a[bodyIndex],
+        size: seat.size.w,
+      };
+    });
+  }, [bodies, cymasphere, synthNode, synthSeat, seats, tourNodes, system, mobile, tourCap]);
 
   const creditsByKey = useMemo(
     () => new Map(credits.map((credit) => [credit.key, credit])),
@@ -728,6 +771,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     frameSize,
     mobile,
     bodyDefs,
+    seats,
   });
   tourLive.current = {
     credits,
@@ -738,6 +782,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     frameSize,
     mobile,
     bodyDefs,
+    seats,
   };
 
   useEffect(() => {
@@ -895,9 +940,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         bodies,
         system,
         bodyIndexByKey,
+        creditsByKey,
         frameSize,
         mobile: compact,
         bodyDefs,
+        seats,
       } = tourLive.current;
       if (creditLenRef.current !== credits.length) {
         const prevLen = creditLenRef.current;
@@ -938,6 +985,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         wp.height = pos[i * 3 + 1];
         wp.z = pos[i * 3 + 2];
       }
+      for (const credit of credits) {
+        const bodyKey = credit.bodyKey ?? credit.key;
+        const src = worldPos.get(bodyKey);
+        if (src) worldPos.set(credit.key, src);
+      }
       const viewHalfW = (frameSize?.w ?? 1200) / 2;
       const cam = cameraTour(
         elapsed,
@@ -974,27 +1026,16 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const sunApproach =
           cam.focusKey === SUN_FOCUS_KEY ||
           (cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY);
-        // Hold + hop use the live look-at / zoom-out-follow pose.
-        // Easing yaw while the dolly lagged is what let moons fly past.
-        if (trackingMoon) {
-          follow.x = camX;
-          follow.y = camY;
-          follow.z = cam.rotateZ;
-          follow.tx = cam.translateX;
-          follow.ty = cam.translateY;
-          follow.tz = cam.translateZ;
-        } else {
-          const tau = sunApproach ? 320 : jump > 10 ? 32 : 150;
-          const followK = 1 - Math.exp(-gapClamped / tau);
-          follow.x += angleDelta(follow.x, camX) * followK;
-          follow.y += angleDelta(follow.y, camY) * followK;
-          follow.z += angleDelta(follow.z, cam.rotateZ) * followK;
-          follow.tx += (cam.translateX - follow.tx) * followK;
-          follow.ty += (cam.translateY - follow.ty) * followK;
-          follow.tz += (cam.translateZ - follow.tz) * followK;
-          camX = follow.x;
-          camY = follow.y;
-        }
+        const tau = heroCameraFollowTau(trackingMoon, sunApproach, jump);
+        const followK = 1 - Math.exp(-gapClamped / tau);
+        follow.x += angleDelta(follow.x, camX) * followK;
+        follow.y += angleDelta(follow.y, camY) * followK;
+        follow.z += angleDelta(follow.z, cam.rotateZ) * followK;
+        follow.tx += (cam.translateX - follow.tx) * followK;
+        follow.ty += (cam.translateY - follow.ty) * followK;
+        follow.tz += (cam.translateZ - follow.tz) * followK;
+        camX = follow.x;
+        camY = follow.y;
       }
 
       const facePair = `${cam.focusKey ?? ""}|${cam.nextKey ?? ""}`;
@@ -1002,7 +1043,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         facedKeys.current = facePair;
         const latchFaceOn = (key: string | null) => {
           if (!key || key === SUN_FOCUS_KEY) return;
-          const idx = bodyIndexByKey.get(key);
+          const credit = creditsByKey.get(key);
+          const bodyKey = credit?.bodyKey ?? key;
+          const idx = bodyIndexByKey.get(bodyKey);
           const body = idx === undefined ? undefined : bodies[idx];
           if (!body) return;
           faceAlign.current.set(
@@ -1040,64 +1083,52 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         cam.creditOpacity
       );
       const sunFocus = cam.focusKey === SUN_FOCUS_KEY;
-      const yawRad = (camY * Math.PI) / 180;
-      const cosYaw = Math.cos(yawRad);
-      const sinYaw = Math.sin(yawRad);
-      const pool = candidatePool.current;
-      if (pool.length !== bodies.length) pool.length = bodies.length;
-      for (let i = 0; i < bodies.length; i += 1) {
-        const body = bodies[i];
-        if (!body) continue;
-        const wx = pos[i * 3];
-        const wz = pos[i * 3 + 2];
-        const slot = pool[i] ?? {
-          key: "",
-          camSpaceX: 0,
-          camSpaceZ: 0,
-          aPx: 0,
-        };
-        slot.key = body.key;
-        slot.synth = body.synth;
-        slot.camSpaceX = wx * cosYaw + wz * sinYaw;
-        slot.camSpaceZ = wz * cosYaw - wx * sinYaw;
-        slot.aPx = system.a[i];
-        pool[i] = slot;
-      }
-      const visible = tourVisibleMoonKeys(pool, {
-        focusKey: cam.focusKey,
-        nextKey: cam.nextKey,
-        traveling: cam.traveling,
-        dollyZ: follow.tz,
-        viewHalfW,
-        budget: compact ? MOBILE_STAGE_BUDGET : VISIBLE_MOON_BUDGET,
-        previous: liveKeysRef.current,
-        hideSynth,
-      });
-      liveKeysRef.current = visible;
-      const visibleSet = new Set(visible);
-      const keepArt = new Set(visibleSet);
-      if (cam.focusKey && cam.focusKey !== SUN_FOCUS_KEY) {
-        keepArt.add(cam.focusKey);
-      }
-      if (cam.nextKey && cam.nextKey !== SUN_FOCUS_KEY) {
-        keepArt.add(cam.nextKey);
-      }
-      const byKey = new Map(bodyDefs.map((d) => [d.key, d]));
-      for (const key of keepArt) {
-        const def = byKey.get(key);
-        if (def) void scene.loadBodyArt(def);
-      }
-      if (bodies.length > 8) {
-        const keepSig = [...keepArt].sort().join("\0");
-        if (keepSig !== keepArtSig.current) {
-          keepArtSig.current = keepSig;
-          scene.evictArt(keepArt);
+      const focusedCredit = cam.focusKey
+        ? creditsByKey.get(cam.focusKey)
+        : undefined;
+      const featuredBodyKey = focusedCredit?.bodyKey ?? cam.focusKey;
+      const batchStart = catalogBatchStart(credits, cam.creditIndex);
+      const occupants = catalogSlotOccupants(credits, batchStart);
+      for (let slot = 0; slot < occupants.length; slot += 1) {
+        const occupant = occupants[slot];
+        const slotKey = catalogSlotKey(slot);
+        const nextSlug = occupant?.slug ?? "";
+        const shown = slotShown.current.get(slotKey) ?? "";
+        const fadeNow = bodyFade.current.get(slotKey) ?? 0;
+        if (nextSlug !== shown && shown && fadeNow > 0.04) continue;
+        if (nextSlug !== shown) {
+          slotShown.current.set(slotKey, nextSlug);
+          const seat = seats[slot];
+          const slotBody = bodies[1 + slot];
+          if (occupant && seat) {
+            scene.updateBodyDef({
+              key: slotKey,
+              slug: occupant.slug || "",
+              name: occupant.name,
+              kind: "moon",
+              diameter: seat.size.w,
+              image: occupant.image,
+              spinDur: slotBody?.spinDur ?? MOON_SPIN_SEC_MIN,
+              spinRev: slotBody?.spinRev ?? false,
+            });
+          }
         }
       }
       for (const body of bodies) {
-        const onStage = visibleSet.has(body.key);
-        scene.setBodyVisible(body.key, onStage);
-        const featured = body.key === cam.focusKey;
+        const slot = seats.findIndex((_, i) => catalogSlotKey(i) === body.key);
+        const occupant = slot >= 0 ? occupants[slot] : null;
+        const shown = slotShown.current.get(body.key) ?? "";
+        const desired = occupant?.slug ?? "";
+        const swapping = !body.synth && desired !== shown;
+        const onStage = body.synth ? !hideSynth : occupant != null && !swapping;
+        const fade = stepHeroOpacity(
+          bodyFade.current.get(body.key) ?? 0,
+          onStage ? 1 : 0,
+          gapClamped
+        );
+        bodyFade.current.set(body.key, fade);
+        scene.poseBodyOpacity(body.key, fade);
+        const featured = body.key === featuredBodyKey;
         const focusTarget = featured ? 1 : 0;
         let focusW =
           (focusWeights.current.get(body.key) ?? 0) * (1 - ease) +
@@ -1139,15 +1170,24 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
                 height: pos[si * 3 + 1],
                 z: pos[si * 3 + 2],
               };
+        const ringFade = compact
+          ? 0
+          : (bodyFade.current.get(synthBody.key) ?? 0);
         scene.poseSynth(
           wp,
           synthBody.seat.size.w,
           reducedMotion ? 0 : (elapsed / 90) % 360,
-          visibleSet.has(synthBody.key) && !compact
+          ringFade
         );
       }
 
-      scene.setOrbitsVisible(!(sunFocus && !cam.traveling));
+      const orbitTarget = sunFocus && !cam.traveling ? 0 : 1;
+      orbitFade.current = stepHeroOpacity(
+        orbitFade.current,
+        orbitTarget,
+        gapClamped
+      );
+      scene.poseOrbitsOpacity(orbitFade.current);
       scene.poseSunScale(sunScaleFromCamera(follow.tz));
       scene.applyCamera({
         ...cam,
@@ -1240,9 +1280,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       </CreditSlot>
       <VisuallyHidden aria-label="Cymasphere system">
         <Link href="/product/cymasphere">Cymasphere</Link>
-        {bodies.map((body) => (
-          <Link key={body.key} href={`/product/${body.node.slug}`}>
-            {body.node.name}
+        <Link href={`/product/${synthNode.slug}`}>{synthNode.name}</Link>
+        {tourNodes.map((node) => (
+          <Link key={String(node.id)} href={`/product/${node.slug}`}>
+            {node.name}
           </Link>
         ))}
       </VisuallyHidden>

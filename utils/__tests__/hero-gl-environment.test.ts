@@ -17,7 +17,7 @@ import {
 describe("poseSynthOscRings", () => {
   it("tilts the nest and spins around the disk normal", () => {
     const group = createSynthOscRings();
-    poseSynthOscRings(group, { x: 10, height: 4, z: -6 }, 108, 90, true);
+    poseSynthOscRings(group, { x: 10, height: 4, z: -6 }, 108, 90, 1);
     const euler = synthOscDiskEulerRad(90);
     expect(group.rotation.order).toBe("XYZ");
     expect(group.rotation.x).toBeCloseTo(euler.x);
@@ -32,5 +32,13 @@ describe("poseSynthOscRings", () => {
       expect(line.rotation.x).toBeCloseTo((ring.tiltX * Math.PI) / 180);
       expect(line.rotation.z).toBeCloseTo((ring.tiltZ * Math.PI) / 180);
     }
+  });
+
+  it("fades the nest out instead of leaving it fully drawn", () => {
+    const group = createSynthOscRings();
+    poseSynthOscRings(group, { x: 0, height: 0, z: 0 }, 108, 0, 0);
+    expect(group.visible).toBe(false);
+    poseSynthOscRings(group, { x: 0, height: 0, z: 0 }, 108, 0, 0.5);
+    expect(group.visible).toBe(true);
   });
 });

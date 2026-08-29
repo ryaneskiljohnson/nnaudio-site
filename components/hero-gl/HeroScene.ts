@@ -32,6 +32,7 @@ import {
   heroDrawingBufferSize,
 } from "./caps";
 import {
+  applyBodyOpacity,
   applyBodyTexture,
   createBodyMesh,
   createSunMesh,
@@ -51,6 +52,7 @@ import {
   createSunGlow,
   createSynthOscRings,
   disposeObject3D,
+  poseOrbitRingsOpacity,
   poseSynthOscRings,
 } from "./environment";
 import {
@@ -205,6 +207,8 @@ export class HeroScene {
       if (existing) {
         existing.diameter = def.diameter;
         existing.slug = def.slug;
+        existing.spinDur = def.spinDur;
+        existing.spinRev = def.spinRev;
         existing.mesh.scale.setScalar(Math.max(4, def.diameter / 2));
         existing.mesh.userData.slug = def.slug;
         continue;
@@ -282,10 +286,6 @@ export class HeroScene {
     handle.mesh.scale.setScalar(heroBodyRadius(diameter, focusW));
   }
 
-  setOrbitsVisible(visible: boolean): void {
-    if (this.orbits) this.orbits.visible = visible;
-  }
-
   /**
    * @brief Inverse-billboards every body so wrap art faces the camera.
    * Call after {@link applyCamera} so the world matrix is current.
@@ -309,29 +309,55 @@ export class HeroScene {
     world: MoonWorldPos | null,
     diameter: number,
     spinDeg: number,
-    visible: boolean
+    opacity: number
   ): void {
     if (!this.synthRings) return;
     if (!world) {
       this.synthRings.visible = false;
       return;
     }
-    poseSynthOscRings(this.synthRings, world, diameter, spinDeg, visible);
+    poseSynthOscRings(this.synthRings, world, diameter, spinDeg, opacity);
+  }
+
+  poseBodyOpacity(key: string, opacity: number): void {
+    const handle = this.bodies.get(key);
+    if (handle) applyBodyOpacity(handle, opacity);
+  }
+
+  poseOrbitsOpacity(opacity: number): void {
+    if (this.orbits) poseOrbitRingsOpacity(this.orbits, opacity);
   }
 
   setBodyVisible(key: string, visible: boolean): void {
-    const handle = this.bodies.get(key);
-    if (handle) handle.mesh.visible = visible;
+    this.poseBodyOpacity(key, visible ? 1 : 0);
+  }
+
+  setOrbitsVisible(visible: boolean): void {
+    this.poseOrbitsOpacity(visible ? 1 : 0);
   }
 
   /**
    * @brief Loads sun / synth posters and one catalog wrap. No 4K JPGs.
    */
+  /**
+   * @brief Updates a live slot's product identity without rebuilding Kepler.
+   */
+  updateBodyDef(def: HeroBodyDef): void {
+    const handle = this.bodies.get(def.key);
+    if (!handle) return;
+    handle.slug = def.slug;
+    handle.diameter = def.diameter;
+    handle.spinDur = def.spinDur;
+    handle.spinRev = def.spinRev;
+    handle.mesh.userData.slug = def.slug;
+    void this.loadBodyArt(def);
+  }
+
   async loadBodyArt(def: HeroBodyDef): Promise<void> {
     if (this.disposed) return;
     const handle =
       def.kind === "sun" ? this.sun : this.bodies.get(def.key);
-    if (!handle || handle.texture) return;
+    if (!handle) return;
     const url =
       def.kind === "sun"
         ? CYMASPHERE_SUN_POSTER
@@ -339,8 +365,10 @@ export class HeroScene {
           ? CYMASYNTH_SPHERE_POSTER
           : heroBodyTextureUrl(def);
     if (!url) return;
+    if (handle.artUrl === url && handle.texture) return;
+    handle.artUrl = url;
     const tex = await loadHeroTexture(url);
-    if (!tex || this.disposed) {
+    if (!tex || this.disposed || handle.artUrl !== url) {
       tex?.dispose();
       return;
     }
@@ -351,13 +379,20 @@ export class HeroScene {
     for (const [key, handle] of this.bodies) {
       if (keep.has(key)) continue;
       if (!handle.texture) continue;
+      const fade = handle.wrap?.uniforms.uOpacity?.value;
       handle.texture.dispose();
       handle.texture = null;
+      handle.artUrl = null;
       if (handle.wrap) {
         handle.wrap.dispose();
         handle.wrap = null;
         const prev = handle.mesh.material;
-        handle.mesh.material = new MeshBasicMaterial({ color: 0x7a7688 });
+        handle.mesh.material = new MeshBasicMaterial({
+          color: 0x7a7688,
+          transparent: true,
+          opacity: typeof fade === "number" ? fade : 0,
+          depthWrite: false,
+        });
         if (prev && !Array.isArray(prev)) prev.dispose();
       }
     }
