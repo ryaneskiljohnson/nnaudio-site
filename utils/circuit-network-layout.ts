@@ -939,20 +939,51 @@ export function tourDurationMs(
   return TOUR_INTRO_MS + span + TOUR_OUTRO_MS;
 }
 
+/** Catalog slugs that should lead the hop off Cymasphere when present. */
+const HERO_CREDIT_LEAD_SLUGS = new Set([
+  "tetrad-guitars",
+  "numb",
+  "noker",
+  "reiya",
+  "curio-texture-generator",
+]);
+
 /**
- * @brief Tour order: Cymasphere first, then CymaSynth, then the rest by size.
- * Sun always leads (independent of hold weight). Among moons, weight desc
- * (2 / 1), then size.
+ * @brief True when this credit is the CymaSynth stop (weight 2 or slug).
+ * @param credit Tour target.
+ * @returns Whether it is the flagship synth, not a catalog moon.
+ */
+export function isSynthCredit(credit: CreditTarget): boolean {
+  if (credit.sun) return false;
+  if ((credit.weight ?? 1) >= 2) return true;
+  return (credit.slug || "").toLowerCase() === "cymasynth";
+}
+
+/**
+ * @brief Tour order: Cymasphere, one catalog moon, CymaSynth, then the rest.
+ * The first hop has to leave the Cyma family — sun → synth is another
+ * teal close-up and reads as zooming Cymasphere. Lead slugs win when
+ * present; otherwise the largest catalog moon.
  * @param credits Unsorted targets.
- * @returns Sorted copy.
+ * @returns Ordered copy.
+ * @example
+ * orderCredits([synth, sun, tetrad]).map((c) => c.key)
+ * // [sun-cymasphere, tetrad, synth]
  */
 export function orderCredits(credits: CreditTarget[]): CreditTarget[] {
-  return [...credits].sort((a, b) => {
-    if (a.sun !== b.sun) return a.sun ? -1 : 1;
-    const dw = (b.weight ?? 1) - (a.weight ?? 1);
-    if (dw !== 0) return dw;
-    return b.size - a.size;
-  });
+  const suns = credits.filter((credit) => credit.sun);
+  const synths = credits.filter((credit) => isSynthCredit(credit));
+  const catalog = credits
+    .filter((credit) => !credit.sun && !isSynthCredit(credit))
+    .sort((a, b) => b.size - a.size);
+  if (catalog.length === 0) return [...suns, ...synths];
+  let leadAt = catalog.findIndex((credit) =>
+    HERO_CREDIT_LEAD_SLUGS.has((credit.slug || "").toLowerCase())
+  );
+  if (leadAt < 0) leadAt = 0;
+  const lead = catalog[leadAt];
+  const rest = catalog.filter((_, i) => i !== leadAt);
+  return [...suns, lead, ...synths, ...rest];
 }
 
 /**

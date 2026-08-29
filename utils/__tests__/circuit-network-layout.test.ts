@@ -477,12 +477,13 @@ describe("cameraTour", () => {
     expect(second.focusKey).toBe("small");
   });
 
-  it("holds Cymasphere 1.5× and CymaSynth 2× before the rest", () => {
+  it("leaves Cymasphere for a catalog moon before CymaSynth", () => {
     const credits = orderCredits([
       { key: "pack", name: "Pack", startDeg: 0, periodSec: 40, radius: 0.8, size: 80, weight: 1 },
       {
         key: "synth",
         name: "CymaSynth",
+        slug: "cymasynth",
         startDeg: 90,
         periodSec: 24,
         radius: 0.2,
@@ -500,10 +501,10 @@ describe("cameraTour", () => {
         weight: 1.5,
       },
     ]);
-    expect(credits.map((c) => c.key)).toEqual([SUN_FOCUS_KEY, "synth", "pack"]);
+    expect(credits.map((c) => c.key)).toEqual([SUN_FOCUS_KEY, "pack", "synth"]);
     expect(creditHoldMs(credits[0])).toBe(CREDIT_MS * 1.5);
-    expect(creditHoldMs(credits[1])).toBe(CREDIT_MS * 2);
-    expect(creditHoldMs(credits[2])).toBe(CREDIT_MS);
+    expect(creditHoldMs(credits[1])).toBe(CREDIT_MS);
+    expect(creditHoldMs(credits[2])).toBe(CREDIT_MS * 2);
     expect(tourDurationMs(credits)).toBe(
       TOUR_INTRO_MS + CREDIT_MS * 4.5 + TOUR_OUTRO_MS
     );
@@ -513,10 +514,64 @@ describe("cameraTour", () => {
     expect(sun.creditOpacity).toBeGreaterThan(0.5);
     const stillSun = cameraTour(TOUR_INTRO_MS + CREDIT_MS, false, credits);
     expect(stillSun.focusKey).toBe(SUN_FOCUS_KEY);
-    const synth = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 1.5 + 400, false, credits);
-    expect(synth.focusKey).toBe("synth");
-    const pack = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 3.5 + 400, false, credits);
+    const pack = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 1.5 + 400, false, credits);
     expect(pack.focusKey).toBe("pack");
+    const synth = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 2.5 + 400, false, credits);
+    expect(synth.focusKey).toBe("synth");
+  });
+
+  it("prefers a lead catalog slug as the first hop off Cymasphere", () => {
+    const credits = orderCredits([
+      {
+        key: SUN_FOCUS_KEY,
+        name: "Cymasphere",
+        startDeg: 0,
+        periodSec: 1,
+        radius: 0,
+        size: 0,
+        sun: true,
+        weight: 1.5,
+      },
+      {
+        key: "synth",
+        name: "CymaSynth",
+        slug: "cymasynth",
+        startDeg: 90,
+        periodSec: 24,
+        radius: 0.2,
+        size: 200,
+        weight: 2,
+      },
+      {
+        key: "big",
+        name: "Big",
+        slug: "big-pack",
+        startDeg: 0,
+        periodSec: 40,
+        radius: 0.8,
+        size: 180,
+        weight: 1,
+      },
+      {
+        key: "tetrad",
+        name: "Tetrad Guitars",
+        slug: "tetrad-guitars",
+        startDeg: 40,
+        periodSec: 36,
+        radius: 0.6,
+        size: 40,
+        weight: 1,
+      },
+    ]);
+    expect(credits.map((c) => c.key)).toEqual([
+      SUN_FOCUS_KEY,
+      "tetrad",
+      "synth",
+      "big",
+    ]);
+    expect(
+      cameraTour(TOUR_INTRO_MS + CREDIT_MS * 1.5 + 400, false, credits).focusKey
+    ).toBe("tetrad");
   });
 
   it("keeps the credit card opacity continuous at every boundary", () => {
