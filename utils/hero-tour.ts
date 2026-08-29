@@ -342,10 +342,156 @@ export function prefersLiteHeroTour(env: HeroTourEnvironment): boolean {
   return false;
 }
 
+/** Adaptive render tier for the desktop 3D hero tour. */
+export type HeroQuality = "high" | "medium" | "low";
+
+/** Moon DOM budget per quality tier (desktop). */
+export const HERO_QUALITY_MOON_BUDGET: Record<HeroQuality, number> = {
+  high: 6,
+  medium: 4,
+  low: 3,
+};
+
+/** Minimum ms between drawn frames per tier (~fps). */
+export const HERO_QUALITY_FRAME_MIN_MS: Record<HeroQuality, number> = {
+  high: 0,
+  medium: 33,
+  low: 50,
+};
+
+/** Featured-moon CSS box used to derive bake size per tier. */
+export const HERO_QUALITY_MOON_CSS_PX: Record<HeroQuality, number> = {
+  high: HERO_MOON_FOCUS_CSS_PX,
+  medium: 400,
+  low: 280,
+};
+
+/** DPR cap per tier so Retina does not always bake at 2×. */
+export const HERO_QUALITY_DPR_CAP: Record<HeroQuality, number> = {
+  high: 2,
+  medium: 1.5,
+  low: 1.25,
+};
+
+/** Star count on the far sheet per tier. */
+export const HERO_QUALITY_STAR_COUNT: Record<HeroQuality, number> = {
+  high: 120,
+  medium: 48,
+  low: 20,
+};
+
+/** Frame EMA (ms) above which quality steps down. */
+export const HERO_QUALITY_DOWNGRADE_EMA_MS: Record<HeroQuality, number> = {
+  high: 22,
+  medium: 30,
+  low: Infinity,
+};
+
+/** Frame EMA (ms) below which quality may step up (after sustained good frames). */
+export const HERO_QUALITY_UPGRADE_EMA_MS = 14;
+
+/** Consecutive good frames required before stepping quality up. */
+export const HERO_QUALITY_UPGRADE_FRAMES = 90;
+
+/**
+ * @brief Moon visibility budget for a quality tier.
+ * @param quality Current tier.
+ * @returns Max staged moons on desktop.
+ */
+export function heroQualityMoonBudget(quality: HeroQuality): number {
+  return HERO_QUALITY_MOON_BUDGET[quality];
+}
+
+/**
+ * @brief Device pixel ratio clipped for a quality tier.
+ * @param quality Current tier.
+ * @returns Clipped DPR, or 1 during SSR.
+ */
+export function heroBakeDprForQuality(quality: HeroQuality): number {
+  if (typeof window === "undefined") return 1;
+  return Math.min(
+    HERO_QUALITY_DPR_CAP[quality],
+    window.devicePixelRatio || 1
+  );
+}
+
+/**
+ * @brief Close-up moon bake edge for compact vs desktop quality.
+ * @param compact Phone-capped 3D path (`?hero3d=1` on lite).
+ * @param quality Adaptive tier.
+ * @returns Strip height in device pixels.
+ */
+export function moonBakePxForQuality(
+  compact: boolean,
+  quality: HeroQuality
+): number {
+  if (compact) return HERO_MOBILE_BAKE_PX;
+  return Math.round(
+    HERO_QUALITY_MOON_CSS_PX[quality] * heroBakeDprForQuality(quality)
+  );
+}
+
+/**
+ * @brief Sun wrap bake edge for compact vs desktop quality.
+ * @param compact Phone-capped 3D path.
+ * @param quality Adaptive tier.
+ * @returns Strip height in device pixels.
+ */
+export function sunBakePxForQuality(
+  compact: boolean,
+  quality: HeroQuality
+): number {
+  if (compact) return HERO_MOBILE_BAKE_PX;
+  const dpr = heroBakeDprForQuality(quality);
+  if (quality === "high") return dpr >= 2 ? 1120 : 560;
+  if (quality === "medium") return Math.round(480 * Math.min(1, dpr / 2));
+  return Math.round(320 * Math.min(1, dpr / 2));
+}
+
+/**
+ * @brief Steps quality down when frame EMA crosses tier thresholds.
+ * @param ema Smoothed frame delta (ms).
+ * @param current Current tier.
+ * @returns Next tier (never below low).
+ */
+export function downgradeHeroQuality(
+  ema: number,
+  current: HeroQuality
+): HeroQuality {
+  if (current === "high" && ema > HERO_QUALITY_DOWNGRADE_EMA_MS.high) {
+    return "medium";
+  }
+  if (current === "medium" && ema > HERO_QUALITY_DOWNGRADE_EMA_MS.medium) {
+    return "low";
+  }
+  return current;
+}
+
+/**
+ * @brief Steps quality up one notch after sustained fast frames.
+ * @param ema Smoothed frame delta (ms).
+ * @param current Current tier.
+ * @param goodFrameStreak Consecutive frames under upgrade threshold.
+ * @returns Next tier (never above high).
+ */
+export function upgradeHeroQuality(
+  ema: number,
+  current: HeroQuality,
+  goodFrameStreak: number
+): HeroQuality {
+  if (goodFrameStreak < HERO_QUALITY_UPGRADE_FRAMES) return current;
+  if (ema >= HERO_QUALITY_UPGRADE_EMA_MS) return current;
+  if (current === "low") return "medium";
+  if (current === "medium") return "high";
+  return current;
+}
+
 /** First-paint decision for which hero tour (if any) to mount. */
 export interface HeroTourStart {
-  /** Mount CircuitNetwork (desktop idle start or explicit Play). */
-  allowTour: boolean;
+  /** Mount CircuitNetwork (desktop idle start or `?hero3d=1`). */
+  allow3dTour: boolean;
+  /** Mount the lite 2D credit reel (phones / tablets after Play). */
+  allow2dTour: boolean;
   showPlay: boolean;
   scheduleDesktop: boolean;
 }
@@ -369,34 +515,47 @@ export function resolveHeroTourStart(input: {
 }): HeroTourStart {
   if (input.reduceMotion) {
     return {
-      allowTour: false,
+      allow3dTour: false,
+      allow2dTour: false,
       showPlay: false,
       scheduleDesktop: false,
     };
   }
   if (input.lite) {
+    if (input.force3d) {
+      return {
+        allow3dTour: true,
+        allow2dTour: false,
+        showPlay: false,
+        scheduleDesktop: false,
+      };
+    }
     if (input.autoTour) {
       return {
-        allowTour: true,
+        allow3dTour: false,
+        allow2dTour: true,
         showPlay: false,
         scheduleDesktop: false,
       };
     }
     return {
-      allowTour: false,
+      allow3dTour: false,
+      allow2dTour: false,
       showPlay: true,
       scheduleDesktop: false,
     };
   }
   if (input.autoTour || input.force3d) {
     return {
-      allowTour: true,
+      allow3dTour: true,
+      allow2dTour: false,
       showPlay: false,
       scheduleDesktop: false,
     };
   }
   return {
-    allowTour: false,
+    allow3dTour: false,
+    allow2dTour: false,
     showPlay: false,
     scheduleDesktop: true,
   };

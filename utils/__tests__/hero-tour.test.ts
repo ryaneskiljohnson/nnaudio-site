@@ -32,6 +32,10 @@ import {
   shouldKeepHeroFrameSize,
   mobileStageKeys,
   moonBakePx,
+  moonBakePxForQuality,
+  downgradeHeroQuality,
+  upgradeHeroQuality,
+  heroQualityMoonBudget,
   parseHeroTourQuery,
   pickMobileTourNodes,
   previousHeroTourWasKilled,
@@ -222,22 +226,25 @@ describe("resolveHeroTourStart", () => {
 
   it("idles the 3D tour on desktop and shows Play on lite", () => {
     expect(resolveHeroTourStart(idle)).toEqual({
-      allowTour: false,
+      allow3dTour: false,
+      allow2dTour: false,
       showPlay: false,
       scheduleDesktop: true,
     });
     expect(resolveHeroTourStart({ ...idle, lite: true })).toEqual({
-      allowTour: false,
+      allow3dTour: false,
+      allow2dTour: false,
       showPlay: true,
       scheduleDesktop: false,
     });
   });
 
-  it("starts CircuitNetwork on lite Play / autoTour", () => {
+  it("starts the 2D reel on lite autoTour and 3D only with force3d", () => {
     expect(
       resolveHeroTourStart({ ...idle, lite: true, autoTour: true })
     ).toEqual({
-      allowTour: true,
+      allow3dTour: false,
+      allow2dTour: true,
       showPlay: false,
       scheduleDesktop: false,
     });
@@ -249,7 +256,8 @@ describe("resolveHeroTourStart", () => {
         force3d: true,
       })
     ).toEqual({
-      allowTour: true,
+      allow3dTour: true,
+      allow2dTour: false,
       showPlay: false,
       scheduleDesktop: false,
     });
@@ -257,14 +265,16 @@ describe("resolveHeroTourStart", () => {
 
   it("parks on the poster when the user prefers reduced motion", () => {
     expect(resolveHeroTourStart({ ...idle, reduceMotion: true })).toEqual({
-      allowTour: false,
+      allow3dTour: false,
+      allow2dTour: false,
       showPlay: false,
       scheduleDesktop: false,
     });
     expect(
       resolveHeroTourStart({ ...idle, lite: true, reduceMotion: true })
     ).toEqual({
-      allowTour: false,
+      allow3dTour: false,
+      allow2dTour: false,
       showPlay: false,
       scheduleDesktop: false,
     });
@@ -538,6 +548,28 @@ describe("mobile2dMoonCap / mobileTourIsParked", () => {
     expect(mobileTourIsParked(0, 1)).toBe(true);
     expect(mobileTourIsParked(0, 5)).toBe(false);
     expect(mobileTourIsParked(4, 5)).toBe(true);
+  });
+});
+
+describe("hero quality tiers", () => {
+  it("steps quality down when frame EMA is high", () => {
+    expect(downgradeHeroQuality(23, "high")).toBe("medium");
+    expect(downgradeHeroQuality(31, "medium")).toBe("low");
+    expect(downgradeHeroQuality(40, "low")).toBe("low");
+  });
+
+  it("steps quality up after sustained fast frames", () => {
+    expect(upgradeHeroQuality(12, "low", 90)).toBe("medium");
+    expect(upgradeHeroQuality(12, "medium", 90)).toBe("high");
+    expect(upgradeHeroQuality(12, "low", 10)).toBe("low");
+  });
+
+  it("derives moon bake and budget from quality", () => {
+    expect(moonBakePxForQuality(false, "high")).toBeGreaterThan(
+      moonBakePxForQuality(false, "medium")
+    );
+    expect(heroQualityMoonBudget("low")).toBe(3);
+    expect(heroQualityMoonBudget("high")).toBe(6);
   });
 });
 
