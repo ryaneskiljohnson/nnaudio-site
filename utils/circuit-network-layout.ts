@@ -803,6 +803,8 @@ export const INTRO_PATH_U = 0.28;
 export const INTRO_BLEND_MS = 1800;
 /** Base time on a catalog product: hold plus the journey to the next stop. */
 export const CREDIT_MS = 4400;
+/** Catalog moons between Cymasphere + CymaSynth returns. */
+export const HERO_TOUR_CATALOG_BATCH = 5;
 /** Reserved focus key for the Cymasphere sun hold. */
 export const SUN_FOCUS_KEY = "sun-cymasphere";
 /** Travel leg at the end of each credit — the flight to the next moon. */
@@ -956,12 +958,55 @@ export function orderCredits(credits: CreditTarget[]): CreditTarget[] {
 }
 
 /**
+ * @brief True for Cymasphere and CymaSynth — the stops we revisit.
+ * @param credit Tour credit.
+ */
+function isFlagshipCredit(credit: CreditTarget): boolean {
+  return Boolean(credit.sun) || (credit.weight ?? 1) >= 2;
+}
+
+/**
+ * @brief Revisits Cymasphere and CymaSynth after every catalog batch.
+ * The last batch is not followed by a return — the tour outro already
+ * loops back to the opening fly-in.
+ * @param credits Ordered list (flagships first).
+ * @param batchSize Catalog moons between flagship returns.
+ * @returns The same credits with flagships copied before each later batch.
+ * @example
+ * weaveFlagshipReturns([sun, synth, m1, m2, m3, m4, m5, m6]).map((c) => c.key)
+ * // [sun, synth, m1…m5, sun, synth, m6]
+ */
+export function weaveFlagshipReturns(
+  credits: CreditTarget[],
+  batchSize: number = HERO_TOUR_CATALOG_BATCH
+): CreditTarget[] {
+  if (credits.length === 0 || batchSize <= 0) return credits;
+  const flagships: CreditTarget[] = [];
+  const catalog: CreditTarget[] = [];
+  for (const credit of credits) {
+    if (isFlagshipCredit(credit)) flagships.push(credit);
+    else catalog.push(credit);
+  }
+  if (flagships.length === 0 || catalog.length <= batchSize) return credits;
+
+  const woven: CreditTarget[] = [];
+  for (let i = 0; i < catalog.length; i += batchSize) {
+    woven.push(...flagships);
+    woven.push(...catalog.slice(i, i + batchSize));
+  }
+  return woven;
+}
+
+/**
  * @brief Credit stops for the camera tour. A sun-only list is not a
  * tour — cameraTour would intro, hold Cymasphere, outro, and loop.
  * Need at least one moon (CymaSynth / catalog) before the sun is added.
+ * After every {@link HERO_TOUR_CATALOG_BATCH} catalog moons the tour
+ * returns to Cymasphere and CymaSynth, then continues the catalog.
  * @param sun Cymasphere credit.
  * @param moons CymaSynth and catalog stops.
  * @param stopCap Optional slice (`?tourCap` / phone cap). Never 1.
+ * Applied before weaving so the cap still means unique ordered stops.
  * @returns Ordered credits, or `[]` so the galaxy path plays instead.
  * @example
  * buildHeroCredits(sun, []).length // 0
@@ -975,8 +1020,11 @@ export function buildHeroCredits(
 ): CreditTarget[] {
   if (moons.length === 0) return [];
   const ordered = orderCredits([sun, ...moons]);
-  if (stopCap == null || stopCap <= 0) return ordered;
-  return ordered.slice(0, Math.max(2, stopCap));
+  const capped =
+    stopCap == null || stopCap <= 0
+      ? ordered
+      : ordered.slice(0, Math.max(2, stopCap));
+  return weaveFlagshipReturns(capped);
 }
 
 /**

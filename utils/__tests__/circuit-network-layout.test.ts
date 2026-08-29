@@ -3,6 +3,7 @@ import {
   CREDIT_MS,
   CREDIT_TRAVEL_MS,
   SUN_FOCUS_KEY,
+  HERO_TOUR_CATALOG_BATCH,
   SUN_YAW_DEG_PER_SEC,
   TOUR_INTRO_MS,
   TOUR_OPENING_TRANSLATE_Z,
@@ -33,6 +34,7 @@ import {
   orbitRadiusPx,
   orderCredits,
   buildHeroCredits,
+  weaveFlagshipReturns,
   pickVisibleMoons,
   tourVisibleMoonKeys,
   skyParallaxCss,
@@ -557,6 +559,85 @@ describe("cameraTour", () => {
       buildHeroCredits(sun, [synth])
     );
     expect(withSynth.focusKey).toBe("synth");
+  });
+
+  it("returns to Cymasphere and CymaSynth after every 5 catalog moons", () => {
+    const sun = {
+      key: SUN_FOCUS_KEY,
+      name: "Cymasphere",
+      startDeg: 0,
+      periodSec: 1,
+      radius: 0,
+      size: 0,
+      sun: true as const,
+      weight: 1.5,
+    };
+    const synth = {
+      key: "synth",
+      name: "CymaSynth",
+      startDeg: 90,
+      periodSec: 24,
+      radius: 0.2,
+      size: 108,
+      weight: 2,
+    };
+    const moons = Array.from({ length: 12 }, (_, i) => ({
+      key: `m${i + 1}`,
+      name: `Moon ${i + 1}`,
+      startDeg: i * 30,
+      periodSec: 40,
+      radius: 0.8,
+      size: 80 - i,
+      weight: 1,
+    }));
+    expect(HERO_TOUR_CATALOG_BATCH).toBe(5);
+    expect(buildHeroCredits(sun, [synth, ...moons]).map((c) => c.key)).toEqual([
+      SUN_FOCUS_KEY,
+      "synth",
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
+      SUN_FOCUS_KEY,
+      "synth",
+      "m6",
+      "m7",
+      "m8",
+      "m9",
+      "m10",
+      SUN_FOCUS_KEY,
+      "synth",
+      "m11",
+      "m12",
+    ]);
+    expect(
+      weaveFlagshipReturns(orderCredits([sun, synth, ...moons.slice(0, 5)])).map(
+        (c) => c.key
+      )
+    ).toEqual([SUN_FOCUS_KEY, "synth", "m1", "m2", "m3", "m4", "m5"]);
+
+    const fiveThenMore = buildHeroCredits(sun, [synth, ...moons], 8);
+    expect(fiveThenMore.map((c) => c.key)).toEqual([
+      SUN_FOCUS_KEY,
+      "synth",
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
+      SUN_FOCUS_KEY,
+      "synth",
+      "m6",
+    ]);
+    const returnAt =
+      TOUR_INTRO_MS + CREDIT_MS * (1.5 + 2 + 5) + 400;
+    expect(cameraTour(returnAt, false, fiveThenMore).focusKey).toBe(
+      SUN_FOCUS_KEY
+    );
+    const resumeAt =
+      TOUR_INTRO_MS + CREDIT_MS * (1.5 + 2 + 5 + 1.5 + 2) + 400;
+    expect(cameraTour(resumeAt, false, fiveThenMore).focusKey).toBe("m6");
   });
 
   it("keeps the credit card opacity continuous at every boundary", () => {
