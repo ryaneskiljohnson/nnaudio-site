@@ -20,6 +20,8 @@ import {
   cymasynthOrbit,
   hideSynthForSunApproach,
   holdFrameOffset,
+  heroSunFitDiameterPx,
+  heroSunScaleCap,
   moonDiameter,
   orbitRadiusPx,
   creditStageKeys,
@@ -1161,23 +1163,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
 
       const synthBody = bodies.find((body) => body.synth);
       if (synthBody) {
-        const si = bodyIndexByKey.get(synthBody.key);
-        const wp =
-          si === undefined
-            ? null
-            : {
-                x: pos[si * 3],
-                height: pos[si * 3 + 1],
-                z: pos[si * 3 + 2],
-              };
-        const ringFade = compact
-          ? 0
-          : (bodyFade.current.get(synthBody.key) ?? 0);
         scene.poseSynth(
-          wp,
-          synthBody.seat.size.w,
-          reducedMotion ? 0 : (elapsed / 90) % 360,
-          ringFade
+          reducedMotion ? 0 : elapsed,
+          bodyFade.current.get(synthBody.key) ?? 0
         );
       }
 
@@ -1188,7 +1176,18 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         gapClamped
       );
       scene.poseOrbitsOpacity(orbitFade.current);
-      scene.poseSunScale(sunScaleFromCamera(follow.tz));
+      scene.poseSunScale(
+        heroSunScaleCap(
+          sunScaleFromCamera(follow.tz),
+          compact,
+          cam.focusKey === SUN_FOCUS_KEY && !cam.traveling
+        ),
+        heroSunFitDiameterPx(
+          frameSize?.w ?? 1200,
+          frameSize?.h ?? 640,
+          compact
+        )
+      );
       scene.applyCamera({
         ...cam,
         rotateX: camX,

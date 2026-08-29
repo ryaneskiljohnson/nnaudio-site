@@ -158,9 +158,24 @@ export function heroBodyRadius(diameter: number, focusW = 0): number {
 /**
  * @brief Sun radius after the CSS `sunScaleFromCamera` cheat.
  * @param sunScale Multiplier from the tour pose (≈0.42 far, ≈1.55 close).
+ * @param diameterPx World disk from {@link heroSunFitDiameterPx}; phones
+ * pass a smaller value so the mesh cannot swallow CymaSynth.
  */
-export function heroSunRadius(sunScale: number): number {
-  return Math.max(4, (HERO_SUN_DIAMETER_PX / 2) * Math.max(0.14, sunScale));
+export function heroSunRadius(
+  sunScale: number,
+  diameterPx = HERO_SUN_DIAMETER_PX
+): number {
+  const disk = Math.max(48, diameterPx);
+  return Math.max(4, (disk / 2) * Math.max(0.14, sunScale));
+}
+
+/**
+ * @brief Glow sprite multiplier vs the author 560px sun.
+ * Fitted phone disks must use this, not `r / heroSunRadius(1, fitted)`,
+ * or the 980px corona stays desktop-sized and covers CymaSynth.
+ */
+export function heroSunGlowMul(sunRadius: number): number {
+  return sunRadius / heroSunRadius(1);
 }
 
 /**
@@ -218,9 +233,10 @@ export function applyBodyOpacity(handle: HeroBodyHandle, opacity: number): void 
   }
   const mat = handle.mesh.material;
   if (mat && !Array.isArray(mat) && "opacity" in mat) {
-    mat.transparent = true;
+    const solid = o >= 0.99;
+    mat.transparent = !solid;
     mat.opacity = o;
-    mat.depthWrite = o > 0.94;
+    mat.depthWrite = solid;
   }
 }
 

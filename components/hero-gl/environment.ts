@@ -20,10 +20,10 @@ import {
 } from "three";
 import {
   CYMASYNTH_OSC_GREEN,
-  CYMASYNTH_OSC_RINGS,
+  CYMASYNTH_OSC_RING_SETS,
   CYMASYNTH_RING_PLATE_MOON_PX,
   synthOscDiskEulerRad,
-  type MoonWorldPos,
+  synthOscRingSpinRad,
 } from "@/utils/circuit-network-layout";
 import {
   orbitRingBasisCss,
@@ -204,63 +204,72 @@ export function createOrbitRings(system: OrbitalSystem): Group {
 }
 
 /**
- * @brief CymaSynth oscillator family as line loops around the moon.
+ * @brief CymaSynth oscillator family: three offset disks, each with
+ * coplanar loops that spin around that disk's normal.
  */
 export function createSynthOscRings(): Group {
   const group = new Group();
   group.name = "hero-synth-rings";
   const color = new Color(CYMASYNTH_OSC_GREEN);
-  for (const ring of CYMASYNTH_OSC_RINGS) {
-    const steps = 96;
-    const pos = new Float32Array((steps + 1) * 3);
-    for (let i = 0; i <= steps; i += 1) {
-      const t = (i / steps) * Math.PI * 2;
-      const r = ring.radius + ring.amplitude * Math.sin(ring.cycles * t);
-      pos[i * 3] = Math.cos(t) * r;
-      pos[i * 3 + 1] = Math.sin(t) * r;
-      pos[i * 3 + 2] = 0;
+  for (const set of CYMASYNTH_OSC_RING_SETS) {
+    const plate = new Group();
+    plate.name = "hero-synth-ring-set";
+    plate.rotation.order = "XYZ";
+    plate.rotation.x = (set.tiltX * Math.PI) / 180;
+    plate.rotation.z = (set.tiltZ * Math.PI) / 180;
+    for (const ring of set.rings) {
+      const steps = 96;
+      const pos = new Float32Array((steps + 1) * 3);
+      for (let i = 0; i <= steps; i += 1) {
+        const t = (i / steps) * Math.PI * 2;
+        const r = ring.radius + ring.amplitude * Math.sin(ring.cycles * t);
+        pos[i * 3] = Math.cos(t) * r;
+        pos[i * 3 + 1] = Math.sin(t) * r;
+        pos[i * 3 + 2] = 0;
+      }
+      const geo = new BufferGeometry();
+      geo.setAttribute("position", new Float32BufferAttribute(pos, 3));
+      const mat = new LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity: 0.92,
+        depthWrite: false,
+      });
+      const line = new Line(geo, mat);
+      line.userData.baseOpacity = 0.92;
+      line.userData.periodSec = ring.periodSec;
+      plate.add(line);
     }
-    const geo = new BufferGeometry();
-    geo.setAttribute("position", new Float32BufferAttribute(pos, 3));
-    const mat = new LineBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 0.82,
-      depthWrite: false,
-    });
-    const line = new Line(geo, mat);
-    // Shared 52° disk tilt lives on the group so Z spin stays in-plane.
-    line.rotation.x = (ring.tiltX * Math.PI) / 180;
-    line.rotation.z = (ring.tiltZ * Math.PI) / 180;
-    line.userData.baseOpacity = 0.82;
-    group.add(line);
+    group.add(plate);
   }
   return group;
 }
 
 /**
- * @brief Seats the oscillator nest on the live CymaSynth moon.
+ * @brief Local pose for rings parented to the CymaSynth mesh.
+ * The moon billboard faces the camera; this nest only tilts and
+ * spins so the three disks stay readable instead of going edge-on.
  * @param group Synth ring group.
- * @param world Live Kepler seat.
- * @param diameter Moon diameter in world px.
- * @param spinDeg In-plane turn around the disk normal (degrees).
+ * @param elapsedMs Tour time; each loop spins in its own plane.
  * @param opacity 0–1 fade. Hidden when alpha is ~0.
  */
 export function poseSynthOscRings(
   group: Group,
-  world: MoonWorldPos,
-  diameter: number,
-  spinDeg: number,
+  elapsedMs: number,
   opacity: number
 ): void {
-  const p = keplerToThree(world.x, world.height, world.z);
-  group.position.set(p.x, p.y, p.z);
-  const scale = diameter / CYMASYNTH_RING_PLATE_MOON_PX;
-  group.scale.setScalar(Math.max(0.01, scale));
-  const euler = synthOscDiskEulerRad(spinDeg);
+  group.position.set(0, 0, 0);
+  group.scale.setScalar(2 / CYMASYNTH_RING_PLATE_MOON_PX);
+  const euler = synthOscDiskEulerRad();
   group.rotation.order = "XYZ";
   group.rotation.set(euler.x, euler.y, euler.z);
-  fadeLineGroup(group, opacity, 0.82);
+  for (const plate of group.children) {
+    for (const child of plate.children) {
+      const period = Number(child.userData.periodSec);
+      child.rotation.z = synthOscRingSpinRad(elapsedMs, period);
+    }
+  }
+  fadeLineGroup(group, opacity, 0.92);
 }
 
 /**

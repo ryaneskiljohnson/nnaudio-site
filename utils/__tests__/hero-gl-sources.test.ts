@@ -65,7 +65,7 @@ describe("hero source contracts", () => {
     expect(scene).toContain("lookPlusZToward");
     expect(wrap).toContain("uCamFill");
     expect(wrap).toContain("uOpacity");
-    expect(wrap).toContain("facing = mix(0.95, 1.2, max(0.0, n.z))");
+    expect(wrap).toContain("facing = mix(1.04, 1.22, max(0.0, n.z))");
     expect(wrap).toContain("uPlanar");
     expect(wrap).toContain("atan(n.x, n.z)");
     expect(wrap).not.toContain("mix(globe, color.rgb");

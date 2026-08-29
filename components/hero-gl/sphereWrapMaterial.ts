@@ -45,12 +45,12 @@ void main() {
     float srcV = 0.5 + asin(clamp(n.y, -1.0, 1.0)) / PI;
     color = texture2D(uMap, vec2(srcU, srcV));
     if (uSurfaceShade > 0.5) {
-      float lit = 0.82 + 0.18 * cos((uStrip - 0.5) * 2.0 * PI);
+      float lit = 0.94 + 0.08 * cos((uStrip - 0.5) * 2.0 * PI);
       color.rgb *= lit;
     }
   }
   // Billboard +Z faces the camera. Keep the disk in the light.
-  float facing = mix(0.95, 1.2, max(0.0, n.z));
+  float facing = mix(1.04, 1.22, max(0.0, n.z));
   float key = clamp(uCamFill, 0.0, 1.0);
   color.rgb *= mix(1.0, facing, key);
   gl_FragColor = vec4(color.rgb, uOpacity);
@@ -110,6 +110,7 @@ export function setSphereWrapOpacity(
   const uniform = material.uniforms.uOpacity;
   const o = Math.min(1, Math.max(0, opacity));
   if (uniform) uniform.value = o;
-  material.transparent = true;
-  material.depthWrite = o > 0.94;
+  const solid = o >= 0.99;
+  material.transparent = !solid;
+  material.depthWrite = solid;
 }

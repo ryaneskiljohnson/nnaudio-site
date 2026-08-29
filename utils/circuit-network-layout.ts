@@ -157,32 +157,70 @@ export function sineOscillatorRingPath(
  */
 export const CYMASYNTH_OSC_GREEN = "rgba(78, 205, 196, 0.82)";
 
-/**
- * Nested sine-wave rings around CymaSynth. Radii stay tight so they
- * read as one oscillator family; tiltX/tiltZ splay a few onto nearby
- * axes without breaking the nest. Paths are authored in a 240×240
- * viewBox; CircuitNetwork rasterizes the plate larger so 3D scale
- * does not pixelate the strokes.
- */
-export const CYMASYNTH_OSC_RINGS: ReadonlyArray<{
+/** One sine loop in a CymaSynth oscillator set. */
+export interface CymasynthOscRing {
   cycles: number;
   radius: number;
   amplitude: number;
-  duration: string;
-  /** Extra rotateX on this disk, degrees from the shared plate. */
+  /** Seconds for one in-plane turn. */
+  periodSec: number;
+}
+
+/** One Saturn-like plane of several coplanar loops. */
+export interface CymasynthOscRingSet {
+  /** Extra rotateX for this plane, degrees from the shared plate. */
   tiltX: number;
-  /** Extra rotateZ on this disk, degrees from the shared plate. */
+  /** Extra rotateZ for this plane, degrees from the shared plate. */
   tiltZ: number;
-}> = [
-  { cycles: 3, radius: 64, amplitude: 2.6, duration: "14s", tiltX: 0, tiltZ: 0 },
-  { cycles: 4, radius: 70, amplitude: 3.0, duration: "18s", tiltX: 2, tiltZ: 2 },
-  { cycles: 5, radius: 76, amplitude: 3.2, duration: "22s", tiltX: -2, tiltZ: -1 },
-  { cycles: 6, radius: 82, amplitude: 3.4, duration: "16s", tiltX: 1, tiltZ: -3 },
-  { cycles: 7, radius: 88, amplitude: 3.6, duration: "26s", tiltX: -2, tiltZ: 2 },
-  { cycles: 8, radius: 94, amplitude: 3.8, duration: "20s", tiltX: 2, tiltZ: -2 },
-  { cycles: 9, radius: 100, amplitude: 4.0, duration: "30s", tiltX: -1, tiltZ: 3 },
-  { cycles: 11, radius: 106, amplitude: 4.2, duration: "24s", tiltX: 2, tiltZ: 1 },
+  rings: ReadonlyArray<CymasynthOscRing>;
+}
+
+/**
+ * Three offset oscillator planes around CymaSynth. Loops inside a set
+ * stay coplanar and spin around that plane's normal; the sets are
+ * splayed so the nest reads as a volume, not one ring.
+ */
+export const CYMASYNTH_OSC_RING_SETS: ReadonlyArray<CymasynthOscRingSet> = [
+  {
+    tiltX: 0,
+    tiltZ: 0,
+    rings: [
+      { cycles: 3, radius: 64, amplitude: 2.6, periodSec: 14 },
+      { cycles: 5, radius: 76, amplitude: 3.2, periodSec: 22 },
+      { cycles: 7, radius: 88, amplitude: 3.6, periodSec: 26 },
+    ],
+  },
+  {
+    tiltX: 16,
+    tiltZ: 12,
+    rings: [
+      { cycles: 4, radius: 70, amplitude: 3.0, periodSec: 18 },
+      { cycles: 6, radius: 82, amplitude: 3.4, periodSec: 16 },
+      { cycles: 8, radius: 94, amplitude: 3.8, periodSec: 20 },
+    ],
+  },
+  {
+    tiltX: -15,
+    tiltZ: -13,
+    rings: [
+      { cycles: 5, radius: 80, amplitude: 3.2, periodSec: 24 },
+      { cycles: 9, radius: 100, amplitude: 4.0, periodSec: 30 },
+      { cycles: 11, radius: 106, amplitude: 4.2, periodSec: 24 },
+    ],
+  },
 ];
+
+/** Flat list of every oscillator loop (tests / path helpers). */
+export const CYMASYNTH_OSC_RINGS: ReadonlyArray<
+  CymasynthOscRing & { tiltX: number; tiltZ: number; duration: string }
+> = CYMASYNTH_OSC_RING_SETS.flatMap((set) =>
+  set.rings.map((ring) => ({
+    ...ring,
+    tiltX: set.tiltX,
+    tiltZ: set.tiltZ,
+    duration: `${ring.periodSec}s`,
+  }))
+);
 
 /**
  * Shared rotateX for the CymaSynth oscillator disk in world space.
@@ -190,16 +228,13 @@ export const CYMASYNTH_OSC_RINGS: ReadonlyArray<{
 export const CYMASYNTH_RING_DISK_TILT_DEG = 52;
 
 /**
- * @brief Euler XYZ for the oscillator nest: tilt the disk, then spin
- * around its local Z (the plane normal). Spinning the untilted group
- * around Z tumbles the nest as a rigid body.
- * @param spinDeg In-plane turn in degrees.
+ * @brief Saturn tilt for the oscillator nest. Spin lives on each loop's
+ * local Z so offset sets cannot tumble around the nest axis.
  * @returns Radians for `Object3D.rotation` with order XYZ.
  * @example
- * synthOscDiskEulerRad(0).x * 180 / Math.PI // 52
- * synthOscDiskEulerRad(90).z * 180 / Math.PI // 90
+ * synthOscDiskEulerRad().x * 180 / Math.PI // 52
  */
-export function synthOscDiskEulerRad(spinDeg: number): {
+export function synthOscDiskEulerRad(): {
   x: number;
   y: number;
   z: number;
@@ -207,8 +242,24 @@ export function synthOscDiskEulerRad(spinDeg: number): {
   return {
     x: (CYMASYNTH_RING_DISK_TILT_DEG * Math.PI) / 180,
     y: 0,
-    z: (spinDeg * Math.PI) / 180,
+    z: 0,
   };
+}
+
+/**
+ * @brief In-plane turn for one oscillator loop.
+ * @param elapsedMs Tour time.
+ * @param periodSec Seconds per revolution.
+ * @returns Radians around the loop's local Z.
+ * @example
+ * synthOscRingSpinRad(3500, 14) // π/2
+ */
+export function synthOscRingSpinRad(
+  elapsedMs: number,
+  periodSec: number
+): number {
+  if (periodSec <= 0) return 0;
+  return ((elapsedMs / 1000) / periodSec) * Math.PI * 2;
 }
 
 /**
@@ -246,7 +297,7 @@ export function synthRingMoonRefPx(platePx: number): number {
  * @returns Moon placement for the flagship synth (index unused).
  */
 export function cymasynthOrbit(mobile: boolean): MoonPlacement {
-  const radius = mobile ? 1.06 : 1.26;
+  const radius = mobile ? 1.34 : 1.26;
   return {
     index: -1,
     ring: -1,
@@ -424,6 +475,42 @@ export function orbitRadiusPx(
   const span =
     (Math.min(width, height) * 0.6 + Math.max(width, height) * 0.4) / 2;
   return Math.max(48, Math.round(span * radius * 0.92));
+}
+
+/** Author Cymasphere disk; matches the old 560px CSS sun. */
+export const HERO_SUN_AUTHOR_DIAMETER_PX = 560;
+
+/** Matches {@link sunScaleFromCamera}'s close-up clamp. */
+export const HERO_SUN_SCALE_PEAK = 1.7;
+
+/**
+ * @brief World-space sun diameter that stays inside CymaSynth's orbit.
+ * Desktop boards keep the 560px disk. Narrow phones shrink it so a
+ * close fly-in cannot enclose the flagship moon.
+ * @param width Board CSS width.
+ * @param height Board CSS height.
+ * @param mobile Compact CymaSynth seat.
+ * @returns Diameter in the same px as Kepler seats.
+ * @example
+ * heroSunFitDiameterPx(390, 700, true) < HERO_SUN_AUTHOR_DIAMETER_PX
+ */
+export function heroSunFitDiameterPx(
+  width: number,
+  height: number,
+  mobile: boolean
+): number {
+  const synth = cymasynthOrbit(mobile);
+  const orbit = orbitRadiusPx(synth.radius, width, height);
+  const clearance = synth.size.w / 2 + (mobile ? 20 : 28);
+  const maxScaledR = Math.max(48, orbit - clearance);
+  const orbitFit = (maxScaledR / HERO_SUN_SCALE_PEAK) * 2;
+  const shortEdge = Math.min(Math.max(1, width), Math.max(1, height));
+  const viewportFit = mobile ? shortEdge * 0.48 : HERO_SUN_AUTHOR_DIAMETER_PX;
+  return Math.min(
+    HERO_SUN_AUTHOR_DIAMETER_PX,
+    Math.max(96, orbitFit),
+    viewportFit
+  );
 }
 
 /**
@@ -1127,7 +1214,27 @@ export function sunScaleFromCamera(translateZ: number): number {
   const away = Math.max(0, -translateZ);
   const toward = Math.max(0, translateZ);
   const dist = away + toward * 0.15;
-  return Math.min(1.7, Math.max(0.14, 1.55 * (220 / (220 + dist * 0.42))));
+  return Math.min(
+    HERO_SUN_SCALE_PEAK,
+    Math.max(0.14, 1.55 * (220 / (220 + dist * 0.42)))
+  );
+}
+
+/**
+ * @brief Phone close-ups sit next to the sun; the desktop sunScale
+ * cheat would inflate Cymasphere until it swallows CymaSynth.
+ * Featured sun holds may fill more of the board.
+ * @param sunScale Raw {@link sunScaleFromCamera} value.
+ * @param mobile Compact tour.
+ * @param sunHold True while Cymasphere is the hold (not a travel hop).
+ */
+export function heroSunScaleCap(
+  sunScale: number,
+  mobile: boolean,
+  sunHold: boolean
+): number {
+  if (!mobile) return sunScale;
+  return Math.min(sunScale, sunHold ? 1 : 0.5);
 }
 
 function smoothstep(t: number): number {

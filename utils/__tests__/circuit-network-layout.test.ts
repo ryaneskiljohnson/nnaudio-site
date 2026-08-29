@@ -17,11 +17,17 @@ import {
   lookAtMoon,
   hideSynthForSunApproach,
   holdFrameOffset,
+  heroSunFitDiameterPx,
+  heroSunScaleCap,
+  HERO_SUN_AUTHOR_DIAMETER_PX,
+  HERO_SUN_SCALE_PEAK,
   holdOriginCss,
   isStableMoonHold,
   moonHoldNetCss,
   cymasynthOrbit,
   CYMASYNTH_OSC_RINGS,
+  CYMASYNTH_OSC_RING_SETS,
+  synthOscRingSpinRad,
   CYMASYNTH_RING_DISK_TILT_DEG,
   SYNTH_RING_PLATE_DESKTOP_PX,
   SYNTH_RING_PLATE_MOBILE_PX,
@@ -182,6 +188,12 @@ describe("cymasynthOrbit", () => {
     expect(synth.radius).toBeGreaterThan(1.15);
     expect(moonPlacements(8, false)[0].radius).toBeGreaterThan(synth.radius + 0.7);
     expect(catalogOrbitSeats(false)[0].radius).toBeGreaterThan(synth.radius + 0.7);
+  });
+
+  it("sits farther from the sun on phones so the disk cannot enclose it", () => {
+    const synth = cymasynthOrbit(true);
+    expect(synth.radius).toBeGreaterThan(1.2);
+    expect(synth.radius).toBeLessThan(catalogOrbitSeats(true)[0].radius);
   });
 });
 
@@ -460,25 +472,27 @@ describe("sineOscillatorRingPath", () => {
     expect(Math.min(...rs)).toBeCloseTo(76, 0);
   });
 
-  it("nests several green rings on nearby axes", () => {
+  it("nests three offset planes of green rings", () => {
+    expect(CYMASYNTH_OSC_RING_SETS).toHaveLength(3);
     expect(CYMASYNTH_OSC_RINGS.length).toBeGreaterThanOrEqual(7);
     const radii = CYMASYNTH_OSC_RINGS.map((r) => r.radius);
     expect(Math.max(...radii) - Math.min(...radii)).toBeLessThan(50);
-    expect(CYMASYNTH_OSC_RINGS.some((r) => r.tiltX !== 0 || r.tiltZ !== 0)).toBe(
-      true
-    );
-    expect(CYMASYNTH_OSC_RINGS.every((r) => Math.abs(r.tiltX) <= 3)).toBe(true);
-    expect(CYMASYNTH_OSC_RINGS.every((r) => Math.abs(r.tiltZ) <= 4)).toBe(true);
+    const tilts = CYMASYNTH_OSC_RING_SETS.map((s) => `${s.tiltX},${s.tiltZ}`);
+    expect(new Set(tilts).size).toBe(3);
+    expect(
+      CYMASYNTH_OSC_RING_SETS.some(
+        (s) => Math.abs(s.tiltX) >= 12 || Math.abs(s.tiltZ) >= 12
+      )
+    ).toBe(true);
   });
 
-  it("tilts the disk on X and spins in-plane on Z", () => {
-    const rest = synthOscDiskEulerRad(0);
+  it("tilts the nest and spins each loop in its own plane", () => {
+    const rest = synthOscDiskEulerRad();
     expect((rest.x * 180) / Math.PI).toBeCloseTo(CYMASYNTH_RING_DISK_TILT_DEG);
     expect(rest.y).toBe(0);
     expect(rest.z).toBe(0);
-    const quarter = synthOscDiskEulerRad(90);
-    expect(quarter.x).toBeCloseTo(rest.x);
-    expect((quarter.z * 180) / Math.PI).toBeCloseTo(90);
+    expect(synthOscRingSpinRad(3500, 14)).toBeCloseTo(Math.PI / 2);
+    expect(synthOscRingSpinRad(0, 14)).toBe(0);
   });
 });
 
@@ -490,11 +504,49 @@ describe("sunScaleFromCamera", () => {
   });
 });
 
+describe("heroSunScaleCap", () => {
+  it("leaves desktop close-ups unchanged", () => {
+    expect(heroSunScaleCap(1.4, false, false)).toBe(1.4);
+  });
+
+  it("keeps a phone moon hold from inflating the sun", () => {
+    expect(heroSunScaleCap(1.4, true, false)).toBe(0.5);
+    expect(heroSunScaleCap(0.42, true, false)).toBe(0.42);
+    expect(heroSunScaleCap(1.4, true, true)).toBe(1);
+  });
+});
+
 describe("orbitRadiusPx", () => {
   it("grows with the board so moons use the section", () => {
     expect(orbitRadiusPx(0.86, 1800, 800)).toBeGreaterThan(
       orbitRadiusPx(0.86, 1100, 600)
     );
+  });
+});
+
+describe("heroSunFitDiameterPx", () => {
+  it("keeps the author disk on a desktop board", () => {
+    expect(heroSunFitDiameterPx(1440, 800, false)).toBe(
+      HERO_SUN_AUTHOR_DIAMETER_PX
+    );
+  });
+
+  it("shrinks on a phone so the scaled sun cannot swallow CymaSynth", () => {
+    const frames = [
+      [390, 700],
+      [390, 844],
+      [320, 568],
+    ] as const;
+    for (const [w, h] of frames) {
+      const synth = cymasynthOrbit(true);
+      const orbit = orbitRadiusPx(synth.radius, w, h);
+      const sunR =
+        (heroSunFitDiameterPx(w, h, true) / 2) * HERO_SUN_SCALE_PEAK;
+      expect(sunR).toBeLessThan(orbit - synth.size.w / 2);
+      expect(heroSunFitDiameterPx(w, h, true)).toBeLessThan(
+        HERO_SUN_AUTHOR_DIAMETER_PX
+      );
+    }
   });
 });
 

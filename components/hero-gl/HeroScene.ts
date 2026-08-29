@@ -22,7 +22,6 @@ import {
 import {
   skyParallaxCss,
   SUN_FOCUS_KEY,
-  type MoonWorldPos,
   type TourCamera,
 } from "@/utils/circuit-network-layout";
 import type { OrbitalSystem } from "@/utils/orbital-physics";
@@ -39,6 +38,7 @@ import {
   disposeBodyHandle,
   heroBodyRadius,
   heroBodyTextureUrl,
+  heroSunGlowMul,
   heroSunRadius,
   loadHeroTexture,
   poseBodySpin,
@@ -266,15 +266,11 @@ export class HeroScene {
    * @brief Applies the CSS sunScale cheat so far shots stay a star and
    * close-ups fill the frame like the old billboard disk.
    */
-  poseSunScale(sunScale: number): void {
-    const r = heroSunRadius(sunScale);
+  poseSunScale(sunScale: number, diameterPx?: number): void {
+    const r = heroSunRadius(sunScale, diameterPx);
     this.sun.mesh.scale.setScalar(r);
-    const baseR = heroSunRadius(1);
-    this.sunGlow.scale.set(
-      this.glowBase.x * (r / baseR),
-      this.glowBase.y * (r / baseR),
-      1
-    );
+    const glow = heroSunGlowMul(r);
+    this.sunGlow.scale.set(this.glowBase.x * glow, this.glowBase.y * glow, 1);
   }
 
   /**
@@ -305,18 +301,24 @@ export class HeroScene {
     lookPlusZToward(handle.mesh, this.camWorld);
   }
 
-  poseSynth(
-    world: MoonWorldPos | null,
-    diameter: number,
-    spinDeg: number,
-    opacity: number
-  ): void {
+  poseSynth(elapsedMs: number, opacity: number): void {
     if (!this.synthRings) return;
-    if (!world) {
+    const synth = this.findSynth();
+    if (!synth || !synth.mesh.visible) {
       this.synthRings.visible = false;
       return;
     }
-    poseSynthOscRings(this.synthRings, world, diameter, spinDeg, opacity);
+    if (this.synthRings.parent !== synth.mesh) {
+      synth.mesh.add(this.synthRings);
+    }
+    poseSynthOscRings(this.synthRings, elapsedMs, opacity);
+  }
+
+  private findSynth(): HeroBodyHandle | undefined {
+    for (const handle of this.bodies.values()) {
+      if (handle.kind === "synth") return handle;
+    }
+    return undefined;
   }
 
   poseBodyOpacity(key: string, opacity: number): void {
@@ -435,7 +437,10 @@ export class HeroScene {
     this.bodies.clear();
     if (this.orbits) disposeObject3D(this.orbits);
     if (this.nebulae) disposeObject3D(this.nebulae);
-    if (this.synthRings) disposeObject3D(this.synthRings);
+    if (this.synthRings) {
+      this.synthRings.removeFromParent();
+      disposeObject3D(this.synthRings);
+    }
     disposeObject3D(this.stars);
     disposeObject3D(this.sunGlow);
     this.renderer.dispose();
@@ -443,9 +448,9 @@ export class HeroScene {
 
   private syncSynthRings(defs: HeroBodyDef[]): void {
     const hasSynth = defs.some((d) => d.kind === "synth");
-    if (!hasSynth || this.compact) {
+    if (!hasSynth) {
       if (this.synthRings) {
-        this.world.remove(this.synthRings);
+        this.synthRings.removeFromParent();
         disposeObject3D(this.synthRings);
         this.synthRings = null;
       }

@@ -12,6 +12,7 @@ import {
   createBodyMesh,
   createSunMesh,
   heroBodyRadius,
+  heroSunGlowMul,
   heroSunRadius,
 } from "@/components/hero-gl/bodies";
 import { HERO_SUN_DIAMETER_PX } from "@/components/hero-gl/caps";
@@ -64,6 +65,16 @@ describe("heroSunRadius", () => {
     expect(heroSunRadius(0.42)).toBeCloseTo((HERO_SUN_DIAMETER_PX / 2) * 0.42, 5);
     expect(heroSunRadius(1.55)).toBeGreaterThan(heroSunRadius(1));
   });
+
+  it("honors a fitted phone diameter so the mesh can sit inside CymaSynth", () => {
+    expect(heroSunRadius(1, 180)).toBeCloseTo(90, 5);
+    expect(heroSunRadius(1.7, 180)).toBeLessThan(160);
+  });
+
+  it("shrinks the corona with a fitted disk, not only the mesh", () => {
+    expect(heroSunGlowMul(heroSunRadius(1, 180))).toBeCloseTo(180 / 560, 5);
+    expect(heroSunGlowMul(heroSunRadius(0.5, 180))).toBeLessThan(0.2);
+  });
 });
 
 describe("applyBodyTexture", () => {
@@ -109,5 +120,25 @@ describe("createSphereWrapMaterial", () => {
     expect(mat.uniforms.uOpacity?.value).toBe(1);
     expect(mat.transparent).toBe(true);
     mat.dispose();
+  });
+});
+
+describe("applyBodyOpacity", () => {
+  it("goes solid at full fade so globes are not see-through", () => {
+    const moon = createBodyMesh({
+      key: "n",
+      slug: "n",
+      name: "n",
+      kind: "moon",
+      diameter: 48,
+      spinDur: 40,
+      spinRev: false,
+    });
+    applyBodyTexture(moon, new Texture());
+    applyBodyOpacity(moon, 1);
+    expect(moon.wrap?.transparent).toBe(false);
+    expect(moon.wrap?.depthWrite).toBe(true);
+    applyBodyOpacity(moon, 0.4);
+    expect(moon.wrap?.transparent).toBe(true);
   });
 });
