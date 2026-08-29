@@ -86,7 +86,7 @@ export type MobileTourNode = {
 };
 
 /**
- * @brief Cymasphere → catalog moon → CymaSynth → curated moons.
+ * @brief Cymasphere → CymaSynth → curated moons for the phone 2D tour.
  * CircuitNetwork is never downloaded on this path — CSS 3D + canvas
  * warps are what iOS Safari reloads after ~10s of Play.
  * @param cymasphere Sun credit, if present.
@@ -138,20 +138,6 @@ export function buildMobileTourStops(
 ): MobileTourStop[] {
   const withArt = nodes.filter((node) => Boolean(node.image?.trim()));
   const moons = mobile2dMoonCap(tourCap, !!cymasynth, moonCap);
-  const picked = pickMobileTourNodes(withArt, moons, curatedSlugs);
-  const toStop = (
-    node: MobileTourNode,
-    image: string,
-    extra?: Partial<MobileTourStop>
-  ): MobileTourStop => ({
-    key: String(node.id),
-    name: node.name,
-    slug: node.slug,
-    price: node.price,
-    tagline: (node.tagline || "").trim(),
-    image,
-    ...extra,
-  });
   const stops: MobileTourStop[] = [
     {
       key: SUN_FOCUS_KEY,
@@ -163,13 +149,6 @@ export function buildMobileTourStops(
       sun: true,
     },
   ];
-  // Same order as orderCredits: a catalog moon before CymaSynth so the
-  // first hop leaves the Cyma family.
-  const [lead, ...rest] = picked;
-  if (lead) {
-    const image = lead.image?.trim() || "";
-    if (image) stops.push(toStop(lead, image));
-  }
   if (cymasynth) {
     stops.push({
       key: `synth-${cymasynth.id}`,
@@ -180,12 +159,19 @@ export function buildMobileTourStops(
       image: MOBILE_2D_SYNTH_POSTER,
     });
   }
-  for (const node of rest) {
+  for (const node of pickMobileTourNodes(withArt, moons, curatedSlugs)) {
     const image = node.image?.trim() || "";
     if (!image) continue;
-    stops.push(toStop(node, image));
+    stops.push({
+      key: String(node.id),
+      name: node.name,
+      slug: node.slug,
+      price: node.price,
+      tagline: (node.tagline || "").trim(),
+      image,
+    });
   }
-  if (tourCap != null && tourCap > 0) return stops.slice(0, tourCap);
+  if (tourCap != null && tourCap > 0) return stops.slice(0, Math.max(2, tourCap));
   return stops;
 }
 

@@ -53,6 +53,8 @@ describe("hero source contracts", () => {
   it("keeps the CSS visibility budget and sunScale cheat", () => {
     expect(circuit).toContain("creditStageKeys");
     expect(circuit).toContain("tourVisibleMoonKeys");
+    expect(circuit).toContain("buildHeroCredits");
+    expect(circuit).toContain("DEFAULT_CYMASYNTH_NODE");
     expect(circuit).toContain("poseSunScale");
     expect(circuit).toContain("billboardFacingCamera");
   });

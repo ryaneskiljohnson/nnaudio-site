@@ -6,6 +6,7 @@ import {
   homepageCategoryTiles,
   isFreeHomepageProduct,
   mapRawProductToFeaturedCard,
+  partitionHeroTourProducts,
   seedRowToCard,
   sortFeaturedProducts,
   thumbsFromProducts,
@@ -254,5 +255,27 @@ describe("mapRawProductToFeaturedCard", () => {
       logo_url: "https://example.com/logo.png",
     });
     expect(card.price).toBe("$29");
+  });
+});
+
+describe("partitionHeroTourProducts", () => {
+  it("buckets catalog rows and finds Cymasphere", () => {
+    const split = partitionHeroTourProducts([
+      { slug: "cymasynth", name: "CymaSynth", category: "instrument-plugin" },
+      { slug: "reiya", name: "Reiya", category: "instrument-plugin" },
+      { slug: "crystal-ball", name: "Crystal Ball", category: "audio-fx-plugin" },
+      { slug: "midi-pack", name: "Pack", category: "pack" },
+      { slug: "writer", name: "Writer", category: "midi-fx-plugin" },
+      { slug: "cymasphere", name: "Cymasphere", category: "instrument-plugin" },
+    ]);
+    expect(split.instruments.map((p) => p.slug)).toEqual([
+      "cymasynth",
+      "reiya",
+      "cymasphere",
+    ]);
+    expect(split.effects[0]?.slug).toBe("crystal-ball");
+    expect(split.packs[0]?.slug).toBe("midi-pack");
+    expect(split.midiFx[0]?.slug).toBe("writer");
+    expect(split.cymasphere?.slug).toBe("cymasphere");
   });
 });

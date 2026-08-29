@@ -19,7 +19,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import styled, { keyframes } from "styled-components";
-import type { CircuitNode } from "./circuit-node";
+import { DEFAULT_CYMASYNTH_NODE, type CircuitNode } from "./circuit-node";
+import {
+  partitionHeroTourProducts,
+  seedRowToCard,
+  type HomepageProductRow,
+} from "@/lib/homepage-hero-seed";
 import {
   parseHeroTourQuery,
   prefersLiteHeroTour,
@@ -489,6 +494,13 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
 }) => {
   const pathname = usePathname();
   const { allowTour, showPlay, tourCap, startMobileTour } = useOptInHeroTour();
+  const [liveCatalog, setLiveCatalog] = useState<{
+    instruments: HeroProduct[];
+    effects: HeroProduct[];
+    packs: HeroProduct[];
+    midiFx: HeroProduct[];
+    cymasphere: HeroProduct | null;
+  } | null>(null);
 
   useEffect(() => {
     logHeroDebug("hero-allowTour", {
@@ -498,9 +510,55 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
     });
   }, [allowTour, showPlay, tourCap]);
 
+  const seedEmpty =
+    instruments.length + effects.length + packs.length + midiFx.length === 0;
+
+  useEffect(() => {
+    if (!seedEmpty) {
+      setLiveCatalog(null);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await fetch("/api/products?status=active&limit=200");
+        const data = (await response.json()) as {
+          success?: boolean;
+          products?: HomepageProductRow[];
+        };
+        if (cancelled || !data.success || !data.products?.length) return;
+        const split = partitionHeroTourProducts(data.products);
+        setLiveCatalog({
+          instruments: split.instruments.map(seedRowToCard),
+          effects: split.effects.map(seedRowToCard),
+          packs: split.packs.map(seedRowToCard),
+          midiFx: split.midiFx.map(seedRowToCard),
+          cymasphere: split.cymasphere ? seedRowToCard(split.cymasphere) : null,
+        });
+      } catch (error) {
+        console.error("Hero tour catalog fetch failed:", error);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [seedEmpty]);
+
+  const tourInstruments = seedEmpty ? liveCatalog?.instruments ?? [] : instruments;
+  const tourEffects = seedEmpty ? liveCatalog?.effects ?? [] : effects;
+  const tourPacks = seedEmpty ? liveCatalog?.packs ?? [] : packs;
+  const tourMidiFx = seedEmpty ? liveCatalog?.midiFx ?? [] : midiFx;
+  const tourCymasphere =
+    cymasphere ?? (seedEmpty ? liveCatalog?.cymasphere ?? null : null);
+
   const { cymasynth, nodes } = useMemo(() => {
-    const synthProduct = instruments.find((p) => p.slug === "cymasynth");
-    const synthNode = synthProduct ? toNode(synthProduct) : null;
+    const synthProduct = tourInstruments.find(
+      (p) => (p.slug || "").toLowerCase() === "cymasynth"
+    );
+    const synthNode = synthProduct
+      ? toNode(synthProduct)
+      : DEFAULT_CYMASYNTH_NODE;
 
     const skip = new Set(["cymasynth", "cymasphere", "nnaudio-access"]);
     const pick = (list: HeroProduct[]): CircuitNode[] =>
@@ -509,10 +567,10 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
         .map((p) => toNode(p));
 
     const buckets = [
-      pick(instruments),
-      pick(effects),
-      pick(midiFx),
-      pick(packs),
+      pick(tourInstruments),
+      pick(tourEffects),
+      pick(tourMidiFx),
+      pick(tourPacks),
     ];
     const seen = new Set<string>();
     const mixed: CircuitNode[] = [];
@@ -532,7 +590,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
       cymasynth: synthNode,
       nodes: mixed,
     };
-  }, [instruments, effects, packs, midiFx]);
+  }, [tourInstruments, tourEffects, tourPacks, tourMidiFx]);
 
   const supportRest =
     productCount > 0
@@ -550,7 +608,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
         <BoardFade>
           {allowTour ? (
             <CircuitNetwork
-              cymasphere={cymasphere ? toNode(cymasphere) : null}
+              cymasphere={tourCymasphere ? toNode(tourCymasphere) : null}
               cymasynth={cymasynth}
               nodes={nodes}
               tourCap={tourCap}

@@ -32,6 +32,7 @@ import {
   moonTheta,
   orbitRadiusPx,
   orderCredits,
+  buildHeroCredits,
   pickVisibleMoons,
   tourVisibleMoonKeys,
   skyParallaxCss,
@@ -477,13 +478,12 @@ describe("cameraTour", () => {
     expect(second.focusKey).toBe("small");
   });
 
-  it("leaves Cymasphere for a catalog moon before CymaSynth", () => {
+  it("holds Cymasphere 1.5× and CymaSynth 2× before the rest", () => {
     const credits = orderCredits([
       { key: "pack", name: "Pack", startDeg: 0, periodSec: 40, radius: 0.8, size: 80, weight: 1 },
       {
         key: "synth",
         name: "CymaSynth",
-        slug: "cymasynth",
         startDeg: 90,
         periodSec: 24,
         radius: 0.2,
@@ -501,10 +501,10 @@ describe("cameraTour", () => {
         weight: 1.5,
       },
     ]);
-    expect(credits.map((c) => c.key)).toEqual([SUN_FOCUS_KEY, "pack", "synth"]);
+    expect(credits.map((c) => c.key)).toEqual([SUN_FOCUS_KEY, "synth", "pack"]);
     expect(creditHoldMs(credits[0])).toBe(CREDIT_MS * 1.5);
-    expect(creditHoldMs(credits[1])).toBe(CREDIT_MS);
-    expect(creditHoldMs(credits[2])).toBe(CREDIT_MS * 2);
+    expect(creditHoldMs(credits[1])).toBe(CREDIT_MS * 2);
+    expect(creditHoldMs(credits[2])).toBe(CREDIT_MS);
     expect(tourDurationMs(credits)).toBe(
       TOUR_INTRO_MS + CREDIT_MS * 4.5 + TOUR_OUTRO_MS
     );
@@ -514,64 +514,49 @@ describe("cameraTour", () => {
     expect(sun.creditOpacity).toBeGreaterThan(0.5);
     const stillSun = cameraTour(TOUR_INTRO_MS + CREDIT_MS, false, credits);
     expect(stillSun.focusKey).toBe(SUN_FOCUS_KEY);
-    const pack = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 1.5 + 400, false, credits);
-    expect(pack.focusKey).toBe("pack");
-    const synth = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 2.5 + 400, false, credits);
+    const synth = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 1.5 + 400, false, credits);
     expect(synth.focusKey).toBe("synth");
+    const pack = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 3.5 + 400, false, credits);
+    expect(pack.focusKey).toBe("pack");
   });
 
-  it("prefers a lead catalog slug as the first hop off Cymasphere", () => {
-    const credits = orderCredits([
-      {
-        key: SUN_FOCUS_KEY,
-        name: "Cymasphere",
-        startDeg: 0,
-        periodSec: 1,
-        radius: 0,
-        size: 0,
-        sun: true,
-        weight: 1.5,
-      },
-      {
-        key: "synth",
-        name: "CymaSynth",
-        slug: "cymasynth",
-        startDeg: 90,
-        periodSec: 24,
-        radius: 0.2,
-        size: 200,
-        weight: 2,
-      },
-      {
-        key: "big",
-        name: "Big",
-        slug: "big-pack",
-        startDeg: 0,
-        periodSec: 40,
-        radius: 0.8,
-        size: 180,
-        weight: 1,
-      },
-      {
-        key: "tetrad",
-        name: "Tetrad Guitars",
-        slug: "tetrad-guitars",
-        startDeg: 40,
-        periodSec: 36,
-        radius: 0.6,
-        size: 40,
-        weight: 1,
-      },
-    ]);
-    expect(credits.map((c) => c.key)).toEqual([
+  it("does not build a sun-only credit list that can only loop Cymasphere", () => {
+    const sun = {
+      key: SUN_FOCUS_KEY,
+      name: "Cymasphere",
+      startDeg: 0,
+      periodSec: 1,
+      radius: 0,
+      size: 0,
+      sun: true,
+      weight: 1.5,
+    };
+    const synth = {
+      key: "synth",
+      name: "CymaSynth",
+      startDeg: 90,
+      periodSec: 24,
+      radius: 0.2,
+      size: 108,
+      weight: 2,
+    };
+    expect(buildHeroCredits(sun, [])).toEqual([]);
+    expect(buildHeroCredits(sun, [synth]).map((c) => c.key)).toEqual([
       SUN_FOCUS_KEY,
-      "tetrad",
       "synth",
-      "big",
     ]);
-    expect(
-      cameraTour(TOUR_INTRO_MS + CREDIT_MS * 1.5 + 400, false, credits).focusKey
-    ).toBe("tetrad");
+    expect(buildHeroCredits(sun, [synth], 1).map((c) => c.key)).toEqual([
+      SUN_FOCUS_KEY,
+      "synth",
+    ]);
+    const onlySun = cameraTour(TOUR_INTRO_MS + CREDIT_MS * 1.5 + 400, false, [sun]);
+    expect(onlySun.focusKey).toBeNull();
+    const withSynth = cameraTour(
+      TOUR_INTRO_MS + CREDIT_MS * 1.5 + 400,
+      false,
+      buildHeroCredits(sun, [synth])
+    );
+    expect(withSynth.focusKey).toBe("synth");
   });
 
   it("keeps the credit card opacity continuous at every boundary", () => {

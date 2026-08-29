@@ -448,7 +448,7 @@ describe("parseHeroTourQuery", () => {
 });
 
 describe("buildMobileTourStops", () => {
-  it("puts a catalog moon before CymaSynth so the first hop leaves Cyma", () => {
+  it("puts the sun poster first, then synth, then curated moons", () => {
     const stops = buildMobileTourStops(
       { id: "sun", name: "Cymasphere", slug: "cymasphere", price: "$199" },
       {
@@ -466,13 +466,13 @@ describe("buildMobileTourStops", () => {
     );
     expect(stops.map((s) => s.slug)).toEqual([
       "cymasphere",
-      "reiya",
       "cymasynth",
+      "reiya",
       "other",
     ]);
     expect(stops[0]?.image).toBe(MOBILE_2D_SUN_POSTER);
     expect(stops[0]?.sun).toBe(true);
-    expect(stops[2]?.image).toBe(MOBILE_2D_SYNTH_POSTER);
+    expect(stops[1]?.image).toBe(MOBILE_2D_SYNTH_POSTER);
   });
 
   it("uses the synth poster even when the product has other art", () => {
@@ -504,8 +504,8 @@ describe("buildMobileTourStops", () => {
     );
     expect(stops.map((s) => s.slug)).toEqual([
       "cymasphere",
-      "reiya",
       "cymasynth",
+      "reiya",
     ]);
     expect(stops.every((s) => s.image.length > 0)).toBe(true);
   });
@@ -522,16 +522,7 @@ describe("buildMobileTourStops", () => {
       MOBILE_2D_MOON_CAP
     );
     expect(stops[0]?.name).toBe("Cymasphere");
-    expect(stops.map((s) => s.slug)).toEqual([
-      "cymasphere",
-      "a",
-      "cymasynth",
-      "b",
-      "c",
-    ]);
-    expect(stops.find((s) => s.slug === "cymasynth")?.image).toBe(
-      MOBILE_2D_SYNTH_POSTER
-    );
+    expect(stops[1]?.image).toBe(MOBILE_2D_SYNTH_POSTER);
     expect(stops.length).toBe(2 + MOBILE_2D_MOON_CAP);
   });
 });

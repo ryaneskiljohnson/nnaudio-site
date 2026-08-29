@@ -24,7 +24,7 @@ import {
   moonPlacements,
   orbitRadiusPx,
   creditStageKeys,
-  orderCredits,
+  buildHeroCredits,
   sunScaleFromCamera,
   tourDurationMs,
   tourVisibleMoonKeys,
@@ -52,7 +52,7 @@ import {
 } from "@/utils/orbital-physics";
 import { optimizedImageUrl } from "@/utils/optimized-image-url";
 import { faceOnAlign, moonSpinPhase } from "@/utils/sphere-texture";
-import type { CircuitNode } from "./circuit-node";
+import { DEFAULT_CYMASYNTH_NODE, type CircuitNode } from "./circuit-node";
 import type { HeroBodyDef } from "@/components/hero-gl/bodies";
 import { HERO_SUN_DIAMETER_PX, shouldSkipHeroFrame } from "@/components/hero-gl/caps";
 import { HeroScene, heroWebglAvailable } from "@/components/hero-gl/HeroScene";
@@ -498,7 +498,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     mountedRef.current = true;
     logHeroDebug("circuit-mount", {
       mobile,
-      moonCap: heroTourMoonCap(mobile, tourCap, !!cymasynth),
+      moonCap: heroTourMoonCap(mobile, tourCap, true),
       nodes: nodes.length,
       previousKilled: previousHeroTourWasKilled(readHeroWatchdog()),
       webgl: heroWebglAvailable(),
@@ -595,7 +595,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     return () => window.removeEventListener("mousemove", onMove);
   }, [mobile]);
 
-  const moonCap = heroTourMoonCap(mobile, tourCap, !!cymasynth);
+  const moonCap = heroTourMoonCap(mobile, tourCap, true);
   const tourNodes = useMemo(
     () =>
       moonCap == null
@@ -608,6 +608,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     [tourNodes.length, mobile]
   );
   const synthSeat = useMemo(() => cymasynthOrbit(mobile), [mobile]);
+  const synthNode = cymasynth ?? DEFAULT_CYMASYNTH_NODE;
 
   const bodies = useMemo(() => {
     const list: Array<{
@@ -618,16 +619,14 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       spinDur: number;
       spinRev: boolean;
     }> = [];
-    if (cymasynth) {
-      list.push({
-        key: `synth-${cymasynth.id}`,
-        node: cymasynth,
-        seat: synthSeat,
-        synth: true,
-        spinDur: SYNTH_SPIN_SEC,
-        spinRev: false,
-      });
-    }
+    list.push({
+      key: `synth-${synthNode.id}`,
+      node: synthNode,
+      seat: synthSeat,
+      synth: true,
+      spinDur: SYNTH_SPIN_SEC,
+      spinRev: false,
+    });
     seats.forEach((seat) => {
       const node = tourNodes[seat.index];
       if (!node) return;
@@ -643,7 +642,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       });
     });
     return list;
-  }, [cymasynth, tourNodes, seats, synthSeat, mobile]);
+  }, [synthNode, tourNodes, seats, synthSeat, mobile]);
 
   const system = useMemo(() => {
     const w = frameSize?.w ?? 1200;
@@ -659,24 +658,25 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   }, [bodies, frameSize]);
 
   const credits = useMemo<CreditTarget[]>(() => {
-    const ordered = orderCredits([
-      {
-        key: SUN_FOCUS_KEY,
-        name: cymasphere?.name || "Cymasphere",
-        slug: cymasphere?.slug || "cymasphere",
-        price: cymasphere?.price,
-        subtitle: (cymasphere?.tagline || "").trim(),
-        description: (cymasphere?.description || "").trim(),
-        image: CYMASPHERE_APP_ICON,
-        sun: true,
-        weight: 1.5,
-        startDeg: 0,
-        periodSec: 1,
-        radius: 0,
-        radiusPx: 0,
-        size: 0,
-      },
-      ...bodies.map((body, i) => ({
+    const sun: CreditTarget = {
+      key: SUN_FOCUS_KEY,
+      name: cymasphere?.name || "Cymasphere",
+      slug: cymasphere?.slug || "cymasphere",
+      price: cymasphere?.price,
+      subtitle: (cymasphere?.tagline || "").trim(),
+      description: (cymasphere?.description || "").trim(),
+      image: CYMASPHERE_APP_ICON,
+      sun: true,
+      weight: 1.5,
+      startDeg: 0,
+      periodSec: 1,
+      radius: 0,
+      radiusPx: 0,
+      size: 0,
+    };
+    const moons: CreditTarget[] = bodies.map((body, i) => {
+      const rate = system.n[i] + system.prec[i];
+      return {
         key: body.key,
         name: body.node.name,
         slug: body.node.slug,
@@ -686,14 +686,13 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         image: body.node.image,
         weight: body.synth ? 2 : 1,
         startDeg: body.seat.startDeg,
-        periodSec: (2 * Math.PI) / (system.n[i] + system.prec[i]),
+        periodSec: rate > 0 ? (2 * Math.PI) / rate : body.seat.periodSec,
         radius: body.seat.radius,
         radiusPx: system.a[i],
         size: body.seat.size.w * (body.synth ? 1.45 : 1),
-      })),
-    ]);
-    const stopCap = heroTourStopCap(mobile, tourCap);
-    return stopCap == null ? ordered : ordered.slice(0, stopCap);
+      };
+    });
+    return buildHeroCredits(sun, moons, heroTourStopCap(mobile, tourCap));
   }, [bodies, cymasphere, system, mobile, tourCap]);
 
   const creditsByKey = useMemo(
