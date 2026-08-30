@@ -48,7 +48,7 @@ import {
   createNebulae,
   createOrbitRings,
   createStarField,
-  createSunGlow,
+  createSunAura,
   createSynthOscRings,
   disposeObject3D,
   poseOrbitRingsOpacity,
@@ -145,7 +145,7 @@ export class HeroScene {
     this.camera.add(key.target);
 
     this.sun = createSunMesh();
-    this.sunGlow = createSunGlow(heroSunRadius());
+    this.sunGlow = createSunAura(compact);
     this.sun.mesh.add(this.sunGlow);
     this.world.add(this.sun.mesh);
 
@@ -153,7 +153,7 @@ export class HeroScene {
     this.sky.add(this.stars);
     if (!compact) {
       this.nebulae = createNebulae();
-      this.sky.add(this.nebulae);
+      this.sun.mesh.add(this.nebulae);
     }
 
     canvas.addEventListener("webglcontextlost", this.onContextLost, false);
@@ -304,10 +304,17 @@ export class HeroScene {
       this.synthRings.visible = false;
       return;
     }
-    if (this.synthRings.parent !== synth.mesh) {
-      synth.mesh.add(this.synthRings);
+    if (this.synthRings.parent !== this.world) {
+      this.synthRings.removeFromParent();
+      this.world.add(this.synthRings);
     }
-    poseSynthOscRings(this.synthRings, elapsedMs, opacity);
+    this.synthRings.position.copy(synth.mesh.position);
+    poseSynthOscRings(
+      this.synthRings,
+      elapsedMs,
+      opacity,
+      synth.mesh.scale.x * 2
+    );
   }
 
   private findSynth(): HeroBodyHandle | undefined {

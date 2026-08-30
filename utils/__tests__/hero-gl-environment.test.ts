@@ -1,6 +1,6 @@
 /**
- * @fileoverview CymaSynth oscillator-nest pose: three offset disks,
- * each spinning in-plane.
+ * @fileoverview CymaSynth oscillator-nest pose: Saturn plate in world
+ * space, each loop spinning in its own plane.
  * @module utils/__tests__/hero-gl-environment.test
  */
 
@@ -14,6 +14,7 @@ import {
   CYMASYNTH_OSC_RING_SETS,
   CYMASYNTH_RING_DISK_TILT_DEG,
   synthOscDiskEulerRad,
+  synthOscPlateSpinDeg,
   synthOscRingSpinRad,
 } from "@/utils/circuit-network-layout";
 
@@ -21,11 +22,11 @@ describe("poseSynthOscRings", () => {
   it("tilts the nest and spins each loop around its disk normal", () => {
     const group = createSynthOscRings();
     poseSynthOscRings(group, 3500, 1);
-    const euler = synthOscDiskEulerRad();
+    const euler = synthOscDiskEulerRad(synthOscPlateSpinDeg(3500));
     expect(group.rotation.order).toBe("XYZ");
     expect(group.rotation.x).toBeCloseTo(euler.x);
     expect(group.rotation.y).toBeCloseTo(0);
-    expect(group.rotation.z).toBeCloseTo(0);
+    expect(group.rotation.z).toBeCloseTo(euler.z);
     expect(group.rotation.x).toBeCloseTo(
       (CYMASYNTH_RING_DISK_TILT_DEG * Math.PI) / 180
     );
@@ -50,6 +51,12 @@ describe("poseSynthOscRings", () => {
         );
       }
     }
+  });
+
+  it("scales the nest with the posed moon diameter", () => {
+    const group = createSynthOscRings();
+    poseSynthOscRings(group, 0, 1, 216);
+    expect(group.scale.x).toBeCloseTo(2);
   });
 
   it("fades the nest out instead of leaving it fully drawn", () => {

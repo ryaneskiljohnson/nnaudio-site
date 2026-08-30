@@ -63,6 +63,11 @@ describe("hero source contracts", () => {
   it("lights bodies from the camera so holds are not a new moon", () => {
     expect(scene).toContain("DirectionalLight");
     expect(scene).toContain("lookPlusZToward");
+    expect(scene).toContain("createSunAura");
+    expect(scene).toContain("this.sun.mesh.add(this.nebulae)");
+    expect(scene).not.toContain("this.sky.add(this.nebulae)");
+    expect(scene).toContain("this.world.add(this.synthRings)");
+    expect(scene).not.toContain("synth.mesh.add(this.synthRings)");
     expect(wrap).toContain("uCamFill");
     expect(wrap).toContain("uOpacity");
     expect(wrap).toContain("facing = mix(1.04, 1.22, max(0.0, n.z))");

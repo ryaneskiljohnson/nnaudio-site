@@ -164,63 +164,42 @@ export interface CymasynthOscRing {
   amplitude: number;
   /** Seconds for one in-plane turn. */
   periodSec: number;
+  /** Extra rotateX on this disk, degrees from the shared plate. */
+  tiltX: number;
+  /** Extra rotateZ on this disk, degrees from the shared plate. */
+  tiltZ: number;
 }
 
-/** One Saturn-like plane of several coplanar loops. */
+/** One slightly tilted disk (one loop, matching the old CSS nest). */
 export interface CymasynthOscRingSet {
-  /** Extra rotateX for this plane, degrees from the shared plate. */
   tiltX: number;
-  /** Extra rotateZ for this plane, degrees from the shared plate. */
   tiltZ: number;
   rings: ReadonlyArray<CymasynthOscRing>;
 }
 
 /**
- * Three offset oscillator planes around CymaSynth. Loops inside a set
- * stay coplanar and spin around that plane's normal; the sets are
- * splayed so the nest reads as a volume, not one ring.
+ * Nested sine-wave rings around CymaSynth. Radii stay tight so they
+ * read as one oscillator family; tiltX/tiltZ splay a few onto nearby
+ * axes without breaking the nest.
  */
-export const CYMASYNTH_OSC_RING_SETS: ReadonlyArray<CymasynthOscRingSet> = [
-  {
-    tiltX: 0,
-    tiltZ: 0,
-    rings: [
-      { cycles: 3, radius: 64, amplitude: 2.6, periodSec: 14 },
-      { cycles: 5, radius: 76, amplitude: 3.2, periodSec: 22 },
-      { cycles: 7, radius: 88, amplitude: 3.6, periodSec: 26 },
-    ],
-  },
-  {
-    tiltX: 16,
-    tiltZ: 12,
-    rings: [
-      { cycles: 4, radius: 70, amplitude: 3.0, periodSec: 18 },
-      { cycles: 6, radius: 82, amplitude: 3.4, periodSec: 16 },
-      { cycles: 8, radius: 94, amplitude: 3.8, periodSec: 20 },
-    ],
-  },
-  {
-    tiltX: -15,
-    tiltZ: -13,
-    rings: [
-      { cycles: 5, radius: 80, amplitude: 3.2, periodSec: 24 },
-      { cycles: 9, radius: 100, amplitude: 4.0, periodSec: 30 },
-      { cycles: 11, radius: 106, amplitude: 4.2, periodSec: 24 },
-    ],
-  },
+export const CYMASYNTH_OSC_RINGS: ReadonlyArray<CymasynthOscRing> = [
+  { cycles: 3, radius: 64, amplitude: 2.6, periodSec: 14, tiltX: 0, tiltZ: 0 },
+  { cycles: 4, radius: 70, amplitude: 3.0, periodSec: 18, tiltX: 2, tiltZ: 2 },
+  { cycles: 5, radius: 76, amplitude: 3.2, periodSec: 22, tiltX: -2, tiltZ: -1 },
+  { cycles: 6, radius: 82, amplitude: 3.4, periodSec: 16, tiltX: 1, tiltZ: -3 },
+  { cycles: 7, radius: 88, amplitude: 3.6, periodSec: 26, tiltX: -2, tiltZ: 2 },
+  { cycles: 8, radius: 94, amplitude: 3.8, periodSec: 20, tiltX: 2, tiltZ: -2 },
+  { cycles: 9, radius: 100, amplitude: 4.0, periodSec: 30, tiltX: -1, tiltZ: 3 },
+  { cycles: 11, radius: 106, amplitude: 4.2, periodSec: 24, tiltX: 2, tiltZ: 1 },
 ];
 
-/** Flat list of every oscillator loop (tests / path helpers). */
-export const CYMASYNTH_OSC_RINGS: ReadonlyArray<
-  CymasynthOscRing & { tiltX: number; tiltZ: number; duration: string }
-> = CYMASYNTH_OSC_RING_SETS.flatMap((set) =>
-  set.rings.map((ring) => ({
-    ...ring,
-    tiltX: set.tiltX,
-    tiltZ: set.tiltZ,
-    duration: `${ring.periodSec}s`,
-  }))
-);
+/** One disk per ring — same splay as the authored CSS nest. */
+export const CYMASYNTH_OSC_RING_SETS: ReadonlyArray<CymasynthOscRingSet> =
+  CYMASYNTH_OSC_RINGS.map((ring) => ({
+    tiltX: ring.tiltX,
+    tiltZ: ring.tiltZ,
+    rings: [ring],
+  }));
 
 /**
  * Shared rotateX for the CymaSynth oscillator disk in world space.
@@ -228,13 +207,14 @@ export const CYMASYNTH_OSC_RINGS: ReadonlyArray<
 export const CYMASYNTH_RING_DISK_TILT_DEG = 52;
 
 /**
- * @brief Saturn tilt for the oscillator nest. Spin lives on each loop's
- * local Z so offset sets cannot tumble around the nest axis.
+ * @brief Saturn tilt plus slow plate precession. Matches the old CSS
+ * `rotateX(52) rotateZ(elapsed/90)` on the world-space ring plate.
+ * @param spinDeg In-plane turn of the whole nest, degrees.
  * @returns Radians for `Object3D.rotation` with order XYZ.
  * @example
- * synthOscDiskEulerRad().x * 180 / Math.PI // 52
+ * synthOscDiskEulerRad(0).x * 180 / Math.PI // 52
  */
-export function synthOscDiskEulerRad(): {
+export function synthOscDiskEulerRad(spinDeg = 0): {
   x: number;
   y: number;
   z: number;
@@ -242,8 +222,17 @@ export function synthOscDiskEulerRad(): {
   return {
     x: (CYMASYNTH_RING_DISK_TILT_DEG * Math.PI) / 180,
     y: 0,
-    z: 0,
+    z: (spinDeg * Math.PI) / 180,
   };
+}
+
+/**
+ * @brief Slow precession of the CymaSynth ring plate.
+ * @param elapsedMs Tour time.
+ * @returns Degrees around the disk normal (`elapsed / 90`).
+ */
+export function synthOscPlateSpinDeg(elapsedMs: number): number {
+  return ((elapsedMs / 90) % 360 + 360) % 360;
 }
 
 /**

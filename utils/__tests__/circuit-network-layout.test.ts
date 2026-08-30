@@ -482,18 +482,16 @@ describe("sineOscillatorRingPath", () => {
     expect(Math.min(...rs)).toBeCloseTo(76, 0);
   });
 
-  it("nests three offset planes of green rings", () => {
-    expect(CYMASYNTH_OSC_RING_SETS).toHaveLength(3);
+  it("nests several green rings on nearby axes", () => {
+    expect(CYMASYNTH_OSC_RING_SETS).toHaveLength(CYMASYNTH_OSC_RINGS.length);
     expect(CYMASYNTH_OSC_RINGS.length).toBeGreaterThanOrEqual(7);
     const radii = CYMASYNTH_OSC_RINGS.map((r) => r.radius);
     expect(Math.max(...radii) - Math.min(...radii)).toBeLessThan(50);
-    const tilts = CYMASYNTH_OSC_RING_SETS.map((s) => `${s.tiltX},${s.tiltZ}`);
-    expect(new Set(tilts).size).toBe(3);
-    expect(
-      CYMASYNTH_OSC_RING_SETS.some(
-        (s) => Math.abs(s.tiltX) >= 12 || Math.abs(s.tiltZ) >= 12
-      )
-    ).toBe(true);
+    expect(CYMASYNTH_OSC_RINGS.some((r) => r.tiltX !== 0 || r.tiltZ !== 0)).toBe(
+      true
+    );
+    expect(CYMASYNTH_OSC_RINGS.every((r) => Math.abs(r.tiltX) <= 3)).toBe(true);
+    expect(CYMASYNTH_OSC_RINGS.every((r) => Math.abs(r.tiltZ) <= 4)).toBe(true);
   });
 
   it("tilts the nest and spins each loop in its own plane", () => {
@@ -501,6 +499,7 @@ describe("sineOscillatorRingPath", () => {
     expect((rest.x * 180) / Math.PI).toBeCloseTo(CYMASYNTH_RING_DISK_TILT_DEG);
     expect(rest.y).toBe(0);
     expect(rest.z).toBe(0);
+    expect((synthOscDiskEulerRad(90).z * 180) / Math.PI).toBeCloseTo(90);
     expect(synthOscRingSpinRad(3500, 14)).toBeCloseTo(Math.PI / 2);
     expect(synthOscRingSpinRad(0, 14)).toBe(0);
   });
