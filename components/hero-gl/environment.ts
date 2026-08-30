@@ -46,7 +46,11 @@ function mulberry32(seed: number) {
   };
 }
 
-function radialSprite(color: string, size = 128): CanvasTexture {
+function radialSprite(
+  color: string,
+  size = 128,
+  midAlpha = 0.28
+): CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
@@ -61,7 +65,7 @@ function radialSprite(color: string, size = 128): CanvasTexture {
     size / 2
   );
   g.addColorStop(0, color);
-  g.addColorStop(0.45, color.replace(/[\d.]+\)$/, "0.28)"));
+  g.addColorStop(0.45, color.replace(/[\d.]+\)$/, `${midAlpha})`));
   g.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
@@ -107,19 +111,23 @@ export function createStarField(compact: boolean): Points {
 }
 
 /**
- * @brief Soft additive nebula sprites (desktop only).
+ * @brief Soft additive nebula sprites (desktop only). Spread around
+ * the sky so they read as atmosphere, not one leftover flare.
  */
 export function createNebulae(): Group {
   const group = new Group();
   group.name = "hero-nebulae";
   const specs = [
-    { color: "rgba(108,99,255,0.55)", x: -220, y: 80, s: 900 },
-    { color: "rgba(255,190,130,0.4)", x: 260, y: -40, s: 760 },
-    { color: "rgba(60,180,190,0.28)", x: 40, y: 20, s: 640 },
+    { color: "rgba(108,99,255,0.16)", x: -520, y: 280, s: 420, mid: 0.05 },
+    { color: "rgba(255,190,130,0.12)", x: 500, y: 240, s: 380, mid: 0.04 },
+    { color: "rgba(60,180,190,0.12)", x: -540, y: -260, s: 400, mid: 0.04 },
+    { color: "rgba(200,150,120,0.11)", x: 520, y: -300, s: 360, mid: 0.035 },
+    { color: "rgba(140,110,200,0.13)", x: 20, y: 380, s: 340, mid: 0.04 },
+    { color: "rgba(80,160,180,0.10)", x: -30, y: -360, s: 320, mid: 0.03 },
   ];
   for (const spec of specs) {
     const mat = new SpriteMaterial({
-      map: radialSprite(spec.color),
+      map: radialSprite(spec.color, 128, spec.mid),
       blending: AdditiveBlending,
       transparent: true,
       depthWrite: false,
