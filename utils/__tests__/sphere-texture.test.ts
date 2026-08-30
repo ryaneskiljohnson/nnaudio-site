@@ -33,8 +33,8 @@ describe("moonSpinPhase", () => {
     expect(moonSpinPhase(15000, 60, false, true, 0.2)).toBeCloseTo(0.45);
   });
 
-  it("keeps ambient spin when not featured", () => {
-    expect(moonSpinPhase(15000, 60, false, false, 0.9)).toBeCloseTo(0.25);
+  it("keeps the turntable offset after a hold so zooms do not snap", () => {
+    expect(moonSpinPhase(15000, 60, false, false, 0.9)).toBeCloseTo(0.15);
     expect(moonSpinPhase(15000, 60, true, false, 0)).toBeCloseTo(0.75);
   });
 

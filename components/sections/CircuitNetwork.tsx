@@ -1068,7 +1068,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           const bodyKey = credit?.bodyKey ?? key;
           const idx = bodyIndexByKey.get(bodyKey);
           const body = idx === undefined ? undefined : bodies[idx];
-          if (!body) return;
+          if (!body || faceAlign.current.has(body.key)) return;
           faceAlign.current.set(
             body.key,
             faceOnAlign(elapsed, body.spinDur, body.spinRev)
@@ -1119,6 +1119,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         if (nextSlug !== shown && shown && fadeNow > 0.04) continue;
         if (nextSlug !== shown) {
           slotShown.current.set(slotKey, nextSlug);
+          faceAlign.current.delete(slotKey);
+          spinBoost.current.delete(slotKey);
           const seat = seats[slot];
           const slotBody = bodies[1 + slot];
           if (occupant && seat) {

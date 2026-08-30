@@ -940,7 +940,8 @@ export function wrapPhase(t: number): number {
  * @param elapsedMs Time since the tour started.
  * @param periodSec Ambient spin period.
  * @param reverse When true, ambient spin is retrograde.
- * @param featured When true, add `boost` on top of the day-length spin.
+ * @param featured Unused; boost is always applied so a zoom-out cannot
+ * snap the wrap back to ambient-only.
  * @param boost Extra revolutions accumulated during a close-up (0–1).
  * @param align Extra phase offset (used to start a hold face-on).
  * @returns Phase in [0, 1).
@@ -958,8 +959,7 @@ export function moonSpinPhase(
   const period = Math.max(1, periodSec);
   const base = (elapsedMs / 1000 / period) % 1;
   const ambient = reverse ? 1 - base : base;
-  const extra = featured ? boost : 0;
-  return wrapPhase(ambient + extra + align);
+  return wrapPhase(ambient + boost + align);
 }
 
 /**
