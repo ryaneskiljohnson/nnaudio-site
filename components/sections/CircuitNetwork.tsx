@@ -70,8 +70,6 @@ const SYNTH_SPIN_SEC = 56;
 const MOON_SPIN_SEC_MIN = 40;
 const MOON_SPIN_SEC_SPAN = 24;
 const FEATURED_TURNTABLE_MS = 22000;
-const TOUR_MOBILE_MAX_LOOPS = 1;
-
 const OPENING_CAM = cameraTour(0, false);
 
 interface CircuitNetworkProps {
@@ -406,6 +404,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const parkedRef = useRef(false);
   const parkImmediatelyRef = useRef(parkImmediately);
   parkImmediatelyRef.current = parkImmediately;
+  const tourCapRef = useRef(tourCap);
+  tourCapRef.current = tourCap;
   const rafRef = useRef(0);
   const startLoopRef = useRef<() => void>(() => undefined);
   const mobile = isMobile;
@@ -611,8 +611,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     [moonCap, nodes]
   );
   const synthNode = cymasynth ?? DEFAULT_CYMASYNTH_NODE;
-  const seats = useMemo(() => catalogOrbitSeats(mobile), [mobile]);
-  const synthSeat = useMemo(() => cymasynthOrbit(mobile), [mobile]);
+  const seats = useMemo(() => catalogOrbitSeats(false), []);
+  const synthSeat = useMemo(() => cymasynthOrbit(false), []);
 
   const bodies = useMemo(() => {
     const list: Array<{
@@ -680,7 +680,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       periodSec: 1,
       radius: 0,
       radiusPx: 0,
-      size: heroSunFitDiameterPx(boardW, boardH, mobile),
+      size: heroSunFitDiameterPx(boardW, boardH, false),
     };
     const synthRate = system.n[0] + system.prec[0];
     const synthCredit: CreditTarget = {
@@ -714,7 +714,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         periodSec: 40,
         radius: seats[0]?.radius ?? 2.35,
         radiusPx: system.a[1] ?? 0,
-        size: moonDiameter(hash, 0, mobile),
+        size: moonDiameter(hash, 0, false),
       };
     });
     const ordered = buildHeroCredits(
@@ -747,7 +747,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     seats,
     tourNodes,
     system,
-    mobile,
     tourCap,
     frameSize,
     keplerSize,
@@ -784,7 +783,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     bodyIndexByKey,
     creditsByKey,
     frameSize,
-    mobile,
     bodyDefs,
     seats,
   });
@@ -795,7 +793,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     bodyIndexByKey,
     creditsByKey,
     frameSize,
-    mobile,
     bodyDefs,
     seats,
   };
@@ -813,11 +810,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     const box = containerRef.current?.getBoundingClientRect();
     const boardW = box?.width ?? 1200;
     const boardH = box?.height ?? 640;
-    const sunDiameter = heroSunFitDiameterPx(boardW, boardH, mobile);
+    const sunDiameter = heroSunFitDiameterPx(boardW, boardH, false);
     if (box) scene.setViewSize(boardW, boardH);
     scene.setSunDiameter(sunDiameter);
     scene.setBodies(bodyDefs);
-    scene.setOrbitSystem(mobile ? null : system);
+    scene.setOrbitSystem(system);
     void scene.loadBodyArt({
       key: SUN_FOCUS_KEY,
       slug: "cymasphere",
@@ -839,17 +836,17 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     const scene = sceneRef.current;
     if (!scene) return;
     scene.setBodies(bodyDefs);
-    scene.setOrbitSystem(mobile ? null : system);
-  }, [bodyDefs, system, mobile]);
+    scene.setOrbitSystem(system);
+  }, [bodyDefs, system]);
 
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene || !frameSize) return;
     scene.setViewSize(frameSize.w, frameSize.h);
     scene.setSunDiameter(
-      heroSunFitDiameterPx(frameSize.w, frameSize.h, mobile)
+      heroSunFitDiameterPx(frameSize.w, frameSize.h, false)
     );
-  }, [frameSize, mobile]);
+  }, [frameSize]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -964,7 +961,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         bodyIndexByKey,
         creditsByKey,
         frameSize,
-        mobile: compact,
         bodyDefs,
         seats,
       } = tourLive.current;
@@ -988,9 +984,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       if (
         !parkedRef.current &&
         (parkImmediatelyRef.current ||
-          (compact &&
+          (tourCapRef.current != null &&
+            tourCapRef.current > 0 &&
             credits.length > 1 &&
-            elapsed >= tourDurationMs(credits) * TOUR_MOBILE_MAX_LOOPS))
+            elapsed >= tourDurationMs(credits)))
       ) {
         parkedRef.current = true;
       }

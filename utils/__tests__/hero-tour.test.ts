@@ -13,10 +13,8 @@ import {
   MOBILE_2D_MOON_CAP,
   MOBILE_2D_SUN_POSTER,
   MOBILE_2D_SYNTH_POSTER,
-  MOBILE_CATALOG_MOON_CAP,
   MOBILE_STAGE_BUDGET,
   MOBILE_TEXTURE_KEEP,
-  TOUR_MOBILE_MAX_STOPS,
   buildMobileTourStops,
   heroBoardIsOnScreen,
   mobile2dMoonCap,
@@ -339,12 +337,10 @@ describe("pickMobileTourNodes", () => {
 });
 
 describe("heroTourMoonCap / heroTourStopCap", () => {
-  it("caps live phones and leaves desktop uncapped", () => {
-    expect(heroTourMoonCap(true, undefined, true)).toBe(
-      MOBILE_CATALOG_MOON_CAP
-    );
+  it("leaves live visits uncapped on every screen", () => {
+    expect(heroTourMoonCap(true, undefined, true)).toBeNull();
     expect(heroTourMoonCap(false, undefined, true)).toBeNull();
-    expect(heroTourStopCap(true)).toBe(TOUR_MOBILE_MAX_STOPS);
+    expect(heroTourStopCap(true)).toBeNull();
     expect(heroTourStopCap(false)).toBeNull();
   });
 

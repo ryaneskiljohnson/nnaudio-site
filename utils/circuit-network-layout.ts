@@ -579,7 +579,8 @@ export const ECLIPSE_OFFSET_Y_PX = -22;
 /**
  * @brief Stable per-product framing so each hold sits off the sun, but
  * not always to the same side. X flips left/right from the key; Y stays
- * a little above center with a small hash jitter.
+ * a little above center with a small hash jitter. Phone-width frames
+ * stay centered so the credit card can sit above the planet.
  * @param key Credit / product key.
  * @param viewHalfW Half the frame width in px; caps the x offset.
  * @returns Screen offset (x right, y down) for lookAtMoon.
@@ -590,6 +591,9 @@ export function holdFrameOffset(
   key: string,
   viewHalfW = 620
 ): { x: number; y: number } {
+  if (viewHalfW * 2 <= HERO_MOBILE_MAX_WIDTH_PX) {
+    return { x: 0, y: 0 };
+  }
   const h = hashOrbitKey(`frame:${key}`);
   const xCap = Math.min(ECLIPSE_OFFSET_X_PX, viewHalfW * 0.3);
   const xScale = 0.74 + ((h >>> 8) % 1000) / 1000 * 0.26;
@@ -602,8 +606,7 @@ export function holdFrameOffset(
 
 /**
  * @brief How much the close-up dolly magnifies a held moon. Small moons
- * get a longer push-in so every product reads large in frame. `targetPx`
- * is capped on narrow (mobile) frames so a hold does not overflow.
+ * get a longer push-in so every product reads at `targetPx`.
  * @param size Moon diameter in px.
  * @param targetPx Apparent disk size to aim for (default 560).
  * @returns Apparent scale factor at the hold.
@@ -611,16 +614,12 @@ export function holdFrameOffset(
  * closeupMagnification(28) > closeupMagnification(120)
  */
 export function closeupMagnification(size: number, targetPx = 560): number {
-  const target = Math.max(220, targetPx);
+  const target = Math.max(24, targetPx);
   const disk = Math.max(24, size);
-  // Apparent size is `size * mag`. Dividing by `size * 2.4` only filled
-  // ~230px — an orbit flyby. Aim at `target` so the hold is the planet.
   const mag = target / disk;
   const maxMag = Math.min(14, TOUR_PERSPECTIVE_PX / (disk * 0.55 + 12));
-  // Small moons keep a 3.4× floor so they fill the frame. A disk that is
-  // already ≥ target (Cymasphere) must use raw mag or the camera clips in.
   if (disk >= target) return Math.min(maxMag, Math.max(0.35, mag));
-  return Math.min(maxMag, Math.max(3.4, mag));
+  return Math.min(maxMag, mag);
 }
 
 /**
@@ -1618,7 +1617,7 @@ export function cameraTour(
   const frameOf = (credit: CreditTarget) => holdFrameOffset(credit.key, viewHalfW);
   // Keep the disk inside the frame (credit card + eclipse offset).
   // 560px on a ~640px-tall board clipped the planet through the camera.
-  const holdTargetPx = Math.min(400, Math.max(200, viewHalfW * 0.68));
+  const holdTargetPx = Math.min(400, viewHalfW * 0.68);
   if (reducedMotion) {
     return {
       rotateX: 22,

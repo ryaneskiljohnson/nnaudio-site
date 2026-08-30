@@ -121,6 +121,11 @@ describe("holdFrameOffset", () => {
     expect(new Set(signs).size).toBeGreaterThan(1);
     expect(holdFrameOffset("reiya").y).toBeLessThan(40);
   });
+
+  it("centers the hold on a phone-width frame", () => {
+    expect(holdFrameOffset("reiya", 195)).toEqual({ x: 0, y: 0 });
+    expect(holdFrameOffset("reiya", 620).x).not.toBe(0);
+  });
 });
 
 describe("moonPlacements", () => {

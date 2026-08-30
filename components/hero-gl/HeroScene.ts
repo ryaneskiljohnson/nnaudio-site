@@ -95,7 +95,6 @@ export class HeroScene {
   readonly sky: Group;
   contextLost = false;
 
-  private readonly compact: boolean;
   private readonly sun: HeroBodyHandle;
   private readonly bodies = new Map<string, HeroBodyHandle>();
   private readonly light: PointLight;
@@ -111,9 +110,8 @@ export class HeroScene {
   private disposed = false;
   private readonly camWorld = new Vector3();
 
-  private constructor(canvas: HTMLCanvasElement, compact: boolean) {
+  private constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.compact = compact;
     this.renderer = new WebGLRenderer({
       canvas,
       antialias: true,
@@ -145,16 +143,14 @@ export class HeroScene {
     this.camera.add(key.target);
 
     this.sun = createSunMesh();
-    this.sunGlow = createSunAura(compact);
+    this.sunGlow = createSunAura();
     this.sun.mesh.add(this.sunGlow);
     this.world.add(this.sun.mesh);
 
-    this.stars = createStarField(compact);
+    this.stars = createStarField();
     this.sky.add(this.stars);
-    if (!compact) {
-      this.nebulae = createNebulae();
-      this.sun.mesh.add(this.nebulae);
-    }
+    this.nebulae = createNebulae();
+    this.sun.mesh.add(this.nebulae);
 
     canvas.addEventListener("webglcontextlost", this.onContextLost, false);
     canvas.addEventListener(
@@ -170,7 +166,7 @@ export class HeroScene {
   static tryCreate(options: HeroSceneOptions): HeroScene | null {
     if (!heroWebglAvailable()) return null;
     try {
-      return new HeroScene(options.canvas, options.compact);
+      return new HeroScene(options.canvas);
     } catch {
       return null;
     }
@@ -227,7 +223,7 @@ export class HeroScene {
       disposeObject3D(this.orbits);
       this.orbits = null;
     }
-    if (!system || this.compact) return;
+    if (!system) return;
     this.orbits = createOrbitRings(system);
     this.world.add(this.orbits);
   }

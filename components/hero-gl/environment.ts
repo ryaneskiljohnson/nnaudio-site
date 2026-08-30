@@ -77,15 +77,14 @@ function radialSprite(
 
 /**
  * @brief Screen-facing star field (parented to the camera, not the world).
- * @param compact Phone: fewer stars.
  */
-export function createStarField(compact: boolean): Points {
-  const count = compact ? 20 : 120;
+export function createStarField(): Points {
+  const count = 120;
   const rand = mulberry32(0x5eed);
   const pos = new Float32Array(count * 3);
   const col = new Float32Array(count * 3);
-  const halfW = compact ? 900 : 1800;
-  const halfH = compact ? 700 : 1100;
+  const halfW = 1800;
+  const halfH = 1100;
   for (let i = 0; i < count; i += 1) {
     pos[i * 3] = (rand() * 2 - 1) * halfW;
     pos[i * 3 + 1] = (rand() * 2 - 1) * halfH;
@@ -99,7 +98,7 @@ export function createStarField(compact: boolean): Points {
   geo.setAttribute("position", new Float32BufferAttribute(pos, 3));
   geo.setAttribute("color", new Float32BufferAttribute(col, 3));
   const mat = new PointsMaterial({
-    size: compact ? 1.6 : 2.1,
+    size: 2.1,
     sizeAttenuation: false,
     vertexColors: true,
     transparent: true,
@@ -193,25 +192,10 @@ function flareTexture(): CanvasTexture {
 /**
  * @brief Sun-attached gold/violet atmosphere. Parent to the sun mesh
  * so it stays a real 3D child (no camera-dolly scale).
- * @param compact Phone: a smaller corona only.
  */
-export function createSunAura(compact: boolean): Group {
+export function createSunAura(): Group {
   const group = new Group();
   group.name = "hero-sun-glow";
-  if (compact) {
-    addSunSprite(
-      group,
-      "rgba(255,220,160,0.42)",
-      0.18,
-      0,
-      0,
-      -0.18,
-      1.35,
-      1.35,
-      "sun-corona"
-    );
-    return group;
-  }
   addSunSprite(
     group,
     "rgba(108,99,255,0.40)",

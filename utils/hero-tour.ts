@@ -19,15 +19,14 @@ export { MOBILE_STAGE_BUDGET };
 export const HERO_TOUR_WATCHDOG_KEY = "hero-tour-watchdog";
 
 /**
- * Camera stops on a phone tour: the sun, CymaSynth, and curated
- * catalog moons. A full-catalog tour (~74 stops) is the sustained
- * load iOS Safari's energy/memory watchdog kills with a reload.
+ * Former phone stop cap. Live visits are uncapped; `?tourCap` still
+ * slices a recording. Kept for the 2D reel / watchdog docs.
  */
 export const TOUR_MOBILE_MAX_STOPS = 6;
 
 /**
- * Catalog moons mounted on a phone (plus CymaSynth). The full ~70-body
- * system is what iOS Safari's memory watchdog reloads on Play.
+ * Former phone catalog cap. Live WebGL visits mount the full catalog;
+ * the 2D reel still uses {@link MOBILE_2D_MOON_CAP}.
  */
 export const MOBILE_CATALOG_MOON_CAP = 5;
 
@@ -504,41 +503,42 @@ export function pickMobileTourNodes<T extends { slug?: string; id?: string | num
 /**
  * @brief How many catalog moons to mount for this visit.
  * `tourCap` is credit stops (sun + CymaSynth + moons); moons get the
- * remainder. Live phones use {@link MOBILE_CATALOG_MOON_CAP}.
- * @param mobile Phone-capped tour.
+ * remainder. Live visits are uncapped on every screen; only `?tourCap`
+ * slices the itinerary.
+ * @param _mobile Unused; kept so call sites stay the same.
  * @param tourCap Optional recording/debug credit-stop cap.
  * @param hasSynth When true, one credit slot is reserved for CymaSynth.
  * @returns Moon count, or `null` for the full catalog.
  * @example
- * heroTourMoonCap(true, undefined, true) // 5
+ * heroTourMoonCap(true, undefined, true) // null
  * heroTourMoonCap(true, 15, true) // 13
  */
 export function heroTourMoonCap(
-  mobile: boolean,
+  _mobile: boolean,
   tourCap: number | undefined,
   hasSynth: boolean
 ): number | null {
   if (tourCap != null && tourCap > 0) {
     return Math.max(0, tourCap - 1 - (hasSynth ? 1 : 0));
   }
-  return mobile ? MOBILE_CATALOG_MOON_CAP : null;
+  return null;
 }
 
 /**
  * @brief How many camera stops to play.
- * @param mobile Phone-capped tour.
+ * @param _mobile Unused; kept so call sites stay the same.
  * @param tourCap Optional recording/debug override.
  * @returns Stop count, or `null` for the full credit list.
  * @example
- * heroTourStopCap(true) // 6
+ * heroTourStopCap(true) // null
  * heroTourStopCap(false, 15) // 15
  */
 export function heroTourStopCap(
-  mobile: boolean,
+  _mobile: boolean,
   tourCap?: number
 ): number | null {
   if (tourCap != null && tourCap > 0) return tourCap;
-  return mobile ? TOUR_MOBILE_MAX_STOPS : null;
+  return null;
 }
 
 /**
