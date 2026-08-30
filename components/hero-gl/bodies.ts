@@ -156,26 +156,11 @@ export function heroBodyRadius(diameter: number, focusW = 0): number {
 }
 
 /**
- * @brief Sun radius after the CSS `sunScaleFromCamera` cheat.
- * @param sunScale Multiplier from the tour pose (≈0.42 far, ≈1.55 close).
- * @param diameterPx World disk from {@link heroSunFitDiameterPx}; phones
- * pass a smaller value so the mesh cannot swallow CymaSynth.
+ * @brief World-space sun radius. Same formula as an unfeatured planet.
+ * @param diameterPx World disk from {@link heroSunFitDiameterPx}.
  */
-export function heroSunRadius(
-  sunScale: number,
-  diameterPx = HERO_SUN_DIAMETER_PX
-): number {
-  const disk = Math.max(48, diameterPx);
-  return Math.max(4, (disk / 2) * Math.max(0.14, sunScale));
-}
-
-/**
- * @brief Glow sprite multiplier vs the author 560px sun.
- * Fitted phone disks must use this, not `r / heroSunRadius(1, fitted)`,
- * or the 980px corona stays desktop-sized and covers CymaSynth.
- */
-export function heroSunGlowMul(sunRadius: number): number {
-  return sunRadius / heroSunRadius(1);
+export function heroSunRadius(diameterPx = HERO_SUN_DIAMETER_PX): number {
+  return Math.max(4, diameterPx / 2);
 }
 
 /**

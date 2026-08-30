@@ -486,12 +486,10 @@ export function orbitRadiusPx(
 /** Author Cymasphere disk; matches the old 560px CSS sun. */
 export const HERO_SUN_AUTHOR_DIAMETER_PX = 560;
 
-/** Matches {@link sunScaleFromCamera}'s close-up clamp. */
-export const HERO_SUN_SCALE_PEAK = 1.7;
-
 /**
  * @brief World-space sun diameter. Same rule on every board: fill most
  * of the short edge, stay inside CymaSynth's orbit, never exceed 560.
+ * Camera zoom uses this like any other planet — the mesh does not grow.
  * @param width Board CSS width.
  * @param height Board CSS height.
  * @param mobile Compact CymaSynth seat (pixel orbit only).
@@ -576,8 +574,6 @@ export function aimYawAt(x: number, z: number): { rotateY: number; range: number
 export const FOCUS_TRUCK_PX = 1.2;
 /** One inspection circle; long enough to read the product, never parked. */
 export const FOCUS_TRUCK_PERIOD_SEC = 22;
-/** Sun yaw while Cymasphere is featured — monotonic so the shot never stalls. */
-export const SUN_YAW_DEG_PER_SEC = 7;
 /**
  * Typical |x| offset of a held product, in px from frame center.
  * The sun (scene origin) always projects to dead center, so aiming the
@@ -621,7 +617,7 @@ export function holdFrameOffset(
  * is capped on narrow (mobile) frames so a hold does not overflow.
  * @param size Moon diameter in px.
  * @param targetPx Apparent disk size to aim for (default 560).
- * @returns Apparent scale factor at the hold (≥ 2.6).
+ * @returns Apparent scale factor at the hold.
  * @example
  * closeupMagnification(28) > closeupMagnification(120)
  */
@@ -632,6 +628,9 @@ export function closeupMagnification(size: number, targetPx = 560): number {
   // ~230px — an orbit flyby. Aim at `target` so the hold is the planet.
   const mag = target / disk;
   const maxMag = Math.min(14, TOUR_PERSPECTIVE_PX / (disk * 0.55 + 12));
+  // Small moons keep a 3.4× floor so they fill the frame. A disk that is
+  // already ≥ target (Cymasphere) must use raw mag or the camera clips in.
+  if (disk >= target) return Math.min(maxMag, Math.max(0.35, mag));
   return Math.min(maxMag, Math.max(3.4, mag));
 }
 
@@ -748,8 +747,23 @@ export function lookAtMoon(
   TourCamera,
   "rotateX" | "rotateY" | "rotateZ" | "translateX" | "translateY" | "translateZ"
 > {
+  const mag = closeupMagnification(size, targetPx);
   const theta =
     (elapsedMs / 1000) * ((Math.PI * 2) / FOCUS_TRUCK_PERIOD_SEC);
+  // Origin (Cymasphere): yaw cannot move a point at the rotation center,
+  // so eclipse + truck are view-space translates. Dolly is the same
+  // `P * (1 - 1/mag)` used for moons after they are rotated on-axis.
+  if (Math.hypot(x, z) < 1e-6 && Math.abs(height) < 1e-6) {
+    return {
+      rotateX: 0,
+      rotateY: 0,
+      rotateZ: 0,
+      translateX: eclipseXPx / mag + FOCUS_TRUCK_PX * Math.sin(theta),
+      translateY:
+        eclipseYPx / mag + FOCUS_TRUCK_PX * (1 - Math.cos(theta)) * 0.62,
+      translateZ: TOUR_PERSPECTIVE_PX * (1 - 1 / mag),
+    };
+  }
   let rightX = z;
   let rightZ = -x;
   const rightLen = Math.hypot(rightX, rightZ);
@@ -768,7 +782,6 @@ export function lookAtMoon(
   const lz = z - camZ;
   const range = Math.max(80, Math.hypot(lx, lz));
   const lookDist = Math.max(80, Math.hypot(lx, lh, lz));
-  const mag = closeupMagnification(size, targetPx);
   // Perspective magnifies camera-space offsets by `mag` at the hold
   // depth, so dividing the target screen offset by mag makes the moon
   // land exactly eclipseXPx/eclipseYPx from center after projection.
@@ -1166,7 +1179,6 @@ export interface TourCamera {
   translateX: number;
   /** View-space vertical shift from the inspection truck. */
   translateY: number;
-  sunScale: number;
   labelOpacity: number;
   /** Body currently framed, if any. */
   focusKey: string | null;
@@ -1186,43 +1198,18 @@ interface TourKey {
   rotateY: number;
   rotateZ: number;
   translateZ: number;
-  sunScale: number;
 }
 
 const TOUR_KEYS: TourKey[] = [
-  { t: 0, rotateX: 8, rotateY: -48, rotateZ: -10, translateZ: TOUR_OPENING_TRANSLATE_Z, sunScale: 0.42 },
-  { t: 0.12, rotateX: 14, rotateY: -22, rotateZ: -4, translateZ: -640, sunScale: 0.7 },
-  { t: 0.24, rotateX: 20, rotateY: 8, rotateZ: 0, translateZ: -140, sunScale: 1.2 },
-  { t: 0.4, rotateX: 10, rotateY: 72, rotateZ: 8, translateZ: 160, sunScale: 1.55 },
-  { t: 0.56, rotateX: 52, rotateY: 138, rotateZ: 2, translateZ: -30, sunScale: 1.08 },
-  { t: 0.72, rotateX: 24, rotateY: 208, rotateZ: -2, translateZ: -20, sunScale: 1 },
-  { t: 0.88, rotateX: 18, rotateY: 268, rotateZ: 0, translateZ: -8, sunScale: 1.02 },
-  { t: 1, rotateX: 8, rotateY: 312, rotateZ: -10, translateZ: TOUR_OPENING_TRANSLATE_Z, sunScale: 0.42 },
+  { t: 0, rotateX: 8, rotateY: -48, rotateZ: -10, translateZ: TOUR_OPENING_TRANSLATE_Z },
+  { t: 0.12, rotateX: 14, rotateY: -22, rotateZ: -4, translateZ: -640 },
+  { t: 0.24, rotateX: 20, rotateY: 8, rotateZ: 0, translateZ: -140 },
+  { t: 0.4, rotateX: 10, rotateY: 72, rotateZ: 8, translateZ: 160 },
+  { t: 0.56, rotateX: 52, rotateY: 138, rotateZ: 2, translateZ: -30 },
+  { t: 0.72, rotateX: 24, rotateY: 208, rotateZ: -2, translateZ: -20 },
+  { t: 0.88, rotateX: 18, rotateY: 268, rotateZ: 0, translateZ: -8 },
+  { t: 1, rotateX: 8, rotateY: 312, rotateZ: -10, translateZ: TOUR_OPENING_TRANSLATE_Z },
 ];
-
-/**
- * @brief Smoothstep from 0–1.
- * @param t Linear progress.
- * @returns Eased progress.
- */
-/**
- * @brief Apparent extra scale for the sun from camera dolly.
- * CSS perspective already shrinks distant objects; this adds the
- * solar-system cue so a nearby hold is a disk and a far planet is a star.
- * @param translateZ Scene dolly (negative = pulled back from the sun).
- * @returns Scale multiplier, clamped.
- * @example
- * sunScaleFromCamera(-2000) < sunScaleFromCamera(20)
- */
-export function sunScaleFromCamera(translateZ: number): number {
-  const away = Math.max(0, -translateZ);
-  const toward = Math.max(0, translateZ);
-  const dist = away + toward * 0.15;
-  return Math.min(
-    HERO_SUN_SCALE_PEAK,
-    Math.max(0.14, 1.55 * (220 / (220 + dist * 0.42)))
-  );
-}
 
 function smoothstep(t: number): number {
   const x = Math.min(1, Math.max(0, t));
@@ -1350,11 +1337,10 @@ export function buildHeroCredits(
 }
 
 /**
- * @brief Camera that frames one moon up close, like a guided tour stop.
- * The yaw puts the moon dead ahead between the sun and the viewer, then
- * the dolly pushes deep enough that the moon reaches a target apparent
- * size — small moons get a much longer push-in than big ones, and the
- * whole system scales with the move because the scene is real 3D.
+ * @brief Camera that frames one body up close, like a guided tour stop.
+ * Cymasphere uses the same look-at dolly as a moon (origin, fixed disk).
+ * For moons, yaw puts the body dead ahead, then the dolly pushes until
+ * it reaches a target apparent size — small moons get a longer push-in.
  * Pitch and yaw look at the live Kepler seat so the product sits on the
  * optical axis. Focus and card opacity are neutral here; creditTimeline
  * owns them so blending poses can never flash the card.
@@ -1366,26 +1352,35 @@ export function buildHeroCredits(
  * @param targetPx Apparent disk size for the dolly.
  * @returns Pose looking at that moon.
  */
+function creditLookSize(credit: CreditTarget): number {
+  if (credit.sun) {
+    return credit.size > 0 ? credit.size : HERO_SUN_AUTHOR_DIAMETER_PX;
+  }
+  return credit.size;
+}
+
 function poseForCredit(
   credit: CreditTarget,
   elapsedMs: number,
   world?: MoonWorldPos,
   eclipseXPx = ECLIPSE_OFFSET_X_PX,
   eclipseYPx = ECLIPSE_OFFSET_Y_PX,
-  targetPx = 560,
-  loopT = elapsedMs
+  targetPx = 560
 ): TourCamera {
+  const size = creditLookSize(credit);
   if (credit.sun) {
-    const introEnd = poseFromKeys(INTRO_PATH_U);
-    const holdT = Math.max(0, loopT - TOUR_INTRO_MS);
+    const look = lookAtMoon(
+      0,
+      0,
+      0,
+      size,
+      elapsedMs,
+      eclipseXPx,
+      eclipseYPx,
+      targetPx
+    );
     return {
-      rotateX: introEnd.rotateX,
-      rotateY: introEnd.rotateY + (holdT / 1000) * SUN_YAW_DEG_PER_SEC,
-      rotateZ: introEnd.rotateZ,
-      translateX: 0,
-      translateZ: introEnd.translateZ,
-      translateY: 0,
-      sunScale: sunScaleFromCamera(introEnd.translateZ),
+      ...look,
       labelOpacity: 1,
       focusKey: credit.key,
       nextKey: null,
@@ -1400,7 +1395,7 @@ function poseForCredit(
         world.x,
         world.height,
         world.z,
-        credit.size,
+        size,
         elapsedMs,
         eclipseXPx,
         eclipseYPx,
@@ -1410,7 +1405,7 @@ function poseForCredit(
         Math.sin(theta) * rPx,
         0,
         Math.cos(theta) * rPx,
-        credit.size,
+        size,
         elapsedMs,
         eclipseXPx,
         eclipseYPx,
@@ -1418,7 +1413,6 @@ function poseForCredit(
       );
   return {
     ...look,
-    sunScale: sunScaleFromCamera(look.translateZ),
     labelOpacity: 0.15,
     focusKey: credit.key,
     nextKey: null,
@@ -1504,7 +1498,6 @@ function poseFromKeys(u: number): TourCamera {
     translateZ,
     translateX: 0,
     translateY: 0,
-    sunScale: a.sunScale + (b.sunScale - a.sunScale) * s,
     labelOpacity: Math.max(0, closeness * 1.15 - 0.15),
     focusKey: null,
     nextKey: null,
@@ -1551,7 +1544,6 @@ function mixPose(a: TourCamera, b: TourCamera, t: number, ease = true): TourCame
     translateZ: a.translateZ + (b.translateZ - a.translateZ) * s,
     translateX: a.translateX + (b.translateX - a.translateX) * s,
     translateY: a.translateY + (b.translateY - a.translateY) * s,
-    sunScale: a.sunScale + (b.sunScale - a.sunScale) * s,
     labelOpacity: a.labelOpacity + (b.labelOpacity - a.labelOpacity) * s,
     focusKey: s > 0.45 ? b.focusKey : a.focusKey,
     nextKey: s > 0.45 ? b.nextKey : a.nextKey,
@@ -1567,11 +1559,9 @@ function mixPose(a: TourCamera, b: TourCamera, t: number, ease = true): TourCame
  * @param pullOut Extra pull-back in px.
  */
 function withPullOut(pose: TourCamera, pullOut: number): TourCamera {
-  const translateZ = pose.translateZ - pullOut;
   return {
     ...pose,
-    translateZ,
-    sunScale: sunScaleFromCamera(translateZ),
+    translateZ: pose.translateZ - pullOut,
   };
 }
 
@@ -1632,7 +1622,6 @@ export function cameraTour(
       translateZ: -20,
       translateX: 0,
       translateY: 0,
-      sunScale: 1.05,
       labelOpacity: 1,
       focusKey: null,
       nextKey: null,
@@ -1644,9 +1633,7 @@ export function cameraTour(
   if (credits.length === 0) {
     const cycle =
       ((elapsedMs % TOUR_DURATION_MS) + TOUR_DURATION_MS) % TOUR_DURATION_MS;
-    const free = poseFromKeys(cycle / TOUR_DURATION_MS);
-    free.sunScale = sunScaleFromCamera(free.translateZ);
-    return free;
+    return poseFromKeys(cycle / TOUR_DURATION_MS);
   }
 
   const total = tourDurationMs(credits);
@@ -1670,8 +1657,7 @@ export function cameraTour(
               worldPos?.get(credits[0].key),
               frameOf(credits[0]).x,
               frameOf(credits[0]).y,
-              holdTargetPx,
-              t
+              holdTargetPx
             ),
             (t - (TOUR_INTRO_MS - INTRO_BLEND_MS)) / INTRO_BLEND_MS
           )
@@ -1687,8 +1673,7 @@ export function cameraTour(
       worldPos?.get(credits[index].key),
       frameOf(credits[index]).x,
       frameOf(credits[index]).y,
-      holdTargetPx,
-      t
+      holdTargetPx
     );
     if (index + 1 < credits.length && local > hold - CREDIT_TRAVEL_MS) {
       traveling = true;
@@ -1699,8 +1684,7 @@ export function cameraTour(
         worldPos?.get(credits[index + 1].key),
         frameOf(credits[index + 1]).x,
         frameOf(credits[index + 1]).y,
-        holdTargetPx,
-        t
+        holdTargetPx
       );
       const sweep = angleDelta(current.rotateY, next.rotateY);
       const gapDeg = Math.abs(sweep);
@@ -1724,8 +1708,7 @@ export function cameraTour(
       worldPos?.get(credits[credits.length - 1].key),
       frameOf(credits[credits.length - 1]).x,
       frameOf(credits[credits.length - 1]).y,
-      holdTargetPx,
-      t
+      holdTargetPx
     );
     const outro = poseFromKeys(0.88 + ((creditT - creditSpan) / TOUR_OUTRO_MS) * 0.12);
     pose = mixPose(last, outro, Math.min(1, (creditT - creditSpan) / 700));
@@ -1742,14 +1725,14 @@ export function cameraTour(
   const focused = timeline.key
     ? credits.find((credit) => credit.key === timeline.key)
     : undefined;
-  if (focused && !focused.sun && !traveling) {
-    const live = worldPos?.get(focused.key);
+  if (focused && !traveling) {
+    const live = focused.sun ? undefined : worldPos?.get(focused.key);
     const locked = live
       ? lookAtMoon(
           live.x,
           live.height,
           live.z,
-          focused.size,
+          creditLookSize(focused),
           elapsedMs,
           frameOf(focused).x,
           frameOf(focused).y,
@@ -1770,7 +1753,6 @@ export function cameraTour(
     pose.translateY = locked.translateY;
     pose.translateZ = locked.translateZ;
   }
-  pose.sunScale = sunScaleFromCamera(pose.translateZ);
   const locatedNow = locateCredit(creditT, credits);
   pose.creditIndex =
     locatedNow?.index ?? (t < TOUR_INTRO_MS ? 0 : Math.max(0, credits.length - 1));

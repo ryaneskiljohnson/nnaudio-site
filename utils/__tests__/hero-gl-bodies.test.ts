@@ -12,7 +12,6 @@ import {
   createBodyMesh,
   createSunMesh,
   heroBodyRadius,
-  heroSunGlowMul,
   heroSunRadius,
 } from "@/components/hero-gl/bodies";
 import { HERO_SUN_DIAMETER_PX } from "@/components/hero-gl/caps";
@@ -60,20 +59,9 @@ describe("heroBodyRadius", () => {
 });
 
 describe("heroSunRadius", () => {
-  it("applies the tour sunScale cheat", () => {
-    expect(heroSunRadius(1)).toBeCloseTo(HERO_SUN_DIAMETER_PX / 2, 5);
-    expect(heroSunRadius(0.42)).toBeCloseTo((HERO_SUN_DIAMETER_PX / 2) * 0.42, 5);
-    expect(heroSunRadius(1.55)).toBeGreaterThan(heroSunRadius(1));
-  });
-
-  it("honors a fitted phone diameter so the mesh can sit inside CymaSynth", () => {
-    expect(heroSunRadius(1, 180)).toBeCloseTo(90, 5);
-    expect(heroSunRadius(1.7, 180)).toBeLessThan(160);
-  });
-
-  it("shrinks the corona with a fitted disk, not only the mesh", () => {
-    expect(heroSunGlowMul(heroSunRadius(1, 180))).toBeCloseTo(180 / 560, 5);
-    expect(heroSunGlowMul(heroSunRadius(0.5, 180))).toBeLessThan(0.2);
+  it("is half the world disk, like a planet", () => {
+    expect(heroSunRadius()).toBeCloseTo(HERO_SUN_DIAMETER_PX / 2, 5);
+    expect(heroSunRadius(180)).toBeCloseTo(90, 5);
   });
 });
 

@@ -50,13 +50,13 @@ describe("hero source contracts", () => {
     expect(circuit).not.toContain("overflow-wrap: break-word");
   });
 
-  it("keeps the CSS visibility budget and sunScale cheat", () => {
+  it("keeps the CSS visibility budget and a fixed sun diameter", () => {
     expect(circuit).toContain("creditStageKeys");
     expect(circuit).toContain("catalogOrbitSeats");
     expect(circuit).toContain("catalogSlotOccupants");
     expect(circuit).toContain("buildHeroCredits");
     expect(circuit).toContain("DEFAULT_CYMASYNTH_NODE");
-    expect(circuit).toContain("poseSunScale");
+    expect(circuit).toContain("setSunDiameter");
     expect(circuit).toContain("billboardFacingCamera");
   });
 
@@ -72,8 +72,10 @@ describe("hero source contracts", () => {
     expect(wrap).not.toContain("vec3(0.62, 0.52, 0.82)");
   });
 
-  it("scales the sun from the smoothed dolly, not the raw tour key", () => {
-    expect(circuit).toContain("sunScaleFromCamera(follow.tz)");
+  it("does not resize the sun from camera dolly", () => {
+    expect(circuit).not.toContain("sunScaleFromCamera");
+    expect(circuit).not.toContain("poseSunDiameter");
+    expect(circuit).toContain("heroSunFitDiameterPx");
   });
 
   it("draws at 60 FPS and eases the camera through holds and hops", () => {

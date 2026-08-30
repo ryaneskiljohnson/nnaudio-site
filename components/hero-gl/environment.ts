@@ -132,10 +132,14 @@ export function createNebulae(): Group {
   return group;
 }
 
+/** Author corona size vs the 560px sun (local scale when parented). */
+const SUN_GLOW_AUTHOR = { x: 980, y: 820 };
+
 /**
- * @brief Sun corona sprite sitting at the origin (child of world).
+ * @brief Corona sprite. Parent to the sun mesh so it inherits world size.
  */
-export function createSunGlow(): Sprite {
+export function createSunGlow(sunRadius = 280): Sprite {
+  const r = Math.max(4, sunRadius);
   const mat = new SpriteMaterial({
     map: radialSprite("rgba(255,214,160,0.9)", 160),
     blending: AdditiveBlending,
@@ -143,7 +147,7 @@ export function createSunGlow(): Sprite {
     depthWrite: false,
   });
   const sprite = new Sprite(mat);
-  sprite.scale.set(980, 820, 1);
+  sprite.scale.set(SUN_GLOW_AUTHOR.x / r, SUN_GLOW_AUTHOR.y / r, 1);
   sprite.position.set(0, 0, 0);
   sprite.name = "hero-sun-glow";
   return sprite;

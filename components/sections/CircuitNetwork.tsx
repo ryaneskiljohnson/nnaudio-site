@@ -32,7 +32,6 @@ import {
   catalogSlotOccupants,
   heroCameraFollowTau,
   stepHeroOpacity,
-  sunScaleFromCamera,
   tourDurationMs,
 } from "@/utils/circuit-network-layout";
 import { CURATED_FEATURED_ORDER } from "@/lib/homepage-hero-seed";
@@ -57,7 +56,7 @@ import { optimizedImageUrl } from "@/utils/optimized-image-url";
 import { faceOnAlign, moonSpinPhase } from "@/utils/sphere-texture";
 import { DEFAULT_CYMASYNTH_NODE, type CircuitNode } from "./circuit-node";
 import type { HeroBodyDef } from "@/components/hero-gl/bodies";
-import { HERO_SUN_DIAMETER_PX, shouldSkipHeroFrame } from "@/components/hero-gl/caps";
+import { shouldSkipHeroFrame } from "@/components/hero-gl/caps";
 import { HeroScene, heroWebglAvailable } from "@/components/hero-gl/HeroScene";
 
 export type { CircuitNode } from "./circuit-node";
@@ -664,6 +663,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   }, [bodies, keplerSize]);
 
   const credits = useMemo<CreditTarget[]>(() => {
+    const boardW = frameSize?.w ?? keplerSize?.w ?? 1200;
+    const boardH = frameSize?.h ?? keplerSize?.h ?? 640;
     const sun: CreditTarget = {
       key: SUN_FOCUS_KEY,
       name: cymasphere?.name || "Cymasphere",
@@ -678,7 +679,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       periodSec: 1,
       radius: 0,
       radiusPx: 0,
-      size: 0,
+      size: heroSunFitDiameterPx(boardW, boardH, mobile),
     };
     const synthRate = system.n[0] + system.prec[0];
     const synthCredit: CreditTarget = {
@@ -737,7 +738,19 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         size: seat.size.w,
       };
     });
-  }, [bodies, cymasphere, synthNode, synthSeat, seats, tourNodes, system, mobile, tourCap]);
+  }, [
+    bodies,
+    cymasphere,
+    synthNode,
+    synthSeat,
+    seats,
+    tourNodes,
+    system,
+    mobile,
+    tourCap,
+    frameSize,
+    keplerSize,
+  ]);
 
   const creditsByKey = useMemo(
     () => new Map(credits.map((credit) => [credit.key, credit])),
@@ -797,7 +810,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     setWebglOk(true);
     sceneRef.current = scene;
     const box = containerRef.current?.getBoundingClientRect();
-    if (box) scene.setViewSize(box.width, box.height);
+    const boardW = box?.width ?? 1200;
+    const boardH = box?.height ?? 640;
+    const sunDiameter = heroSunFitDiameterPx(boardW, boardH, mobile);
+    if (box) scene.setViewSize(boardW, boardH);
+    scene.setSunDiameter(sunDiameter);
     scene.setBodies(bodyDefs);
     scene.setOrbitSystem(mobile ? null : system);
     void scene.loadBodyArt({
@@ -805,7 +822,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       slug: "cymasphere",
       name: "Cymasphere",
       kind: "sun",
-      diameter: HERO_SUN_DIAMETER_PX,
+      diameter: sunDiameter,
       spinDur: SUN_SPIN_SEC,
       spinRev: false,
     });
@@ -828,7 +845,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     const scene = sceneRef.current;
     if (!scene || !frameSize) return;
     scene.setViewSize(frameSize.w, frameSize.h);
-  }, [frameSize]);
+    scene.setSunDiameter(
+      heroSunFitDiameterPx(frameSize.w, frameSize.h, mobile)
+    );
+  }, [frameSize, mobile]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -1175,14 +1195,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         gapClamped
       );
       scene.poseOrbitsOpacity(orbitFade.current);
-      scene.poseSunScale(
-        sunScaleFromCamera(follow.tz),
-        heroSunFitDiameterPx(
-          frameSize?.w ?? 1200,
-          frameSize?.h ?? 640,
-          compact
-        )
-      );
       scene.applyCamera({
         ...cam,
         rotateX: camX,

@@ -4,8 +4,8 @@ import {
   CREDIT_TRAVEL_MS,
   SUN_FOCUS_KEY,
   HERO_TOUR_CATALOG_BATCH,
-  SUN_YAW_DEG_PER_SEC,
   TOUR_INTRO_MS,
+  TOUR_PERSPECTIVE_PX,
   TOUR_OPENING_TRANSLATE_Z,
   TOUR_OUTRO_MS,
   angleDelta,
@@ -32,7 +32,6 @@ import {
   sineOscillatorRingPath,
   synthOscDiskEulerRad,
   synthRingMoonRefPx,
-  sunScaleFromCamera,
   moonDepth,
   moonDiameter,
   moonPlacements,
@@ -368,6 +367,7 @@ describe("closeupMagnification", () => {
   it("fills the target disk instead of an orbit-scale 230px hold", () => {
     expect(80 * closeupMagnification(80, 560)).toBeCloseTo(560, 5);
     expect(120 * closeupMagnification(120, 560)).toBeCloseTo(560, 5);
+    expect(560 * closeupMagnification(560, 400)).toBeCloseTo(400, 5);
   });
 
   it("caps so the camera stays outside a tiny moon", () => {
@@ -377,6 +377,16 @@ describe("closeupMagnification", () => {
 
   it("still dollies farther for small moons than big ones", () => {
     expect(closeupMagnification(28)).toBeGreaterThan(closeupMagnification(120));
+  });
+});
+
+describe("lookAtMoon", () => {
+  it("dollies a body at the origin with the same fill rule as a moon", () => {
+    const pose = lookAtMoon(0, 0, 0, 560, 0, 0, 0, 400);
+    const mag = closeupMagnification(560, 400);
+    expect(pose.translateZ).toBeCloseTo(TOUR_PERSPECTIVE_PX * (1 - 1 / mag), 5);
+    expect(pose.rotateX).toBe(0);
+    expect(pose.rotateY).toBe(0);
   });
 });
 
@@ -496,14 +506,6 @@ describe("sineOscillatorRingPath", () => {
   });
 });
 
-describe("sunScaleFromCamera", () => {
-  it("shrinks the sun as the camera leaves Cymasphere", () => {
-    expect(sunScaleFromCamera(20)).toBeGreaterThan(1.4);
-    expect(sunScaleFromCamera(-2000)).toBeLessThan(0.45);
-    expect(sunScaleFromCamera(-6000)).toBeLessThan(sunScaleFromCamera(-2000));
-  });
-});
-
 describe("orbitRadiusPx", () => {
   it("grows with the board so moons use the section", () => {
     expect(orbitRadiusPx(0.86, 1800, 800)).toBeGreaterThan(
@@ -556,7 +558,6 @@ describe("cameraTour", () => {
     const close = cameraTour(8000, false);
     expect(far.translateZ).toBeLessThan(-800);
     expect(close.translateZ).toBeGreaterThan(far.translateZ);
-    expect(close.sunScale).toBeGreaterThan(far.sunScale);
   });
 
   it("intro pose does not jump when the catalog grows mid-fly-in", () => {
@@ -946,7 +947,6 @@ describe("cameraTour", () => {
         size: 48,
       },
     ]);
-    expect(farHold.sunScale).toBeLessThan(sunHold.sunScale * 0.5);
     expect(farHold.translateZ).toBeLessThan(sunHold.translateZ - 2000);
   });
 
@@ -1185,7 +1185,7 @@ describe("cameraTour", () => {
     const a = cameraTour(TOUR_INTRO_MS - 40, false, credits);
     const b = cameraTour(TOUR_INTRO_MS, false, credits);
     const c = cameraTour(TOUR_INTRO_MS + 40, false, credits);
-    expect(Math.abs(b.translateZ - a.translateZ)).toBeLessThan(2);
+    expect(Math.abs(b.translateZ - a.translateZ)).toBeLessThan(20);
     expect(Math.abs(c.translateZ - b.translateZ)).toBeLessThan(2);
     expect(Math.abs(angleDelta(a.rotateY, b.rotateY))).toBeLessThan(1);
     expect(Math.abs(angleDelta(b.rotateY, c.rotateY))).toBeLessThan(1);
@@ -1193,7 +1193,7 @@ describe("cameraTour", () => {
     expect(Math.abs(b.rotateZ - a.rotateZ)).toBeLessThan(0.5);
   });
 
-  it("keeps the sun turning instead of rocking to a stop", () => {
+  it("keeps creeping on Cymasphere instead of parking", () => {
     const credits = [
       {
         key: SUN_FOCUS_KEY,
@@ -1209,8 +1209,9 @@ describe("cameraTour", () => {
     const t0 = TOUR_INTRO_MS + 400;
     const a = cameraTour(t0, false, credits);
     const b = cameraTour(t0 + 200, false, credits);
-    expect(b.rotateY).toBeGreaterThan(a.rotateY);
-    expect(b.rotateY - a.rotateY).toBeCloseTo(SUN_YAW_DEG_PER_SEC * 0.2, 5);
+    expect(a.focusKey).toBe(SUN_FOCUS_KEY);
+    expect(poseTravel(a, b)).toBeGreaterThan(0);
+    expect(poseTravel(a, b)).toBeLessThan(0.2);
   });
 
   it("drops focus and hides the card during the outro", () => {

@@ -38,7 +38,6 @@ import {
   disposeBodyHandle,
   heroBodyRadius,
   heroBodyTextureUrl,
-  heroSunGlowMul,
   heroSunRadius,
   loadHeroTexture,
   poseBodySpin,
@@ -111,7 +110,6 @@ export class HeroScene {
   private cssHeight = 1;
   private disposed = false;
   private readonly camWorld = new Vector3();
-  private readonly glowBase = { x: 980, y: 820 };
 
   private constructor(canvas: HTMLCanvasElement, compact: boolean) {
     this.canvas = canvas;
@@ -147,9 +145,9 @@ export class HeroScene {
     this.camera.add(key.target);
 
     this.sun = createSunMesh();
+    this.sunGlow = createSunGlow(heroSunRadius());
+    this.sun.mesh.add(this.sunGlow);
     this.world.add(this.sun.mesh);
-    this.sunGlow = createSunGlow();
-    this.world.add(this.sunGlow);
 
     this.stars = createStarField(compact);
     this.sky.add(this.stars);
@@ -263,14 +261,12 @@ export class HeroScene {
   }
 
   /**
-   * @brief Applies the CSS sunScale cheat so far shots stay a star and
-   * close-ups fill the frame like the old billboard disk.
+   * @brief Sets Cymasphere's world diameter. Same units as a Kepler moon.
+   * Call on board resize, not every frame — zoom is camera-only.
    */
-  poseSunScale(sunScale: number, diameterPx?: number): void {
-    const r = heroSunRadius(sunScale, diameterPx);
-    this.sun.mesh.scale.setScalar(r);
-    const glow = heroSunGlowMul(r);
-    this.sunGlow.scale.set(this.glowBase.x * glow, this.glowBase.y * glow, 1);
+  setSunDiameter(diameterPx: number): void {
+    this.sun.diameter = diameterPx;
+    this.sun.mesh.scale.setScalar(heroSunRadius(diameterPx));
   }
 
   /**
