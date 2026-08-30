@@ -944,6 +944,20 @@ export function hideSynthForSunApproach(
 }
 
 /**
+ * @brief True for the opening fly-in and the Cymasphere hold.
+ * Catalog moons and Kepler rings stay off so only the sun reads —
+ * otherwise they pop in and fade away as the hold starts.
+ */
+export function hideHeroCastForSunApproach(
+  focusKey: string | null,
+  nextKey: string | null,
+  traveling = false
+): boolean {
+  if (focusKey === SUN_FOCUS_KEY) return !traveling;
+  return focusKey == null && nextKey === SUN_FOCUS_KEY;
+}
+
+/**
  * @brief Moons that should exist this frame of the credit show.
  * Holds mount only the featured body. The next planet is created when
  * the hop starts — it does not sit on stage for the whole previous hold.
@@ -1036,10 +1050,9 @@ export function pickVisibleMoons(
 }
 
 /**
- * @brief Moons to draw this tour frame. Intro and moon holds keep a
- * handful of catalog bodies on stage. The Cymasphere hold is empty so
- * disks cannot silhouette the sun. The next credit is created when the
- * hop starts, not for the whole previous hold.
+ * @brief Moons to draw this tour frame. Intro and the Cymasphere hold
+ * are empty so only the sun reads. Moon holds keep a handful of
+ * catalog bodies. The next credit is created when the hop starts.
  * @param moons Live Kepler candidates.
  * @param opts Tour camera + previous stage.
  * @returns Keys to mount this frame.
@@ -1060,8 +1073,11 @@ export function tourVisibleMoonKeys(
     hideSynth?: boolean;
   }
 ): string[] {
-  const sunHold = opts.focusKey === SUN_FOCUS_KEY && !opts.traveling;
-  if (sunHold) return [];
+  if (
+    hideHeroCastForSunApproach(opts.focusKey, opts.nextKey, opts.traveling)
+  ) {
+    return [];
+  }
   const focus =
     opts.focusKey && opts.focusKey !== SUN_FOCUS_KEY ? opts.focusKey : null;
   const next =

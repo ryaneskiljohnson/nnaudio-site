@@ -18,6 +18,7 @@ import {
   angleDelta,
   cameraTour,
   cymasynthOrbit,
+  hideHeroCastForSunApproach,
   hideSynthForSunApproach,
   holdFrameOffset,
   heroSunFitDiameterPx,
@@ -380,7 +381,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const facedKeys = useRef("");
   const focusWeights = useRef(new Map<string, number>());
   const bodyFade = useRef(new Map<string, number>());
-  const orbitFade = useRef(1);
+  const orbitFade = useRef(0);
   const slotShown = useRef(new Map<string, string>());
   const [keplerSize, setKeplerSize] = useState<{ w: number; h: number } | null>(
     null
@@ -1103,7 +1104,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         cam.nextKey,
         cam.creditOpacity
       );
-      const sunFocus = cam.focusKey === SUN_FOCUS_KEY;
+      const hideCast = hideHeroCastForSunApproach(
+        cam.focusKey,
+        cam.nextKey,
+        cam.traveling
+      );
       const focusedCredit = cam.focusKey
         ? creditsByKey.get(cam.focusKey)
         : undefined;
@@ -1143,7 +1148,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         const shown = slotShown.current.get(body.key) ?? "";
         const desired = occupant?.slug ?? "";
         const swapping = !body.synth && desired !== shown;
-        const onStage = body.synth ? !hideSynth : occupant != null && !swapping;
+        const onStage = body.synth
+          ? !hideSynth
+          : !hideCast && occupant != null && !swapping;
         const fade = stepHeroOpacity(
           bodyFade.current.get(body.key) ?? 0,
           onStage ? 1 : 0,
@@ -1190,7 +1197,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         );
       }
 
-      const orbitTarget = sunFocus && !cam.traveling ? 0 : 1;
+      const orbitTarget = hideCast ? 0 : 1;
       orbitFade.current = stepHeroOpacity(
         orbitFade.current,
         orbitTarget,

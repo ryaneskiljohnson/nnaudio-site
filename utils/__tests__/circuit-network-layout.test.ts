@@ -15,6 +15,7 @@ import {
   closeupMagnification,
   creditStageKeys,
   lookAtMoon,
+  hideHeroCastForSunApproach,
   hideSynthForSunApproach,
   holdFrameOffset,
   heroSunFitDiameterPx,
@@ -1293,6 +1294,17 @@ describe("pickVisibleMoons", () => {
     expect(keys).toEqual([]);
   });
 
+  it("hides the catalog and rings for the intro and Cymasphere hold", () => {
+    expect(hideHeroCastForSunApproach(null, SUN_FOCUS_KEY)).toBe(true);
+    expect(hideHeroCastForSunApproach(SUN_FOCUS_KEY, "synth", false)).toBe(
+      true
+    );
+    expect(hideHeroCastForSunApproach(SUN_FOCUS_KEY, "synth", true)).toBe(
+      false
+    );
+    expect(hideHeroCastForSunApproach("synth", "other", false)).toBe(false);
+  });
+
   it("drops CymaSynth during the Cymasphere approach", () => {
     expect(hideSynthForSunApproach(null, SUN_FOCUS_KEY, 0)).toBe(true);
     expect(hideSynthForSunApproach(SUN_FOCUS_KEY, "synth", 0.8)).toBe(true);
@@ -1326,15 +1338,15 @@ describe("tourVisibleMoonKeys", () => {
   ];
   const base = { dollyZ: 0, viewHalfW: 600, budget: 6 };
 
-  it("keeps catalog moons on stage during the intro", () => {
-    const keys = tourVisibleMoonKeys(moons, {
-      ...base,
-      focusKey: null,
-      nextKey: SUN_FOCUS_KEY,
-      traveling: false,
-    });
-    expect(keys.length).toBeGreaterThan(1);
-    expect(keys).not.toContain(SUN_FOCUS_KEY);
+  it("keeps the stage empty during the intro so only Cymasphere reads", () => {
+    expect(
+      tourVisibleMoonKeys(moons, {
+        ...base,
+        focusKey: null,
+        nextKey: SUN_FOCUS_KEY,
+        traveling: false,
+      })
+    ).toEqual([]);
   });
 
   it("clears the stage during the Cymasphere hold", () => {
