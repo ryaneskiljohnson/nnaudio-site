@@ -934,6 +934,18 @@ export function wrapPhase(t: number): number {
 }
 
 /**
+ * @brief Wrap phase that puts art on the camera-facing meridian when
+ * the mesh is not billboarded. Matches shader `atan(n.x, n.z)`.
+ * @param x Object-space direction toward the camera (X).
+ * @param z Object-space direction toward the camera (Z).
+ * @returns Phase in [0, 1).
+ */
+export function facingPhaseFromDir(x: number, z: number): number {
+  if (x * x + z * z < 1e-12) return 0;
+  return wrapPhase(-Math.atan2(x, z) / (Math.PI * 2));
+}
+
+/**
  * @brief Texture longitude for one moon. Every moon keeps a day-length
  * ambient spin; featured moons add the turntable boost on top so a
  * close-up never freezes the texture.
@@ -979,6 +991,81 @@ export function faceOnAlign(
   reverse: boolean
 ): number {
   return wrapPhase(-moonSpinPhase(elapsedMs, periodSec, reverse, false, 0));
+}
+
+/**
+ * @brief Shortest signed phase step in (−0.5, 0.5].
+ * @param from Start phase.
+ * @param to End phase.
+ * @returns Delta in turns.
+ */
+export function phaseDelta(from: number, to: number): number {
+  return ((((to - from) % 1) + 1.5) % 1) - 0.5;
+}
+
+/**
+ * @brief Interpolates phase along the shortest arc.
+ * @param from Start phase.
+ * @param to End phase.
+ * @param t Mix 0–1.
+ * @returns Phase in [0, 1).
+ */
+export function lerpPhase(from: number, to: number, t: number): number {
+  return wrapPhase(from + phaseDelta(from, to) * t);
+}
+
+/**
+ * @brief Smoothstep progress for a spin-to-face-on hop.
+ * @param elapsedMs Tour clock.
+ * @param startMs When the hop began.
+ * @param durMs Hop length (camera travel).
+ * @returns 0–1, 1 after the camera arrives.
+ */
+export function spinArriveProgress(
+  elapsedMs: number,
+  startMs: number,
+  durMs: number
+): number {
+  if (durMs <= 0) return 1;
+  const u = Math.min(1, Math.max(0, (elapsedMs - startMs) / durMs));
+  return u * u * (3 - 2 * u);
+}
+
+/**
+ * @brief Phase that reaches `target` when the camera does, without a snap.
+ * @param elapsedMs Tour clock.
+ * @param from Phase when the hop started.
+ * @param startMs When the hop began.
+ * @param durMs Hop length (camera travel).
+ * @param target Face-on phase (0).
+ * @returns Current phase and whether the hop finished.
+ */
+export function arrivingSpinPhase(
+  elapsedMs: number,
+  from: number,
+  startMs: number,
+  durMs: number,
+  target = 0
+): { phase: number; done: boolean } {
+  const t = spinArriveProgress(elapsedMs, startMs, durMs);
+  return { phase: lerpPhase(from, target, t), done: t >= 1 };
+}
+
+/**
+ * @brief Align that keeps `moonSpinPhase` at 0 after a hop lands.
+ * @param elapsedMs Tour clock at arrival.
+ * @param periodSec Ambient spin period.
+ * @param reverse When true, ambient spin is retrograde.
+ * @param boost Turntable offset already applied (usually 0).
+ * @returns Align value for `moonSpinPhase`.
+ */
+export function continueAlignAfterArrive(
+  elapsedMs: number,
+  periodSec: number,
+  reverse: boolean,
+  boost = 0
+): number {
+  return wrapPhase(faceOnAlign(elapsedMs, periodSec, reverse) - boost);
 }
 
 /**

@@ -31,6 +31,9 @@ import {
   catalogOrbitSeats,
   catalogSlotKey,
   catalogSlotOccupants,
+  CREDIT_TRAVEL_MS,
+  INTRO_BLEND_MS,
+  TOUR_INTRO_MS,
   heroCameraFollowTau,
   stepHeroOpacity,
   tourDurationMs,
@@ -54,7 +57,11 @@ import {
   stepOrbitalSystem,
 } from "@/utils/orbital-physics";
 import { optimizedImageUrl } from "@/utils/optimized-image-url";
-import { faceOnAlign, moonSpinPhase } from "@/utils/sphere-texture";
+import {
+  arrivingSpinPhase,
+  continueAlignAfterArrive,
+  moonSpinPhase,
+} from "@/utils/sphere-texture";
 import { DEFAULT_CYMASYNTH_NODE, type CircuitNode } from "./circuit-node";
 import type { HeroBodyDef } from "@/components/hero-gl/bodies";
 import { shouldSkipHeroFrame } from "@/components/hero-gl/caps";
@@ -71,6 +78,12 @@ const MOON_SPIN_SEC_MIN = 40;
 const MOON_SPIN_SEC_SPAN = 24;
 const FEATURED_TURNTABLE_MS = 22000;
 const OPENING_CAM = cameraTour(0, false);
+
+interface HeroSpinArrive {
+  from: number;
+  startMs: number;
+  durMs: number;
+}
 
 interface CircuitNetworkProps {
   cymasphere?: CircuitNode | null;
@@ -376,7 +389,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const creditsWeight = useRef(0);
   const spinBoost = useRef(new Map<string, number>());
   const faceAlign = useRef(new Map<string, number>());
-  const facedKeys = useRef("");
+  const spinArrive = useRef(new Map<string, HeroSpinArrive>());
+  const faceHop = useRef("");
   const focusWeights = useRef(new Map<string, number>());
   const bodyFade = useRef(new Map<string, number>());
   const orbitFade = useRef(0);
@@ -1039,60 +1053,144 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         follow.tz = cam.translateZ;
         follow.armed = true;
       } else {
-        const jump =
-          Math.abs(angleDelta(follow.y, camY)) +
-          Math.abs(cam.translateZ - follow.tz) / 80;
-        const sunApproach =
-          cam.focusKey === SUN_FOCUS_KEY ||
-          (cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY);
-        const tau = heroCameraFollowTau(trackingMoon, sunApproach, jump);
-        const followK = 1 - Math.exp(-gapClamped / tau);
-        follow.x += angleDelta(follow.x, camX) * followK;
-        follow.y += angleDelta(follow.y, camY) * followK;
-        follow.z += angleDelta(follow.z, cam.rotateZ) * followK;
-        follow.tx += (cam.translateX - follow.tx) * followK;
-        follow.ty += (cam.translateY - follow.ty) * followK;
-        follow.tz += (cam.translateZ - follow.tz) * followK;
-        camX = follow.x;
-        camY = follow.y;
+        const holdingMoon = trackingMoon && !cam.traveling;
+        if (holdingMoon) {
+          follow.x = camX;
+          follow.y = camY;
+          follow.z = cam.rotateZ;
+          follow.tx = cam.translateX;
+          follow.ty = cam.translateY;
+          follow.tz = cam.translateZ;
+        } else {
+          const jump =
+            Math.abs(angleDelta(follow.y, camY)) +
+            Math.abs(cam.translateZ - follow.tz) / 80;
+          const sunApproach =
+            cam.focusKey === SUN_FOCUS_KEY ||
+            (cam.focusKey == null && cam.nextKey === SUN_FOCUS_KEY);
+          const tau = heroCameraFollowTau(false, sunApproach, jump);
+          const followK = 1 - Math.exp(-gapClamped / tau);
+          follow.x += angleDelta(follow.x, camX) * followK;
+          follow.y += angleDelta(follow.y, camY) * followK;
+          follow.z += angleDelta(follow.z, cam.rotateZ) * followK;
+          follow.tx += (cam.translateX - follow.tx) * followK;
+          follow.ty += (cam.translateY - follow.ty) * followK;
+          follow.tz += (cam.translateZ - follow.tz) * followK;
+          camX = follow.x;
+          camY = follow.y;
+        }
       }
 
-      const facePair = `${cam.focusKey ?? ""}|${cam.nextKey ?? ""}`;
-      if (facePair !== facedKeys.current) {
-        facedKeys.current = facePair;
-        const latchFaceOn = (key: string | null) => {
-          if (!key || key === SUN_FOCUS_KEY) return;
-          const credit = creditsByKey.get(key);
-          const bodyKey = credit?.bodyKey ?? key;
-          const idx = bodyIndexByKey.get(bodyKey);
-          const body = idx === undefined ? undefined : bodies[idx];
-          if (!body || faceAlign.current.has(body.key)) return;
-          faceAlign.current.set(
-            body.key,
-            faceOnAlign(elapsed, body.spinDur, body.spinRev)
-          );
-          spinBoost.current.set(body.key, 0);
-        };
-        latchFaceOn(cam.focusKey);
-        latchFaceOn(cam.nextKey);
+      const totalMs = tourDurationMs(credits);
+      const cycle = totalMs > 0 ? Math.floor(elapsed / totalMs) : 0;
+      const loopT = totalMs > 0 ? elapsed % totalMs : elapsed;
+      const introApproaching =
+        !cam.traveling &&
+        !cam.focusKey &&
+        !!cam.nextKey &&
+        loopT >= TOUR_INTRO_MS - INTRO_BLEND_MS &&
+        loopT < TOUR_INTRO_MS;
+      const hopTok =
+        cam.traveling && cam.nextKey
+          ? `${cycle}|${cam.focusKey ?? ""}>${cam.nextKey}`
+          : introApproaching && cam.nextKey
+            ? `${cycle}|intro>${cam.nextKey}`
+            : "";
+      const beginArrive = (creditKey: string | null) => {
+        if (!creditKey) return;
+        if (creditKey === SUN_FOCUS_KEY) {
+          spinArrive.current.set(SUN_FOCUS_KEY, {
+            from: moonSpinPhase(
+              elapsed,
+              SUN_SPIN_SEC,
+              false,
+              false,
+              sunBoostRef.current,
+              sunAlignRef.current
+            ),
+            startMs: elapsed,
+            durMs: CREDIT_TRAVEL_MS,
+          });
+          sunBoostRef.current = 0;
+          return;
+        }
+        const credit = creditsByKey.get(creditKey);
+        const bodyKey = credit?.bodyKey ?? creditKey;
+        const idx = bodyIndexByKey.get(bodyKey);
+        const body = idx === undefined ? undefined : bodies[idx];
+        if (!body) return;
+        spinArrive.current.set(body.key, {
+          from: moonSpinPhase(
+            elapsed,
+            body.spinDur,
+            body.spinRev,
+            false,
+            spinBoost.current.get(body.key) ?? 0,
+            faceAlign.current.get(body.key) ?? 0
+          ),
+          startMs: elapsed,
+          durMs: CREDIT_TRAVEL_MS,
+        });
+        spinBoost.current.set(body.key, 0);
+      };
+      if (hopTok && hopTok !== faceHop.current) {
+        faceHop.current = hopTok;
+        if (!reducedMotion) beginArrive(cam.nextKey);
       }
+
+      const wrapPhaseFor = (
+        mapKey: string,
+        spinDur: number,
+        spinRev: boolean,
+        featured: boolean,
+        boost: number,
+        align: number,
+        setAlign: (next: number) => void
+      ) => {
+        if (reducedMotion) return 0;
+        const arriving = spinArrive.current.get(mapKey);
+        if (arriving) {
+          const { phase, done } = arrivingSpinPhase(
+            elapsed,
+            arriving.from,
+            arriving.startMs,
+            arriving.durMs
+          );
+          if (done) {
+            setAlign(
+              continueAlignAfterArrive(elapsed, spinDur, spinRev, boost)
+            );
+            spinArrive.current.delete(mapKey);
+          }
+          return phase;
+        }
+        return moonSpinPhase(
+          elapsed,
+          spinDur,
+          spinRev,
+          featured,
+          boost,
+          align
+        );
+      };
 
       const sunFeatured = cam.focusKey === SUN_FOCUS_KEY;
-      if (sunFeatured && !reducedMotion) {
+      if (sunFeatured && !reducedMotion && !spinArrive.current.has(SUN_FOCUS_KEY)) {
         sunBoostRef.current =
           (sunBoostRef.current + gapClamped / FEATURED_TURNTABLE_MS) % 1;
       }
       scene.poseSun(
-        reducedMotion
-          ? 0
-          : moonSpinPhase(
-              elapsed,
-              SUN_SPIN_SEC,
-              false,
-              sunFeatured,
-              sunBoostRef.current,
-              sunAlignRef.current
-            )
+        wrapPhaseFor(
+          SUN_FOCUS_KEY,
+          SUN_SPIN_SEC,
+          false,
+          sunFeatured,
+          sunBoostRef.current,
+          sunAlignRef.current,
+          (next) => {
+            sunAlignRef.current = next;
+          }
+        )
       );
 
       scene.poseBodies(pos, system.keys);
@@ -1123,6 +1221,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           slotShown.current.set(slotKey, nextSlug);
           faceAlign.current.delete(slotKey);
           spinBoost.current.delete(slotKey);
+          spinArrive.current.delete(slotKey);
           const seat = seats[slot];
           const slotBody = bodies[1 + slot];
           if (occupant && seat) {
@@ -1162,7 +1261,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           focusTarget * ease;
         if (Math.abs(focusW - focusTarget) < 0.005) focusW = focusTarget;
         focusWeights.current.set(body.key, focusW);
-        if (featured && !reducedMotion) {
+        if (
+          featured &&
+          !reducedMotion &&
+          !spinArrive.current.has(body.key)
+        ) {
           spinBoost.current.set(
             body.key,
             ((spinBoost.current.get(body.key) ?? 0) +
@@ -1173,16 +1276,17 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         scene.poseBodyFocusScale(body.key, body.seat.size.w, focusW);
         scene.poseBodySpinByKey(
           body.key,
-          reducedMotion
-            ? 0
-            : moonSpinPhase(
-                elapsed,
-                body.spinDur,
-                body.spinRev,
-                featured,
-                spinBoost.current.get(body.key) ?? 0,
-                faceAlign.current.get(body.key) ?? 0
-              )
+          wrapPhaseFor(
+            body.key,
+            body.spinDur,
+            body.spinRev,
+            featured,
+            spinBoost.current.get(body.key) ?? 0,
+            faceAlign.current.get(body.key) ?? 0,
+            (next) => {
+              faceAlign.current.set(body.key, next);
+            }
+          )
         );
       }
 

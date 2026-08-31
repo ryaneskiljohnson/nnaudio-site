@@ -9,6 +9,7 @@ import {
   AmbientLight,
   DirectionalLight,
   Group,
+  Matrix4,
   MeshBasicMaterial,
   PerspectiveCamera,
   NoToneMapping,
@@ -24,6 +25,7 @@ import {
   SUN_FOCUS_KEY,
   type TourCamera,
 } from "@/utils/circuit-network-layout";
+import { facingPhaseFromDir, wrapPhase } from "@/utils/sphere-texture";
 import type { OrbitalSystem } from "@/utils/orbital-physics";
 import {
   CYMASPHERE_SUN_POSTER,
@@ -109,6 +111,9 @@ export class HeroScene {
   private cssHeight = 1;
   private disposed = false;
   private readonly camWorld = new Vector3();
+  private readonly towardCam = new Vector3();
+  private readonly worldInv = new Matrix4();
+  private synthBasePhase = 0;
 
   private constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -135,7 +140,7 @@ export class HeroScene {
     this.light = new PointLight(0xffe6c8, 2.8, 0, 1.05);
     this.light.position.set(0, 0, 0);
     this.world.add(this.light);
-    // Headlight: sit on the camera and shine toward the planets (−Z).
+    // Headlight: rides with the camera so the visible side stays lit.
     const key = new DirectionalLight(0xfff6ea, 3.2);
     key.position.set(0.15, 0.22, 0);
     key.target.position.set(0, 0, -1);
@@ -242,7 +247,14 @@ export class HeroScene {
 
   poseBodySpinByKey(key: string, phase: number): void {
     const handle = key === SUN_FOCUS_KEY ? this.sun : this.bodies.get(key);
-    if (handle) poseBodySpin(handle, phase);
+    if (!handle) return;
+    if (handle.kind === "synth") {
+      this.synthBasePhase = phase;
+      if (handle.wrap) poseBodySpin(handle, phase);
+      else handle.mesh.quaternion.identity();
+      return;
+    }
+    poseBodySpin(handle, phase);
   }
 
   poseSun(phase: number): void {
@@ -275,17 +287,47 @@ export class HeroScene {
   }
 
   /**
-   * @brief Inverse-billboards every body so wrap art faces the camera.
+   * @brief Inverse-billboards catalog moons and Cymasphere. CymaSynth
+   * keeps an inertial seat so its rings stay in their plane; wrap art
+   * faces the camera by phase, not mesh spin.
    * Call after {@link applyCamera} so the world matrix is current.
    */
   billboardFacingCamera(): void {
     this.world.updateMatrixWorld(true);
     this.camera.updateMatrixWorld(true);
     this.camera.getWorldPosition(this.camWorld);
+    this.alignSynthSeat();
     this.billboardHandle(this.sun);
     for (const handle of this.bodies.values()) {
-      if (handle.mesh.visible) this.billboardHandle(handle);
+      if (handle.mesh.visible && handle.kind !== "synth") {
+        this.billboardHandle(handle);
+      }
     }
+  }
+
+  /**
+   * @brief Leaves CymaSynth un-rotated in the solar frame and rolls the
+   * wrap so the mark still faces the camera.
+   */
+  private alignSynthSeat(): void {
+    const synth = this.findSynth();
+    if (!synth || !synth.mesh.visible) return;
+    synth.mesh.quaternion.identity();
+    synth.mesh.rotation.set(0, 0, 0);
+    if (!synth.wrap) return;
+    synth.mesh.updateMatrixWorld(true);
+    synth.mesh.getWorldPosition(this.towardCam);
+    this.towardCam.subVectors(this.camWorld, this.towardCam);
+    if (this.towardCam.lengthSq() < 1e-10) return;
+    this.worldInv.copy(this.world.matrixWorld).invert();
+    this.towardCam.transformDirection(this.worldInv);
+    poseBodySpin(
+      synth,
+      wrapPhase(
+        this.synthBasePhase +
+          facingPhaseFromDir(this.towardCam.x, this.towardCam.z)
+      )
+    );
   }
 
   private billboardHandle(handle: HeroBodyHandle): void {
@@ -305,6 +347,7 @@ export class HeroScene {
       this.world.add(this.synthRings);
     }
     this.synthRings.position.copy(synth.mesh.position);
+    this.synthRings.quaternion.identity();
     poseSynthOscRings(
       this.synthRings,
       elapsedMs,

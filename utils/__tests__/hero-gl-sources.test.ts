@@ -60,19 +60,25 @@ describe("hero source contracts", () => {
     expect(circuit).toContain("billboardFacingCamera");
   });
 
-  it("lights bodies from the camera so holds are not a new moon", () => {
+  it("keys bodies from the camera so the visible side stays lit", () => {
     expect(scene).toContain("DirectionalLight");
+    expect(scene).toContain("this.camera.add(key)");
     expect(scene).toContain("lookPlusZToward");
     expect(scene).toContain("createSunAura");
     expect(scene).toContain("this.sun.mesh.add(this.nebulae)");
     expect(scene).not.toContain("this.sky.add(this.nebulae)");
     expect(scene).toContain("this.world.add(this.synthRings)");
     expect(scene).not.toContain("synth.mesh.add(this.synthRings)");
+    expect(scene).toContain("alignSynthSeat");
+    expect(scene).toContain("handle.kind !== \"synth\"");
+    expect(scene).toContain("facingPhaseFromDir");
+    expect(wrap).toContain("cameraPosition - vWorldPos");
     expect(wrap).toContain("uCamFill");
     expect(wrap).toContain("uOpacity");
-    expect(wrap).toContain("facing = mix(1.04, 1.22, max(0.0, n.z))");
+    expect(wrap).toContain("facing = mix(1.04, 1.22, ndotl)");
     expect(wrap).toContain("uPlanar");
     expect(wrap).toContain("atan(n.x, n.z)");
+    expect(wrap).not.toContain("uLight1");
     expect(wrap).not.toContain("mix(globe, color.rgb");
     expect(wrap).not.toContain("vec3(0.62, 0.52, 0.82)");
   });
@@ -83,12 +89,16 @@ describe("hero source contracts", () => {
     expect(circuit).toContain("heroSunFitDiameterPx");
   });
 
-  it("draws at 60 FPS and eases the camera through holds and hops", () => {
+  it("draws at 60 FPS and snaps moon holds, then eases hops", () => {
     expect(caps).toContain("HERO_FPS = 60");
     expect(circuit).toContain("trackingMoon");
+    expect(circuit).toContain("holdingMoon");
     expect(circuit).toContain("heroCameraFollowTau");
     expect(circuit).toContain("poseBodyOpacity");
     expect(circuit).not.toContain("jump > 10 ? 32");
+    expect(circuit).toContain("arrivingSpinPhase");
+    expect(circuit).toContain("beginArrive");
+    expect(circuit).not.toContain("latchFaceOn");
   });
 });
 
