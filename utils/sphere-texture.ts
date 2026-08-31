@@ -1032,12 +1032,12 @@ export function spinArriveProgress(
 }
 
 /**
- * Catalog holds start 20% left of face-on. Shader srcU on the
- * camera meridian is `fract(0.5 + 2 * uPhase)`, so a 20% texture
+ * Catalog holds start 10% left of face-on. Shader srcU on the
+ * camera meridian is `fract(0.5 + 2 * uPhase)`, so a 10% texture
  * shift is half that in wrap phase. Cymasphere and CymaSynth pass
  * 0 instead so those zooms stay centered.
  */
-export const HERO_WRAP_ARRIVE_PHASE = wrapPhase(-0.2 / 2);
+export const HERO_WRAP_ARRIVE_PHASE = wrapPhase(-0.1 / 2);
 
 /**
  * @brief Phase that reaches `target` when the camera does, without a snap.

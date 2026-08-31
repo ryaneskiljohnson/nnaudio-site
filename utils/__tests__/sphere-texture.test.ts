@@ -82,12 +82,12 @@ describe("moonSpinPhase", () => {
     expect(turned).toBeGreaterThan(0.08);
   });
 
-  it("eases 20% left of face-on over the travel window instead of snapping", () => {
+  it("eases 10% left of face-on over the travel window instead of snapping", () => {
     const from = 0.42;
     const start = arrivingSpinPhase(1000, from, 1000, CREDIT_TRAVEL_MS);
     const mid = arrivingSpinPhase(1000 + CREDIT_TRAVEL_MS / 2, from, 1000, CREDIT_TRAVEL_MS);
     const end = arrivingSpinPhase(1000 + CREDIT_TRAVEL_MS, from, 1000, CREDIT_TRAVEL_MS);
-    expect(HERO_WRAP_ARRIVE_PHASE).toBeCloseTo(0.9);
+    expect(HERO_WRAP_ARRIVE_PHASE).toBeCloseTo(0.95);
     expect(start.done).toBe(false);
     expect(start.phase).toBeCloseTo(from);
     expect(Math.abs(phaseDelta(mid.phase, from))).toBeGreaterThan(0.08);
