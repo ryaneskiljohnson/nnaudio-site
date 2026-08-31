@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   CREDIT_FADE_MS,
+  CREDIT_HOLD_WEIGHT_CYMA,
   CREDIT_MS,
   CREDIT_TRAVEL_MS,
   INTRO_CARD_LEAD_MS,
@@ -668,9 +669,9 @@ describe("cameraTour", () => {
     expect(second.focusKey).toBe("lead");
   });
 
-  it("holds Cymasphere 1.5× and CymaSynth 2× before the rest", () => {
+  it("holds Cymasphere and catalog 1.5× and CymaSynth 2×", () => {
     const credits = orderCredits([
-      { key: "pack", name: "Pack", startDeg: 0, periodSec: 40, radius: 0.8, size: 80, weight: 1 },
+      { key: "pack", name: "Pack", startDeg: 0, periodSec: 40, radius: 0.8, size: 80, weight: CREDIT_HOLD_WEIGHT_CYMA },
       {
         key: "synth",
         name: "CymaSynth",
@@ -688,15 +689,15 @@ describe("cameraTour", () => {
         radius: 0,
         size: 0,
         sun: true,
-        weight: 1.5,
+        weight: CREDIT_HOLD_WEIGHT_CYMA,
       },
     ]);
     expect(credits.map((c) => c.key)).toEqual([SUN_FOCUS_KEY, "synth", "pack"]);
-    expect(creditHoldMs(credits[0])).toBe(CREDIT_MS * 1.5);
+    expect(creditHoldMs(credits[0])).toBe(CREDIT_MS * CREDIT_HOLD_WEIGHT_CYMA);
     expect(creditHoldMs(credits[1])).toBe(CREDIT_MS * 2);
-    expect(creditHoldMs(credits[2])).toBe(CREDIT_MS);
+    expect(creditHoldMs(credits[2])).toBe(CREDIT_MS * CREDIT_HOLD_WEIGHT_CYMA);
     expect(tourDurationMs(credits)).toBe(
-      TOUR_INTRO_MS + CREDIT_MS * 4.5 + TOUR_OUTRO_MS
+      TOUR_INTRO_MS + CREDIT_MS * 5 + TOUR_OUTRO_MS
     );
 
     const sun = cameraTour(TOUR_INTRO_MS + 400, false, credits);

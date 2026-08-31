@@ -1180,6 +1180,8 @@ export const CREDIT_FADE_MS = 320;
 export const INTRO_CARD_LEAD_MS = 320;
 /** Base time on a catalog product: hold plus the journey to the next stop. */
 export const CREDIT_MS = 4400;
+/** Catalog and Cymasphere share this hold multiple so moons linger like Cyma. */
+export const CREDIT_HOLD_WEIGHT_CYMA = 1.5;
 /** Catalog moons between Cymasphere + CymaSynth returns. */
 export const HERO_TOUR_CATALOG_BATCH = 10;
 /** Reserved focus key for the Cymasphere sun hold. */
@@ -1213,7 +1215,7 @@ export interface CreditTarget {
   image?: string;
   /** True when this credit is the Cymasphere sun, not a moon. */
   sun?: boolean;
-  /** Hold length as a multiple of CREDIT_MS (Cymasphere 1.5, CymaSynth 2). */
+  /** Hold length as a multiple of CREDIT_MS (Cyma / catalog 1.5, synth 2). */
   weight?: number;
   startDeg: number;
   periodSec: number;
@@ -1271,8 +1273,8 @@ function smoothstep(t: number): number {
 }
 
 /**
- * @brief Hold + travel length for one credit. Weight 1.5 = Cymasphere, 2 =
- * CymaSynth, 1 = everyone else. Travel stays CREDIT_TRAVEL_MS.
+ * @brief Hold + travel length for one credit. Weight 1.5 = Cymasphere and
+ * catalog moons, 2 = CymaSynth. Travel stays CREDIT_TRAVEL_MS.
  * @param credit Target.
  * @returns Duration in milliseconds.
  */
