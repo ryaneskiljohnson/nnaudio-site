@@ -30,7 +30,7 @@ const BODY_AURA_NAME = "hero-sun-glow";
 
 /**
  * @brief Stops wrap-seams: no mips (fract U would pick a muddy
- * average) and clamp so the join samples the black frame.
+ * average) and clamp so the join does not sample across the square.
  */
 export function configureHeroWrapTexture(texture: Texture): void {
   texture.generateMipmaps = false;

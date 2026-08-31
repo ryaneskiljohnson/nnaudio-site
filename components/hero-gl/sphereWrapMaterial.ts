@@ -1,44 +1,13 @@
 /**
  * @fileoverview Hero body shader. Every planet uses the same longitude
- * wrap, UV pad, and prelit poster so Cymasphere, CymaSynth, and catalog
- * moons differ only by mesh scale. Output is encoded so art is not
- * left linear-dark.
+ * wrap and prelit poster so Cymasphere, CymaSynth, and catalog moons
+ * differ only by mesh scale. Hemisphere seams crossfade the square's
+ * left and right edges the way the old strip bake did. Output is
+ * encoded so art is not left linear-dark.
  * @module components/hero-gl/sphereWrapMaterial
  */
 
 import { ShaderMaterial, type Texture } from "three";
-
-/**
- * Black frame around wrap art, as a fraction of each side.
- * Latitude uses asin, so a small UV pad vanishes at the poles;
- * 0.16 keeps the art on the globe's belly.
- */
-export const HERO_WRAP_PAD_FRAC = 0.16;
-
-/**
- * @brief Maps sphere UVs into the art rect, or marks the black frame.
- * @param u Longitude sample in [0, 1].
- * @param v Latitude sample in [0, 1].
- * @param padFrac Border on each side.
- * @example
- * heroWrapPadUv(0.5, 0.5, 0.1) // { u: 0.5, v: 0.5, outside: false }
- * heroWrapPadUv(0.02, 0.5, 0.1) // outside: true
- */
-export function heroWrapPadUv(
-  u: number,
-  v: number,
-  padFrac: number = HERO_WRAP_PAD_FRAC
-): { u: number; v: number; outside: boolean } {
-  const pad = Math.min(0.4, Math.max(0, padFrac));
-  const span = Math.max(1e-4, 1 - 2 * pad);
-  const iu = (u - pad) / span;
-  const iv = (v - pad) / span;
-  return {
-    u: iu,
-    v: iv,
-    outside: iu < 0 || iu > 1 || iv < 0 || iv > 1,
-  };
-}
 
 const VERT = /* glsl */ `
 varying vec3 vObjectPos;
@@ -55,19 +24,19 @@ const FRAG = /* glsl */ `
 uniform sampler2D uMap;
 uniform float uPhase;
 uniform float uOpacity;
-uniform float uPad;
 
 varying vec3 vObjectPos;
 
-vec4 samplePadded(vec2 uv) {
-  float pad = clamp(uPad, 0.0, 0.4);
-  float span = max(1e-4, 1.0 - 2.0 * pad);
-  vec2 inner = (uv - pad) / span;
-  if (inner.x < 0.0 || inner.x > 1.0 || inner.y < 0.0 || inner.y > 1.0) {
-    return vec4(0.0);
-  }
+vec4 sampleArt(vec2 uv) {
   // Lod 0: fract(U) makes implicit mips pick a 1px colored seam.
-  return texture2DLodEXT(uMap, inner, 0.0);
+  return texture2DLodEXT(uMap, uv, 0.0);
+}
+
+// Matches stripSeamBlend: 1 at either hemisphere join, 0 by 7% in.
+float stripSeamBlend(float u) {
+  float seamD = min(abs(u - 0.25), abs(u - 0.75));
+  float t = clamp(1.0 - seamD / 0.07, 0.0, 1.0);
+  return t * t * (3.0 - 2.0 * t);
 }
 
 void main() {
@@ -76,7 +45,12 @@ void main() {
   float uStrip = fract(0.5 + lon / (2.0 * PI) + uPhase);
   float srcU = fract(uStrip * 2.0 - 0.5);
   float srcV = 0.5 + asin(clamp(n.y, -1.0, 1.0)) / PI;
-  vec4 color = samplePadded(vec2(srcU, srcV));
+  vec4 color = sampleArt(vec2(srcU, srcV));
+  float seam = stripSeamBlend(uStrip);
+  if (seam > 0.0) {
+    vec4 pair = sampleArt(vec2(fract(1.0 - srcU), srcV));
+    color = mix(color, pair, seam * 0.5);
+  }
   gl_FragColor = vec4(color.rgb, uOpacity);
   #include <colorspace_fragment>
 }
@@ -93,7 +67,6 @@ export function createSphereWrapMaterial(map: Texture): ShaderMaterial {
       uMap: { value: map },
       uPhase: { value: 0 },
       uOpacity: { value: 1 },
-      uPad: { value: HERO_WRAP_PAD_FRAC },
     },
     vertexShader: VERT,
     fragmentShader: FRAG,

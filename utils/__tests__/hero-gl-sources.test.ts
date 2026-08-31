@@ -86,8 +86,10 @@ describe("hero source contracts", () => {
     expect(wrap).toContain("#include <colorspace_fragment>");
     expect(wrap).toContain("atan(n.x, n.z)");
     expect(wrap).toContain("texture2DLodEXT");
-    expect(wrap).toContain("uPad");
-    expect(wrap).toContain("samplePadded");
+    expect(wrap).toContain("stripSeamBlend");
+    expect(wrap).toContain("1.0 - srcU");
+    expect(wrap).not.toContain("uPad");
+    expect(wrap).not.toContain("samplePadded");
     expect(wrap).not.toContain("uLight1");
     expect(wrap).not.toContain("mix(globe, color.rgb");
     expect(wrap).not.toContain("vec3(0.62, 0.52, 0.82)");

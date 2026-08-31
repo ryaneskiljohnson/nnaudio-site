@@ -16,11 +16,7 @@ import {
   heroSunRadius,
 } from "@/components/hero-gl/bodies";
 import { HERO_SUN_DIAMETER_PX } from "@/components/hero-gl/caps";
-import {
-  createSphereWrapMaterial,
-  heroWrapPadUv,
-  HERO_WRAP_PAD_FRAC,
-} from "@/components/hero-gl/sphereWrapMaterial";
+import { createSphereWrapMaterial } from "@/components/hero-gl/sphereWrapMaterial";
 
 describe("createBodyMesh", () => {
   it("hides catalog moons until the tour stages them", () => {
@@ -64,18 +60,6 @@ describe("heroBodyRadius", () => {
   });
 });
 
-describe("heroWrapPadUv", () => {
-  it("keeps the center of the art and blacks the frame", () => {
-    const mid = heroWrapPadUv(0.5, 0.5, 0.1);
-    expect(mid.outside).toBe(false);
-    expect(mid.u).toBeCloseTo(0.5);
-    expect(mid.v).toBeCloseTo(0.5);
-    expect(heroWrapPadUv(0.02, 0.5, 0.1).outside).toBe(true);
-    expect(heroWrapPadUv(0.5, 0.98, 0.1).outside).toBe(true);
-    expect(HERO_WRAP_PAD_FRAC).toBe(0.16);
-  });
-});
-
 describe("heroSunRadius", () => {
   it("is half the world disk, like a planet", () => {
     expect(heroSunRadius()).toBeCloseTo(HERO_SUN_DIAMETER_PX / 2, 5);
@@ -108,8 +92,7 @@ describe("applyBodyTexture", () => {
     });
     applyBodyTexture(sun, new Texture());
     applyBodyTexture(moon, new Texture());
-    expect(sun.wrap?.uniforms.uPad?.value).toBe(HERO_WRAP_PAD_FRAC);
-    expect(moon.wrap?.uniforms.uPad?.value).toBe(sun.wrap?.uniforms.uPad?.value);
+    expect(sun.wrap?.uniforms.uPad).toBeUndefined();
     expect(moon.wrap?.uniforms.uPhase?.value).toBe(0);
     expect(sun.wrap?.uniforms.uPrelit).toBeUndefined();
     expect(sun.texture?.generateMipmaps).toBe(false);
@@ -120,7 +103,7 @@ describe("createSphereWrapMaterial", () => {
   it("exposes a phase uniform the tour can spin", () => {
     const mat = createSphereWrapMaterial(new Texture());
     expect(mat.uniforms.uPhase?.value).toBe(0);
-    expect(mat.uniforms.uPad?.value).toBe(HERO_WRAP_PAD_FRAC);
+    expect(mat.uniforms.uPad).toBeUndefined();
     mat.dispose();
   });
 
