@@ -47,10 +47,15 @@ function mulberry32(seed: number) {
   };
 }
 
+function fadeRgba(color: string, alpha: number): string {
+  return color.replace(/[\d.]+\)$/, `${alpha})`);
+}
+
 function radialSprite(
   color: string,
   size = 128,
-  midAlpha = 0.28
+  midAlpha = 0.28,
+  halo = false
 ): CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -65,9 +70,17 @@ function radialSprite(
     size / 2,
     size / 2
   );
-  g.addColorStop(0, color);
-  g.addColorStop(0.45, color.replace(/[\d.]+\)$/, `${midAlpha})`));
-  g.addColorStop(1, "rgba(0,0,0,0)");
+  if (halo) {
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(0.68, "rgba(0,0,0,0)");
+    g.addColorStop(0.78, color);
+    g.addColorStop(0.9, fadeRgba(color, midAlpha));
+    g.addColorStop(1, "rgba(0,0,0,0)");
+  } else {
+    g.addColorStop(0, color);
+    g.addColorStop(0.45, fadeRgba(color, midAlpha));
+    g.addColorStop(1, "rgba(0,0,0,0)");
+  }
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
   const tex = new CanvasTexture(canvas);
@@ -120,12 +133,12 @@ export function createNebulae(): Group {
   group.name = "hero-nebulae";
   group.frustumCulled = false;
   const specs = [
-    { color: "rgba(108,99,255,0.32)", x: -1.6, y: 0.8, z: -2.4, sx: 7.2, sy: 5.0, mid: 0.16 },
-    { color: "rgba(150,90,255,0.16)", x: -0.5, y: 0.2, z: -2.1, sx: 4.6, sy: 3.8, mid: 0.08 },
-    { color: "rgba(255,214,170,0.18)", x: 1.8, y: -0.4, z: -2.3, sx: 6.4, sy: 4.4, mid: 0.1 },
-    { color: "rgba(255,180,120,0.10)", x: 2.2, y: -0.9, z: -2.0, sx: 4.0, sy: 3.2, mid: 0.05 },
-    { color: "rgba(78,205,196,0.14)", x: 0.2, y: 0.3, z: -2.2, sx: 5.4, sy: 3.6, mid: 0.08 },
-    { color: "rgba(60,180,190,0.08)", x: -1.2, y: -0.6, z: -1.9, sx: 3.6, sy: 2.8, mid: 0.04 },
+    { color: "rgba(108,99,255,0.26)", x: -1.6, y: 0.8, z: -2.4, sx: 7.2, sy: 5.0, mid: 0.12 },
+    { color: "rgba(150,90,255,0.13)", x: -0.5, y: 0.2, z: -2.1, sx: 4.6, sy: 3.8, mid: 0.06 },
+    { color: "rgba(255,214,170,0.15)", x: 1.8, y: -0.4, z: -2.3, sx: 6.4, sy: 4.4, mid: 0.08 },
+    { color: "rgba(255,180,120,0.08)", x: 2.2, y: -0.9, z: -2.0, sx: 4.0, sy: 3.2, mid: 0.04 },
+    { color: "rgba(78,205,196,0.11)", x: 0.2, y: 0.3, z: -2.2, sx: 5.4, sy: 3.6, mid: 0.06 },
+    { color: "rgba(60,180,190,0.06)", x: -1.2, y: -0.6, z: -1.9, sx: 3.6, sy: 2.8, mid: 0.03 },
   ];
   for (const spec of specs) {
     const mat = new SpriteMaterial({
@@ -133,6 +146,7 @@ export function createNebulae(): Group {
       blending: AdditiveBlending,
       transparent: true,
       depthWrite: false,
+      depthTest: true,
     });
     const sprite = new Sprite(mat);
     sprite.frustumCulled = false;
@@ -153,13 +167,15 @@ function addSunSprite(
   z: number,
   sx: number,
   sy: number,
-  name: string
+  name: string,
+  halo = false
 ): void {
   const mat = new SpriteMaterial({
-    map: radialSprite(color, 160, midAlpha),
+    map: radialSprite(color, 160, midAlpha, halo),
     blending: AdditiveBlending,
     transparent: true,
     depthWrite: false,
+    depthTest: true,
   });
   const sprite = new Sprite(mat);
   sprite.position.set(x, y, z);
@@ -178,8 +194,8 @@ function flareTexture(): CanvasTexture {
     const g = ctx.createLinearGradient(0, 0, 256, 0);
     g.addColorStop(0, "rgba(0,0,0,0)");
     g.addColorStop(0.35, "rgba(255,240,210,0.10)");
-    g.addColorStop(0.5, "rgba(255,255,255,0.38)");
-    g.addColorStop(0.65, "rgba(180,170,255,0.18)");
+    g.addColorStop(0.5, "rgba(255,255,255,0.22)");
+    g.addColorStop(0.65, "rgba(180,170,255,0.12)");
     g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 256, 16);
@@ -198,8 +214,8 @@ export function createSunAura(): Group {
   group.name = "hero-sun-glow";
   addSunSprite(
     group,
-    "rgba(108,99,255,0.40)",
-    0.18,
+    "rgba(108,99,255,0.28)",
+    0.12,
     -0.49,
     0.19,
     -0.25,
@@ -209,8 +225,8 @@ export function createSunAura(): Group {
   );
   addSunSprite(
     group,
-    "rgba(150,90,255,0.22)",
-    0.1,
+    "rgba(150,90,255,0.16)",
+    0.07,
     0.53,
     -0.22,
     -0.25,
@@ -220,8 +236,8 @@ export function createSunAura(): Group {
   );
   addSunSprite(
     group,
-    "rgba(255,214,160,0.45)",
-    0.2,
+    "rgba(255,214,160,0.32)",
+    0.14,
     -0.22,
     0.07,
     -0.22,
@@ -231,8 +247,8 @@ export function createSunAura(): Group {
   );
   addSunSprite(
     group,
-    "rgba(255,180,120,0.20)",
-    0.09,
+    "rgba(255,180,120,0.14)",
+    0.06,
     0.22,
     -0.13,
     -0.22,
@@ -242,36 +258,39 @@ export function createSunAura(): Group {
   );
   addSunSprite(
     group,
-    "rgba(255,220,160,0.42)",
-    0.2,
+    "rgba(255,220,160,0.36)",
+    0.16,
     0,
     0,
     -0.18,
     2.57,
     2.57,
-    "sun-corona"
+    "sun-corona",
+    true
   );
   addSunSprite(
     group,
-    "rgba(255,230,180,0.85)",
-    0.32,
+    "rgba(255,230,180,0.48)",
+    0.20,
     0,
     0,
     -0.12,
     2.5,
     2.5,
-    "sun-bloom-gold"
+    "sun-bloom-gold",
+    true
   );
   addSunSprite(
     group,
-    "rgba(108,99,255,0.55)",
-    0.22,
+    "rgba(108,99,255,0.34)",
+    0.14,
     0,
     0,
     -0.15,
     3.1,
     3.1,
-    "sun-bloom-violet"
+    "sun-bloom-violet",
+    true
   );
   const flare = new Sprite(
     new SpriteMaterial({
@@ -279,11 +298,13 @@ export function createSunAura(): Group {
       blending: AdditiveBlending,
       transparent: true,
       depthWrite: false,
+      depthTest: true,
     })
   );
   flare.scale.set(2.8, 0.064, 1);
-  flare.position.set(0, 0, 0.08);
+  flare.position.set(0, 0, -0.08);
   flare.name = "sun-flare";
+  flare.renderOrder = -1;
   group.add(flare);
   return group;
 }
