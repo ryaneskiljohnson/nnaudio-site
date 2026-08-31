@@ -147,7 +147,7 @@ export class HeroScene {
     this.stars = createStarField();
     this.sky.add(this.stars);
     this.nebulae = createNebulae();
-    this.sun.mesh.add(this.nebulae);
+    this.sky.add(this.nebulae);
 
     canvas.addEventListener("webglcontextlost", this.onContextLost, false);
     canvas.addEventListener(

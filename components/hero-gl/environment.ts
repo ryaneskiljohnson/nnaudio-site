@@ -124,37 +124,62 @@ export function createStarField(): Points {
 }
 
 /**
- * @brief Soft additive clouds behind Cymasphere. Parent to the sun mesh
- * so they stay on the far side of the disk as the camera tours.
- * Local units: sun radius = 1, −Z is away from the camera after billboard.
+ * Visible sky plate after the camera's ~2.2 sky scale. CSS nebula %
+ * is of the viewport, not the wider star field.
+ */
+const SKY_W = 1400;
+const SKY_H = 900;
+
+/**
+ * @brief One original CSS nebula lobe on the screen-facing sky plane.
+ * Percentages match the old Sky plates (left/top/width/height).
+ */
+function addSkyNebula(
+  group: Group,
+  xPct: number,
+  yPct: number,
+  wPct: number,
+  hPct: number,
+  color: string,
+  mid: number,
+  ox: number,
+  oy: number,
+  sw: number,
+  sh: number
+): void {
+  const cx = (xPct / 100 - 0.5) * SKY_W;
+  const cy = (0.5 - yPct / 100) * SKY_H;
+  const pw = (wPct / 100) * SKY_W;
+  const ph = (hPct / 100) * SKY_H;
+  const mat = new SpriteMaterial({
+    map: radialSprite(color, 256, mid),
+    blending: AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    depthTest: false,
+  });
+  const sprite = new Sprite(mat);
+  sprite.frustumCulled = false;
+  sprite.position.set(cx + ox * pw, cy - oy * ph, 0);
+  sprite.scale.set(Math.max(1, pw * sw), Math.max(1, ph * sh), 1);
+  sprite.renderOrder = -4;
+  group.add(sprite);
+}
+
+/**
+ * @brief Screen-facing dust from the original CSS hero (violet / gold / teal).
+ * Parent to the sky group so plates stay clouds instead of going edge-on.
  */
 export function createNebulae(): Group {
   const group = new Group();
   group.name = "hero-nebulae";
   group.frustumCulled = false;
-  const specs = [
-    { color: "rgba(108,99,255,0.10)", x: -1.6, y: 0.8, z: -2.4, sx: 7.2, sy: 5.0, mid: 0.05 },
-    { color: "rgba(150,90,255,0.05)", x: -0.5, y: 0.2, z: -2.1, sx: 4.6, sy: 3.8, mid: 0.03 },
-    { color: "rgba(140,100,255,0.05)", x: 1.8, y: -0.4, z: -2.3, sx: 6.4, sy: 4.4, mid: 0.02 },
-    { color: "rgba(90,70,200,0.03)", x: 2.2, y: -0.9, z: -2.0, sx: 4.0, sy: 3.2, mid: 0.015 },
-    { color: "rgba(78,205,196,0.04)", x: 0.2, y: 0.3, z: -2.2, sx: 5.4, sy: 3.6, mid: 0.02 },
-    { color: "rgba(60,180,190,0.02)", x: -1.2, y: -0.6, z: -1.9, sx: 3.6, sy: 2.8, mid: 0.012 },
-  ];
-  for (const spec of specs) {
-    const mat = new SpriteMaterial({
-      map: radialSprite(spec.color, 160, spec.mid),
-      blending: AdditiveBlending,
-      transparent: true,
-      depthWrite: false,
-      depthTest: true,
-    });
-    const sprite = new Sprite(mat);
-    sprite.frustumCulled = false;
-    sprite.position.set(spec.x, spec.y, spec.z);
-    sprite.scale.set(spec.sx, spec.sy, 1);
-    sprite.renderOrder = -2;
-    group.add(sprite);
-  }
+  addSkyNebula(group, 28, 38, 58, 48, "rgba(108,99,255,0.55)", 0.28, -0.12, -0.06, 1, 1);
+  addSkyNebula(group, 28, 38, 58, 48, "rgba(150,90,255,0.28)", 0.14, 0.18, 0.1, 0.62, 0.88);
+  addSkyNebula(group, 62, 52, 50, 42, "rgba(255,214,170,0.36)", 0.18, -0.02, -0.04, 1, 1);
+  addSkyNebula(group, 62, 52, 50, 42, "rgba(255,180,120,0.20)", 0.1, 0.14, 0.08, 0.6, 0.9);
+  addSkyNebula(group, 48, 46, 44, 36, "rgba(78,205,196,0.28)", 0.14, 0.06, -0.02, 1, 1);
+  addSkyNebula(group, 48, 46, 44, 36, "rgba(60,180,190,0.16)", 0.08, -0.18, 0.12, 0.64, 0.89);
   return group;
 }
 
@@ -192,6 +217,50 @@ function addSunSprite(
 export function createSunAura(): Group {
   const group = new Group();
   group.name = "hero-sun-glow";
+  addSunSprite(
+    group,
+    "rgba(255, 214, 160, 0.45)",
+    0.22,
+    -0.18,
+    0.04,
+    -0.16,
+    1.86,
+    1.57,
+    "sun-nebula-gold"
+  );
+  addSunSprite(
+    group,
+    "rgba(255, 180, 120, 0.2)",
+    0.1,
+    0.16,
+    -0.08,
+    -0.14,
+    1.43,
+    1.79,
+    "sun-nebula-gold-2"
+  );
+  addSunSprite(
+    group,
+    "rgba(108, 99, 255, 0.4)",
+    0.18,
+    -0.22,
+    0.12,
+    -0.2,
+    2.21,
+    1.86,
+    "sun-nebula-violet"
+  );
+  addSunSprite(
+    group,
+    "rgba(150, 90, 255, 0.22)",
+    0.1,
+    0.24,
+    -0.14,
+    -0.18,
+    1.59,
+    2.14,
+    "sun-nebula-violet-2"
+  );
   addSunSprite(
     group,
     "rgba(176,150,255,0.22)",

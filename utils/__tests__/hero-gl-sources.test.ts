@@ -76,8 +76,11 @@ describe("hero source contracts", () => {
     expect(scene).toContain("this.camera.add(key)");
     expect(scene).toContain("lookPlusZToward");
     expect(bodies).toContain("createSunAura");
-    expect(scene).toContain("this.sun.mesh.add(this.nebulae)");
-    expect(scene).not.toContain("this.sky.add(this.nebulae)");
+    expect(scene).toContain("this.sky.add(this.nebulae)");
+    expect(scene).not.toContain("this.sun.mesh.add(this.nebulae)");
+    expect(circuit).toContain("NebulaViolet");
+    expect(circuit).toContain("NebulaGold");
+    expect(circuit).toContain("mix-blend-mode: screen");
     expect(scene).toContain("this.world.add(this.synthRings)");
     expect(scene).not.toContain("synth.mesh.add(this.synthRings)");
     expect(scene).toContain("alignSynthSeat");
