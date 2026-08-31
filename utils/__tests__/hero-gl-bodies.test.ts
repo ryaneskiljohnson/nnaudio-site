@@ -66,13 +66,13 @@ describe("heroSunRadius", () => {
 });
 
 describe("applyBodyTexture", () => {
-  it("wraps sun posters with the sphere shader, not UV-mapped photos", () => {
+  it("wraps Cymasphere like the other planets and leaves the poster prelit", () => {
     const sun = createSunMesh();
     applyBodyTexture(sun, new Texture());
     expect(sun.wrap).not.toBeNull();
     expect(sun.wrap?.uniforms.uSurfaceShade?.value).toBe(0);
     expect(sun.wrap?.uniforms.uPlanar?.value).toBe(0);
-    expect(sun.wrap?.uniforms.uWarmRim?.value).toBe(1);
+    expect(sun.wrap?.uniforms.uPrelit?.value).toBe(1);
   });
 
   it("skips meridian shade so catalog moons take the same gloss", () => {

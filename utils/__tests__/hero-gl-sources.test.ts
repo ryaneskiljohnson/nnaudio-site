@@ -61,6 +61,7 @@ describe("hero source contracts", () => {
   });
 
   it("keys bodies from the camera so the visible side stays lit", () => {
+    expect(scene).toContain("SRGBColorSpace");
     expect(scene).toContain("DirectionalLight");
     expect(scene).not.toContain("PointLight");
     expect(scene).toContain("this.camera.add(key)");
@@ -79,6 +80,7 @@ describe("hero source contracts", () => {
     expect(wrap).toContain("facing = mix(0.94, 1.08, ndotl)");
     expect(wrap).not.toContain("specTight");
     expect(wrap).toContain("uPlanar");
+    expect(wrap).toContain("#include <colorspace_fragment>");
     expect(wrap).toContain("atan(n.x, n.z)");
     expect(wrap).not.toContain("uLight1");
     expect(wrap).not.toContain("mix(globe, color.rgb");

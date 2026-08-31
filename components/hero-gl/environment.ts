@@ -135,8 +135,8 @@ export function createNebulae(): Group {
   const specs = [
     { color: "rgba(108,99,255,0.10)", x: -1.6, y: 0.8, z: -2.4, sx: 7.2, sy: 5.0, mid: 0.05 },
     { color: "rgba(150,90,255,0.05)", x: -0.5, y: 0.2, z: -2.1, sx: 4.6, sy: 3.8, mid: 0.03 },
-    { color: "rgba(255,214,170,0.04)", x: 1.8, y: -0.4, z: -2.3, sx: 6.4, sy: 4.4, mid: 0.02 },
-    { color: "rgba(255,180,120,0.03)", x: 2.2, y: -0.9, z: -2.0, sx: 4.0, sy: 3.2, mid: 0.015 },
+    { color: "rgba(140,100,255,0.05)", x: 1.8, y: -0.4, z: -2.3, sx: 6.4, sy: 4.4, mid: 0.02 },
+    { color: "rgba(90,70,200,0.03)", x: 2.2, y: -0.9, z: -2.0, sx: 4.0, sy: 3.2, mid: 0.015 },
     { color: "rgba(78,205,196,0.04)", x: 0.2, y: 0.3, z: -2.2, sx: 5.4, sy: 3.6, mid: 0.02 },
     { color: "rgba(60,180,190,0.02)", x: -1.2, y: -0.6, z: -1.9, sx: 3.6, sy: 2.8, mid: 0.012 },
   ];
@@ -194,8 +194,8 @@ export function createSunAura(): Group {
   group.name = "hero-sun-glow";
   addSunSprite(
     group,
-    "rgba(255,230,180,0.18)",
-    0.07,
+    "rgba(176,150,255,0.22)",
+    0.08,
     0,
     0,
     -0.14,
@@ -206,8 +206,8 @@ export function createSunAura(): Group {
   );
   addSunSprite(
     group,
-    "rgba(108,99,255,0.22)",
-    0.08,
+    "rgba(108,99,255,0.20)",
+    0.07,
     0,
     0,
     -0.18,

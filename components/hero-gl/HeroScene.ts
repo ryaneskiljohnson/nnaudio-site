@@ -15,6 +15,7 @@ import {
   NoToneMapping,
   Raycaster,
   Scene,
+  SRGBColorSpace,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -123,6 +124,7 @@ export class HeroScene {
     });
     this.renderer.setClearColor(0x02030a, 1);
     this.renderer.setPixelRatio(1);
+    this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = NoToneMapping;
     this.camera = new PerspectiveCamera(50, 1, 2, 20000);
     this.scene = new Scene();
