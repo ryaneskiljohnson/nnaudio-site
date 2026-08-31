@@ -124,7 +124,7 @@ describe("classifyDocumentStart", () => {
 describe("heroReloadDebugOverlayEnabled", () => {
   it("is true only for heroDebug=1", () => {
     expect(heroReloadDebugOverlayEnabled("?heroDebug=1")).toBe(true);
-    expect(heroReloadDebugOverlayEnabled("heroAutoTour=1")).toBe(false);
+    expect(heroReloadDebugOverlayEnabled("tourCap=15")).toBe(false);
     expect(heroReloadDebugOverlayEnabled("")).toBe(false);
   });
 });

@@ -211,52 +211,15 @@ describe("readHeroCompactTour", () => {
 });
 
 describe("resolveHeroTourStart", () => {
-  const idle = {
-    lite: false,
-    reduceMotion: false,
-    autoTour: false,
-    force3d: false,
-  };
-
-  it("idles the 3D tour on desktop and lite", () => {
-    expect(resolveHeroTourStart(idle)).toEqual({
+  it("idles the 3D tour until the main thread is free", () => {
+    expect(resolveHeroTourStart(false)).toEqual({
       allowTour: false,
       scheduleDesktop: true,
-    });
-    expect(resolveHeroTourStart({ ...idle, lite: true })).toEqual({
-      allowTour: false,
-      scheduleDesktop: true,
-    });
-  });
-
-  it("starts CircuitNetwork immediately on autoTour / force3d", () => {
-    expect(
-      resolveHeroTourStart({ ...idle, lite: true, autoTour: true })
-    ).toEqual({
-      allowTour: true,
-      scheduleDesktop: false,
-    });
-    expect(
-      resolveHeroTourStart({
-        ...idle,
-        lite: true,
-        autoTour: true,
-        force3d: true,
-      })
-    ).toEqual({
-      allowTour: true,
-      scheduleDesktop: false,
     });
   });
 
   it("parks on the poster when the user prefers reduced motion", () => {
-    expect(resolveHeroTourStart({ ...idle, reduceMotion: true })).toEqual({
-      allowTour: false,
-      scheduleDesktop: false,
-    });
-    expect(
-      resolveHeroTourStart({ ...idle, lite: true, reduceMotion: true })
-    ).toEqual({
+    expect(resolveHeroTourStart(true)).toEqual({
       allowTour: false,
       scheduleDesktop: false,
     });
@@ -405,35 +368,10 @@ describe("bake sizes", () => {
 });
 
 describe("parseHeroTourQuery", () => {
-  it("reads auto-tour and a positive tourCap", () => {
-    expect(parseHeroTourQuery("?heroAutoTour=1&tourCap=15")).toEqual({
-      autoTour: true,
-      tourCap: 15,
-      force3d: false,
-    });
-    expect(parseHeroTourQuery("heroAutoTour=1")).toEqual({
-      autoTour: true,
-      tourCap: undefined,
-      force3d: false,
-    });
-    expect(parseHeroTourQuery("?heroAutoTour=1&hero3d=1&tourCap=15")).toEqual({
-      autoTour: true,
-      tourCap: 15,
-      force3d: true,
-    });
-  });
-
-  it("ignores missing or invalid flags", () => {
-    expect(parseHeroTourQuery("")).toEqual({
-      autoTour: false,
-      tourCap: undefined,
-      force3d: false,
-    });
-    expect(parseHeroTourQuery("?heroAutoTour=yes&tourCap=-3")).toEqual({
-      autoTour: false,
-      tourCap: undefined,
-      force3d: false,
-    });
+  it("reads a positive tourCap", () => {
+    expect(parseHeroTourQuery("?tourCap=15")).toEqual({ tourCap: 15 });
+    expect(parseHeroTourQuery("")).toEqual({ tourCap: undefined });
+    expect(parseHeroTourQuery("?tourCap=-3")).toEqual({ tourCap: undefined });
   });
 });
 

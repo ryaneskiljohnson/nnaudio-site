@@ -3,7 +3,7 @@
  * viewport detection, lite-tour gating (tablets / iPadOS / desktop-mode
  * phones), compact-tour latching so resize cannot rebuild the 3D
  * system, Safari-kill watchdog, curated moon picks, bake sizes, and
- * recording query flags (`heroAutoTour`, `tourCap`).
+ * recording query flag (`tourCap`).
  * @module utils/hero-tour
  */
 
@@ -342,38 +342,24 @@ export function prefersLiteHeroTour(env: HeroTourEnvironment): boolean {
 
 /** First-paint decision for which hero tour (if any) to mount. */
 export interface HeroTourStart {
-  /** Mount CircuitNetwork (idle start or query autoplay). */
+  /** Mount CircuitNetwork after the idle callback. */
   allowTour: boolean;
   scheduleDesktop: boolean;
 }
 
 /**
  * @brief Picks the hero mount without touching the DOM.
- * Phones and desktop both idle-start the live 3D tour. Reduced
- * motion stays on the poster.
- * @param input Motion flags and query flags.
- * @returns Whether to start the tour now or after the idle callback.
+ * Phones and desktop idle-start the live 3D tour. Reduced motion
+ * stays on the poster.
+ * @param reduceMotion `prefers-reduced-motion: reduce`.
+ * @returns Whether to schedule the idle tour start.
  * @example
- * resolveHeroTourStart({
- *   lite: true, reduceMotion: false, autoTour: false, force3d: false,
- * })
- * // { allowTour: false, scheduleDesktop: true }
+ * resolveHeroTourStart(false) // { allowTour: false, scheduleDesktop: true }
  */
-export function resolveHeroTourStart(input: {
-  lite: boolean;
-  reduceMotion: boolean;
-  autoTour: boolean;
-  force3d: boolean;
-}): HeroTourStart {
-  if (input.reduceMotion) {
+export function resolveHeroTourStart(reduceMotion: boolean): HeroTourStart {
+  if (reduceMotion) {
     return {
       allowTour: false,
-      scheduleDesktop: false,
-    };
-  }
-  if (input.autoTour || input.force3d) {
-    return {
-      allowTour: true,
       scheduleDesktop: false,
     };
   }
@@ -554,30 +540,23 @@ export function sunBakePx(compact: boolean, dpr: number): number {
 }
 
 /**
- * @brief Recording / debug flags from the homepage query string.
+ * @brief Recording cap from the homepage query string.
  * Read from `window.location.search` (not `useSearchParams`) so the
  * LCP path does not need a Suspense boundary.
  * @param search `window.location.search` (leading `?` optional).
- * @returns Auto-start flag, optional credit-stop cap, and 3D recorder latch.
+ * @returns Optional credit-stop cap for the recorder.
  * @example
- * parseHeroTourQuery("?heroAutoTour=1&tourCap=15")
- * // { autoTour: true, tourCap: 15, force3d: false }
- * parseHeroTourQuery("?heroAutoTour=1&hero3d=1")
- * // { autoTour: true, tourCap: undefined, force3d: true }
+ * parseHeroTourQuery("?tourCap=15") // { tourCap: 15 }
  */
 export function parseHeroTourQuery(search: string): {
-  autoTour: boolean;
   tourCap: number | undefined;
-  force3d: boolean;
 } {
   const q = search.startsWith("?") ? search.slice(1) : search;
   const params = new URLSearchParams(q);
   const raw = params.get("tourCap");
   const n = raw ? Number.parseInt(raw, 10) : NaN;
   return {
-    autoTour: params.get("heroAutoTour") === "1",
     tourCap: Number.isFinite(n) && n > 0 ? n : undefined,
-    force3d: params.get("hero3d") === "1",
   };
 }
 

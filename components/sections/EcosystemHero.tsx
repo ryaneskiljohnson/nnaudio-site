@@ -10,8 +10,8 @@
  * rules live in globals.css so the headline is visible before
  * styled-components hydrates. CircuitNetwork is a dynamic import so its
  * JS is not on the LCP path. The 3D tour idle-starts on phones and
- * desktop. `?heroAutoTour=1` starts immediately. `?tourCap=N` caps
- * credit stops. Hero height is reserved in globals.css (#home) so a
+ * desktop. `?tourCap=N` caps credit stops for recordings. Hero height
+ * is reserved in globals.css (#home) so a
  * late sheet cannot collapse-then-expand.
  */
 
@@ -29,8 +29,6 @@ import {
 } from "@/lib/homepage-hero-seed";
 import {
   parseHeroTourQuery,
-  prefersLiteHeroTour,
-  readHeroTourEnvironment,
   resolveHeroTourStart,
   scheduleDesktopHeroTour,
 } from "@/utils/hero-tour";
@@ -355,7 +353,6 @@ function StaticHeroPoster() {
 /**
  * @brief Defers CircuitNetwork until idle on phones and desktop.
  * Both start with the tour off so hydration matches.
- * `?heroAutoTour=1` starts immediately.
  * @returns Tour mount flag and optional recording cap.
  */
 function useOptInHeroTour(): {
@@ -368,25 +365,15 @@ function useOptInHeroTour(): {
   useEffect(() => {
     const query = parseHeroTourQuery(window.location.search);
     setTourCap(query.tourCap);
-    const lite = prefersLiteHeroTour(readHeroTourEnvironment(window));
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
-    const start = resolveHeroTourStart({
-      lite,
-      reduceMotion,
-      autoTour: query.autoTour,
-      force3d: query.force3d,
-    });
+    const start = resolveHeroTourStart(reduceMotion);
     logHeroDebug("hero-tour-resolve", {
-      lite,
       allowTour: start.allowTour,
       scheduleDesktop: start.scheduleDesktop,
-      autoTour: query.autoTour,
-      force3d: query.force3d,
       reduceMotion,
     });
-    if (start.allowTour) setAllowTour(true);
     if (!start.scheduleDesktop) return;
     return scheduleDesktopHeroTour(() => {
       logHeroDebug("hero-idle-start", {});
