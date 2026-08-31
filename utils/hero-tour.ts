@@ -307,10 +307,10 @@ export function shouldKeepHeroFrameSize(
 
 /**
  * @brief Pixel box to pin on `#home` so iOS chrome cannot grow the slot.
- * Compact tours keep the first height; desktop stays on CSS `svh`.
+ * Phone viewports keep the first height; desktop stays on CSS `svh`.
  * @param prev Last applied pin, or null before the first measure.
  * @param measured Live bounding box.
- * @param compact Phone-capped tour.
+ * @param compact Phone-sized viewport (not a touch-desktop compact tour).
  * @returns Box to apply, previous pin to keep, or null to clear (desktop).
  * @example
  * nextHeroSectionPin(null, { w: 390, h: 844 }, true) // { w: 390, h: 844 }

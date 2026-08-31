@@ -30,10 +30,9 @@ import {
 } from "@/lib/homepage-hero-seed";
 import {
   applyHeroSectionPin,
-  latchHeroCompactTour,
+  isHeroMobileViewport,
   nextHeroSectionPin,
   parseHeroTourQuery,
-  readHeroCompactTour,
   resolveHeroTourStart,
   scheduleDesktopHeroTour,
 } from "@/utils/hero-tour";
@@ -86,14 +85,13 @@ const Hero = styled.section`
   align-items: stretch;
   /* Match globals.css #home. svh + a pixel pin on phones so iOS
    * chrome cannot grow the slot and stretch the WebGL canvas. */
-  height: 100svh;
-  min-height: 100svh;
-  max-height: 100svh;
+  height: calc(100svh - var(--site-header-height));
+  min-height: calc(100svh - var(--site-header-height));
+  max-height: calc(100svh - var(--site-header-height));
   width: 100%;
   padding: 0;
   margin-bottom: 28px;
   overflow: hidden;
-  overscroll-behavior: none;
   background: #02030a;
 `;
 
@@ -352,6 +350,11 @@ const CircuitNetwork = dynamic(
   }
 );
 
+const WaveformTransition = dynamic(
+  () => import(/* webpackPrefetch: false */ "./WaveformTransition"),
+  { ssr: false, loading: () => null }
+);
+
 /** Rendered Cymasphere planet for the idle disk (220px). Tour bakes 4K. */
 const CYMASPHERE_SUN_POSTER = "/images/cymasphere-sun-sphere-hero.webp";
 
@@ -454,6 +457,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   const heroRef = useRef<HTMLElement>(null);
   const { allowTour, tourCap } = useOptInHeroTour();
   const [tourRevealed, setTourRevealed] = useState(false);
+  const [showWaveform, setShowWaveform] = useState(false);
   const [liveCatalog, setLiveCatalog] = useState<{
     instruments: HeroProduct[];
     effects: HeroProduct[];
@@ -473,13 +477,11 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
     const el = heroRef.current;
     if (!el) return;
     let pinned: { w: number; h: number } | null = null;
-    let compactLatched: boolean | null = null;
     const sync = () => {
-      const { compact } = latchHeroCompactTour(
-        compactLatched,
-        readHeroCompactTour(window)
+      const compact = isHeroMobileViewport(
+        window.innerWidth,
+        window.innerHeight
       );
-      compactLatched = compact;
       const probe = {
         w: el.getBoundingClientRect().width,
         h: el.getBoundingClientRect().height,
@@ -503,6 +505,12 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
       window.removeEventListener("orientationchange", sync);
       applyHeroSectionPin(el, null);
     };
+  }, []);
+
+  useEffect(() => {
+    setShowWaveform(
+      !window.matchMedia("(max-width: 900px), (pointer: coarse)").matches
+    );
   }, []);
 
   const seedEmpty =
@@ -597,6 +605,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
       : "Harmony, voicings, and patterns from the center. CymaSynth and the catalog in orbit.";
 
   return (
+    <>
     <Hero id="home" ref={heroRef}>
       <HeroReloadDebugMark source="ecosystem-hero" />
       <BoardArea>
@@ -649,6 +658,14 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
         </Headline>
       </BoardArea>
     </Hero>
+      {showWaveform ? (
+        <WaveformTransition
+          barCount={150}
+          topColor="#080911"
+          bottomColor="#080911"
+        />
+      ) : null}
+    </>
   );
 };
 

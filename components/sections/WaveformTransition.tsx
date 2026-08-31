@@ -5,19 +5,19 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 
 const WaveformContainer = styled.div`
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: -60px;
-  width: 100vw;
+  position: relative;
+  left: auto;
+  transform: none;
+  bottom: auto;
+  width: 100%;
   padding: 0;
-  margin: 0;
+  margin: -8px 0 0;
   overflow: visible;
   display: flex;
   align-items: center;
   justify-content: center;
   height: 120px;
-  z-index: 5;
+  z-index: 3;
   pointer-events: none;
   background: none;
   border: none;
@@ -26,7 +26,6 @@ const WaveformContainer = styled.div`
 
   @media (max-width: 768px) {
     height: 90px;
-    bottom: -45px;
   }
 `;
 
