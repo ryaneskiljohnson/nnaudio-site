@@ -2,6 +2,7 @@ import { describe, afterEach, expect, it } from "vitest";
 import { CREDIT_MS, CREDIT_TRAVEL_MS } from "@/utils/circuit-network-layout";
 import {
   arrivingSpinPhase,
+  HERO_WRAP_ARRIVE_PHASE,
   bakeSphereStripFromPixels,
   continueAlignAfterArrive,
   faceOnAlign,
@@ -81,18 +82,43 @@ describe("moonSpinPhase", () => {
     expect(turned).toBeGreaterThan(0.08);
   });
 
-  it("eases to face-on over the travel window instead of snapping", () => {
+  it("eases 20% left of face-on over the travel window instead of snapping", () => {
     const from = 0.42;
     const start = arrivingSpinPhase(1000, from, 1000, CREDIT_TRAVEL_MS);
     const mid = arrivingSpinPhase(1000 + CREDIT_TRAVEL_MS / 2, from, 1000, CREDIT_TRAVEL_MS);
     const end = arrivingSpinPhase(1000 + CREDIT_TRAVEL_MS, from, 1000, CREDIT_TRAVEL_MS);
+    expect(HERO_WRAP_ARRIVE_PHASE).toBeCloseTo(0.9);
     expect(start.done).toBe(false);
     expect(start.phase).toBeCloseTo(from);
     expect(Math.abs(phaseDelta(mid.phase, from))).toBeGreaterThan(0.08);
-    expect(Math.abs(phaseDelta(mid.phase, 0))).toBeGreaterThan(0.08);
+    expect(Math.abs(phaseDelta(mid.phase, HERO_WRAP_ARRIVE_PHASE))).toBeGreaterThan(
+      0.08
+    );
+    expect(end.done).toBe(true);
+    expect(end.phase).toBeCloseTo(HERO_WRAP_ARRIVE_PHASE);
+    const align = continueAlignAfterArrive(1000 + CREDIT_TRAVEL_MS, 48, false, 0);
+    expect(
+      moonSpinPhase(1000 + CREDIT_TRAVEL_MS, 48, false, true, 0, align)
+    ).toBeCloseTo(HERO_WRAP_ARRIVE_PHASE);
+  });
+
+  it("can land face-on so Cymasphere and CymaSynth stay centered", () => {
+    const end = arrivingSpinPhase(
+      1000 + CREDIT_TRAVEL_MS,
+      0.42,
+      1000,
+      CREDIT_TRAVEL_MS,
+      0
+    );
     expect(end.done).toBe(true);
     expect(end.phase).toBeCloseTo(0);
-    const align = continueAlignAfterArrive(1000 + CREDIT_TRAVEL_MS, 48, false, 0);
+    const align = continueAlignAfterArrive(
+      1000 + CREDIT_TRAVEL_MS,
+      48,
+      false,
+      0,
+      0
+    );
     expect(
       moonSpinPhase(1000 + CREDIT_TRAVEL_MS, 48, false, true, 0, align)
     ).toBeCloseTo(0);

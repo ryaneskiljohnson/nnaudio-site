@@ -107,6 +107,7 @@ describe("hero source contracts", () => {
     expect(circuit).toContain("poseBodyOpacity");
     expect(circuit).not.toContain("jump > 10 ? 32");
     expect(circuit).toContain("arrivingSpinPhase");
+    expect(circuit).toContain("HERO_WRAP_ARRIVE_PHASE");
     expect(circuit).toContain("beginArrive");
     expect(circuit).not.toContain("latchFaceOn");
   });

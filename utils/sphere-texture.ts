@@ -1032,12 +1032,20 @@ export function spinArriveProgress(
 }
 
 /**
+ * Catalog holds start 20% left of face-on. Shader srcU on the
+ * camera meridian is `fract(0.5 + 2 * uPhase)`, so a 20% texture
+ * shift is half that in wrap phase. Cymasphere and CymaSynth pass
+ * 0 instead so those zooms stay centered.
+ */
+export const HERO_WRAP_ARRIVE_PHASE = wrapPhase(-0.2 / 2);
+
+/**
  * @brief Phase that reaches `target` when the camera does, without a snap.
  * @param elapsedMs Tour clock.
  * @param from Phase when the hop started.
  * @param startMs When the hop began.
  * @param durMs Hop length (camera travel).
- * @param target Face-on phase (0).
+ * @param target Hold start phase (catalog offset, or 0 for face-on).
  * @returns Current phase and whether the hop finished.
  */
 export function arrivingSpinPhase(
@@ -1045,27 +1053,31 @@ export function arrivingSpinPhase(
   from: number,
   startMs: number,
   durMs: number,
-  target = 0
+  target = HERO_WRAP_ARRIVE_PHASE
 ): { phase: number; done: boolean } {
   const t = spinArriveProgress(elapsedMs, startMs, durMs);
   return { phase: lerpPhase(from, target, t), done: t >= 1 };
 }
 
 /**
- * @brief Align that keeps `moonSpinPhase` at 0 after a hop lands.
+ * @brief Align that keeps `moonSpinPhase` at the hold start after a hop lands.
  * @param elapsedMs Tour clock at arrival.
  * @param periodSec Ambient spin period.
  * @param reverse When true, ambient spin is retrograde.
  * @param boost Turntable offset already applied (usually 0).
+ * @param target Hold start phase (catalog offset, or 0 for face-on).
  * @returns Align value for `moonSpinPhase`.
  */
 export function continueAlignAfterArrive(
   elapsedMs: number,
   periodSec: number,
   reverse: boolean,
-  boost = 0
+  boost = 0,
+  target = HERO_WRAP_ARRIVE_PHASE
 ): number {
-  return wrapPhase(faceOnAlign(elapsedMs, periodSec, reverse) - boost);
+  return wrapPhase(
+    faceOnAlign(elapsedMs, periodSec, reverse) - boost + target
+  );
 }
 
 /**

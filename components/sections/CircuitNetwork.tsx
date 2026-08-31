@@ -57,6 +57,7 @@ import { optimizedImageUrl } from "@/utils/optimized-image-url";
 import {
   arrivingSpinPhase,
   continueAlignAfterArrive,
+  HERO_WRAP_ARRIVE_PHASE,
   moonSpinPhase,
 } from "@/utils/sphere-texture";
 import { DEFAULT_CYMASYNTH_NODE, type CircuitNode } from "./circuit-node";
@@ -1168,7 +1169,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         featured: boolean,
         boost: number,
         align: number,
-        setAlign: (next: number) => void
+        setAlign: (next: number) => void,
+        arriveTarget = HERO_WRAP_ARRIVE_PHASE
       ) => {
         if (reducedMotion) return 0;
         const arriving = spinArrive.current.get(mapKey);
@@ -1177,11 +1179,18 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             elapsed,
             arriving.from,
             arriving.startMs,
-            arriving.durMs
+            arriving.durMs,
+            arriveTarget
           );
           if (done) {
             setAlign(
-              continueAlignAfterArrive(elapsed, spinDur, spinRev, boost)
+              continueAlignAfterArrive(
+                elapsed,
+                spinDur,
+                spinRev,
+                boost,
+                arriveTarget
+              )
             );
             spinArrive.current.delete(mapKey);
           }
@@ -1212,7 +1221,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           sunAlignRef.current,
           (next) => {
             sunAlignRef.current = next;
-          }
+          },
+          0
         )
       );
 
@@ -1314,7 +1324,8 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             faceAlign.current.get(body.key) ?? 0,
             (next) => {
               faceAlign.current.set(body.key, next);
-            }
+            },
+            body.synth ? 0 : HERO_WRAP_ARRIVE_PHASE
           )
         );
       }
