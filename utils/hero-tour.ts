@@ -306,6 +306,49 @@ export function shouldKeepHeroFrameSize(
 }
 
 /**
+ * @brief Pixel box to pin on `#home` so iOS chrome cannot grow the slot.
+ * Compact tours keep the first height; desktop stays on CSS `svh`.
+ * @param prev Last applied pin, or null before the first measure.
+ * @param measured Live bounding box.
+ * @param compact Phone-capped tour.
+ * @returns Box to apply, previous pin to keep, or null to clear (desktop).
+ * @example
+ * nextHeroSectionPin(null, { w: 390, h: 844 }, true) // { w: 390, h: 844 }
+ * nextHeroSectionPin({ w: 390, h: 844 }, { w: 390, h: 760 }, true) // prev
+ */
+export function nextHeroSectionPin(
+  prev: { w: number; h: number } | null,
+  measured: { w: number; h: number },
+  compact: boolean
+): { w: number; h: number } | null {
+  if (!compact) return null;
+  if (measured.w < 8 || measured.h < 8) return prev;
+  if (shouldKeepHeroFrameSize(prev, measured, true)) return prev;
+  return measured;
+}
+
+/**
+ * @brief Writes or clears a pixel height lock on the hero section.
+ * @param el `#home`.
+ * @param box Pin to apply, or null to return to CSS `svh`.
+ */
+export function applyHeroSectionPin(
+  el: HTMLElement,
+  box: { w: number; h: number } | null
+): void {
+  if (!box) {
+    el.style.height = "";
+    el.style.minHeight = "";
+    el.style.maxHeight = "";
+    return;
+  }
+  const h = `${Math.round(box.h)}px`;
+  el.style.height = h;
+  el.style.minHeight = h;
+  el.style.maxHeight = h;
+}
+
+/**
  * @brief Whether this visit should use the compact (lite) hero tour.
  * A short-side-only 768px check treated iPads and iPhones on
  * "Request Desktop Website" as desktop.

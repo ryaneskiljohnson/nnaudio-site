@@ -26,6 +26,7 @@ export default function HomeCatalogFallback() {
           flexDirection: "column",
           height: "100svh",
           minHeight: "100svh",
+          maxHeight: "100svh",
           width: "100%",
           marginBottom: 28,
           overflow: "hidden",

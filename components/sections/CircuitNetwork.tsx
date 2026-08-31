@@ -167,7 +167,10 @@ const Board = styled.div`
 
 const GlCanvas = styled.canvas`
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  /* No inset/bottom — top+bottom would stretch the bitmap when the
+   * board grows and the drawing buffer stays locked. */
   width: 100%;
   height: 100%;
   display: block;
@@ -1485,6 +1488,11 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         ref={canvasRef}
         aria-hidden
         onPointerUp={onCanvasPointerUp}
+        style={
+          frameSize
+            ? { width: frameSize.w, height: frameSize.h }
+            : undefined
+        }
       />
       {!webglOk ? (
         <FallbackPoster aria-hidden>

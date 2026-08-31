@@ -23,6 +23,7 @@ import {
   heroTourStopCap,
   isHeroMobileViewport,
   latchHeroCompactTour,
+  nextHeroSectionPin,
   prefersLiteHeroTour,
   readHeroCompactTour,
   readHeroTourEnvironment,
@@ -189,6 +190,17 @@ describe("latchHeroCompactTour / shouldKeepHeroFrameSize", () => {
     expect(
       shouldKeepHeroFrameSize({ w: 1280, h: 800 }, { w: 1280, h: 700 }, false)
     ).toBe(false);
+  });
+
+  it("pins the first compact height and ignores chrome-only resizes", () => {
+    const first = { w: 390, h: 844 };
+    expect(nextHeroSectionPin(null, first, true)).toEqual(first);
+    expect(nextHeroSectionPin(first, { w: 390, h: 760 }, true)).toEqual(first);
+    expect(nextHeroSectionPin(first, { w: 844, h: 390 }, true)).toEqual({
+      w: 844,
+      h: 390,
+    });
+    expect(nextHeroSectionPin(first, first, false)).toBeNull();
   });
 });
 

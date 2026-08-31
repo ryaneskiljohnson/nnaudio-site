@@ -302,9 +302,12 @@ a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit),
 #home {
   height: 100vh;
   height: 100svh;
-  min-height: 100vh;
+  /* svh only — 100vh min-height grows with iOS chrome and eats scroll. */
   min-height: 100svh;
+  max-height: 100vh;
+  max-height: 100svh;
   overflow: hidden;
+  overscroll-behavior: none;
   background: #02030a;
 }
 

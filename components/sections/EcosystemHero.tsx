@@ -16,7 +16,7 @@
  * late sheet cannot collapse-then-expand.
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import styled, { keyframes } from "styled-components";
@@ -29,7 +29,11 @@ import {
   type HomepageProductRow,
 } from "@/lib/homepage-hero-seed";
 import {
+  applyHeroSectionPin,
+  latchHeroCompactTour,
+  nextHeroSectionPin,
   parseHeroTourQuery,
+  readHeroCompactTour,
   resolveHeroTourStart,
   scheduleDesktopHeroTour,
 } from "@/utils/hero-tour";
@@ -80,13 +84,16 @@ const Hero = styled.section`
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  /* Match globals.css #home. svh avoids URL-bar resize CLS. */
+  /* Match globals.css #home. svh + a pixel pin on phones so iOS
+   * chrome cannot grow the slot and stretch the WebGL canvas. */
   height: 100svh;
   min-height: 100svh;
+  max-height: 100svh;
   width: 100%;
   padding: 0;
   margin-bottom: 28px;
   overflow: hidden;
+  overscroll-behavior: none;
   background: #02030a;
 `;
 
@@ -444,6 +451,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   productCount = 0,
 }) => {
   const pathname = usePathname();
+  const heroRef = useRef<HTMLElement>(null);
   const { allowTour, tourCap } = useOptInHeroTour();
   const [tourRevealed, setTourRevealed] = useState(false);
   const [liveCatalog, setLiveCatalog] = useState<{
@@ -460,6 +468,42 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
       tourCap: tourCap ?? null,
     });
   }, [allowTour, tourCap]);
+
+  useLayoutEffect(() => {
+    const el = heroRef.current;
+    if (!el) return;
+    let pinned: { w: number; h: number } | null = null;
+    let compactLatched: boolean | null = null;
+    const sync = () => {
+      const { compact } = latchHeroCompactTour(
+        compactLatched,
+        readHeroCompactTour(window)
+      );
+      compactLatched = compact;
+      const probe = {
+        w: el.getBoundingClientRect().width,
+        h: el.getBoundingClientRect().height,
+      };
+      if (pinned && nextHeroSectionPin(pinned, probe, compact) === pinned) {
+        return;
+      }
+      applyHeroSectionPin(el, null);
+      const measured = {
+        w: el.getBoundingClientRect().width,
+        h: el.getBoundingClientRect().height,
+      };
+      pinned = nextHeroSectionPin(null, measured, compact);
+      applyHeroSectionPin(el, pinned);
+    };
+    sync();
+    window.addEventListener("resize", sync);
+    window.addEventListener("orientationchange", sync);
+    return () => {
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("orientationchange", sync);
+      applyHeroSectionPin(el, null);
+    };
+  }, []);
 
   const seedEmpty =
     instruments.length + effects.length + packs.length + midiFx.length === 0;
@@ -553,7 +597,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
       : "Harmony, voicings, and patterns from the center. CymaSynth and the catalog in orbit.";
 
   return (
-    <Hero id="home">
+    <Hero id="home" ref={heroRef}>
       <HeroReloadDebugMark source="ecosystem-hero" />
       <BoardArea>
         <BoardFade>
