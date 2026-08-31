@@ -433,21 +433,62 @@ export function catalogBatchStart(
 }
 
 /**
- * @brief Catalog credits parked on the five slots for this batch.
- * @param credits Ordered credits.
- * @param batchStart {@link catalogBatchStart} result.
+ * @brief Orbit-slot index from a catalog credit's `bodyKey`.
+ * @param credit Tour credit.
+ * @returns 0 .. {@link CATALOG_ORBIT_SLOTS}-1, or null.
+ */
+export function catalogSlotIndex(credit: CreditTarget): number | null {
+  const key = credit.bodyKey;
+  if (!key?.startsWith("catalog-slot-")) return null;
+  const n = Number(key.slice("catalog-slot-".length));
+  if (!Number.isFinite(n)) return null;
+  return (
+    ((Math.trunc(n) % CATALOG_ORBIT_SLOTS) + CATALOG_ORBIT_SLOTS) %
+    CATALOG_ORBIT_SLOTS
+  );
+}
+
+/**
+ * @brief Catalog skins on the five seats for this tour moment.
+ * Each seat keeps the latest credit that used it, through the next
+ * catalog stop when that stop is already queued — so a recycled slot
+ * wears the incoming moon for the whole previous hold, not only after
+ * the camera arrives. Empty seats fill from the lookahead batch so
+ * the opening set is still five planets.
+ * @param credits Ordered credits (slot keys already assigned).
+ * @param creditIndex `cameraTour` credit index.
  */
 export function catalogSlotOccupants(
   credits: CreditTarget[],
-  batchStart: number
+  creditIndex: number | null | undefined
 ): Array<CreditTarget | null> {
   const catalog = credits.filter(isCatalogCredit);
-  if (catalog.length === 0) {
-    return Array.from({ length: CATALOG_ORBIT_SLOTS }, () => null);
+  const empty = (): Array<CreditTarget | null> =>
+    Array.from({ length: CATALOG_ORBIT_SLOTS }, () => null);
+  if (catalog.length === 0) return empty();
+
+  const cur =
+    creditIndex == null
+      ? 0
+      : Math.min(Math.max(0, creditIndex), Math.max(0, credits.length - 1));
+  const next = credits[cur + 1];
+  const dest = next && isCatalogCredit(next) ? cur + 1 : cur;
+
+  const result = empty();
+  for (let i = 0; i <= dest && i < credits.length; i += 1) {
+    const credit = credits[i];
+    if (!credit || !isCatalogCredit(credit)) continue;
+    const slot = catalogSlotIndex(credit);
+    if (slot == null) continue;
+    result[slot] = credit;
   }
-  return Array.from({ length: CATALOG_ORBIT_SLOTS }, (_, slot) => {
-    return catalog[(batchStart + slot) % catalog.length] ?? null;
-  });
+
+  const batchStart = catalogBatchStart(credits, dest);
+  for (let slot = 0; slot < CATALOG_ORBIT_SLOTS; slot += 1) {
+    if (result[slot]) continue;
+    result[slot] = catalog[(batchStart + slot) % catalog.length] ?? null;
+  }
+  return result;
 }
 
 /**
@@ -1162,6 +1203,8 @@ export interface CreditTarget {
   /** Product page slug for the credit-card link. */
   slug?: string;
   price?: string;
+  /** List price shown struck through when `price` is a sale. */
+  compareAtPrice?: string;
   /** Product tagline shown as the small line above the name. */
   subtitle?: string;
   /** Short product description shown beside the held planet. */

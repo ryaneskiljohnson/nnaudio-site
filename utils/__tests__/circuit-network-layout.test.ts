@@ -269,9 +269,36 @@ describe("catalog orbit slots", () => {
       (c, i) => c.key === SUN_FOCUS_KEY && i > 2
     );
     expect(catalogBatchStart(credits, secondSun)).toBe(10);
+    expect(catalogSlotOccupants(credits, fifthCatalog).map((c) => c?.key)).toEqual(
+      ["m6", "m2", "m3", "m4", "m5"]
+    );
+    const sixthCatalog = credits.findIndex((c) => c.key === catalog[5]?.key);
+    expect(catalogSlotOccupants(credits, sixthCatalog).map((c) => c?.key)).toEqual(
+      ["m6", "m7", "m3", "m4", "m5"]
+    );
+    const travelToSixth =
+      TOUR_INTRO_MS +
+      creditHoldMs(credits[0]!) +
+      creditHoldMs(credits[1]!) +
+      CREDIT_MS * 4 +
+      CREDIT_MS -
+      CREDIT_TRAVEL_MS / 2;
+    const hopCam = cameraTour(travelToSixth, false, credits);
+    expect(hopCam.traveling).toBe(true);
+    expect(hopCam.creditIndex).toBe(fifthCatalog);
+    expect(hopCam.nextKey).toBe("m6");
     expect(
-      catalogSlotOccupants(credits, 10).map((c) => c?.key)
-    ).toEqual(["m11", "m12", "m1", "m2", "m3"]);
+      catalogSlotOccupants(credits, hopCam.creditIndex)[0]?.key
+    ).toBe("m6");
+    expect(
+      catalogSlotOccupants(credits, secondSun).map((c) => c?.key)
+    ).toEqual(["m6", "m7", "m8", "m9", "m10"]);
+    const returnSynth = credits.findIndex(
+      (c, i) => c.key === "synth" && i > secondSun
+    );
+    expect(
+      catalogSlotOccupants(credits, returnSynth).map((c) => c?.key)
+    ).toEqual(["m11", "m7", "m8", "m9", "m10"]);
   });
 });
 

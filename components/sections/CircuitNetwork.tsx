@@ -27,7 +27,6 @@ import {
   creditStageKeys,
   buildHeroCredits,
   assignCatalogSlotKeys,
-  catalogBatchStart,
   catalogOrbitSeats,
   catalogSlotKey,
   catalogSlotOccupants,
@@ -287,13 +286,24 @@ const CreditName = styled.span`
 `;
 
 const CreditPrice = styled.span`
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45em 0.65em;
   margin-top: 10px;
   font-size: 0.86rem;
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.88);
+`;
+
+const CreditWas = styled.span`
+  display: none;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-decoration: line-through;
+  color: rgba(255, 255, 255, 0.42);
 `;
 
 const CreditBlurb = styled.p`
@@ -366,7 +376,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const creditLinkRef = useRef<HTMLAnchorElement>(null);
   const creditRoleRef = useRef<HTMLSpanElement>(null);
   const creditNameRef = useRef<HTMLSpanElement>(null);
+  const creditPriceRowRef = useRef<HTMLSpanElement>(null);
   const creditPriceRef = useRef<HTMLSpanElement>(null);
+  const creditWasRef = useRef<HTMLSpanElement>(null);
   const creditDescRef = useRef<HTMLParagraphElement>(null);
   const creditThumbRef = useRef<HTMLImageElement>(null);
   const lastCreditKey = useRef<string | null>(null);
@@ -679,6 +691,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       name: cymasphere?.name || "Cymasphere",
       slug: cymasphere?.slug || "cymasphere",
       price: cymasphere?.price,
+      compareAtPrice: cymasphere?.compareAtPrice,
       subtitle: (cymasphere?.tagline || "").trim(),
       description: (cymasphere?.description || "").trim(),
       image: CYMASPHERE_APP_ICON,
@@ -697,6 +710,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
       name: synthNode.name,
       slug: synthNode.slug,
       price: synthNode.price,
+      compareAtPrice: synthNode.compareAtPrice,
       subtitle: (synthNode.tagline || "").trim(),
       description: (synthNode.description || "").trim(),
       image: synthNode.image,
@@ -714,6 +728,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         name: node.name,
         slug: node.slug,
         price: node.price,
+        compareAtPrice: node.compareAtPrice,
         subtitle: (node.tagline || "").trim(),
         description: (node.description || "").trim(),
         image: node.image,
@@ -909,7 +924,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         sunCredit || holdFrameOffset(focused.key, viewHalfW).x > 0
           ? "left"
           : "right";
-      const copyKey = `${focused.key}|${focused.name}|${focused.subtitle ?? ""}|${focused.price ?? ""}|${thumbSrc}|${blurb}|${copySide}`;
+      const copyKey = `${focused.key}|${focused.name}|${focused.subtitle ?? ""}|${focused.compareAtPrice ?? ""}|${focused.price ?? ""}|${thumbSrc}|${blurb}|${copySide}`;
       if (copyKey === lastCreditCopy) return;
       lastCreditCopy = copyKey;
       if (creditWrapRef.current) creditWrapRef.current.dataset.side = copySide;
@@ -922,8 +937,17 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         creditRoleRef.current.textContent = focused.subtitle || "";
         creditRoleRef.current.style.display = focused.subtitle ? "" : "none";
       }
+      if (creditWasRef.current) {
+        creditWasRef.current.textContent = focused.compareAtPrice ?? "";
+        creditWasRef.current.style.display = focused.compareAtPrice
+          ? ""
+          : "none";
+      }
       if (creditPriceRef.current) {
         creditPriceRef.current.textContent = focused.price ?? "";
+      }
+      if (creditPriceRowRef.current) {
+        creditPriceRowRef.current.style.display = focused.price ? "" : "none";
       }
       if (creditDescRef.current) {
         creditDescRef.current.textContent = blurb;
@@ -1048,7 +1072,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         follow.armed = true;
       } else {
         const holdingMoon = trackingMoon && !cam.traveling;
-        if (holdingMoon) {
+        if (holdingMoon || cam.traveling) {
           follow.x = camX;
           follow.y = camY;
           follow.z = cam.rotateZ;
@@ -1206,8 +1230,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         ? creditsByKey.get(cam.focusKey)
         : undefined;
       const featuredBodyKey = focusedCredit?.bodyKey ?? cam.focusKey;
-      const batchStart = catalogBatchStart(credits, cam.creditIndex);
-      const occupants = catalogSlotOccupants(credits, batchStart);
+      const occupants = catalogSlotOccupants(credits, cam.creditIndex);
+      const incomingBodyKey = cam.nextKey
+        ? (creditsByKey.get(cam.nextKey)?.bodyKey ?? cam.nextKey)
+        : "";
       for (let slot = 0; slot < occupants.length; slot += 1) {
         const occupant = occupants[slot];
         const slotKey = catalogSlotKey(slot);
@@ -1217,9 +1243,13 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         if (nextSlug !== shown && shown && fadeNow > 0.04) continue;
         if (nextSlug !== shown) {
           slotShown.current.set(slotKey, nextSlug);
-          faceAlign.current.delete(slotKey);
-          spinBoost.current.delete(slotKey);
-          spinArrive.current.delete(slotKey);
+          const arrivingHere =
+            slotKey === incomingBodyKey && spinArrive.current.has(slotKey);
+          if (!arrivingHere) {
+            faceAlign.current.delete(slotKey);
+            spinBoost.current.delete(slotKey);
+            spinArrive.current.delete(slotKey);
+          }
           const seat = seats[slot];
           const slotBody = bodies[1 + slot];
           if (occupant && seat) {
@@ -1387,7 +1417,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           <CreditText>
             <CreditRole ref={creditRoleRef} />
             <CreditName ref={creditNameRef} />
-            <CreditPrice ref={creditPriceRef} />
+            <CreditPrice ref={creditPriceRowRef}>
+              <CreditWas ref={creditWasRef} />
+              <span ref={creditPriceRef} />
+            </CreditPrice>
             <CreditBlurb ref={creditDescRef} />
           </CreditText>
         </CreditCard>
