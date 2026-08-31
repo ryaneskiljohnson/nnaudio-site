@@ -75,7 +75,7 @@ describe("applyBodyTexture", () => {
     expect(sun.wrap?.uniforms.uWarmRim?.value).toBe(1);
   });
 
-  it("shades catalog moons along the wrap meridian", () => {
+  it("skips meridian shade so catalog moons take the same gloss", () => {
     const moon = createBodyMesh({
       key: "n",
       slug: "n",
@@ -86,7 +86,7 @@ describe("applyBodyTexture", () => {
       spinRev: false,
     });
     applyBodyTexture(moon, new Texture());
-    expect(moon.wrap?.uniforms.uSurfaceShade?.value).toBe(1);
+    expect(moon.wrap?.uniforms.uSurfaceShade?.value).toBe(0);
     expect(moon.wrap?.uniforms.uPlanar?.value).toBe(0);
   });
 });

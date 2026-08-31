@@ -136,14 +136,14 @@ export class HeroScene {
     this.camera.add(this.sky);
     this.scene.add(this.camera);
 
-    this.scene.add(new AmbientLight(0x8a7ab8, 1.35));
-    this.light = new PointLight(0xffe6c8, 2.8, 0, 1.05);
+    this.scene.add(new AmbientLight(0x8a7ab8, 1.05));
+    this.light = new PointLight(0xffe6c8, 2.2, 0, 1.05);
     this.light.position.set(0, 0, 0);
     this.world.add(this.light);
-    // Headlight: rides with the camera so the visible side stays lit.
-    const key = new DirectionalLight(0xfff6ea, 3.2);
-    key.position.set(0.15, 0.22, 0);
-    key.target.position.set(0, 0, -1);
+    // Key rides with the camera, from above-left, not dead-on.
+    const key = new DirectionalLight(0xfff6ea, 2.4);
+    key.position.set(-0.58, 0.42, 0.12);
+    key.target.position.set(0.18, -0.16, -1);
     this.camera.add(key);
     this.camera.add(key.target);
 

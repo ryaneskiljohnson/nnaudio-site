@@ -194,25 +194,25 @@ export function createSunAura(): Group {
   group.name = "hero-sun-glow";
   addSunSprite(
     group,
-    "rgba(255,230,180,0.28)",
-    0.10,
+    "rgba(255,230,180,0.18)",
+    0.07,
     0,
     0,
     -0.14,
-    2.22,
-    2.22,
+    2.18,
+    2.18,
     "sun-corona",
     true
   );
   addSunSprite(
     group,
-    "rgba(108,99,255,0.34)",
-    0.12,
+    "rgba(108,99,255,0.22)",
+    0.08,
     0,
     0,
     -0.18,
-    2.42,
-    2.42,
+    2.32,
+    2.32,
     "sun-bloom-violet",
     true
   );
