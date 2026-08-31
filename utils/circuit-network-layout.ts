@@ -799,14 +799,14 @@ export function lookAtMoon(
 export const VISIBLE_MOON_BUDGET = 6;
 /** Fade in/out when a moon joins or leaves the stage. */
 export const HERO_BODY_FADE_TAU_MS = 320;
-/** Follow tautness while locked on a featured moon. */
+/** Follow tautness while locked on a featured moon (unused during snaps). */
 export const HERO_CAMERA_TRACK_TAU_MS = 140;
 /** Follow tautness while flying into or holding the sun. */
-export const HERO_CAMERA_SUN_TAU_MS = 380;
+export const HERO_CAMERA_SUN_TAU_MS = 320;
 /** Follow tautness after a large pose jump (intro / outro). */
-export const HERO_CAMERA_JUMP_TAU_MS = 220;
+export const HERO_CAMERA_JUMP_TAU_MS = 32;
 /** Follow tautness on the free galaxy path. */
-export const HERO_CAMERA_FREE_TAU_MS = 180;
+export const HERO_CAMERA_FREE_TAU_MS = 150;
 
 /**
  * @brief Exponential fade toward a 0–1 opacity target.
@@ -830,8 +830,8 @@ export function stepHeroOpacity(
 }
 
 /**
- * @brief Camera-follow time constant. Holds still ease — a 32ms jump
- * read as a cut.
+ * @brief Camera-follow time constant. Moon holds snap in the tour
+ * loop; hops use these taus (32ms jump matches the reference).
  * @param trackingMoon Credit hold or hop onto a catalog moon.
  * @param sunApproach Flying into or holding Cymasphere.
  * @param jump Combined yaw + dolly discontinuity.

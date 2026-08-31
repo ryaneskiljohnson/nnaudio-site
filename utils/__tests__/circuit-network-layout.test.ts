@@ -404,12 +404,14 @@ describe("stepHeroOpacity / heroCameraFollowTau", () => {
     expect(stepHeroOpacity(0.995, 1, 16, 320)).toBe(1);
   });
 
-  it("keeps moon holds smooth and never uses a 32ms cut", () => {
+  it("uses the reference follow taus for sun, jumps, and free path", () => {
     expect(heroCameraFollowTau(true, false, 0)).toBe(HERO_CAMERA_TRACK_TAU_MS);
     expect(heroCameraFollowTau(false, true, 40)).toBe(HERO_CAMERA_SUN_TAU_MS);
     expect(heroCameraFollowTau(false, false, 40)).toBe(HERO_CAMERA_JUMP_TAU_MS);
     expect(heroCameraFollowTau(false, false, 1)).toBe(HERO_CAMERA_FREE_TAU_MS);
-    expect(HERO_CAMERA_JUMP_TAU_MS).toBeGreaterThan(100);
+    expect(HERO_CAMERA_SUN_TAU_MS).toBe(320);
+    expect(HERO_CAMERA_JUMP_TAU_MS).toBe(32);
+    expect(HERO_CAMERA_FREE_TAU_MS).toBe(150);
   });
 });
 
