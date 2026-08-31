@@ -6,6 +6,7 @@ import {
   homepageCategoryTiles,
   isFreeHomepageProduct,
   mapRawProductToFeaturedCard,
+  orderHeroTourCatalog,
   partitionHeroTourProducts,
   seedRowToCard,
   sortFeaturedProducts,
@@ -240,6 +241,17 @@ describe("seedRowToCard", () => {
     });
     expect(card.image).toBe("https://example.com/a.webp");
     expect(card.price).toBe(19);
+    expect(card.shopPromoted).toBe(false);
+    expect(
+      seedRowToCard({
+        id: "1",
+        slug: "reiya",
+        name: "Reiya",
+        price: 19,
+        sale_price: 9,
+        shopPromoted: true,
+      }).shopPromoted
+    ).toBe(true);
   });
 });
 
@@ -255,6 +267,19 @@ describe("mapRawProductToFeaturedCard", () => {
       logo_url: "https://example.com/logo.png",
     });
     expect(card.price).toBe("$29");
+  });
+});
+
+describe("orderHeroTourCatalog", () => {
+  it("shuffles then pins shop-promotion products first", () => {
+    const nodes = [
+      { slug: "a", promoted: false },
+      { slug: "b", promoted: true },
+      { slug: "c", promoted: false },
+      { slug: "d", promoted: true },
+    ];
+    const ordered = orderHeroTourCatalog(nodes, () => 0);
+    expect(ordered.map((node) => node.slug)).toEqual(["b", "d", "c", "a"]);
   });
 });
 

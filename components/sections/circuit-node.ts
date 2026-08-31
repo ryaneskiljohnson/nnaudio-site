@@ -18,6 +18,8 @@ export interface CircuitNode {
   tagline?: string;
   /** Short product description shown in the empty half of a hold. */
   description?: string;
+  /** True when the product is a target of the active shop promotion. */
+  promoted?: boolean;
 }
 
 /** Flagship synth when the catalog seed omitted CymaSynth. */

@@ -7,6 +7,7 @@
 import { isPSTDateAfterNow, isPSTDateBeforeNow } from "@/utils/timezoneUtils";
 import {
   applyShopPromotionToProducts,
+  isShopProductIncluded,
   type PromotionPricingRow,
 } from "@/utils/promotions/apply-promotion";
 
@@ -91,4 +92,26 @@ export function withShopPromotionPrices<
 >(products: T[], promotion: PromotionPricingRow | null): T[] {
   if (!promotion) return products;
   return applyShopPromotionToProducts(products, promotion);
+}
+
+/**
+ * @brief Marks catalog rows that are targets of the active shop promotion.
+ * Manual perpetual sales do not count.
+ * @param products Catalog rows with ids.
+ * @param promotion Active shop promotion or null.
+ */
+export function flagShopPromotedProducts<
+  T extends { id?: string | number | null },
+>(
+  products: T[],
+  promotion: PromotionPricingRow | null
+): Array<T & { shopPromoted: boolean }> {
+  return products.map((product) => ({
+    ...product,
+    shopPromoted: Boolean(
+      product.id != null &&
+        product.id !== "" &&
+        isShopProductIncluded(String(product.id), promotion)
+    ),
+  }));
 }

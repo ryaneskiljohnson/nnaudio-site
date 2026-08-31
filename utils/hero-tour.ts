@@ -247,8 +247,8 @@ export function readHeroTourEnvironment(
 }
 
 /**
- * @brief Compact-tour flag from a live window. Same predicate as Play
- * gating so an iPad / "Request Desktop Website" phone still gets the
+ * @brief Compact-tour flag from a live window. Same predicate as lite
+ * detection so an iPad / "Request Desktop Website" phone still gets the
  * capped 3D system instead of the full desktop catalog.
  * @param win `window` or a test double.
  * @returns True when CircuitNetwork should use the phone-capped path.
@@ -306,10 +306,9 @@ export function shouldKeepHeroFrameSize(
 }
 
 /**
- * @brief Whether CircuitNetwork must not auto-start.
+ * @brief Whether this visit should use the compact (lite) hero tour.
  * A short-side-only 768px check treated iPads and iPhones on
- * "Request Desktop Website" as desktop. Safari then killed the tab
- * (~10s) and reloaded in a loop.
+ * "Request Desktop Website" as desktop.
  * @param env Viewport and input snapshot.
  * @returns True for phones, tablets, and touch-primary UAs.
  * @example
@@ -343,22 +342,22 @@ export function prefersLiteHeroTour(env: HeroTourEnvironment): boolean {
 
 /** First-paint decision for which hero tour (if any) to mount. */
 export interface HeroTourStart {
-  /** Mount CircuitNetwork (desktop idle start or explicit Play). */
+  /** Mount CircuitNetwork (idle start or query autoplay). */
   allowTour: boolean;
-  showPlay: boolean;
   scheduleDesktop: boolean;
 }
 
 /**
  * @brief Picks the hero mount without touching the DOM.
- * Lite devices wait for Play, then mount the same live 3D tour.
- * @param input Lite/motion flags and query flags.
- * @returns Whether to show Play, start the tour, or idle-start desktop.
+ * Phones and desktop both idle-start the live 3D tour. Reduced
+ * motion stays on the poster.
+ * @param input Motion flags and query flags.
+ * @returns Whether to start the tour now or after the idle callback.
  * @example
  * resolveHeroTourStart({
  *   lite: true, reduceMotion: false, autoTour: false, force3d: false,
  * })
- * // { allowTour: false, showPlay: true, scheduleDesktop: false }
+ * // { allowTour: false, scheduleDesktop: true }
  */
 export function resolveHeroTourStart(input: {
   lite: boolean;
@@ -369,34 +368,17 @@ export function resolveHeroTourStart(input: {
   if (input.reduceMotion) {
     return {
       allowTour: false,
-      showPlay: false,
-      scheduleDesktop: false,
-    };
-  }
-  if (input.lite) {
-    if (input.autoTour) {
-      return {
-        allowTour: true,
-        showPlay: false,
-        scheduleDesktop: false,
-      };
-    }
-    return {
-      allowTour: false,
-      showPlay: true,
       scheduleDesktop: false,
     };
   }
   if (input.autoTour || input.force3d) {
     return {
       allowTour: true,
-      showPlay: false,
       scheduleDesktop: false,
     };
   }
   return {
     allowTour: false,
-    showPlay: false,
     scheduleDesktop: true,
   };
 }

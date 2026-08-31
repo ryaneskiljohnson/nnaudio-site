@@ -11,6 +11,27 @@ export const HERO_CATALOG_SKIP = new Set([
   "nnaudio-access",
 ]);
 
+/**
+ * @brief Shuffles catalog moons, then pins active shop-promotion
+ * products first. Perpetual sale prices do not count.
+ * @param nodes Interleaved hero moons (CymaSynth already removed).
+ * @param random Injected RNG for tests.
+ */
+export function orderHeroTourCatalog<T extends { promoted?: boolean }>(
+  nodes: T[],
+  random: () => number = Math.random
+): T[] {
+  const shuffled = [...nodes];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1));
+    const swap = shuffled[i];
+    shuffled[i] = shuffled[j] as T;
+    shuffled[j] = swap as T;
+  }
+  shuffled.sort((a, b) => Number(Boolean(b.promoted)) - Number(Boolean(a.promoted)));
+  return shuffled;
+}
+
 /** Curated best-sellers order for the featured strip. */
 export const CURATED_FEATURED_ORDER = [
   "ultimate-bundle",
@@ -107,6 +128,8 @@ export type HomepageProductRow = {
   background_video_url?: string | null;
   price?: number | null;
   sale_price?: number | null;
+  /** True when this row is a target of the active shop promotion. */
+  shopPromoted?: boolean;
 };
 
 /**
@@ -327,6 +350,8 @@ export interface HomepageCard {
   backgroundImage: string;
   price: number;
   sale_price?: number | null;
+  /** True when this card is a target of the active shop promotion. */
+  shopPromoted?: boolean;
 }
 
 /** Category tile data for the server-rendered catalog grid. */
@@ -394,6 +419,7 @@ export function seedRowToCard(row: HomepageProductRow): HomepageCard {
       row.background_image_url || row.background_video_url || "",
     price: typeof row.price === "number" ? row.price : 0,
     sale_price: row.sale_price,
+    shopPromoted: Boolean(row.shopPromoted),
   };
 }
 

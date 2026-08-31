@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { flagShopPromotedProducts } from "@/utils/promotions/active-shop-promotion";
 import {
   eligibleSubtotalForPromotion,
   STRIPE_ONLY_COUPON_SCOPE,
@@ -42,5 +43,32 @@ describe("eligibleSubtotalForPromotion", () => {
       discount_value: 10,
     };
     expect(eligibleSubtotalForPromotion(items, promotion)).toBe(0);
+  });
+});
+
+describe("flagShopPromotedProducts", () => {
+  it("flags only products targeted by the active shop promotion", () => {
+    const promotion: PromotionPricingRow = {
+      promotion_target_mode: "selected",
+      included_targets: [`product:${PRODUCT_A}`],
+      discount_type: "percentage",
+      discount_value: 20,
+    };
+    const flagged = flagShopPromotedProducts(
+      [
+        { id: PRODUCT_A, sale_price: 10 },
+        { id: PRODUCT_B, sale_price: 5 },
+      ],
+      promotion
+    );
+    expect(flagged.map((row) => row.shopPromoted)).toEqual([true, false]);
+  });
+
+  it("does not treat a perpetual sale as a shop promotion", () => {
+    const flagged = flagShopPromotedProducts(
+      [{ id: PRODUCT_A, sale_price: 10 }],
+      null
+    );
+    expect(flagged[0]?.shopPromoted).toBe(false);
   });
 });

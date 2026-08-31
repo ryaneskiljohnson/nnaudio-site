@@ -26,6 +26,7 @@ import {
 } from "@/lib/homepage-hero-seed";
 import {
   fetchActiveShopPromotion,
+  flagShopPromotedProducts,
   withShopPromotionPrices,
 } from "@/utils/promotions/active-shop-promotion";
 import { withTimeout } from "@/utils/with-timeout";
@@ -83,8 +84,8 @@ async function fetchCategoryBucket(
       .limit(HERO_TOUR_LIMIT),
   ]);
 
-  const products = withShopPromotionPrices(
-    productsRes.data ?? [],
+  const products = flagShopPromotedProducts(
+    withShopPromotionPrices(productsRes.data ?? [], shopPromotion),
     shopPromotion
   );
 

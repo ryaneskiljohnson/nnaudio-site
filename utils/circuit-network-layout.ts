@@ -1140,7 +1140,7 @@ export const INTRO_CARD_LEAD_MS = 320;
 /** Base time on a catalog product: hold plus the journey to the next stop. */
 export const CREDIT_MS = 4400;
 /** Catalog moons between Cymasphere + CymaSynth returns. */
-export const HERO_TOUR_CATALOG_BATCH = 5;
+export const HERO_TOUR_CATALOG_BATCH = 10;
 /** Reserved focus key for the Cymasphere sun hold. */
 export const SUN_FOCUS_KEY = "sun-cymasphere";
 /** Travel leg at the end of each credit — the flight to the next moon. */
@@ -1262,19 +1262,21 @@ export function tourDurationMs(
 }
 
 /**
- * @brief Tour order: Cymasphere first, then CymaSynth, then the rest by size.
- * Sun always leads (independent of hold weight). Among moons, weight desc
- * (2 / 1), then size.
+ * @brief Tour order: Cymasphere first, then CymaSynth, then the rest
+ * in the given catalog order (already shuffled / promoted).
  * @param credits Unsorted targets.
- * @returns Sorted copy.
+ * @returns Ordered copy.
  */
 export function orderCredits(credits: CreditTarget[]): CreditTarget[] {
-  return [...credits].sort((a, b) => {
-    if (a.sun !== b.sun) return a.sun ? -1 : 1;
-    const dw = (b.weight ?? 1) - (a.weight ?? 1);
-    if (dw !== 0) return dw;
-    return b.size - a.size;
-  });
+  const suns: CreditTarget[] = [];
+  const flagships: CreditTarget[] = [];
+  const catalog: CreditTarget[] = [];
+  for (const credit of credits) {
+    if (credit.sun) suns.push(credit);
+    else if ((credit.weight ?? 1) >= 2) flagships.push(credit);
+    else catalog.push(credit);
+  }
+  return [...suns, ...flagships, ...catalog];
 }
 
 /**
@@ -1293,8 +1295,8 @@ function isFlagshipCredit(credit: CreditTarget): boolean {
  * @param batchSize Catalog moons between flagship returns.
  * @returns The same credits with flagships copied before each later batch.
  * @example
- * weaveFlagshipReturns([sun, synth, m1, m2, m3, m4, m5, m6]).map((c) => c.key)
- * // [sun, synth, m1…m5, sun, synth, m6]
+ * weaveFlagshipReturns([sun, synth, m1, …, m11]).map((c) => c.key)
+ * // [sun, synth, m1…m10, sun, synth, m11]
  */
 export function weaveFlagshipReturns(
   credits: CreditTarget[],

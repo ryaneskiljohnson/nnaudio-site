@@ -9,10 +9,10 @@
  * fill) so hydration cannot restyle the LCP element. Critical #home h1 / CTA
  * rules live in globals.css so the headline is visible before
  * styled-components hydrates. CircuitNetwork is a dynamic import so its
- * JS is not on the LCP path. Lite devices wait for Play, then mount the
- * live 3D tour (GPU warps, CPU fallback if the blit fails). `?heroAutoTour=1`
- * skips Play. `?tourCap=N` caps credit stops. Hero height is reserved
- * in globals.css (#home) so a late sheet cannot collapse-then-expand.
+ * JS is not on the LCP path. The 3D tour idle-starts on phones and
+ * desktop. `?heroAutoTour=1` starts immediately. `?tourCap=N` caps
+ * credit stops. Hero height is reserved in globals.css (#home) so a
+ * late sheet cannot collapse-then-expand.
  */
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -21,6 +21,7 @@ import { usePathname } from "next/navigation";
 import styled, { keyframes } from "styled-components";
 import { DEFAULT_CYMASYNTH_NODE, type CircuitNode } from "./circuit-node";
 import {
+  orderHeroTourCatalog,
   partitionHeroTourProducts,
   seedRowToCard,
   type HomepageProductRow,
@@ -46,6 +47,8 @@ export interface HeroProduct {
   featured_image_url?: string | null;
   price?: number | string;
   sale_price?: number | null;
+  /** True when this product is a target of the active shop promotion. */
+  shopPromoted?: boolean;
   /** One-line subtitle shown on the credit card during the camera tour. */
   tagline?: string;
   short_description?: string | null;
@@ -315,37 +318,6 @@ const PosterMoon = styled.div<{ $x: string; $y: string; $size: string }>`
   opacity: 0.7;
 `;
 
-const PlayTourButton = styled.button`
-  position: absolute;
-  left: 50%;
-  top: 46%;
-  z-index: 5;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 10px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 999px;
-  background: rgba(5, 6, 16, 0.55);
-  color: #fff;
-  font-size: 0.88rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  transform: translate(-50%, 92px);
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-
-  &:hover,
-  &:focus-visible {
-    border-color: rgba(201, 180, 255, 0.8);
-    outline: none;
-  }
-
-  @media (max-width: 900px), (pointer: coarse) {
-    backdrop-filter: none;
-    background: rgba(5, 6, 16, 0.82);
-  }
-`;
-
 const CircuitNetwork = dynamic(
   () => import(/* webpackPrefetch: false */ "./CircuitNetwork"),
   {
@@ -380,20 +352,16 @@ function StaticHeroPoster() {
 }
 
 /**
- * @brief Desktop defers CircuitNetwork until idle. Lite devices stay on
- * the poster until Play, then mount the same live 3D tour.
- * Both sides start with tours off so hydration matches.
+ * @brief Defers CircuitNetwork until idle on phones and desktop.
+ * Both start with the tour off so hydration matches.
  * `?heroAutoTour=1` starts immediately.
- * @returns Tour mount flags, Play visibility, and the Play handler.
+ * @returns Tour mount flag and optional recording cap.
  */
 function useOptInHeroTour(): {
   allowTour: boolean;
-  showPlay: boolean;
   tourCap: number | undefined;
-  startMobileTour: () => void;
 } {
   const [allowTour, setAllowTour] = useState(false);
-  const [showPlay, setShowPlay] = useState(false);
   const [tourCap, setTourCap] = useState<number | undefined>(undefined);
 
   useEffect(() => {
@@ -412,32 +380,20 @@ function useOptInHeroTour(): {
     logHeroDebug("hero-tour-resolve", {
       lite,
       allowTour: start.allowTour,
-      showPlay: start.showPlay,
       scheduleDesktop: start.scheduleDesktop,
       autoTour: query.autoTour,
       force3d: query.force3d,
       reduceMotion,
     });
     if (start.allowTour) setAllowTour(true);
-    if (start.showPlay) setShowPlay(true);
     if (!start.scheduleDesktop) return;
     return scheduleDesktopHeroTour(() => {
-      logHeroDebug("hero-desktop-idle-start", {});
+      logHeroDebug("hero-idle-start", {});
       setAllowTour(true);
-      setShowPlay(false);
     }, window);
   }, []);
 
-  /**
-   * @brief Downloads CircuitNetwork after an explicit tap on a phone.
-   */
-  const startMobileTour = () => {
-    logHeroDebug("hero-play", {});
-    setAllowTour(true);
-    setShowPlay(false);
-  };
-
-  return { allowTour, showPlay, tourCap, startMobileTour };
+  return { allowTour, tourCap };
 }
 
 /**
@@ -472,6 +428,7 @@ function toNode(product: HeroProduct): CircuitNode {
     price: displayPrice(product),
     tagline: product.tagline || "",
     description: product.short_description || product.tagline || "",
+    promoted: Boolean(product.shopPromoted),
   };
 }
 
@@ -493,7 +450,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   productCount = 0,
 }) => {
   const pathname = usePathname();
-  const { allowTour, showPlay, tourCap, startMobileTour } = useOptInHeroTour();
+  const { allowTour, tourCap } = useOptInHeroTour();
   const [liveCatalog, setLiveCatalog] = useState<{
     instruments: HeroProduct[];
     effects: HeroProduct[];
@@ -505,10 +462,9 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   useEffect(() => {
     logHeroDebug("hero-allowTour", {
       allowTour,
-      showPlay,
       tourCap: tourCap ?? null,
     });
-  }, [allowTour, showPlay, tourCap]);
+  }, [allowTour, tourCap]);
 
   const seedEmpty =
     instruments.length + effects.length + packs.length + midiFx.length === 0;
@@ -588,7 +544,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
 
     return {
       cymasynth: synthNode,
-      nodes: mixed,
+      nodes: orderHeroTourCatalog(mixed),
     };
   }, [tourInstruments, tourEffects, tourPacks, tourMidiFx]);
 
@@ -615,11 +571,6 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
             />
           ) : (
             <StaticHeroPoster />
-          )}
-          {showPlay && (
-            <PlayTourButton type="button" onClick={startMobileTour}>
-              Play tour
-            </PlayTourButton>
           )}
         </BoardFade>
         <Headline data-hero-headline="">

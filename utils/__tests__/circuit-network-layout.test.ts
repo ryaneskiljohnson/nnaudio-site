@@ -208,7 +208,8 @@ describe("catalog orbit slots", () => {
   it("hardcodes five seats outside CymaSynth", () => {
     const seats = catalogOrbitSeats(false);
     expect(seats).toHaveLength(CATALOG_ORBIT_SLOTS);
-    expect(CATALOG_ORBIT_SLOTS).toBe(HERO_TOUR_CATALOG_BATCH);
+    expect(CATALOG_ORBIT_SLOTS).toBe(5);
+    expect(HERO_TOUR_CATALOG_BATCH).toBe(10);
     expect(new Set(seats.map((s) => s.radius)).size).toBe(5);
     expect(catalogSlotKey(0)).toBe("catalog-slot-0");
     expect(seats[0].radius).toBeLessThan(seats[4].radius);
@@ -234,7 +235,7 @@ describe("catalog orbit slots", () => {
       radius: 0.2,
       size: 108,
     };
-    const moons = Array.from({ length: 8 }, (_, i) => ({
+    const moons = Array.from({ length: 12 }, (_, i) => ({
       key: `m${i + 1}`,
       name: `Moon ${i + 1}`,
       startDeg: 0,
@@ -256,6 +257,10 @@ describe("catalog orbit slots", () => {
       "catalog-slot-0",
       "catalog-slot-1",
       "catalog-slot-2",
+      "catalog-slot-3",
+      "catalog-slot-4",
+      "catalog-slot-0",
+      "catalog-slot-1",
     ]);
     expect(catalogBatchStart(credits, 0)).toBe(0);
     const fifthCatalog = credits.findIndex((c) => c.key === catalog[4]?.key);
@@ -263,10 +268,10 @@ describe("catalog orbit slots", () => {
     const secondSun = credits.findIndex(
       (c, i) => c.key === SUN_FOCUS_KEY && i > 2
     );
-    expect(catalogBatchStart(credits, secondSun)).toBe(5);
+    expect(catalogBatchStart(credits, secondSun)).toBe(10);
     expect(
-      catalogSlotOccupants(credits, 5).map((c) => c?.key)
-    ).toEqual(["m6", "m7", "m8", "m1", "m2"]);
+      catalogSlotOccupants(credits, 10).map((c) => c?.key)
+    ).toEqual(["m11", "m12", "m1", "m2", "m3"]);
   });
 });
 
@@ -621,7 +626,7 @@ describe("cameraTour", () => {
         size: 110,
       },
     ]);
-    expect(credits.map((c) => c.key)).toEqual(["lead", "small"]);
+    expect(credits.map((c) => c.key)).toEqual(["small", "lead"]);
     expect(tourDurationMs(2)).toBe(TOUR_INTRO_MS + CREDIT_MS * 2 + TOUR_OUTRO_MS);
 
     const intro = cameraTour(200, false, credits);
@@ -629,11 +634,11 @@ describe("cameraTour", () => {
     expect(intro.translateZ).toBeLessThan(-400);
 
     const first = cameraTour(TOUR_INTRO_MS + 400, false, credits);
-    expect(first.focusKey).toBe("lead");
+    expect(first.focusKey).toBe("small");
     expect(first.creditOpacity).toBeGreaterThan(0.5);
 
     const second = cameraTour(TOUR_INTRO_MS + CREDIT_MS + 400, false, credits);
-    expect(second.focusKey).toBe("small");
+    expect(second.focusKey).toBe("lead");
   });
 
   it("holds Cymasphere 1.5× and CymaSynth 2× before the rest", () => {
@@ -717,7 +722,7 @@ describe("cameraTour", () => {
     expect(withSynth.focusKey).toBe("synth");
   });
 
-  it("returns to Cymasphere and CymaSynth after every 5 catalog moons", () => {
+  it("returns to Cymasphere and CymaSynth after every 10 catalog moons", () => {
     const sun = {
       key: SUN_FOCUS_KEY,
       name: "Cymasphere",
@@ -746,7 +751,7 @@ describe("cameraTour", () => {
       size: 80 - i,
       weight: 1,
     }));
-    expect(HERO_TOUR_CATALOG_BATCH).toBe(5);
+    expect(HERO_TOUR_CATALOG_BATCH).toBe(10);
     expect(buildHeroCredits(sun, [synth, ...moons]).map((c) => c.key)).toEqual([
       SUN_FOCUS_KEY,
       "synth",
@@ -755,8 +760,6 @@ describe("cameraTour", () => {
       "m3",
       "m4",
       "m5",
-      SUN_FOCUS_KEY,
-      "synth",
       "m6",
       "m7",
       "m8",
@@ -768,13 +771,10 @@ describe("cameraTour", () => {
       "m12",
     ]);
     expect(
-      weaveFlagshipReturns(orderCredits([sun, synth, ...moons.slice(0, 5)])).map(
+      weaveFlagshipReturns(orderCredits([sun, synth, ...moons.slice(0, 10)])).map(
         (c) => c.key
       )
-    ).toEqual([SUN_FOCUS_KEY, "synth", "m1", "m2", "m3", "m4", "m5"]);
-
-    const fiveThenMore = buildHeroCredits(sun, [synth, ...moons], 8);
-    expect(fiveThenMore.map((c) => c.key)).toEqual([
+    ).toEqual([
       SUN_FOCUS_KEY,
       "synth",
       "m1",
@@ -782,18 +782,40 @@ describe("cameraTour", () => {
       "m3",
       "m4",
       "m5",
+      "m6",
+      "m7",
+      "m8",
+      "m9",
+      "m10",
+    ]);
+
+    const tenThenMore = buildHeroCredits(sun, [synth, ...moons], 14);
+    expect(tenThenMore.map((c) => c.key)).toEqual([
       SUN_FOCUS_KEY,
       "synth",
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
       "m6",
+      "m7",
+      "m8",
+      "m9",
+      "m10",
+      SUN_FOCUS_KEY,
+      "synth",
+      "m11",
+      "m12",
     ]);
     const returnAt =
-      TOUR_INTRO_MS + CREDIT_MS * (1.5 + 2 + 5) + 400;
-    expect(cameraTour(returnAt, false, fiveThenMore).focusKey).toBe(
+      TOUR_INTRO_MS + CREDIT_MS * (1.5 + 2 + 10) + 400;
+    expect(cameraTour(returnAt, false, tenThenMore).focusKey).toBe(
       SUN_FOCUS_KEY
     );
     const resumeAt =
-      TOUR_INTRO_MS + CREDIT_MS * (1.5 + 2 + 5 + 1.5 + 2) + 400;
-    expect(cameraTour(resumeAt, false, fiveThenMore).focusKey).toBe("m6");
+      TOUR_INTRO_MS + CREDIT_MS * (1.5 + 2 + 10 + 1.5 + 2) + 400;
+    expect(cameraTour(resumeAt, false, tenThenMore).focusKey).toBe("m11");
   });
 
   it("keeps the credit card opacity continuous at every boundary", () => {

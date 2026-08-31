@@ -10,6 +10,7 @@ import { requireAdmin } from '@/utils/auth/require-admin';
 import { excludeNnaudioAccessForCommerce } from '@/lib/shopProductFilters';
 import {
   fetchActiveShopPromotion,
+  flagShopPromotedProducts,
   withShopPromotionPrices,
 } from '@/utils/promotions/active-shop-promotion';
 
@@ -133,8 +134,8 @@ export async function GET(request: NextRequest) {
       const shopPromo = await fetchActiveShopPromotion(pub);
 
       if (shopPromo) {
-        productsWithRatings = withShopPromotionPrices(
-          productsWithRatings,
+        productsWithRatings = flagShopPromotedProducts(
+          withShopPromotionPrices(productsWithRatings, shopPromo),
           shopPromo
         );
       }

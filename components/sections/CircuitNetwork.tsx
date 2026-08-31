@@ -37,14 +37,12 @@ import {
   stepHeroOpacity,
   tourDurationMs,
 } from "@/utils/circuit-network-layout";
-import { CURATED_FEATURED_ORDER } from "@/lib/homepage-hero-seed";
 import {
   HERO_TOUR_WATCHDOG_KEY,
   heroBoardIsOnScreen,
   heroTourMoonCap,
   heroTourStopCap,
   latchHeroCompactTour,
-  pickMobileTourNodes,
   previousHeroTourWasKilled,
   readHeroCompactTour,
   shouldKeepHeroFrameSize,
@@ -617,10 +615,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
 
   const moonCap = heroTourMoonCap(mobile, tourCap, true);
   const tourNodes = useMemo(
-    () =>
-      moonCap == null
-        ? nodes
-        : pickMobileTourNodes(nodes, moonCap, CURATED_FEATURED_ORDER),
+    () => (moonCap == null ? nodes : nodes.slice(0, moonCap)),
     [moonCap, nodes]
   );
   const synthNode = cymasynth ?? DEFAULT_CYMASYNTH_NODE;
