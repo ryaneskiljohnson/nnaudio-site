@@ -50,7 +50,6 @@ import {
   createNebulae,
   createOrbitRings,
   createStarField,
-  createSunAura,
   createSynthOscRings,
   disposeObject3D,
   poseOrbitRingsOpacity,
@@ -101,7 +100,6 @@ export class HeroScene {
   private readonly bodies = new Map<string, HeroBodyHandle>();
   private readonly raycaster = new Raycaster();
   private readonly pointer = new Vector2();
-  private readonly sunGlow;
   private stars;
   private nebulae: Group | null = null;
   private orbits: Group | null = null;
@@ -144,8 +142,6 @@ export class HeroScene {
     this.camera.add(key.target);
 
     this.sun = createSunMesh();
-    this.sunGlow = createSunAura();
-    this.sun.mesh.add(this.sunGlow);
     this.world.add(this.sun.mesh);
 
     this.stars = createStarField();
@@ -480,7 +476,6 @@ export class HeroScene {
       disposeObject3D(this.synthRings);
     }
     disposeObject3D(this.stars);
-    disposeObject3D(this.sunGlow);
     this.renderer.dispose();
   }
 

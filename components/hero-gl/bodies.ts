@@ -4,7 +4,9 @@
  */
 
 import {
+  ClampToEdgeWrapping,
   Color,
+  LinearFilter,
   Mesh,
   MeshBasicMaterial,
   SphereGeometry,
@@ -16,14 +18,28 @@ import {
   optimizedImageUrl,
 } from "@/utils/optimized-image-url";
 import { HERO_SUN_DIAMETER_PX, HERO_TEXTURE_MAX_PX } from "./caps";
+import { createSunAura, disposeObject3D } from "./environment";
 import {
   createSphereWrapMaterial,
   setSphereWrapOpacity,
   setSphereWrapPhase,
 } from "./sphereWrapMaterial";
 
-const SUN_GEO = new SphereGeometry(1, 48, 32);
-const MOON_GEO = new SphereGeometry(1, 32, 24);
+const BODY_GEO = new SphereGeometry(1, 48, 32);
+const BODY_AURA_NAME = "hero-sun-glow";
+
+/**
+ * @brief Stops wrap-seams: no mips (fract U would pick a muddy
+ * average) and clamp so the join samples the black frame.
+ */
+export function configureHeroWrapTexture(texture: Texture): void {
+  texture.generateMipmaps = false;
+  texture.minFilter = LinearFilter;
+  texture.magFilter = LinearFilter;
+  texture.wrapS = ClampToEdgeWrapping;
+  texture.wrapT = ClampToEdgeWrapping;
+  texture.needsUpdate = true;
+}
 
 export type HeroBodyKind = "sun" | "synth" | "moon";
 
@@ -61,13 +77,17 @@ function tintMaterial(): MeshBasicMaterial {
   });
 }
 
-function prelitMaterial(map?: Texture): MeshBasicMaterial {
-  return new MeshBasicMaterial({
-    map: map ?? null,
-    color: map ? 0xffffff : 0xffd7a0,
-    transparent: true,
-    opacity: 1,
-    depthWrite: true,
+function bodyAura(mesh: Mesh): ReturnType<Mesh["getObjectByName"]> {
+  return mesh.getObjectByName(BODY_AURA_NAME);
+}
+
+function applyBodyAuraOpacity(mesh: Mesh, opacity: number): void {
+  const aura = bodyAura(mesh);
+  if (!aura) return;
+  aura.visible = opacity > 0.02;
+  aura.traverse((obj) => {
+    const mat = (obj as { material?: { opacity?: number } }).material;
+    if (mat && typeof mat.opacity === "number") mat.opacity = opacity;
   });
 }
 
@@ -87,14 +107,18 @@ export function heroBodyTextureUrl(def: HeroBodyDef): string {
  * @brief Builds a unit sphere scaled to the world diameter.
  */
 export function createBodyMesh(def: HeroBodyDef): HeroBodyHandle {
-  const geo = def.kind === "sun" ? SUN_GEO : MOON_GEO;
-  const prelit = def.kind === "sun" || def.kind === "synth";
-  const mesh = new Mesh(geo, prelit ? prelitMaterial() : tintMaterial());
+  const mesh = new Mesh(BODY_GEO, tintMaterial());
   mesh.scale.setScalar(Math.max(4, def.diameter / 2));
   mesh.visible = def.kind === "sun";
-  if (def.kind !== "sun" && mesh.material && !Array.isArray(mesh.material)) {
-    mesh.material.opacity = 0;
-    mesh.material.depthWrite = false;
+  if (typeof document !== "undefined") {
+    mesh.add(createSunAura());
+    applyBodyAuraOpacity(mesh, def.kind === "sun" ? 1 : 0);
+  }
+  if (mesh.material && !Array.isArray(mesh.material)) {
+    const solid = def.kind === "sun";
+    mesh.material.opacity = solid ? 1 : 0;
+    mesh.material.transparent = !solid;
+    mesh.material.depthWrite = solid;
   }
   mesh.name = def.key;
   mesh.userData = { key: def.key, slug: def.slug, kind: def.kind };
@@ -164,9 +188,7 @@ export function heroSunRadius(diameterPx = HERO_SUN_DIAMETER_PX): number {
 }
 
 /**
- * @brief Applies a loaded map. Every body uses the longitude wrap so
- * art rolls around the globe. Cymasphere uses the same wrap roll,
- * prelit so the poster is not relit. Catalog moons keep the wrap glow.
+ * @brief Applies a loaded map. Every body uses the same prelit wrap.
  */
 export function applyBodyTexture(
   handle: HeroBodyHandle,
@@ -174,14 +196,10 @@ export function applyBodyTexture(
 ): void {
   const prevOpacity = bodyOpacity(handle);
   handle.texture?.dispose();
+  configureHeroWrapTexture(texture);
   handle.texture = texture;
   handle.wrap?.dispose();
-  const wrap = createSphereWrapMaterial(
-    texture,
-    false,
-    false,
-    handle.kind === "sun"
-  );
+  const wrap = createSphereWrapMaterial(texture);
   handle.wrap = wrap;
   handle.mesh.rotation.set(0, 0, 0);
   const prev = handle.mesh.material;
@@ -214,6 +232,7 @@ export function bodyOpacity(handle: HeroBodyHandle): number {
 export function applyBodyOpacity(handle: HeroBodyHandle, opacity: number): void {
   const o = Math.min(1, Math.max(0, opacity));
   handle.mesh.visible = o > 0.02;
+  applyBodyAuraOpacity(handle.mesh, o);
   if (handle.wrap) {
     setSphereWrapOpacity(handle.wrap, o);
     return;
@@ -242,6 +261,11 @@ export function poseBodySpin(handle: HeroBodyHandle, phase: number): void {
  * @brief Drops GPU resources for one body (geometry is shared — not disposed).
  */
 export function disposeBodyHandle(handle: HeroBodyHandle): void {
+  const aura = bodyAura(handle.mesh);
+  if (aura) {
+    aura.removeFromParent();
+    disposeObject3D(aura);
+  }
   handle.wrap?.dispose();
   handle.texture?.dispose();
   const mat = handle.mesh.material;

@@ -3,19 +3,24 @@
  * @module utils/__tests__/hero-gl-bodies.test
  */
 
-import { Texture } from "three";
+import { ClampToEdgeWrapping, LinearFilter, Texture } from "three";
 import { describe, expect, it } from "vitest";
 import {
   applyBodyOpacity,
   applyBodyTexture,
   bodyOpacity,
+  configureHeroWrapTexture,
   createBodyMesh,
   createSunMesh,
   heroBodyRadius,
   heroSunRadius,
 } from "@/components/hero-gl/bodies";
 import { HERO_SUN_DIAMETER_PX } from "@/components/hero-gl/caps";
-import { createSphereWrapMaterial } from "@/components/hero-gl/sphereWrapMaterial";
+import {
+  createSphereWrapMaterial,
+  heroWrapPadUv,
+  HERO_WRAP_PAD_FRAC,
+} from "@/components/hero-gl/sphereWrapMaterial";
 
 describe("createBodyMesh", () => {
   it("hides catalog moons until the tour stages them", () => {
@@ -31,6 +36,7 @@ describe("createBodyMesh", () => {
     expect(moon.mesh.visible).toBe(false);
     expect(bodyOpacity(moon)).toBe(0);
     expect(createSunMesh().mesh.visible).toBe(true);
+    expect(moon.mesh.geometry).toBe(createSunMesh().mesh.geometry);
   });
 
   it("fades a moon instead of toggling visibility as a cut", () => {
@@ -58,6 +64,18 @@ describe("heroBodyRadius", () => {
   });
 });
 
+describe("heroWrapPadUv", () => {
+  it("keeps the center of the art and blacks the frame", () => {
+    const mid = heroWrapPadUv(0.5, 0.5, 0.1);
+    expect(mid.outside).toBe(false);
+    expect(mid.u).toBeCloseTo(0.5);
+    expect(mid.v).toBeCloseTo(0.5);
+    expect(heroWrapPadUv(0.02, 0.5, 0.1).outside).toBe(true);
+    expect(heroWrapPadUv(0.5, 0.98, 0.1).outside).toBe(true);
+    expect(HERO_WRAP_PAD_FRAC).toBe(0.16);
+  });
+});
+
 describe("heroSunRadius", () => {
   it("is half the world disk, like a planet", () => {
     expect(heroSunRadius()).toBeCloseTo(HERO_SUN_DIAMETER_PX / 2, 5);
@@ -65,17 +83,20 @@ describe("heroSunRadius", () => {
   });
 });
 
-describe("applyBodyTexture", () => {
-  it("wraps Cymasphere like the other planets and leaves the poster prelit", () => {
-    const sun = createSunMesh();
-    applyBodyTexture(sun, new Texture());
-    expect(sun.wrap).not.toBeNull();
-    expect(sun.wrap?.uniforms.uSurfaceShade?.value).toBe(0);
-    expect(sun.wrap?.uniforms.uPlanar?.value).toBe(0);
-    expect(sun.wrap?.uniforms.uPrelit?.value).toBe(1);
+describe("configureHeroWrapTexture", () => {
+  it("clamps and drops mips so the wrap join is not a colored seam", () => {
+    const tex = new Texture();
+    configureHeroWrapTexture(tex);
+    expect(tex.generateMipmaps).toBe(false);
+    expect(tex.minFilter).toBe(LinearFilter);
+    expect(tex.wrapS).toBe(ClampToEdgeWrapping);
+    expect(tex.wrapT).toBe(ClampToEdgeWrapping);
   });
+});
 
-  it("skips meridian shade so catalog moons take the same gloss", () => {
+describe("applyBodyTexture", () => {
+  it("gives every body the same prelit wrap", () => {
+    const sun = createSunMesh();
     const moon = createBodyMesh({
       key: "n",
       slug: "n",
@@ -85,27 +106,26 @@ describe("applyBodyTexture", () => {
       spinDur: 40,
       spinRev: false,
     });
+    applyBodyTexture(sun, new Texture());
     applyBodyTexture(moon, new Texture());
-    expect(moon.wrap?.uniforms.uSurfaceShade?.value).toBe(0);
-    expect(moon.wrap?.uniforms.uPlanar?.value).toBe(0);
+    expect(sun.wrap?.uniforms.uPad?.value).toBe(HERO_WRAP_PAD_FRAC);
+    expect(moon.wrap?.uniforms.uPad?.value).toBe(sun.wrap?.uniforms.uPad?.value);
+    expect(moon.wrap?.uniforms.uPhase?.value).toBe(0);
+    expect(sun.wrap?.uniforms.uPrelit).toBeUndefined();
+    expect(sun.texture?.generateMipmaps).toBe(false);
   });
 });
 
 describe("createSphereWrapMaterial", () => {
   it("exposes a phase uniform the tour can spin", () => {
-    const mat = createSphereWrapMaterial(new Texture(), false);
+    const mat = createSphereWrapMaterial(new Texture());
     expect(mat.uniforms.uPhase?.value).toBe(0);
-    mat.dispose();
-  });
-
-  it("fills the camera-facing hemisphere so wraps are not black", () => {
-    const mat = createSphereWrapMaterial(new Texture(), true);
-    expect(mat.uniforms.uCamFill?.value).toBe(1);
+    expect(mat.uniforms.uPad?.value).toBe(HERO_WRAP_PAD_FRAC);
     mat.dispose();
   });
 
   it("exposes opacity so staged moons can fade", () => {
-    const mat = createSphereWrapMaterial(new Texture(), true);
+    const mat = createSphereWrapMaterial(new Texture());
     expect(mat.uniforms.uOpacity?.value).toBe(1);
     expect(mat.transparent).toBe(true);
     mat.dispose();

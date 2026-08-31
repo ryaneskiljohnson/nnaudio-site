@@ -24,6 +24,10 @@ const wrap = readFileSync(
   resolve(process.cwd(), "components/hero-gl/sphereWrapMaterial.ts"),
   "utf8"
 );
+const bodies = readFileSync(
+  resolve(process.cwd(), "components/hero-gl/bodies.ts"),
+  "utf8"
+);
 
 describe("hero source contracts", () => {
   it("does not decode the 4K sun or synth JPGs", () => {
@@ -37,6 +41,7 @@ describe("hero source contracts", () => {
   it("does not call the Canvas 2D warp path", () => {
     expect(circuit).not.toContain("warpStripToCanvas");
     expect(circuit).not.toContain("TexCanvas");
+    expect(bodies).not.toContain("createElement(\"canvas\")");
   });
 
   it("wraps credit names at whitespace, not mid-letter", () => {
@@ -66,7 +71,7 @@ describe("hero source contracts", () => {
     expect(scene).not.toContain("PointLight");
     expect(scene).toContain("this.camera.add(key)");
     expect(scene).toContain("lookPlusZToward");
-    expect(scene).toContain("createSunAura");
+    expect(bodies).toContain("createSunAura");
     expect(scene).toContain("this.sun.mesh.add(this.nebulae)");
     expect(scene).not.toContain("this.sky.add(this.nebulae)");
     expect(scene).toContain("this.world.add(this.synthRings)");
@@ -74,14 +79,15 @@ describe("hero source contracts", () => {
     expect(scene).toContain("alignSynthSeat");
     expect(scene).toContain("handle.kind !== \"synth\"");
     expect(scene).toContain("facingPhaseFromDir");
-    expect(wrap).toContain("cameraPosition - vWorldPos");
-    expect(wrap).toContain("uCamFill");
     expect(wrap).toContain("uOpacity");
-    expect(wrap).toContain("facing = mix(0.94, 1.08, ndotl)");
+    expect(wrap).not.toContain("uPrelit");
+    expect(wrap).not.toContain("uCamFill");
     expect(wrap).not.toContain("specTight");
-    expect(wrap).toContain("uPlanar");
     expect(wrap).toContain("#include <colorspace_fragment>");
     expect(wrap).toContain("atan(n.x, n.z)");
+    expect(wrap).toContain("texture2DLodEXT");
+    expect(wrap).toContain("uPad");
+    expect(wrap).toContain("samplePadded");
     expect(wrap).not.toContain("uLight1");
     expect(wrap).not.toContain("mix(globe, color.rgb");
     expect(wrap).not.toContain("vec3(0.62, 0.52, 0.82)");
