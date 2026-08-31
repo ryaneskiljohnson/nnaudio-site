@@ -13,7 +13,6 @@ import {
   MeshBasicMaterial,
   PerspectiveCamera,
   NoToneMapping,
-  PointLight,
   Raycaster,
   Scene,
   Vector2,
@@ -99,7 +98,6 @@ export class HeroScene {
 
   private readonly sun: HeroBodyHandle;
   private readonly bodies = new Map<string, HeroBodyHandle>();
-  private readonly light: PointLight;
   private readonly raycaster = new Raycaster();
   private readonly pointer = new Vector2();
   private readonly sunGlow;
@@ -136,12 +134,8 @@ export class HeroScene {
     this.camera.add(this.sky);
     this.scene.add(this.camera);
 
-    this.scene.add(new AmbientLight(0x8a7ab8, 1.05));
-    this.light = new PointLight(0xffe6c8, 2.2, 0, 1.05);
-    this.light.position.set(0, 0, 0);
-    this.world.add(this.light);
-    // Key rides with the camera, from above-left, not dead-on.
-    const key = new DirectionalLight(0xfff6ea, 2.4);
+    this.scene.add(new AmbientLight(0x8a7ab8, 0.55));
+    const key = new DirectionalLight(0xfff6ea, 0.35);
     key.position.set(-0.58, 0.42, 0.12);
     key.target.position.set(0.18, -0.16, -1);
     this.camera.add(key);

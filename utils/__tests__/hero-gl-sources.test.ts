@@ -62,6 +62,7 @@ describe("hero source contracts", () => {
 
   it("keys bodies from the camera so the visible side stays lit", () => {
     expect(scene).toContain("DirectionalLight");
+    expect(scene).not.toContain("PointLight");
     expect(scene).toContain("this.camera.add(key)");
     expect(scene).toContain("lookPlusZToward");
     expect(scene).toContain("createSunAura");
@@ -75,7 +76,8 @@ describe("hero source contracts", () => {
     expect(wrap).toContain("cameraPosition - vWorldPos");
     expect(wrap).toContain("uCamFill");
     expect(wrap).toContain("uOpacity");
-    expect(wrap).toContain("facing = mix(1.04, 1.22, ndotl)");
+    expect(wrap).toContain("facing = mix(0.94, 1.08, ndotl)");
+    expect(wrap).not.toContain("specTight");
     expect(wrap).toContain("uPlanar");
     expect(wrap).toContain("atan(n.x, n.z)");
     expect(wrap).not.toContain("uLight1");

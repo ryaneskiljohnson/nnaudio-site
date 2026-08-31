@@ -166,7 +166,7 @@ export function heroSunRadius(diameterPx = HERO_SUN_DIAMETER_PX): number {
 /**
  * @brief Applies a loaded map. Every body uses the longitude wrap so
  * art rolls around the globe. Surface shade stays off so catalog moons
- * take the same gloss as Cymasphere and CymaSynth.
+ * take the same wrap glow as Cymasphere and CymaSynth.
  */
 export function applyBodyTexture(
   handle: HeroBodyHandle,

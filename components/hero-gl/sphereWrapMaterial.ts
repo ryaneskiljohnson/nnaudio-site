@@ -1,9 +1,8 @@
 /**
  * @fileoverview Hero body shader. Square art uses the same longitude /
  * latitude map as stripUFrac / stripV so the mark rolls around the
- * globe. The key sits left and above the camera so the highlight is
- * not dead-on. A fill, soft spec, and fresnel rim keep the facing disk
- * readable. uPlanar stays as a dead uniform (source contract).
+ * globe. Lighting is a camera wrap plus a self-glow — no specular
+ * hot-spot. uPlanar stays as a dead uniform (source contract).
  * @module components/hero-gl/sphereWrapMaterial
  */
 
@@ -61,31 +60,18 @@ void main() {
   }
 
   vec3 nW = normalize(vWorldNormal);
-  vec3 toCam = cameraPosition - vWorldPos;
-  vec3 towardCam = normalize(toCam);
-  vec3 forward = -towardCam;
-  vec3 worldUp = vec3(0.0, 1.0, 0.0);
-  vec3 right = cross(forward, worldUp);
-  float rightLen = length(right);
-  right = rightLen > 0.001 ? right / rightLen : vec3(1.0, 0.0, 0.0);
-  vec3 up = normalize(cross(right, forward));
-  // Key from camera-left and above so the spec sits off-center.
-  vec3 L = normalize(towardCam - right * 0.55 + up * 0.38);
-  float ndotl = max(0.0, dot(nW, L));
-  float facing = mix(1.04, 1.22, ndotl);
+  vec3 towardCam = normalize(cameraPosition - vWorldPos);
+  float ndotl = max(0.0, dot(nW, towardCam));
+  float facing = mix(0.94, 1.08, ndotl);
   float key = clamp(uCamFill, 0.0, 1.0);
-  albedo *= mix(1.0, facing, key * (1.0 - 0.7 * uWarmRim));
-  albedo *= mix(0.92 + 0.10 * ndotl, 0.96 + 0.06 * ndotl, uWarmRim);
+  albedo *= mix(1.0, facing, key * (1.0 - 0.35 * uWarmRim));
 
-  float specTight = pow(ndotl, 40.0) * mix(0.32, 0.16, uWarmRim);
-  float specSoft = pow(ndotl, 10.0) * mix(0.10, 0.03, uWarmRim);
-  albedo += (specTight + specSoft) * mix(vec3(0.95, 0.97, 1.0), vec3(1.0, 0.92, 0.78), uWarmRim);
   float luma = dot(albedo, vec3(0.299, 0.587, 0.114));
-  float lift = clamp(0.22 - luma, 0.0, 0.22) * ndotl / 0.22;
-  albedo += mix(vec3(0.08, 0.09, 0.12), vec3(0.03, 0.02, 0.015), uWarmRim) * lift;
-  float fres = pow(1.0 - ndotl, 2.2);
-  vec3 rim = mix(vec3(0.55, 0.72, 0.95), vec3(1.0, 0.86, 0.62), uWarmRim);
-  albedo += rim * fres * mix(0.16, 0.08, uWarmRim);
+  float glow = clamp(0.20 - luma, 0.0, 0.20);
+  albedo += mix(vec3(0.14, 0.15, 0.18), vec3(0.10, 0.07, 0.045), uWarmRim) * glow;
+  float fres = pow(1.0 - ndotl, 2.6);
+  vec3 rim = mix(vec3(0.50, 0.62, 0.82), vec3(1.0, 0.86, 0.62), uWarmRim);
+  albedo += rim * fres * mix(0.07, 0.04, uWarmRim);
 
   gl_FragColor = vec4(albedo, uOpacity);
 }
@@ -96,7 +82,7 @@ void main() {
  * @param map Artwork texture.
  * @param surfaceShade When true, a lit meridian rotates with catalog art.
  * @param planar Kept for the source contract; runtime always passes false.
- * @param warmRim Gold/violet limb on Cymasphere; cooler on moons.
+ * @param warmRim Gold limb on Cymasphere; cooler self-glow on moons.
  */
 export function createSphereWrapMaterial(
   map: Texture,
