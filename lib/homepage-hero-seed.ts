@@ -4,6 +4,8 @@
  * @module lib/homepage-hero-seed
  */
 
+import { formatPrice } from "@/utils/stringUtils";
+
 /** Slugs that are named in the hero copy and must not inflate the count. */
 export const HERO_CATALOG_SKIP = new Set([
   "cymasynth",
@@ -255,6 +257,47 @@ export function formatFeaturedDisplayPrice(
 ): string {
   const display = salePrice ?? regularPrice ?? 0;
   return `$${display}`;
+}
+
+/**
+ * @brief Parses a catalog price that may be a number or "$49" string.
+ * @param value Raw price field.
+ * @returns Finite amount, or undefined.
+ */
+function numericCatalogPrice(
+  value?: number | string | null
+): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = Number.parseFloat(value.replace(/[^0-9.]+/g, ""));
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * @brief Current and compare-at strings for a hero credit card.
+ * A sale below list shows both so the deal is visible.
+ * @param salePrice Promotional or manual sale price.
+ * @param regularPrice List price.
+ * @returns `current` for the live price; `compareAt` when it is a deal.
+ * @example
+ * formatHeroDealPrice(29, 49) // { current: "$29", compareAt: "$49" }
+ */
+export function formatHeroDealPrice(
+  salePrice?: number | null,
+  regularPrice?: number | string | null
+): { current?: string; compareAt?: string } {
+  const list = numericCatalogPrice(regularPrice);
+  const sale =
+    typeof salePrice === "number" && Number.isFinite(salePrice)
+      ? salePrice
+      : undefined;
+  if (list == null && sale == null) return {};
+  const current = formatPrice(sale ?? list);
+  const compareAt =
+    sale != null && list != null && sale < list ? formatPrice(list) : undefined;
+  return { current, compareAt };
 }
 
 /**

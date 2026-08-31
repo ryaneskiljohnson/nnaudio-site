@@ -21,6 +21,7 @@ import { usePathname } from "next/navigation";
 import styled, { keyframes } from "styled-components";
 import { DEFAULT_CYMASYNTH_NODE, type CircuitNode } from "./circuit-node";
 import {
+  formatHeroDealPrice,
   orderHeroTourCatalog,
   partitionHeroTourProducts,
   seedRowToCard,
@@ -397,22 +398,6 @@ function useOptInHeroTour(): {
 }
 
 /**
- * @brief Formats a product price for chip tooltips ("Free" when 0).
- * @param product Source product.
- * @returns Display string or undefined when no price exists.
- */
-function displayPrice(product: HeroProduct): string | undefined {
-  const value =
-    typeof product.sale_price === "number"
-      ? product.sale_price
-      : typeof product.price === "number"
-        ? product.price
-        : undefined;
-  if (value === undefined) return undefined;
-  return value === 0 ? "Free" : `$${value}`;
-}
-
-/**
  * @brief Maps a fetched product to a board chip node.
  * @param product Source product.
  * @returns Chip node for the circuit board.
@@ -420,12 +405,14 @@ function displayPrice(product: HeroProduct): string | undefined {
 function toNode(product: HeroProduct): CircuitNode {
   const image =
     product.featured_image_url || product.image || product.logo_url || "";
+  const deal = formatHeroDealPrice(product.sale_price, product.price);
   return {
     id: product.id,
     name: product.name,
     slug: product.slug,
     image,
-    price: displayPrice(product),
+    price: deal.current,
+    compareAtPrice: deal.compareAt,
     tagline: product.tagline || "",
     description: product.short_description || product.tagline || "",
     promoted: Boolean(product.shopPromoted),

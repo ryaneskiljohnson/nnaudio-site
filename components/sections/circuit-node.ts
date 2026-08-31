@@ -12,8 +12,10 @@ export interface CircuitNode {
   slug: string;
   /** Logo or artwork URL shown on the moon. */
   image: string;
-  /** Display price, e.g. "$99". */
+  /** Display / sale price, e.g. "$49" or "FREE". */
   price?: string;
+  /** List price shown struck through when the product is on sale. */
+  compareAtPrice?: string;
   /** One-line subtitle for the credit card. */
   tagline?: string;
   /** Short product description shown in the empty half of a hold. */

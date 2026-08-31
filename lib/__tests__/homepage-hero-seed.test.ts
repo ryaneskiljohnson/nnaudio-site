@@ -5,6 +5,7 @@ import {
   emptyHomepageCatalogSeed,
   homepageCategoryTiles,
   isFreeHomepageProduct,
+  formatHeroDealPrice,
   mapRawProductToFeaturedCard,
   orderHeroTourCatalog,
   partitionHeroTourProducts,
@@ -252,6 +253,21 @@ describe("seedRowToCard", () => {
         shopPromoted: true,
       }).shopPromoted
     ).toBe(true);
+  });
+});
+
+describe("formatHeroDealPrice", () => {
+  it("shows the list price struck against a lower sale", () => {
+    expect(formatHeroDealPrice(29, 49)).toEqual({
+      current: "$29",
+      compareAt: "$49",
+    });
+    expect(formatHeroDealPrice(0, 49)).toEqual({
+      current: "FREE",
+      compareAt: "$49",
+    });
+    expect(formatHeroDealPrice(null, 49)).toEqual({ current: "$49" });
+    expect(formatHeroDealPrice(49, 49)).toEqual({ current: "$49" });
   });
 });
 
