@@ -389,26 +389,27 @@ export class HeroScene {
     void this.loadBodyArt(def);
   }
 
-  async loadBodyArt(def: HeroBodyDef): Promise<void> {
-    if (this.disposed) return;
+  async loadBodyArt(def: HeroBodyDef): Promise<boolean> {
+    if (this.disposed) return false;
     const handle =
       def.kind === "sun" ? this.sun : this.bodies.get(def.key);
-    if (!handle) return;
+    if (!handle) return false;
     const url =
       def.kind === "sun"
         ? CYMASPHERE_SUN_POSTER
         : def.kind === "synth"
           ? CYMASYNTH_SPHERE_POSTER
           : heroBodyTextureUrl(def);
-    if (!url) return;
-    if (handle.artUrl === url && handle.texture) return;
+    if (!url) return false;
+    if (handle.artUrl === url && handle.texture) return true;
     handle.artUrl = url;
     const tex = await loadHeroTexture(url);
     if (!tex || this.disposed || handle.artUrl !== url) {
       tex?.dispose();
-      return;
+      return false;
     }
     applyBodyTexture(handle, tex);
+    return true;
   }
 
   evictArt(keep: ReadonlySet<string>): void {

@@ -1167,6 +1167,14 @@ export function skyParallaxCss(
 }
 /** One smooth zoom from the opening shot onto Cymasphere. */
 export const TOUR_INTRO_MS = 2800;
+/** Still-image sun sits this far down the board (CSS `top`). */
+export const HERO_STILL_SUN_TOP_FRAC = 0.46;
+/** Still-image sun cap; matches `min(42vw, 220px)`. */
+export const HERO_STILL_SUN_MAX_PX = 220;
+/** Still-image sun size as a fraction of board width. */
+export const HERO_STILL_SUN_VW = 0.42;
+/** Hold the still-matched pose while the poster fades off. */
+export const HERO_STILL_FADE_MS = 250;
 /** How far along TOUR_KEYS the no-credit galaxy loop travels. */
 export const INTRO_PATH_U = 0.28;
 /** Face-on arrive window; the opening zoom uses the full intro. */
@@ -1657,6 +1665,42 @@ function travelHopPose(
 }
 
 /**
+ * @brief On-screen diameter of the parked still sun.
+ * @param boardW Board CSS width (same space as `42vw` on a full-width hero).
+ */
+export function heroStillSunDiameterPx(boardW: number): number {
+  return Math.min(
+    HERO_STILL_SUN_MAX_PX,
+    Math.max(1, boardW) * HERO_STILL_SUN_VW
+  );
+}
+
+/**
+ * @brief Camera that frames Cymasphere on the still-image disk.
+ * Intro dollies from this pose after {@link HERO_STILL_FADE_MS}.
+ * @param boardW Board CSS width.
+ * @param boardH Board CSS height.
+ * @param sunDiameter World sun diameter from {@link heroSunFitDiameterPx}.
+ */
+export function heroStillSunPose(
+  boardW: number,
+  boardH: number,
+  sunDiameter: number
+): TourCamera {
+  const targetPx = heroStillSunDiameterPx(boardW);
+  const eclipseYPx = (HERO_STILL_SUN_TOP_FRAC - 0.5) * Math.max(1, boardH);
+  const look = lookAtMoon(0, 0, 0, sunDiameter, 0, 0, eclipseYPx, targetPx);
+  return {
+    ...look,
+    labelOpacity: 1,
+    focusKey: null,
+    nextKey: null,
+    creditOpacity: 0,
+    traveling: false,
+  };
+}
+
+/**
  * @brief Interpolates the cinematic camera. With credits, this is a show
  * open: fly in on the sun, then linger on each product without parking.
  * Without credits, it loops the galaxy path.
@@ -1667,6 +1711,8 @@ function travelHopPose(
  * present the camera aims at the real moon instead of a flat circle.
  * @param viewHalfW Half the frame width in px; caps the hold framing
  * so the held planet stays well inside narrow (mobile) frames.
+ * @param introFrom Opening pose (still-image match). Defaults to the
+ * galaxy keyframe.
  * @returns Camera pose plus the current credit focus.
  * @example
  * cameraTour(0, false).translateZ < cameraTour(8000, false).translateZ
@@ -1676,7 +1722,8 @@ export function cameraTour(
   reducedMotion: boolean,
   credits: CreditTarget[] = [],
   worldPos?: ReadonlyMap<string, MoonWorldPos>,
-  viewHalfW = 620
+  viewHalfW = 620,
+  introFrom?: TourCamera
 ): TourCamera {
   const frameOf = (credit: CreditTarget) => holdFrameOffset(credit.key, viewHalfW);
   // Keep the disk inside the frame (credit card + eclipse offset).
@@ -1722,7 +1769,7 @@ export function cameraTour(
       frameOf(credits[0]).y,
       holdTargetPx
     );
-    pose = mixPose(poseFromKeys(0), hold, t / TOUR_INTRO_MS);
+    pose = mixPose(introFrom ?? poseFromKeys(0), hold, t / TOUR_INTRO_MS);
   } else if (creditT < creditSpan) {
     const located = locateCredit(creditT, credits);
     const index = located?.index ?? credits.length - 1;

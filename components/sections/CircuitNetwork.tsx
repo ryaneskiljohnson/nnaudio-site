@@ -32,8 +32,10 @@ import {
   catalogSlotOccupants,
   CREDIT_HOLD_WEIGHT_CYMA,
   CREDIT_TRAVEL_MS,
+  HERO_STILL_FADE_MS,
   TOUR_INTRO_MS,
   heroCameraFollowTau,
+  heroStillSunPose,
   stepHeroOpacity,
   tourDurationMs,
 } from "@/utils/circuit-network-layout";
@@ -75,7 +77,14 @@ const SYNTH_SPIN_SEC = 56;
 const MOON_SPIN_SEC_MIN = 40;
 const MOON_SPIN_SEC_SPAN = 24;
 const FEATURED_TURNTABLE_MS = 22000;
-const OPENING_CAM = cameraTour(0, false);
+function stillOpeningCam(
+  width: number,
+  height: number,
+  compact: boolean
+) {
+  const sunDiameter = heroSunFitDiameterPx(width, height, compact);
+  return heroStillSunPose(width, height, sunDiameter);
+}
 
 interface HeroSpinArrive {
   from: number;
@@ -89,6 +98,8 @@ interface CircuitNetworkProps {
   nodes: CircuitNode[];
   parkImmediately?: boolean;
   tourCap?: number;
+  /** Fires when the sun wrap is on the GPU (or the scene is torn down). */
+  onReveal?: (ready: boolean) => void;
 }
 
 function readHeroWatchdog(): string | null {
@@ -369,6 +380,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   nodes,
   parkImmediately = false,
   tourCap,
+  onReveal,
 }) => {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -385,13 +397,14 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   const creditThumbRef = useRef<HTMLImageElement>(null);
   const lastCreditKey = useRef<string | null>(null);
   const look = useRef({ x: 0, y: 0, tx: 0, ty: 0 });
+  const openingStill = stillOpeningCam(1200, 640, false);
   const camFollow = useRef({
-    x: OPENING_CAM.rotateX,
-    y: OPENING_CAM.rotateY,
-    z: OPENING_CAM.rotateZ,
-    tx: OPENING_CAM.translateX,
-    ty: OPENING_CAM.translateY,
-    tz: OPENING_CAM.translateZ,
+    x: openingStill.rotateX,
+    y: openingStill.rotateY,
+    z: openingStill.rotateZ,
+    tx: openingStill.translateX,
+    ty: openingStill.translateY,
+    tz: openingStill.translateZ,
     armed: true,
   });
   const startedAt = useRef<number | null>(null);
@@ -433,6 +446,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
   tourCapRef.current = tourCap;
   const rafRef = useRef(0);
   const startLoopRef = useRef<() => void>(() => undefined);
+  const tourArmedRef = useRef(false);
+  const revealAtRef = useRef<number | null>(null);
+  const onRevealRef = useRef(onReveal);
+  onRevealRef.current = onReveal;
   const mobile = isMobile;
 
   useEffect(() => {
@@ -840,16 +857,49 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     scene.setSunDiameter(sunDiameter);
     scene.setBodies(bodyDefs);
     scene.setOrbitSystem(system);
-    void scene.loadBodyArt({
-      key: SUN_FOCUS_KEY,
-      slug: "cymasphere",
-      name: "Cymasphere",
-      kind: "sun",
-      diameter: sunDiameter,
-      spinDur: SUN_SPIN_SEC,
-      spinRev: false,
-    });
+    tourArmedRef.current = false;
+    revealAtRef.current = null;
+    onRevealRef.current?.(false);
+    let cancelled = false;
+    void scene
+      .loadBodyArt({
+        key: SUN_FOCUS_KEY,
+        slug: "cymasphere",
+        name: "Cymasphere",
+        kind: "sun",
+        diameter: sunDiameter,
+        spinDur: SUN_SPIN_SEC,
+        spinRev: false,
+      })
+      .then((textured) => {
+        if (
+          !textured ||
+          cancelled ||
+          !mountedRef.current ||
+          sceneRef.current !== scene
+        ) {
+          return;
+        }
+        const still = heroStillSunPose(boardW, boardH, sunDiameter);
+        const follow = camFollow.current;
+        follow.x = still.rotateX;
+        follow.y = still.rotateY;
+        follow.z = still.rotateZ;
+        follow.tx = still.translateX;
+        follow.ty = still.translateY;
+        follow.tz = still.translateZ;
+        follow.armed = true;
+        scene.applyCamera(still);
+        scene.billboardFacingCamera();
+        scene.render();
+        revealAtRef.current = performance.now();
+        onRevealRef.current?.(true);
+      });
     return () => {
+      cancelled = true;
+      tourArmedRef.current = false;
+      revealAtRef.current = null;
+      onRevealRef.current?.(false);
       scene.dispose();
       sceneRef.current = null;
     };
@@ -987,6 +1037,29 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         rafRef.current = 0;
         return;
       }
+      if (!tourArmedRef.current) {
+        lastFrameAt.current = now;
+        const box = tourLive.current.frameSize ?? { w: 1200, h: 640 };
+        const still = stillOpeningCam(box.w, box.h, mobile);
+        if (
+          revealAtRef.current != null &&
+          now - revealAtRef.current >= HERO_STILL_FADE_MS
+        ) {
+          tourArmedRef.current = true;
+          startedAt.current = now;
+        } else {
+          if (!shouldSkipHeroFrame(now, lastDrawAt.current)) {
+            lastDrawAt.current = now;
+            scene.applyCamera(still);
+            scene.billboardFacingCamera();
+            scene.poseOrbitsOpacity(0);
+            scene.render();
+          }
+          raf = window.requestAnimationFrame(tick);
+          rafRef.current = raf;
+          return;
+        }
+      }
       const skipDraw = shouldSkipHeroFrame(now, lastDrawAt.current);
       const {
         credits,
@@ -1044,12 +1117,18 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         if (src) worldPos.set(credit.key, src);
       }
       const viewHalfW = (frameSize?.w ?? 1200) / 2;
+      const still = stillOpeningCam(
+        frameSize?.w ?? 1200,
+        frameSize?.h ?? 640,
+        mobile
+      );
       const cam = cameraTour(
         elapsed,
         reducedMotion,
         credits,
         worldPos,
-        viewHalfW
+        viewHalfW,
+        still
       );
       const creditsTarget = cam.focusKey ? 1 : 0;
       let creditsW =

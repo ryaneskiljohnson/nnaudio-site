@@ -10,7 +10,8 @@
  * rules live in globals.css so the headline is visible before
  * styled-components hydrates. CircuitNetwork is a dynamic import so its
  * JS is not on the LCP path. The 3D tour idle-starts on phones and
- * desktop. `?tourCap=N` caps credit stops for recordings. Hero height
+ * desktop, under the still until Cymasphere is textured. `?tourCap=N`
+ * caps credit stops for recordings. Hero height
  * is reserved in globals.css (#home) so a
  * late sheet cannot collapse-then-expand.
  */
@@ -32,6 +33,12 @@ import {
   resolveHeroTourStart,
   scheduleDesktopHeroTour,
 } from "@/utils/hero-tour";
+import {
+  HERO_STILL_FADE_MS,
+  HERO_STILL_SUN_MAX_PX,
+  HERO_STILL_SUN_TOP_FRAC,
+  HERO_STILL_SUN_VW,
+} from "@/utils/circuit-network-layout";
 import { scrollToHash } from "@/utils/scrollToHash";
 import HeroReloadDebugMark from "@/components/HeroReloadDebugMark";
 import { logHeroDebug } from "@/utils/hero-reload-debug";
@@ -287,12 +294,25 @@ const BoardPlaceholder = styled.div`
   overflow: hidden;
 `;
 
+const StillCover = styled.div<{ $hide: boolean }>`
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: ${(p) => (p.$hide ? 0 : 1)};
+  transition: opacity ${HERO_STILL_FADE_MS}ms ease;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
 const PosterSunImg = styled.img`
   position: absolute;
   left: 50%;
-  top: 46%;
-  width: min(42vw, 220px);
-  height: min(42vw, 220px);
+  top: ${HERO_STILL_SUN_TOP_FRAC * 100}%;
+  width: min(${HERO_STILL_SUN_VW * 100}vw, ${HERO_STILL_SUN_MAX_PX}px);
+  height: min(${HERO_STILL_SUN_VW * 100}vw, ${HERO_STILL_SUN_MAX_PX}px);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   object-fit: cover;
@@ -425,6 +445,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
 }) => {
   const pathname = usePathname();
   const { allowTour, tourCap } = useOptInHeroTour();
+  const [tourRevealed, setTourRevealed] = useState(false);
   const [liveCatalog, setLiveCatalog] = useState<{
     instruments: HeroProduct[];
     effects: HeroProduct[];
@@ -542,10 +563,16 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
               cymasynth={cymasynth}
               nodes={nodes}
               tourCap={tourCap}
+              onReveal={setTourRevealed}
             />
           ) : (
             <StaticHeroPoster />
           )}
+          {allowTour ? (
+            <StillCover $hide={tourRevealed} aria-hidden>
+              <StaticHeroPoster />
+            </StillCover>
+          ) : null}
         </BoardFade>
         <Headline data-hero-headline="">
           <Title>

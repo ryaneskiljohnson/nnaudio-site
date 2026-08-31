@@ -109,7 +109,7 @@ export function heroBodyTextureUrl(def: HeroBodyDef): string {
 export function createBodyMesh(def: HeroBodyDef): HeroBodyHandle {
   const mesh = new Mesh(BODY_GEO, tintMaterial());
   mesh.scale.setScalar(Math.max(4, def.diameter / 2));
-  mesh.visible = def.kind === "sun";
+  mesh.visible = false;
   if (typeof document !== "undefined") {
     mesh.add(createSunAura());
     applyBodyAuraOpacity(mesh, def.kind === "sun" ? 1 : 0);

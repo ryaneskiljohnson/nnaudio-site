@@ -28,6 +28,10 @@ const bodies = readFileSync(
   resolve(process.cwd(), "components/hero-gl/bodies.ts"),
   "utf8"
 );
+const ecosystem = readFileSync(
+  resolve(process.cwd(), "components/sections/EcosystemHero.tsx"),
+  "utf8"
+);
 
 describe("hero source contracts", () => {
   it("does not decode the 4K sun or synth JPGs", () => {
@@ -112,6 +116,18 @@ describe("hero source contracts", () => {
     expect(circuit).toContain("HERO_WRAP_ARRIVE_PHASE");
     expect(circuit).toContain("beginArrive");
     expect(circuit).not.toContain("latchFaceOn");
+  });
+
+  it("keeps the still up until the sun wrap is on the GPU", () => {
+    expect(circuit).toContain("tourArmedRef");
+    expect(circuit).toContain("revealAtRef");
+    expect(circuit).toContain("HERO_STILL_FADE_MS");
+    expect(circuit).toContain("heroStillSunPose");
+    expect(circuit).toContain("onReveal");
+    expect(ecosystem).toContain("StillCover");
+    expect(ecosystem).toContain("HERO_STILL_FADE_MS");
+    expect(ecosystem).toContain("onReveal={setTourRevealed}");
+    expect(ecosystem).toContain("tourRevealed");
   });
 });
 

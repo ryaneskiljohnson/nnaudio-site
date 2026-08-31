@@ -31,7 +31,7 @@ describe("createBodyMesh", () => {
     });
     expect(moon.mesh.visible).toBe(false);
     expect(bodyOpacity(moon)).toBe(0);
-    expect(createSunMesh().mesh.visible).toBe(true);
+    expect(createSunMesh().mesh.visible).toBe(false);
     expect(moon.mesh.geometry).toBe(createSunMesh().mesh.geometry);
   });
 
@@ -93,6 +93,7 @@ describe("applyBodyTexture", () => {
     applyBodyTexture(sun, new Texture());
     applyBodyTexture(moon, new Texture());
     expect(sun.wrap?.uniforms.uPad).toBeUndefined();
+    expect(sun.mesh.visible).toBe(true);
     expect(moon.wrap?.uniforms.uPhase?.value).toBe(0);
     expect(sun.wrap?.uniforms.uPrelit).toBeUndefined();
     expect(sun.texture?.generateMipmaps).toBe(false);

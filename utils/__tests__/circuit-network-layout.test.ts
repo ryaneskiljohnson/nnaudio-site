@@ -22,6 +22,11 @@ import {
   hideSynthForSunApproach,
   holdFrameOffset,
   heroSunFitDiameterPx,
+  heroStillSunDiameterPx,
+  heroStillSunPose,
+  HERO_STILL_FADE_MS,
+  HERO_STILL_SUN_MAX_PX,
+  HERO_STILL_SUN_TOP_FRAC,
   HERO_SUN_AUTHOR_DIAMETER_PX,
   holdOriginCss,
   isStableMoonHold,
@@ -577,6 +582,45 @@ describe("heroSunFitDiameterPx", () => {
       expect(fitted).toBeLessThan(HERO_SUN_AUTHOR_DIAMETER_PX);
       expect(fitted / 2).toBeLessThan(orbit - synth.size.w / 2);
     }
+  });
+});
+
+describe("heroStillSunPose", () => {
+  it("frames the sun on the still-image disk", () => {
+    const boardW = 1440;
+    const boardH = 800;
+    const sunD = heroSunFitDiameterPx(boardW, boardH, false);
+    const pose = heroStillSunPose(boardW, boardH, sunD);
+    expect(HERO_STILL_FADE_MS).toBe(250);
+    expect(heroStillSunDiameterPx(boardW)).toBe(HERO_STILL_SUN_MAX_PX);
+    expect(heroStillSunDiameterPx(400)).toBeCloseTo(168);
+    expect(pose.rotateX).toBe(0);
+    expect(pose.rotateY).toBe(0);
+    const screen = projectThroughCamera(0, 0, 0, pose);
+    expect(screen.x).toBeCloseTo(0, 5);
+    const mag = closeupMagnification(sunD, heroStillSunDiameterPx(boardW));
+    expect(screen.y).toBeCloseTo((HERO_STILL_SUN_TOP_FRAC - 0.5) * boardH / mag, 5);
+  });
+
+  it("starts the credit intro on the still pose", () => {
+    const still = heroStillSunPose(1440, 800, 400);
+    const credits = [
+      {
+        key: SUN_FOCUS_KEY,
+        name: "Cymasphere",
+        startDeg: 0,
+        periodSec: 1,
+        radius: 0,
+        size: 0,
+        sun: true as const,
+        weight: 1.5,
+      },
+    ];
+    const open = cameraTour(0, false, credits, undefined, 720, still);
+    expect(open.translateZ).toBeCloseTo(still.translateZ);
+    expect(open.translateY).toBeCloseTo(still.translateY);
+    const later = cameraTour(TOUR_INTRO_MS, false, credits, undefined, 720, still);
+    expect(later.translateZ).not.toBeCloseTo(still.translateZ, 0);
   });
 });
 
