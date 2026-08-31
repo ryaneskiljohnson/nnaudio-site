@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
+  CREDIT_FADE_MS,
   CREDIT_MS,
   CREDIT_TRAVEL_MS,
+  INTRO_CARD_LEAD_MS,
   SUN_FOCUS_KEY,
   HERO_TOUR_CATALOG_BATCH,
   TOUR_INTRO_MS,
@@ -1176,6 +1178,32 @@ describe("cameraTour", () => {
     expect(travelMove).toBeGreaterThan(holdMove * 1.6);
   });
 
+  it("opens with one smooth zoom onto Cymasphere", () => {
+    const credits = orderCredits([
+      {
+        key: SUN_FOCUS_KEY,
+        name: "Cymasphere",
+        startDeg: 0,
+        periodSec: 1,
+        radius: 0,
+        size: 0,
+        sun: true,
+        weight: 1.5,
+      },
+      { key: "pack", name: "Pack", startDeg: 0, periodSec: 40, radius: 0.8, size: 80 },
+    ]);
+    const openZ = cameraTour(0, false, credits).translateZ;
+    const holdZ = cameraTour(TOUR_INTRO_MS + 80, false, credits).translateZ;
+    let prev = openZ;
+    for (let t = 80; t <= TOUR_INTRO_MS; t += 80) {
+      const z = cameraTour(t, false, credits).translateZ;
+      expect(z).toBeGreaterThanOrEqual(prev - 0.5);
+      prev = z;
+    }
+    expect(prev).toBeCloseTo(holdZ, 0);
+    expect(holdZ).toBeGreaterThan(openZ + 200);
+  });
+
   it("eases into the Cymasphere hold instead of cutting", () => {
     const credits = [
       {
@@ -1240,6 +1268,35 @@ describe("cameraTour", () => {
     const first = cameraTour(TOUR_INTRO_MS + 400, false, credits);
     expect(first.focusKey).toBe(credits[0].key);
     expect(first.nextKey).toBe(credits[1].key);
+  });
+
+  it("shows the opening card as the intro zoom settles", () => {
+    const credits = orderCredits([
+      {
+        key: SUN_FOCUS_KEY,
+        name: "Cymasphere",
+        startDeg: 0,
+        periodSec: 1,
+        radius: 0,
+        size: 0,
+        sun: true,
+        weight: 1.5,
+      },
+      { key: "pack", name: "Pack", startDeg: 0, periodSec: 40, radius: 0.8, size: 80 },
+    ]);
+    const beforeLead = cameraTour(
+      TOUR_INTRO_MS - INTRO_CARD_LEAD_MS - 40,
+      false,
+      credits
+    );
+    expect(beforeLead.focusKey).toBeNull();
+    expect(beforeLead.creditOpacity).toBe(0);
+    const settling = cameraTour(TOUR_INTRO_MS - 40, false, credits);
+    expect(settling.focusKey).toBeNull();
+    expect(settling.creditOpacity).toBeGreaterThan(0.8);
+    const hold = cameraTour(TOUR_INTRO_MS + 40, false, credits);
+    expect(hold.focusKey).toBe(SUN_FOCUS_KEY);
+    expect(hold.creditOpacity).toBe(1);
   });
 });
 

@@ -1124,12 +1124,19 @@ export function skyParallaxCss(
     scale: Math.max(0.7, Math.min(1.6, raw / rest)),
   };
 }
-/** Opening fly-in before the credits start. */
-export const TOUR_INTRO_MS = 5200;
-/** How far along TOUR_KEYS the fly-in travels before the first hold. */
+/** One smooth zoom from the opening shot onto Cymasphere. */
+export const TOUR_INTRO_MS = 2800;
+/** How far along TOUR_KEYS the no-credit galaxy loop travels. */
 export const INTRO_PATH_U = 0.28;
-/** Dolly/yaw blend from the fly-in into the Cymasphere hold. */
-export const INTRO_BLEND_MS = 1800;
+/** Face-on arrive window; the opening zoom uses the full intro. */
+export const INTRO_BLEND_MS = 2800;
+/** Credit-card fade in/out at hold edges. */
+export const CREDIT_FADE_MS = 320;
+/**
+ * Opening card fades in over the last beat of the zoom so copy lands
+ * with the hold, not after a second camera move.
+ */
+export const INTRO_CARD_LEAD_MS = 320;
 /** Base time on a catalog product: hold plus the journey to the next stop. */
 export const CREDIT_MS = 4400;
 /** Catalog moons between Cymasphere + CymaSynth returns. */
@@ -1463,20 +1470,30 @@ function creditTimeline(
   const creditT = t - TOUR_INTRO_MS;
   const located = locateCredit(creditT, credits);
   if (!located) {
+    const lead = creditT + INTRO_CARD_LEAD_MS;
     return {
       key: null,
       nextKey: creditT < 0 && credits.length > 0 ? credits[0].key : null,
-      opacity: 0,
+      opacity:
+        creditT < 0 && credits.length > 0
+          ? Math.max(0, Math.min(1, lead / CREDIT_FADE_MS))
+          : 0,
     };
   }
   const { index, local, hold } = located;
-  // Visible during the hold only; hidden for the whole travel leg.
+  // First card is already fading in during the intro settle; later
+  // stops still fade from the hold start. Hidden for the travel leg.
+  const fadeIn = index === 0 ? local + INTRO_CARD_LEAD_MS : local;
   return {
     key: credits[index].key,
     nextKey: credits[index + 1]?.key ?? null,
     opacity: Math.max(
       0,
-      Math.min(1, local / 320, (hold - CREDIT_TRAVEL_MS - local) / 320)
+      Math.min(
+        1,
+        fadeIn / CREDIT_FADE_MS,
+        (hold - CREDIT_TRAVEL_MS - local) / CREDIT_FADE_MS
+      )
     ),
   };
 }
@@ -1650,22 +1667,15 @@ export function cameraTour(
   let traveling = false;
 
   if (t < TOUR_INTRO_MS) {
-    const intro = poseFromKeys((t / TOUR_INTRO_MS) * INTRO_PATH_U);
-    pose =
-      t > TOUR_INTRO_MS - INTRO_BLEND_MS
-        ? mixPose(
-            intro,
-            poseForCredit(
-              credits[0],
-              elapsedMs,
-              worldPos?.get(credits[0].key),
-              frameOf(credits[0]).x,
-              frameOf(credits[0]).y,
-              holdTargetPx
-            ),
-            (t - (TOUR_INTRO_MS - INTRO_BLEND_MS)) / INTRO_BLEND_MS
-          )
-        : intro;
+    const hold = poseForCredit(
+      credits[0],
+      elapsedMs,
+      worldPos?.get(credits[0].key),
+      frameOf(credits[0]).x,
+      frameOf(credits[0]).y,
+      holdTargetPx
+    );
+    pose = mixPose(poseFromKeys(0), hold, t / TOUR_INTRO_MS);
   } else if (creditT < creditSpan) {
     const located = locateCredit(creditT, credits);
     const index = located?.index ?? credits.length - 1;

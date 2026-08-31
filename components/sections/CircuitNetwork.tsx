@@ -32,7 +32,6 @@ import {
   catalogSlotKey,
   catalogSlotOccupants,
   CREDIT_TRAVEL_MS,
-  INTRO_BLEND_MS,
   TOUR_INTRO_MS,
   heroCameraFollowTau,
   stepHeroOpacity,
@@ -1088,7 +1087,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         !cam.traveling &&
         !cam.focusKey &&
         !!cam.nextKey &&
-        loopT >= TOUR_INTRO_MS - INTRO_BLEND_MS &&
         loopT < TOUR_INTRO_MS;
       const hopTok =
         cam.traveling && cam.nextKey
@@ -1096,7 +1094,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
           : introApproaching && cam.nextKey
             ? `${cycle}|intro>${cam.nextKey}`
             : "";
-      const beginArrive = (creditKey: string | null) => {
+      const beginArrive = (creditKey: string | null, durMs: number) => {
         if (!creditKey) return;
         if (creditKey === SUN_FOCUS_KEY) {
           spinArrive.current.set(SUN_FOCUS_KEY, {
@@ -1109,7 +1107,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
               sunAlignRef.current
             ),
             startMs: elapsed,
-            durMs: CREDIT_TRAVEL_MS,
+            durMs,
           });
           sunBoostRef.current = 0;
           return;
@@ -1129,13 +1127,18 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             faceAlign.current.get(body.key) ?? 0
           ),
           startMs: elapsed,
-          durMs: CREDIT_TRAVEL_MS,
+          durMs,
         });
         spinBoost.current.set(body.key, 0);
       };
       if (hopTok && hopTok !== faceHop.current) {
         faceHop.current = hopTok;
-        if (!reducedMotion) beginArrive(cam.nextKey);
+        if (!reducedMotion) {
+          beginArrive(
+            cam.nextKey,
+            introApproaching ? TOUR_INTRO_MS : CREDIT_TRAVEL_MS
+          );
+        }
       }
 
       const wrapPhaseFor = (
