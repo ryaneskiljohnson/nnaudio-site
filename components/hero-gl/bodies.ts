@@ -164,8 +164,8 @@ export function heroSunRadius(diameterPx = HERO_SUN_DIAMETER_PX): number {
 }
 
 /**
- * @brief Applies a loaded map. Catalog moons use a spherical wrap;
- * sun / synth posters are painted spheres and stay a circular crop.
+ * @brief Applies a loaded map. Every body uses the longitude wrap so
+ * art rolls around the globe. Sun / synth skip surface shade (pre-lit).
  */
 export function applyBodyTexture(
   handle: HeroBodyHandle,
@@ -178,7 +178,8 @@ export function applyBodyTexture(
   const wrap = createSphereWrapMaterial(
     texture,
     handle.kind === "moon",
-    handle.kind !== "moon"
+    false,
+    handle.kind === "sun"
   );
   handle.wrap = wrap;
   handle.mesh.rotation.set(0, 0, 0);
