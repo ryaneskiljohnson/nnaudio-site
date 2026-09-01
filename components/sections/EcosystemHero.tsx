@@ -266,6 +266,11 @@ const boardFadeIn = keyframes`
   to { opacity: 1; }
 `;
 
+const stillFadeOut = keyframes`
+  from { opacity: 1; }
+  to { opacity: 0; }
+`;
+
 /**
  * Decorative tour fade only. Headline copy stays in the first paint so LCP
  * is not gated on hydration. CSS keyframes — no Framer on the LCP path.
@@ -299,16 +304,14 @@ const BoardPlaceholder = styled.div`
   overflow: hidden;
 `;
 
-const StillCover = styled.div<{ $hide: boolean }>`
+const StillCover = styled.div`
   position: absolute;
   inset: 0;
   z-index: 4;
   pointer-events: none;
-  opacity: ${(p) => (p.$hide ? 0 : 1)};
-  transition: opacity ${HERO_STILL_FADE_MS}ms ease;
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none;
+  opacity: 1;
+  &[data-fade="out"] {
+    animation: ${stillFadeOut} ${HERO_STILL_FADE_MS}ms ease forwards;
   }
 `;
 
@@ -457,6 +460,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
   const heroRef = useRef<HTMLElement>(null);
   const { allowTour, tourCap } = useOptInHeroTour();
   const [tourRevealed, setTourRevealed] = useState(false);
+  const [stillFade, setStillFade] = useState<"in" | "out">("in");
   const [showWaveform, setShowWaveform] = useState(false);
   const [liveCatalog, setLiveCatalog] = useState<{
     instruments: HeroProduct[];
@@ -472,6 +476,21 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
       tourCap: tourCap ?? null,
     });
   }, [allowTour, tourCap]);
+
+  useEffect(() => {
+    if (!tourRevealed) {
+      setStillFade("in");
+      return;
+    }
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setStillFade("out"));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [tourRevealed]);
 
   useLayoutEffect(() => {
     const el = heroRef.current;
@@ -619,13 +638,11 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
               onReveal={setTourRevealed}
             />
           ) : (
-            <StaticHeroPoster />
+            <BoardPlaceholder aria-hidden />
           )}
-          {allowTour ? (
-            <StillCover $hide={tourRevealed} aria-hidden>
-              <StaticHeroPoster />
-            </StillCover>
-          ) : null}
+          <StillCover data-fade={stillFade} aria-hidden>
+            <StaticHeroPoster />
+          </StillCover>
         </BoardFade>
         <Headline data-hero-headline="">
           <Title>

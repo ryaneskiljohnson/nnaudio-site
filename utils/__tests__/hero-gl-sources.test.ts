@@ -142,6 +142,9 @@ describe("hero source contracts", () => {
     expect(ecosystem).toContain("HERO_STILL_FADE_MS");
     expect(ecosystem).toContain("onReveal={setTourRevealed}");
     expect(ecosystem).toContain("tourRevealed");
+    expect(ecosystem).toContain("data-fade");
+    expect(ecosystem).toContain("setStillFade(\"out\")");
+    expect(ecosystem).toContain("stillFadeOut");
   });
 });
 

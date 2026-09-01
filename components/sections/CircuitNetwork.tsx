@@ -896,7 +896,10 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         scene.billboardFacingCamera();
         scene.render();
         revealAtRef.current = performance.now();
-        onRevealRef.current?.(true);
+        requestAnimationFrame(() => {
+          if (cancelled || sceneRef.current !== scene) return;
+          onRevealRef.current?.(true);
+        });
       });
     return () => {
       cancelled = true;
