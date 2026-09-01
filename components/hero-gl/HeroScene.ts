@@ -10,6 +10,7 @@ import {
   DirectionalLight,
   Group,
   Matrix4,
+  Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
   NoToneMapping,
@@ -21,7 +22,6 @@ import {
   WebGLRenderer,
 } from "three";
 import {
-  skyParallaxCss,
   SUN_FOCUS_KEY,
   type TourCamera,
 } from "@/utils/circuit-network-layout";
@@ -47,14 +47,13 @@ import {
   type HeroBodyHandle,
 } from "./bodies";
 import {
-  createNebulae,
   createOrbitRings,
-  createStarField,
   createSynthOscRings,
   disposeObject3D,
   poseOrbitRingsOpacity,
   poseSynthOscRings,
 } from "./environment";
+import { createHeroSkybox, poseHeroSkybox } from "./skyboxMaterial";
 import {
   applyCssPerspectiveCamera,
   applyTourWorldMatrix,
@@ -93,15 +92,13 @@ export class HeroScene {
   readonly camera: PerspectiveCamera;
   readonly scene: Scene;
   readonly world: Group;
-  readonly sky: Group;
   contextLost = false;
 
   private readonly sun: HeroBodyHandle;
   private readonly bodies = new Map<string, HeroBodyHandle>();
   private readonly raycaster = new Raycaster();
   private readonly pointer = new Vector2();
-  private stars;
-  private nebulae: Group | null = null;
+  private readonly skybox: Group;
   private orbits: Group | null = null;
   private synthRings: Group | null = null;
   private cssWidth = 1;
@@ -128,11 +125,10 @@ export class HeroScene {
     this.scene = new Scene();
     this.world = new Group();
     this.world.name = "hero-world";
-    this.sky = new Group();
-    this.sky.name = "hero-sky";
     this.scene.add(this.world);
-    this.camera.add(this.sky);
     this.scene.add(this.camera);
+    this.skybox = createHeroSkybox();
+    this.scene.add(this.skybox);
 
     this.scene.add(new AmbientLight(0x8a7ab8, 0.55));
     const key = new DirectionalLight(0xfff6ea, 0.35);
@@ -143,11 +139,6 @@ export class HeroScene {
 
     this.sun = createSunMesh();
     this.world.add(this.sun.mesh);
-
-    this.stars = createStarField();
-    this.sky.add(this.stars);
-    this.nebulae = createNebulae();
-    this.sky.add(this.nebulae);
 
     canvas.addEventListener("webglcontextlost", this.onContextLost, false);
     canvas.addEventListener(
@@ -255,9 +246,6 @@ export class HeroScene {
 
   applyCamera(pose: TourCamera): void {
     applyTourWorldMatrix(this.world, pose);
-    const sky = skyParallaxCss(pose.translateZ, pose.rotateX, pose.rotateY);
-    this.sky.position.set(sky.x, -sky.y, -2400);
-    this.sky.scale.setScalar(Math.max(0.7, sky.scale) * 2.2);
   }
 
   /**
@@ -454,6 +442,7 @@ export class HeroScene {
 
   render(): void {
     if (this.disposed || this.contextLost) return;
+    poseHeroSkybox(this.skybox, this.camera, performance.now() * 0.001);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -471,12 +460,12 @@ export class HeroScene {
     }
     this.bodies.clear();
     if (this.orbits) disposeObject3D(this.orbits);
-    if (this.nebulae) disposeObject3D(this.nebulae);
+    this.skybox.removeFromParent();
+    disposeObject3D(this.skybox);
     if (this.synthRings) {
       this.synthRings.removeFromParent();
       disposeObject3D(this.synthRings);
     }
-    disposeObject3D(this.stars);
     this.renderer.dispose();
   }
 

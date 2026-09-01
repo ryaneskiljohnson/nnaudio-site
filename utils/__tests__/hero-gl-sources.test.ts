@@ -32,6 +32,10 @@ const ecosystem = readFileSync(
   resolve(process.cwd(), "components/sections/EcosystemHero.tsx"),
   "utf8"
 );
+const skybox = readFileSync(
+  resolve(process.cwd(), "components/hero-gl/skyboxMaterial.ts"),
+  "utf8"
+);
 
 describe("hero source contracts", () => {
   it("does not decode the 4K sun or synth JPGs", () => {
@@ -76,11 +80,18 @@ describe("hero source contracts", () => {
     expect(scene).toContain("this.camera.add(key)");
     expect(scene).toContain("lookPlusZToward");
     expect(bodies).toContain("createSunAura");
-    expect(scene).toContain("this.sky.add(this.nebulae)");
+    expect(scene).toContain("createHeroSkybox");
+    expect(skybox).toContain("unityVoronoi");
+    expect(skybox).toContain("unityGradientNoise");
+    expect(skybox).toContain("sampleNebulaGradient");
+    expect(skybox).toContain("uBodyColor");
+    expect(skybox).toContain("hero-nebula");
+    expect(skybox).toContain("hero-stars");
+    expect(skybox).toContain("gl_Position = vec4(position.xy, 0.999, 1.0)");
     expect(scene).not.toContain("this.sun.mesh.add(this.nebulae)");
-    expect(circuit).toContain("NebulaViolet");
-    expect(circuit).toContain("NebulaGold");
-    expect(circuit).toContain("mix-blend-mode: screen");
+    expect(circuit).not.toContain("NebulaViolet");
+    expect(circuit).not.toContain("SkyDust");
+    expect(circuit).not.toContain("mix-blend-mode: screen");
     expect(scene).toContain("this.world.add(this.synthRings)");
     expect(scene).not.toContain("synth.mesh.add(this.synthRings)");
     expect(scene).toContain("alignSynthSeat");

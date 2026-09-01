@@ -1,5 +1,5 @@
 /**
- * @fileoverview Stars, nebulae, Kepler orbit lines, and CymaSynth rings.
+ * @fileoverview Sun aura, Kepler orbit lines, and CymaSynth rings.
  * @module components/hero-gl/environment
  */
 
@@ -15,8 +15,6 @@ import {
   LineLoop,
   Mesh,
   MeshBasicMaterial,
-  Points,
-  PointsMaterial,
   Sprite,
   SpriteMaterial,
   TubeGeometry,
@@ -36,16 +34,6 @@ import {
   type OrbitalSystem,
 } from "@/utils/orbital-physics";
 import { keplerToThree } from "./tourCameraRig";
-
-function mulberry32(seed: number) {
-  return function next() {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 function fadeRgba(color: string, alpha: number): string {
   return color.replace(/[\d.]+\)$/, `${alpha})`);
@@ -86,101 +74,6 @@ function radialSprite(
   const tex = new CanvasTexture(canvas);
   tex.needsUpdate = true;
   return tex;
-}
-
-/**
- * @brief Screen-facing star field (parented to the camera, not the world).
- */
-export function createStarField(): Points {
-  const count = 120;
-  const rand = mulberry32(0x5eed);
-  const pos = new Float32Array(count * 3);
-  const col = new Float32Array(count * 3);
-  const halfW = 1800;
-  const halfH = 1100;
-  for (let i = 0; i < count; i += 1) {
-    pos[i * 3] = (rand() * 2 - 1) * halfW;
-    pos[i * 3 + 1] = (rand() * 2 - 1) * halfH;
-    pos[i * 3 + 2] = 0;
-    const a = 0.35 + rand() * 0.65;
-    col[i * 3] = a;
-    col[i * 3 + 1] = a;
-    col[i * 3 + 2] = a;
-  }
-  const geo = new BufferGeometry();
-  geo.setAttribute("position", new Float32BufferAttribute(pos, 3));
-  geo.setAttribute("color", new Float32BufferAttribute(col, 3));
-  const mat = new PointsMaterial({
-    size: 2.1,
-    sizeAttenuation: false,
-    vertexColors: true,
-    transparent: true,
-    depthWrite: false,
-  });
-  const points = new Points(geo, mat);
-  points.frustumCulled = false;
-  points.name = "hero-stars";
-  return points;
-}
-
-/**
- * Visible sky plate after the camera's ~2.2 sky scale. CSS nebula %
- * is of the viewport, not the wider star field.
- */
-const SKY_W = 1400;
-const SKY_H = 900;
-
-/**
- * @brief One original CSS nebula lobe on the screen-facing sky plane.
- * Percentages match the old Sky plates (left/top/width/height).
- */
-function addSkyNebula(
-  group: Group,
-  xPct: number,
-  yPct: number,
-  wPct: number,
-  hPct: number,
-  color: string,
-  mid: number,
-  ox: number,
-  oy: number,
-  sw: number,
-  sh: number
-): void {
-  const cx = (xPct / 100 - 0.5) * SKY_W;
-  const cy = (0.5 - yPct / 100) * SKY_H;
-  const pw = (wPct / 100) * SKY_W;
-  const ph = (hPct / 100) * SKY_H;
-  const mat = new SpriteMaterial({
-    map: radialSprite(color, 256, mid),
-    blending: AdditiveBlending,
-    transparent: true,
-    depthWrite: false,
-    depthTest: false,
-  });
-  const sprite = new Sprite(mat);
-  sprite.frustumCulled = false;
-  sprite.position.set(cx + ox * pw, cy - oy * ph, 0);
-  sprite.scale.set(Math.max(1, pw * sw), Math.max(1, ph * sh), 1);
-  sprite.renderOrder = -4;
-  group.add(sprite);
-}
-
-/**
- * @brief Screen-facing dust from the original CSS hero (violet / gold / teal).
- * Parent to the sky group so plates stay clouds instead of going edge-on.
- */
-export function createNebulae(): Group {
-  const group = new Group();
-  group.name = "hero-nebulae";
-  group.frustumCulled = false;
-  addSkyNebula(group, 28, 38, 58, 48, "rgba(108,99,255,0.55)", 0.28, -0.12, -0.06, 1, 1);
-  addSkyNebula(group, 28, 38, 58, 48, "rgba(150,90,255,0.28)", 0.14, 0.18, 0.1, 0.62, 0.88);
-  addSkyNebula(group, 62, 52, 50, 42, "rgba(255,214,170,0.36)", 0.18, -0.02, -0.04, 1, 1);
-  addSkyNebula(group, 62, 52, 50, 42, "rgba(255,180,120,0.20)", 0.1, 0.14, 0.08, 0.6, 0.9);
-  addSkyNebula(group, 48, 46, 44, 36, "rgba(78,205,196,0.28)", 0.14, 0.06, -0.02, 1, 1);
-  addSkyNebula(group, 48, 46, 44, 36, "rgba(60,180,190,0.16)", 0.08, -0.18, 0.12, 0.64, 0.89);
-  return group;
 }
 
 function addSunSprite(

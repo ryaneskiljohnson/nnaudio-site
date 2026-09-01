@@ -177,42 +177,6 @@ const GlCanvas = styled.canvas`
   z-index: 1;
 `;
 
-const SkyDust = styled.div`
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  mix-blend-mode: screen;
-`;
-
-const Nebula = styled.div<{ $x: number; $y: number; $w: number; $h: number }>`
-  position: absolute;
-  left: ${(p) => p.$x}%;
-  top: ${(p) => p.$y}%;
-  width: ${(p) => p.$w}%;
-  height: ${(p) => p.$h}%;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-`;
-
-const NebulaViolet = styled(Nebula)`
-  background:
-    radial-gradient(ellipse 58% 48% at 38% 44%, rgba(108, 99, 255, 0.32) 0%, transparent 72%),
-    radial-gradient(ellipse 36% 42% at 68% 60%, rgba(150, 90, 255, 0.16) 0%, transparent 70%);
-`;
-
-const NebulaGold = styled(Nebula)`
-  background:
-    radial-gradient(ellipse 50% 40% at 48% 46%, rgba(255, 214, 170, 0.18) 0%, transparent 70%),
-    radial-gradient(ellipse 30% 38% at 64% 58%, rgba(255, 180, 120, 0.1) 0%, transparent 68%);
-`;
-
-const NebulaTeal = styled(Nebula)`
-  background:
-    radial-gradient(ellipse 46% 38% at 56% 48%, rgba(78, 205, 196, 0.14) 0%, transparent 72%),
-    radial-gradient(ellipse 28% 34% at 32% 62%, rgba(60, 180, 190, 0.08) 0%, transparent 68%);
-`;
-
 const Vignette = styled.div`
   position: absolute;
   inset: 0;
@@ -1530,13 +1494,6 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             : undefined
         }
       />
-      {!mobile ? (
-        <SkyDust aria-hidden>
-          <NebulaViolet $x={28} $y={38} $w={58} $h={48} />
-          <NebulaGold $x={62} $y={52} $w={50} $h={42} />
-          <NebulaTeal $x={48} $y={46} $w={44} $h={36} />
-        </SkyDust>
-      ) : null}
       {!webglOk ? (
         <FallbackPoster aria-hidden>
           <PosterSun

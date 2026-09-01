@@ -4,12 +4,16 @@
  * @module utils/__tests__/hero-gl-environment.test
  */
 
-import { TubeGeometry } from "three";
+import { Mesh, PerspectiveCamera, ShaderMaterial, TubeGeometry } from "three";
 import { describe, expect, it } from "vitest";
 import {
   createSynthOscRings,
   poseSynthOscRings,
 } from "@/components/hero-gl/environment";
+import {
+  createHeroSkybox,
+  poseHeroSkybox,
+} from "@/components/hero-gl/skyboxMaterial";
 import {
   CYMASYNTH_OSC_RING_SETS,
   CYMASYNTH_RING_DISK_TILT_DEG,
@@ -65,5 +69,26 @@ describe("poseSynthOscRings", () => {
     expect(group.visible).toBe(false);
     poseSynthOscRings(group, 0, 0.5);
     expect(group.visible).toBe(true);
+  });
+});
+
+describe("hero skybox", () => {
+  it("keeps nebula and stars on separate far-plane passes", () => {
+    const root = createHeroSkybox();
+    expect(root.name).toBe("hero-skybox");
+    const nebula = root.getObjectByName("hero-nebula") as Mesh;
+    const stars = root.getObjectByName("hero-stars") as Mesh;
+    const nebulaMat = nebula.material as ShaderMaterial;
+    const starMat = stars.material as ShaderMaterial;
+    expect(nebulaMat.uniforms.uScale.value).toBe(40);
+    expect(nebulaMat.uniforms.uSpeed.value).toBe(5);
+    expect(starMat.uniforms.uStarCount.value).toBe(135);
+    const camera = new PerspectiveCamera(50, 1, 2, 20000);
+    camera.position.set(0, 0, 900);
+    camera.updateMatrixWorld();
+    poseHeroSkybox(root, camera, 1.5);
+    expect(starMat.uniforms.uTime.value).toBe(1.5);
+    expect(nebulaMat.uniforms.uTime.value).toBe(1.5);
+    expect(starMat.uniforms.uInvProj.value.elements[0]).not.toBe(1);
   });
 });
