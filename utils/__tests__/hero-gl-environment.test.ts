@@ -4,7 +4,13 @@
  * @module utils/__tests__/hero-gl-environment.test
  */
 
-import { Mesh, PerspectiveCamera, ShaderMaterial, TubeGeometry } from "three";
+import {
+  Group,
+  Mesh,
+  PerspectiveCamera,
+  ShaderMaterial,
+  TubeGeometry,
+} from "three";
 import { describe, expect, it } from "vitest";
 import {
   createSynthOscRings,
@@ -86,9 +92,17 @@ describe("hero skybox", () => {
     const camera = new PerspectiveCamera(50, 1, 2, 20000);
     camera.position.set(0, 0, 900);
     camera.updateMatrixWorld();
-    poseHeroSkybox(root, camera, 1.5);
+    const world = new Group();
+    poseHeroSkybox(root, camera, world, 1.5);
     expect(starMat.uniforms.uTime.value).toBe(1.5);
     expect(nebulaMat.uniforms.uTime.value).toBe(1.5);
     expect(starMat.uniforms.uInvProj.value.elements[0]).not.toBe(1);
+    const before = starMat.uniforms.uViewToLocal.value.elements.slice();
+    world.rotation.y = 0.4;
+    poseHeroSkybox(root, camera, world, 1.5);
+    expect(starMat.uniforms.uViewToLocal.value.elements).not.toEqual(before);
+    expect(nebulaMat.uniforms.uViewToLocal.value.elements).toEqual(
+      starMat.uniforms.uViewToLocal.value.elements
+    );
   });
 });

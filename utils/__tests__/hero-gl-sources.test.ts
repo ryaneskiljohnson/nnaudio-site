@@ -88,6 +88,10 @@ describe("hero source contracts", () => {
     expect(skybox).toContain("hero-nebula");
     expect(skybox).toContain("hero-stars");
     expect(skybox).toContain("gl_Position = vec4(position.xy, 0.999, 1.0)");
+    expect(skybox).toContain("uViewToLocal");
+    expect(skybox).toContain("skyDir()");
+    expect(skybox).toContain("skyEquirect");
+    expect(skybox).toContain("atan(d.x, -d.z)");
     expect(scene).not.toContain("this.sun.mesh.add(this.nebulae)");
     expect(circuit).not.toContain("NebulaViolet");
     expect(circuit).not.toContain("SkyDust");

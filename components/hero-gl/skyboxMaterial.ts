@@ -1,6 +1,7 @@
 /**
  * @fileoverview Two far-plane layers from the Cymasphere Android shaders:
  * DynamicStarsSkybox behind, Nebula as its own transparent pass.
+ * Both sample a world-space view ray so the sky surrounds the tour.
  * @module components/hero-gl/skyboxMaterial
  */
 
@@ -30,6 +31,8 @@ const GLSL_COMMON = /* glsl */ `
 #include <common>
 
 varying vec2 vNdc;
+uniform mat4 uInvProj;
+uniform mat4 uViewToLocal;
 
 float hlslFmod(float x, float y) {
   return x - y * (x < 0.0 ? ceil(x / y) : floor(x / y));
@@ -37,6 +40,16 @@ float hlslFmod(float x, float y) {
 
 vec2 hlslFmod2(vec2 x, float y) {
   return vec2(hlslFmod(x.x, y), hlslFmod(x.y, y));
+}
+
+vec3 skyDir() {
+  vec4 viewH = uInvProj * vec4(vNdc, 1.0, 1.0);
+  vec3 viewDir = normalize(viewH.xyz / max(viewH.w, 1e-6));
+  return normalize(mat3(uViewToLocal) * viewDir);
+}
+
+vec2 skyEquirect(vec3 d) {
+  return vec2(atan(d.x, -d.z), d.y);
 }
 `;
 
@@ -48,7 +61,6 @@ uniform float uStars;
 uniform float uStarCount;
 uniform float uCellDensity;
 uniform vec2 uTiling;
-uniform mat4 uInvProj;
 
 vec2 unityVoronoiRandom(vec2 uv, float offset) {
   mat2 m = mat2(15.27, 47.63, 99.41, 89.98);
@@ -82,9 +94,7 @@ vec3 sampleStarColors(float t) {
 }
 
 void main() {
-  vec4 viewH = uInvProj * vec4(vNdc, 1.0, 1.0);
-  vec3 viewDir = normalize(viewH.xyz / max(viewH.w, 1e-6));
-  vec2 starUv = viewDir.xy * uTiling;
+  vec2 starUv = skyEquirect(skyDir()) * uTiling;
   float cells = unityVoronoi(starUv, uStars, uCellDensity);
   vec2 cellId = floor(starUv * uCellDensity);
   float pick = fract(sin(dot(cellId, vec2(127.1, 311.7))) * 43758.5453);
@@ -141,7 +151,7 @@ vec3 sampleNebulaGradient(float t) {
 }
 
 void main() {
-  vec2 uv = vNdc * vec2(0.82, 0.52);
+  vec2 uv = skyEquirect(skyDir()) * vec2(0.82, 0.52);
   float drift = (uTimeOffset + uTime) * uSpeed * 0.0036;
   vec2 warp = vec2(
     unityGradientNoise(uv + vec2(drift * 0.18, -drift * 0.11), uScale * 0.035),
@@ -169,6 +179,8 @@ void main() {
 `;
 
 const INV_PROJ = new Matrix4();
+const INV_WORLD = new Matrix4();
+const VIEW_TO_LOCAL = new Matrix4();
 
 const AFTERGLOW = [
   0x002ffb, 0xe869ee, 0xf60f6d, 0x7112ea, 0x0563ff, 0xb907e1, 0x92236f,
@@ -207,6 +219,8 @@ export function createHeroSkybox(): Group {
         uNegativeSpace: { value: 2 },
         uBodyColor: { value: new Color(0xe869ee) },
         uEdgeColor: { value: new Color(0x002ffb) },
+        uInvProj: { value: new Matrix4() },
+        uViewToLocal: { value: new Matrix4() },
       },
       vertexShader: VERT,
       fragmentShader: NEBULA_FRAG,
@@ -230,6 +244,7 @@ export function createHeroSkybox(): Group {
         uCellDensity: { value: 30.55 },
         uTiling: { value: new Vector2(8, 4) },
         uInvProj: { value: new Matrix4() },
+        uViewToLocal: { value: new Matrix4() },
       },
       vertexShader: VERT,
       fragmentShader: STARS_FRAG,
@@ -250,26 +265,37 @@ export function createHeroSkybox(): Group {
 }
 
 /**
- * @brief Advances star twinkle and aims the star pass with the camera.
+ * @brief Advances star twinkle and aims both sky passes in world space.
+ * The tour camera is fixed; `world` carries the orbit, so sky directions
+ * use inv(world) × camera so the field surrounds the solar system.
  * @param root {@link createHeroSkybox} result.
  * @param camera Active tour camera.
+ * @param world Kepler world group that receives the tour matrix.
  * @param timeSec Elapsed seconds.
  */
 export function poseHeroSkybox(
   root: Object3D,
   camera: Camera,
+  world: Object3D,
   timeSec: number
 ): void {
   const stars = root.getObjectByName("hero-stars") as Mesh | undefined;
   const nebula = root.getObjectByName("hero-nebula") as Mesh | undefined;
   if (!stars) return;
+  camera.updateMatrixWorld(true);
+  world.updateMatrixWorld(true);
+  INV_PROJ.copy(camera.projectionMatrix).invert();
+  INV_WORLD.copy(world.matrixWorld).invert();
+  VIEW_TO_LOCAL.multiplyMatrices(INV_WORLD, camera.matrixWorld);
   const starMat = stars.material as ShaderMaterial;
   starMat.uniforms.uTime.value = timeSec;
-  INV_PROJ.copy(camera.projectionMatrix).invert();
   starMat.uniforms.uInvProj.value.copy(INV_PROJ);
+  starMat.uniforms.uViewToLocal.value.copy(VIEW_TO_LOCAL);
   if (nebula) {
     const nebulaMat = nebula.material as ShaderMaterial;
     nebulaMat.uniforms.uTime.value = timeSec;
+    nebulaMat.uniforms.uInvProj.value.copy(INV_PROJ);
+    nebulaMat.uniforms.uViewToLocal.value.copy(VIEW_TO_LOCAL);
     const phase = timeSec / AFTERGLOW_CYCLE_SEC + 1;
     const i = Math.floor(phase) % AFTERGLOW.length;
     const f = phase - Math.floor(phase);

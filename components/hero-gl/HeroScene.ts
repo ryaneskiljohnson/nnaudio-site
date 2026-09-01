@@ -442,7 +442,7 @@ export class HeroScene {
 
   render(): void {
     if (this.disposed || this.contextLost) return;
-    poseHeroSkybox(this.skybox, this.camera, performance.now() * 0.001);
+    poseHeroSkybox(this.skybox, this.camera, this.world, performance.now() * 0.001);
     this.renderer.render(this.scene, this.camera);
   }
 
