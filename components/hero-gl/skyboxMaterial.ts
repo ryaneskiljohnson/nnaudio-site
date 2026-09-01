@@ -142,7 +142,7 @@ vec3 sampleNebulaGradient(float t) {
 
 void main() {
   vec2 uv = vNdc * vec2(0.82, 0.52);
-  float drift = (uTimeOffset + uTime) * uSpeed * 0.0012;
+  float drift = (uTimeOffset + uTime) * uSpeed * 0.0036;
   vec2 warp = vec2(
     unityGradientNoise(uv + vec2(drift * 0.18, -drift * 0.11), uScale * 0.035),
     unityGradientNoise(uv + vec2(-drift * 0.14, drift * 0.16), uScale * 0.035)
@@ -151,7 +151,7 @@ void main() {
   float n1 = unityGradientNoise(p + vec2(drift * 0.28, -drift * 0.12), uScale * 0.038);
   float n2 = unityGradientNoise(p + vec2(0.62, -0.38) + vec2(-drift * 0.16, drift * 0.24), uScale * 0.044);
   float n3 = unityGradientNoise(p + vec2(-0.41, 0.57) + vec2(drift * 0.11, -drift * 0.19), uScale * 0.05);
-  float cutoff = 0.56 + uNegativeSpace * 0.03;
+  float cutoff = 0.58 + uNegativeSpace * 0.03;
   float gain = uIntensity * 0.55;
   float blobA = pow(saturate((n1 - cutoff) * gain), 1.75);
   float blobB = pow(saturate((n2 - (cutoff - 0.02)) * gain), 1.75);
@@ -162,7 +162,7 @@ void main() {
   cloud *= 1.0 - centerTop * 0.96;
   float swirl = saturate(n2);
   vec3 tinted = mix(uEdgeColor, uBodyColor, swirl);
-  vec3 rgb = (tinted * 0.38 + sampleNebulaGradient(swirl) * 0.08) * cloud;
+  vec3 rgb = (tinted * 0.16 + sampleNebulaGradient(swirl) * 0.035) * cloud;
   gl_FragColor = vec4(rgb, 1.0);
   #include <colorspace_fragment>
 }
@@ -171,12 +171,11 @@ void main() {
 const INV_PROJ = new Matrix4();
 
 const AFTERGLOW = [
-  0x002ffb, 0xe869ee, 0xf60f6d, 0x2dfbbb, 0x7112ea, 0xb7ffe5, 0x23c3f7,
-  0x0563ff, 0xb907e1, 0xe6b4fd, 0x92236f, 0x1e735e,
+  0x002ffb, 0xe869ee, 0xf60f6d, 0x7112ea, 0x0563ff, 0xb907e1, 0x92236f,
 ];
 const AFTERGLOW_A = new Color();
 const AFTERGLOW_B = new Color();
-const AFTERGLOW_CYCLE_SEC = 40;
+const AFTERGLOW_CYCLE_SEC = 18;
 
 function farLayer(
   name: string,
