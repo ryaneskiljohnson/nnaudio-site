@@ -142,7 +142,7 @@ vec3 sampleNebulaGradient(float t) {
 
 void main() {
   vec2 uv = vNdc * vec2(0.82, 0.52);
-  float drift = (uTimeOffset + uTime) * uSpeed * 0.008;
+  float drift = (uTimeOffset + uTime) * uSpeed * 0.0012;
   vec2 warp = vec2(
     unityGradientNoise(uv + vec2(drift * 0.18, -drift * 0.11), uScale * 0.035),
     unityGradientNoise(uv + vec2(-drift * 0.14, drift * 0.16), uScale * 0.035)
@@ -162,7 +162,7 @@ void main() {
   cloud *= 1.0 - centerTop * 0.96;
   float swirl = saturate(n2);
   vec3 tinted = mix(uEdgeColor, uBodyColor, swirl);
-  vec3 rgb = (tinted * 0.68 + sampleNebulaGradient(swirl) * 0.14) * cloud;
+  vec3 rgb = (tinted * 0.38 + sampleNebulaGradient(swirl) * 0.08) * cloud;
   gl_FragColor = vec4(rgb, 1.0);
   #include <colorspace_fragment>
 }
@@ -176,7 +176,7 @@ const AFTERGLOW = [
 ];
 const AFTERGLOW_A = new Color();
 const AFTERGLOW_B = new Color();
-const AFTERGLOW_CYCLE_SEC = 10;
+const AFTERGLOW_CYCLE_SEC = 40;
 
 function farLayer(
   name: string,
