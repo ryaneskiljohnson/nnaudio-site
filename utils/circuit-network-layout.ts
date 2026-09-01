@@ -1174,7 +1174,7 @@ export const HERO_STILL_SUN_MAX_PX = 220;
 /** Still-image sun size as a fraction of board width. */
 export const HERO_STILL_SUN_VW = 0.42;
 /** Hold the still-matched pose while the poster fades off. */
-export const HERO_STILL_FADE_MS = 250;
+export const HERO_STILL_FADE_MS = 1000;
 /** How far along TOUR_KEYS the no-credit galaxy loop travels. */
 export const INTRO_PATH_U = 0.28;
 /** Face-on arrive window; the opening zoom uses the full intro. */

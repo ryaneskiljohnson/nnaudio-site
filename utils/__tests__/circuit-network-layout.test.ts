@@ -591,7 +591,7 @@ describe("heroStillSunPose", () => {
     const boardH = 800;
     const sunD = heroSunFitDiameterPx(boardW, boardH, false);
     const pose = heroStillSunPose(boardW, boardH, sunD);
-    expect(HERO_STILL_FADE_MS).toBe(250);
+    expect(HERO_STILL_FADE_MS).toBe(1000);
     expect(heroStillSunDiameterPx(boardW)).toBe(HERO_STILL_SUN_MAX_PX);
     expect(heroStillSunDiameterPx(400)).toBeCloseTo(168);
     expect(pose.rotateX).toBe(0);
