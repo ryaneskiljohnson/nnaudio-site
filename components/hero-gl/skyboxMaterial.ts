@@ -162,7 +162,7 @@ void main() {
   cloud *= 1.0 - centerTop * 0.96;
   float swirl = saturate(n2);
   vec3 tinted = mix(uEdgeColor, uBodyColor, swirl);
-  vec3 rgb = (tinted * 0.16 + sampleNebulaGradient(swirl) * 0.035) * cloud;
+  vec3 rgb = (tinted * 0.08 + sampleNebulaGradient(swirl) * 0.018) * cloud;
   gl_FragColor = vec4(rgb, 1.0);
   #include <colorspace_fragment>
 }
