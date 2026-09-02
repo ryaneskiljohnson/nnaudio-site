@@ -131,11 +131,11 @@ vec3 starLayer(vec2 eq, float offSun) {
   float star = exp(-pow(cells / radius, 2.0) * 3.2);
   star *= step(0.980, pick);
   vec2 dustUv = vec2(eq.x, asin(clamp(eq.y, -1.0, 1.0)));
-  float n1 = fbm(dustUv * vec2(1.8, 2.4));
-  float n2 = fbm(dustUv * vec2(2.7, 3.3) + vec2(2.1, -0.7));
-  float wisps = pow(smoothstep(0.64, 0.82, n1) * smoothstep(0.52, 0.74, n2), 1.6);
-  float edge = smoothstep(0.18, 0.82, length(vNdc));
-  vec3 dust = vec3(0.55, 0.62, 0.95) * wisps * offSun * edge * 0.12;
+  float n1 = fbm(dustUv * vec2(1.05, 1.4));
+  float n2 = fbm(dustUv * vec2(1.55, 2.05) + vec2(2.1, -0.7));
+  float wisps = smoothstep(0.54, 0.76, n1) * smoothstep(0.44, 0.68, n2);
+  float frame = mix(0.35, 1.0, smoothstep(0.12, 0.75, length(vNdc)));
+  vec3 dust = vec3(0.55, 0.62, 0.95) * wisps * offSun * frame * 0.08;
   return sampleStarColors(colorT) * star + dust;
 }
 
@@ -199,8 +199,8 @@ function farLayer(
  * @brief Far-plane stars with faint random dust among them.
  * @returns Sky group parented to the scene, not the Kepler world.
  * @note Dust lives in the star shader so it is not a second nebula
- * layer. Wisps are peak-only and rim-weighted so a low-frequency
- * FBM lobe cannot fill the frame once the tour leaves the sun.
+ * layer. Wisps are mid-scale and kept quiet so they read as haze
+ * among the stars, not a wash. They still fade on the sun.
  * Stars are posed in Kepler space and yaw with Cymasphere's wrap
  * phase so the sky turns as if the camera were orbiting the sun.
  * The atan wrap is crossfaded. The quad sits at the far plane so
