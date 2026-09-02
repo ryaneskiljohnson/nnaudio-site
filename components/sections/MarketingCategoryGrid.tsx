@@ -1,7 +1,8 @@
 /**
  * @fileoverview Server-rendered homepage catalog tiles. No framer-motion
  * and no client JS — counts and cover art come from the catalog seed.
- * Product artwork fills each tile; copy sits on a gradient overlay.
+ * Product artwork fills most tiles; the Access tile keeps a smaller
+ * top-aligned logo on the image navy so copy does not collide.
  * @module components/sections/MarketingCategoryGrid
  */
 
@@ -48,11 +49,14 @@ export default function MarketingCategoryGrid({
                 key={tile.key}
                 href={tile.href}
                 prefetch={false}
-                className={
-                  index < 2
-                    ? "marketing-catalog-tile is-wide"
-                    : "marketing-catalog-tile"
-                }
+                className={[
+                  "marketing-catalog-tile",
+                  index < 2 ? "is-wide" : "",
+                  // Access tile uses a contained top logo, not a full-bleed cover.
+                  tile.key === "access" ? "is-access" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 style={
                   {
                     "--cat": CATEGORY_RGB[tile.key] ?? "108, 99, 255",

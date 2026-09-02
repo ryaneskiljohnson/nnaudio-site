@@ -276,7 +276,7 @@ a.button:hover,
 a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit),
 [role="button"]:hover,
 button:hover *,
-a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit) *,
+a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit):not(.marketing-catalog-tile) *,
 [role="button"]:hover *,
 *[class*="Button"]:hover,
 *[class*="button"]:hover {
