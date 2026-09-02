@@ -106,6 +106,7 @@ export class HeroScene {
   private disposed = false;
   private readonly camWorld = new Vector3();
   private synthElapsedMs = 0;
+  private sunSpinPhase = 0;
 
   private constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -236,7 +237,13 @@ export class HeroScene {
     poseBodySpin(handle, phase);
   }
 
+  /**
+   * @brief Advances Cymasphere's wrap. The sky uses the same phase so
+   * the field turns as if the camera were orbiting the sun.
+   * @param phase Wrap turns in [0, 1).
+   */
   poseSun(phase: number): void {
+    this.sunSpinPhase = phase;
     poseBodySpin(this.sun, phase);
   }
 
@@ -437,8 +444,7 @@ export class HeroScene {
 
   render(): void {
     if (this.disposed || this.contextLost) return;
-    const now = performance.now() * 0.001;
-    poseHeroSkybox(this.skybox, this.camera, this.world, now);
+    poseHeroSkybox(this.skybox, this.camera, this.world, this.sunSpinPhase);
     this.renderer.render(this.scene, this.camera);
   }
 

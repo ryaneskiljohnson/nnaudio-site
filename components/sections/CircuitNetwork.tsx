@@ -966,6 +966,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         follow.armed = true;
         scene.applyCamera(still);
         scene.billboardFacingCamera();
+        scene.poseSun(0);
         scene.render();
         revealAtRef.current = performance.now();
         requestAnimationFrame(() => {
@@ -1131,6 +1132,7 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
             scene.applyCamera(still);
             scene.billboardFacingCamera();
             scene.poseOrbitsOpacity(0);
+            scene.poseSun(0);
             scene.render();
           }
           raf = window.requestAnimationFrame(tick);

@@ -1,6 +1,5 @@
 /**
- * @fileoverview Hero far-plane sky: stars plus a faint aurora haze
- * behind the solar system.
+ * @fileoverview Hero far-plane starfield with faint dust among the stars.
  * @module components/hero-gl/skyboxMaterial
  */
 
@@ -15,13 +14,6 @@ import {
   type Camera,
   type Object3D,
 } from "three";
-
-/**
- * Additive gain for the far-sky aurora. Visible as a wash, not a band.
- * @note The shader fades a cone toward the sun so haze stays among the
- * stars and does not punch through the transparent Cymasphere disk.
- */
-export const HERO_AURORA_INTENSITY = 0.2;
 
 const VERT = /* glsl */ `
 varying vec2 vNdc;
@@ -56,15 +48,19 @@ vec3 skyDir() {
 vec2 skyEquirect(vec3 d) {
   return vec2(atan(d.x, -d.z), d.y);
 }
+
+float wrapLon(float lon) {
+  return lon - 6.28318530718 * floor((lon + 3.14159265) / 6.28318530718);
+}
 `;
 
 const STARS_FRAG = /* glsl */ `
 ${GLSL_COMMON}
 
-uniform float uTime;
 uniform float uStars;
 uniform float uStarCount;
 uniform float uCellDensity;
+uniform float uSpin;
 uniform vec2 uTiling;
 
 vec2 unityVoronoiRandom(vec2 uv, float offset) {
@@ -98,27 +94,6 @@ vec3 sampleStarColors(float t) {
   return mix(c2, c3, (t - 0.75) / 0.25);
 }
 
-void main() {
-  vec2 starUv = skyEquirect(skyDir()) * uTiling;
-  float cells = unityVoronoi(starUv, uStars, uCellDensity);
-  vec2 cellId = floor(starUv * uCellDensity);
-  float pick = fract(sin(dot(cellId, vec2(127.1, 311.7))) * 43758.5453);
-  float colorT = fract(sin(dot(cellId, vec2(269.5, 183.3))) * 43758.5453);
-  float star = pow(saturate(1.0 - cells * 13.0), 6.0);
-  star *= step(0.980, pick);
-  float twinkle = 0.75 + 0.25 * sin(uTime * (0.7 + pick * 1.4) + pick * 40.0);
-  vec3 rgb = sampleStarColors(colorT) * twinkle * star;
-  gl_FragColor = vec4(rgb, 1.0);
-  #include <colorspace_fragment>
-}
-`;
-
-const AURORA_FRAG = /* glsl */ `
-${GLSL_COMMON}
-
-uniform float uTime;
-uniform float uIntensity;
-
 float hash21(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
@@ -139,30 +114,46 @@ float fbm(vec2 p) {
   float amp = 0.5;
   for (int i = 0; i < 4; i++) {
     sum += amp * valueNoise2(p);
-    p = p * 2.05 + vec2(13.1, 4.7);
+    p = p * 2.11 + vec2(9.2, 3.4);
     amp *= 0.5;
   }
   return sum;
 }
 
+vec3 starLayer(vec2 eq, float offSun) {
+  vec2 starUv = eq * uTiling;
+  float cells = unityVoronoi(starUv, uStars, uCellDensity);
+  vec2 cellId = floor(starUv * uCellDensity);
+  float pick = fract(sin(dot(cellId, vec2(127.1, 311.7))) * 43758.5453);
+  float colorT = fract(sin(dot(cellId, vec2(269.5, 183.3))) * 43758.5453);
+  float sizePick = fract(sin(dot(cellId, vec2(73.1, 19.4))) * 43758.5453);
+  float radius = mix(0.062, 0.09, smoothstep(0.78, 1.0, sizePick));
+  float star = exp(-pow(cells / radius, 2.0) * 3.2);
+  star *= step(0.980, pick);
+  vec2 dustUv = vec2(eq.x, asin(clamp(eq.y, -1.0, 1.0)));
+  float n1 = fbm(dustUv * vec2(1.8, 2.4));
+  float n2 = fbm(dustUv * vec2(2.7, 3.3) + vec2(2.1, -0.7));
+  float wisps = pow(smoothstep(0.64, 0.82, n1) * smoothstep(0.52, 0.74, n2), 1.6);
+  float edge = smoothstep(0.18, 0.82, length(vNdc));
+  vec3 dust = vec3(0.55, 0.62, 0.95) * wisps * offSun * edge * 0.12;
+  return sampleStarColors(colorT) * star + dust;
+}
+
 void main() {
   vec3 dir = skyDir();
-  vec2 eq = skyEquirect(dir);
-  float drift = uTime * 0.007;
-  vec2 field = vec2(eq.x * 0.2, eq.y * 0.24) + vec2(drift * 0.09, -drift * 0.04);
-  float n1 = fbm(field);
-  float n2 = fbm(field * 0.68 + vec2(3.8, -1.6));
-  float wash = mix(0.4, 1.0, saturate(n1 * 0.68 + n2 * 0.32));
   vec3 camWorld = (uViewToLocal * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
-  vec3 toSun = normalize(-camWorld);
-  float sunCone = 1.0 - smoothstep(0.9, 0.998, saturate(dot(dir, toSun)));
-  float haze = wash * sunCone;
-  vec3 blue = vec3(0.22, 0.38, 0.9);
-  vec3 violet = vec3(0.46, 0.3, 0.84);
-  vec3 teal = vec3(0.14, 0.52, 0.66);
-  vec3 tint = mix(blue, violet, saturate(n2));
-  tint = mix(tint, teal, saturate(n1) * 0.26);
-  gl_FragColor = vec4(tint * haze * uIntensity, 1.0);
+  float camDist = max(length(camWorld), 1e-3);
+  float towardSun = saturate(dot(dir, -camWorld / camDist));
+  float offSun = 1.0 - smoothstep(0.88, 0.998, towardSun);
+  vec2 eq = skyEquirect(dir);
+  eq.x = wrapLon(eq.x + uSpin * 6.28318530718);
+  vec3 rgb = starLayer(eq, offSun);
+  float seam = smoothstep(2.55, 3.14159265, abs(eq.x));
+  if (seam > 0.0) {
+    vec2 eqWrap = vec2(eq.x - sign(eq.x) * 6.28318530718, eq.y);
+    rgb = mix(rgb, starLayer(eqWrap, offSun), seam * 0.5);
+  }
+  gl_FragColor = vec4(rgb, 1.0);
   #include <colorspace_fragment>
 }
 `;
@@ -170,7 +161,27 @@ void main() {
 const INV_PROJ = new Matrix4();
 const INV_WORLD = new Matrix4();
 const VIEW_TO_LOCAL = new Matrix4();
+const TAU = Math.PI * 2;
 
+/**
+ * @brief Wraps a longitude into (−π, π] after wrap-phase yaw.
+ * @param lon Radians, any finite value.
+ * @returns Equivalent angle in (−π, π].
+ * @note Matches GLSL `wrapLon` so seam tests stay on the atan cut.
+ * @example
+ * wrapSkyLongitude(Math.PI + 0.5) // ≈ -Math.PI + 0.5
+ */
+export function wrapSkyLongitude(lon: number): number {
+  return lon - TAU * Math.floor((lon + Math.PI) / TAU);
+}
+
+/**
+ * @brief Full-screen far-plane mesh that is never frustum-culled.
+ * @param name Object name for later lookup.
+ * @param material Starfield shader.
+ * @param renderOrder Draw before Kepler bodies.
+ * @returns Mesh parented by {@link createHeroSkybox}.
+ */
 function farLayer(
   name: string,
   material: ShaderMaterial,
@@ -185,44 +196,29 @@ function farLayer(
 }
 
 /**
- * @brief Far-plane stars with a faint aurora wash among them.
+ * @brief Far-plane stars with faint random dust among them.
  * @returns Sky group parented to the scene, not the Kepler world.
- * @note Both layers sit at the far plane so planets stay in front.
+ * @note Dust lives in the star shader so it is not a second nebula
+ * layer. Wisps are peak-only and rim-weighted so a low-frequency
+ * FBM lobe cannot fill the frame once the tour leaves the sun.
+ * Stars are posed in Kepler space and yaw with Cymasphere's wrap
+ * phase so the sky turns as if the camera were orbiting the sun.
+ * The atan wrap is crossfaded. The quad sits at the far plane so
+ * planets stay in front.
  * @example
  * scene.add(createHeroSkybox());
  */
 export function createHeroSkybox(): Group {
-  const aurora = farLayer(
-    "hero-aurora",
-    new ShaderMaterial({
-      name: "hero-aurora",
-      uniforms: {
-        uTime: { value: 0 },
-        uIntensity: { value: HERO_AURORA_INTENSITY },
-        uInvProj: { value: new Matrix4() },
-        uViewToLocal: { value: new Matrix4() },
-      },
-      vertexShader: VERT,
-      fragmentShader: AURORA_FRAG,
-      transparent: true,
-      blending: AdditiveBlending,
-      depthTest: true,
-      depthWrite: false,
-      toneMapped: false,
-      fog: false,
-    }),
-    -19
-  );
   const stars = farLayer(
     "hero-stars",
     new ShaderMaterial({
       name: "hero-stars",
       uniforms: {
-        uTime: { value: 0 },
         uStars: { value: 150 },
         uStarCount: { value: 135 },
-        uCellDensity: { value: 30.55 },
-        uTiling: { value: new Vector2(8, 4) },
+        uCellDensity: { value: 22 },
+        uSpin: { value: 0 },
+        uTiling: { value: new Vector2(6, 3) },
         uInvProj: { value: new Matrix4() },
         uViewToLocal: { value: new Matrix4() },
       },
@@ -239,39 +235,36 @@ export function createHeroSkybox(): Group {
   );
   const group = new Group();
   group.name = "hero-skybox";
-  group.add(aurora);
   group.add(stars);
   return group;
 }
 
 /**
- * @brief Advances star twinkle and aurora drift in world space.
+ * @brief Advances the far-plane starfield in Kepler space.
  * @param root {@link createHeroSkybox} result.
  * @param camera Active tour camera.
  * @param world Kepler world group that receives the tour matrix.
- * @param timeSec Elapsed seconds.
+ * @param spinPhase Cymasphere wrap phase in [0, 1). Same value
+ * passed to the sun wrap.
  * @returns Nothing.
+ * @note View rays go through the world matrix, then yaw with the
+ * wrap so the sky moves as the camera would around Cymasphere.
  */
 export function poseHeroSkybox(
   root: Object3D,
   camera: Camera,
   world: Object3D,
-  timeSec: number
+  spinPhase = 0
 ): void {
   const stars = root.getObjectByName("hero-stars") as Mesh | undefined;
-  const aurora = root.getObjectByName("hero-aurora") as Mesh | undefined;
-  if (!stars || !aurora) return;
+  if (!stars) return;
   camera.updateMatrixWorld(true);
   world.updateMatrixWorld(true);
   INV_PROJ.copy(camera.projectionMatrix).invert();
   INV_WORLD.copy(world.matrixWorld).invert();
   VIEW_TO_LOCAL.multiplyMatrices(INV_WORLD, camera.matrixWorld);
   const starMat = stars.material as ShaderMaterial;
-  starMat.uniforms.uTime.value = timeSec;
   starMat.uniforms.uInvProj.value.copy(INV_PROJ);
   starMat.uniforms.uViewToLocal.value.copy(VIEW_TO_LOCAL);
-  const auroraMat = aurora.material as ShaderMaterial;
-  auroraMat.uniforms.uTime.value = timeSec;
-  auroraMat.uniforms.uInvProj.value.copy(INV_PROJ);
-  auroraMat.uniforms.uViewToLocal.value.copy(VIEW_TO_LOCAL);
+  starMat.uniforms.uSpin.value = spinPhase;
 }

@@ -18,8 +18,8 @@ import {
 } from "@/components/hero-gl/environment";
 import {
   createHeroSkybox,
-  HERO_AURORA_INTENSITY,
   poseHeroSkybox,
+  wrapSkyLongitude,
 } from "@/components/hero-gl/skyboxMaterial";
 import {
   CYMASYNTH_OSC_RING_SETS,
@@ -80,30 +80,43 @@ describe("poseSynthOscRings", () => {
 });
 
 describe("hero skybox", () => {
-  it("keeps stars and a faint aurora on the far plane", () => {
+  it("keeps stars on the far plane with no nebula", () => {
     const root = createHeroSkybox();
     expect(root.name).toBe("hero-skybox");
     expect(root.getObjectByName("hero-nebula")).toBeUndefined();
+    expect(root.getObjectByName("hero-aurora")).toBeUndefined();
     const stars = root.getObjectByName("hero-stars") as Mesh;
-    const aurora = root.getObjectByName("hero-aurora") as Mesh;
     const starMat = stars.material as ShaderMaterial;
-    const auroraMat = aurora.material as ShaderMaterial;
     expect(starMat.uniforms.uStarCount.value).toBe(135);
-    expect(auroraMat.uniforms.uIntensity.value).toBe(HERO_AURORA_INTENSITY);
+    expect(starMat.uniforms.uCellDensity.value).toBe(22);
     const camera = new PerspectiveCamera(50, 1, 2, 20000);
     camera.position.set(0, 0, 900);
     camera.updateMatrixWorld();
     const world = new Group();
-    poseHeroSkybox(root, camera, world, 1.5);
-    expect(starMat.uniforms.uTime.value).toBe(1.5);
-    expect(auroraMat.uniforms.uTime.value).toBe(1.5);
+    poseHeroSkybox(root, camera, world, 0.25);
+    expect(starMat.uniforms.uSpin.value).toBe(0.25);
+    expect(starMat.uniforms.uTime).toBeUndefined();
     expect(starMat.uniforms.uInvProj.value.elements[0]).not.toBe(1);
     const before = starMat.uniforms.uViewToLocal.value.elements.slice();
     world.rotation.y = 0.4;
-    poseHeroSkybox(root, camera, world, 1.5);
+    poseHeroSkybox(root, camera, world, 0.25);
     expect(starMat.uniforms.uViewToLocal.value.elements).not.toEqual(before);
-    expect(auroraMat.uniforms.uViewToLocal.value.elements).toEqual(
-      starMat.uniforms.uViewToLocal.value.elements
-    );
+    expect(starMat.uniforms.uSpin.value).toBe(0.25);
+  });
+
+  it("wraps spun longitude onto (-π, π] so the seam stays on a ±π cut", () => {
+    for (const turns of [0, 0.25, 0.5, 0.75, 1.25]) {
+      const spin = turns * Math.PI * 2;
+      for (const raw of [-Math.PI, -1, 0, 1, Math.PI, Math.PI + spin]) {
+        const wrapped = wrapSkyLongitude(raw);
+        expect(wrapped).toBeGreaterThan(-Math.PI - 1e-10);
+        expect(wrapped).toBeLessThanOrEqual(Math.PI + 1e-10);
+      }
+      expect(wrapSkyLongitude(Math.PI + spin)).toBeCloseTo(
+        wrapSkyLongitude(-Math.PI + spin),
+        10
+      );
+    }
+    expect(Math.abs(wrapSkyLongitude(Math.PI))).toBeCloseTo(Math.PI, 10);
   });
 });
