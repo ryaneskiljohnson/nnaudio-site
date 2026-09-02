@@ -223,10 +223,10 @@ describe("readHeroCompactTour", () => {
 });
 
 describe("resolveHeroTourStart", () => {
-  it("idles the 3D tour until the main thread is free", () => {
+  it("starts the 3D tour immediately so the first sun is wrapped", () => {
     expect(resolveHeroTourStart(false)).toEqual({
-      allowTour: false,
-      scheduleDesktop: true,
+      allowTour: true,
+      scheduleDesktop: false,
     });
   });
 

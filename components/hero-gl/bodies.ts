@@ -188,7 +188,9 @@ export function heroSunRadius(diameterPx = HERO_SUN_DIAMETER_PX): number {
 }
 
 /**
- * @brief Applies a loaded map. Every body uses the same prelit wrap.
+ * @brief Applies a loaded map. CymaSynth gets overlapping polar
+ * stickers on the ring-plate axis; every other body wraps front
+ * and back.
  */
 export function applyBodyTexture(
   handle: HeroBodyHandle,
@@ -199,7 +201,9 @@ export function applyBodyTexture(
   configureHeroWrapTexture(texture);
   handle.texture = texture;
   handle.wrap?.dispose();
-  const wrap = createSphereWrapMaterial(texture);
+  const wrap = createSphereWrapMaterial(texture, {
+    capMap: handle.kind === "synth",
+  });
   handle.wrap = wrap;
   handle.mesh.rotation.set(0, 0, 0);
   const prev = handle.mesh.material;

@@ -1,9 +1,11 @@
 /**
- * @fileoverview Hero body shader. Every planet uses the same longitude
- * wrap and prelit poster so Cymasphere, CymaSynth, and catalog moons
- * differ only by mesh scale. Hemisphere seams crossfade the square's
- * left and right edges the way the old strip bake did. Output is
- * encoded so art is not left linear-dark.
+ * @fileoverview Hero body shader. Catalog moons and Cymasphere wrap
+ * the poster around the equator (front and back). CymaSynth is the
+ * exception: polar stickers on ±Z that each span 3/4 of the globe
+ * and crossfade in the overlap, on the oscillator-plate spin axis.
+ * Hemisphere seams crossfade the square's left and right edges the
+ * way the old strip bake did. Output is encoded so art is not left
+ * linear-dark.
  * @module components/hero-gl/sphereWrapMaterial
  */
 
@@ -24,6 +26,7 @@ const FRAG = /* glsl */ `
 uniform sampler2D uMap;
 uniform float uPhase;
 uniform float uOpacity;
+uniform float uCapMap;
 
 varying vec3 vObjectPos;
 
@@ -41,32 +44,71 @@ float stripSeamBlend(float u) {
 
 void main() {
   vec3 n = normalize(vObjectPos);
-  float lon = atan(n.x, n.z);
-  float uStrip = fract(0.5 + lon / (2.0 * PI) + uPhase);
-  float srcU = fract(uStrip * 2.0 - 0.5);
-  float srcV = 0.5 + asin(clamp(n.y, -1.0, 1.0)) / PI;
-  vec4 color = sampleArt(vec2(srcU, srcV));
-  float seam = stripSeamBlend(uStrip);
-  if (seam > 0.0) {
-    vec4 pair = sampleArt(vec2(fract(1.0 - srcU), srcV));
-    color = mix(color, pair, seam * 0.5);
+  vec4 color;
+  if (uCapMap > 0.5) {
+    // Each pole's sticker covers 3/4 of the meridian (135°) so the
+    // copies overlap; weights crossfade across that band.
+    float thetaMax = 0.75 * PI;
+    float thP = acos(clamp(n.z, -1.0, 1.0));
+    float thM = PI - thP;
+    float blendW = 2.0 * thetaMax - PI;
+    float wP = 1.0 - smoothstep(thetaMax - blendW, thetaMax, thP);
+    float wM = 1.0 - smoothstep(thetaMax - blendW, thetaMax, thM);
+    float ang = atan(n.x, n.y) + uPhase * 2.0 * PI;
+    vec2 spoke = vec2(sin(ang), cos(ang));
+    float rP = clamp(thP / thetaMax, 0.0, 1.0);
+    float rM = clamp(thM / thetaMax, 0.0, 1.0);
+    vec4 plus = sampleArt(0.5 + 0.5 * rP * spoke);
+    vec4 minus = sampleArt(0.5 + 0.5 * rM * (-spoke));
+    color = (plus * wP + minus * wM) / max(wP + wM, 1e-5);
+  } else {
+    float lon = atan(n.x, n.z);
+    float uStrip = fract(0.5 + lon / (2.0 * PI) + uPhase);
+    float srcU = fract(uStrip * 2.0 - 0.5);
+    float srcV = 0.5 + asin(clamp(n.y, -1.0, 1.0)) / PI;
+    color = sampleArt(vec2(srcU, srcV));
+    float seam = stripSeamBlend(uStrip);
+    if (seam > 0.0) {
+      vec4 pair = sampleArt(vec2(fract(1.0 - srcU), srcV));
+      color = mix(color, pair, seam * 0.5);
+    }
   }
   gl_FragColor = vec4(color.rgb, uOpacity);
   #include <colorspace_fragment>
 }
 `;
 
+export interface SphereWrapOptions {
+  /**
+   * When true, two polar stickers on ±Z each span 3/4 of the globe
+   * and blend in the overlap (CymaSynth). The mesh should carry the
+   * oscillator-plate tilt so ±Z is the ring spin axis. Default wraps
+   * front / back around Y.
+   */
+  capMap?: boolean;
+}
+
 /**
- * @brief Shader that wraps square art onto the globe. Same look for
- * every body; callers only change mesh scale.
+ * @brief Shader that wraps square art onto the globe.
  * @param map Artwork texture.
+ * @param options {@link SphereWrapOptions.capMap} for CymaSynth caps.
+ * @returns Prelit wrap material.
+ * @note Cap wrap: each pole covers 135° and the pair crossfades in
+ * the 90° overlap so the flower reads as one blended globe.
+ * @example
+ * createSphereWrapMaterial(tex)
+ * createSphereWrapMaterial(tex, { capMap: true })
  */
-export function createSphereWrapMaterial(map: Texture): ShaderMaterial {
+export function createSphereWrapMaterial(
+  map: Texture,
+  options: SphereWrapOptions = {}
+): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {
       uMap: { value: map },
       uPhase: { value: 0 },
       uOpacity: { value: 1 },
+      uCapMap: { value: options.capMap ? 1 : 0 },
     },
     vertexShader: VERT,
     fragmentShader: FRAG,

@@ -9,7 +9,6 @@ import {
   AmbientLight,
   DirectionalLight,
   Group,
-  Matrix4,
   Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
@@ -23,9 +22,10 @@ import {
 } from "three";
 import {
   SUN_FOCUS_KEY,
+  synthOscDiskEulerRad,
+  synthOscPlateSpinDeg,
   type TourCamera,
 } from "@/utils/circuit-network-layout";
-import { facingPhaseFromDir, wrapPhase } from "@/utils/sphere-texture";
 import type { OrbitalSystem } from "@/utils/orbital-physics";
 import {
   CYMASPHERE_SUN_POSTER,
@@ -105,9 +105,7 @@ export class HeroScene {
   private cssHeight = 1;
   private disposed = false;
   private readonly camWorld = new Vector3();
-  private readonly towardCam = new Vector3();
-  private readonly worldInv = new Matrix4();
-  private synthBasePhase = 0;
+  private synthElapsedMs = 0;
 
   private constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -232,9 +230,7 @@ export class HeroScene {
     const handle = key === SUN_FOCUS_KEY ? this.sun : this.bodies.get(key);
     if (!handle) return;
     if (handle.kind === "synth") {
-      this.synthBasePhase = phase;
-      if (handle.wrap) poseBodySpin(handle, phase);
-      else handle.mesh.quaternion.identity();
+      if (handle.wrap) poseBodySpin(handle, 0);
       return;
     }
     poseBodySpin(handle, phase);
@@ -268,8 +264,8 @@ export class HeroScene {
 
   /**
    * @brief Inverse-billboards catalog moons and Cymasphere. CymaSynth
-   * keeps an inertial seat so its rings stay in their plane; wrap art
-   * faces the camera by phase, not mesh spin.
+   * shares the oscillator-plate tilt so the polar wrap spins on the
+   * same axis as the rings.
    * Call after {@link applyCamera} so the world matrix is current.
    */
   billboardFacingCamera(): void {
@@ -286,28 +282,25 @@ export class HeroScene {
   }
 
   /**
-   * @brief Leaves CymaSynth un-rotated in the solar frame and rolls the
-   * wrap so the mark still faces the camera.
+   * @brief Matches CymaSynth's mesh to the oscillator plate: 52° Saturn
+   * tilt plus the shared Z spin so the ±Z caps stay on the ring axis.
    */
   private alignSynthSeat(): void {
     const synth = this.findSynth();
     if (!synth || !synth.mesh.visible) return;
+    this.orientSynthToRingPlate(synth);
+  }
+
+  /**
+   * @brief Applies {@link synthOscDiskEulerRad} so wrap and rings share
+   * one spin axis.
+   * @param synth CymaSynth body handle.
+   */
+  private orientSynthToRingPlate(synth: HeroBodyHandle): void {
+    const euler = synthOscDiskEulerRad(synthOscPlateSpinDeg(this.synthElapsedMs));
     synth.mesh.quaternion.identity();
-    synth.mesh.rotation.set(0, 0, 0);
-    if (!synth.wrap) return;
-    synth.mesh.updateMatrixWorld(true);
-    synth.mesh.getWorldPosition(this.towardCam);
-    this.towardCam.subVectors(this.camWorld, this.towardCam);
-    if (this.towardCam.lengthSq() < 1e-10) return;
-    this.worldInv.copy(this.world.matrixWorld).invert();
-    this.towardCam.transformDirection(this.worldInv);
-    poseBodySpin(
-      synth,
-      wrapPhase(
-        this.synthBasePhase +
-          facingPhaseFromDir(this.towardCam.x, this.towardCam.z)
-      )
-    );
+    synth.mesh.rotation.order = "XYZ";
+    synth.mesh.rotation.set(euler.x, euler.y, euler.z);
   }
 
   private billboardHandle(handle: HeroBodyHandle): void {
@@ -326,8 +319,10 @@ export class HeroScene {
       this.synthRings.removeFromParent();
       this.world.add(this.synthRings);
     }
+    this.synthElapsedMs = elapsedMs;
     this.synthRings.position.copy(synth.mesh.position);
     this.synthRings.quaternion.identity();
+    this.orientSynthToRingPlate(synth);
     poseSynthOscRings(
       this.synthRings,
       elapsedMs,

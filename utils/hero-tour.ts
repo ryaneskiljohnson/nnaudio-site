@@ -385,19 +385,21 @@ export function prefersLiteHeroTour(env: HeroTourEnvironment): boolean {
 
 /** First-paint decision for which hero tour (if any) to mount. */
 export interface HeroTourStart {
-  /** Mount CircuitNetwork after the idle callback. */
+  /** Mount CircuitNetwork on the first client tick (wrapped sun). */
   allowTour: boolean;
+  /** Unused; kept so callers can still idle-defer a later tour. */
   scheduleDesktop: boolean;
 }
 
 /**
  * @brief Picks the hero mount without touching the DOM.
- * Phones and desktop idle-start the live 3D tour. Reduced motion
+ * Phones and desktop start the live 3D tour immediately so the first
+ * Cymasphere is the wrapped globe, not the flat poster. Reduced motion
  * stays on the poster.
  * @param reduceMotion `prefers-reduced-motion: reduce`.
- * @returns Whether to schedule the idle tour start.
+ * @returns Whether to mount the tour now or leave the still up.
  * @example
- * resolveHeroTourStart(false) // { allowTour: false, scheduleDesktop: true }
+ * resolveHeroTourStart(false) // { allowTour: true, scheduleDesktop: false }
  */
 export function resolveHeroTourStart(reduceMotion: boolean): HeroTourStart {
   if (reduceMotion) {
@@ -407,8 +409,8 @@ export function resolveHeroTourStart(reduceMotion: boolean): HeroTourStart {
     };
   }
   return {
-    allowTour: false,
-    scheduleDesktop: true,
+    allowTour: true,
+    scheduleDesktop: false,
   };
 }
 

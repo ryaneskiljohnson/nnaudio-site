@@ -97,6 +97,22 @@ describe("applyBodyTexture", () => {
     expect(moon.wrap?.uniforms.uPhase?.value).toBe(0);
     expect(sun.wrap?.uniforms.uPrelit).toBeUndefined();
     expect(sun.texture?.generateMipmaps).toBe(false);
+    expect(sun.wrap?.uniforms.uCapMap?.value).toBe(0);
+    expect(moon.wrap?.uniforms.uCapMap?.value).toBe(0);
+  });
+
+  it("maps CymaSynth as a polar sticker on the ring axis", () => {
+    const synth = createBodyMesh({
+      key: "synth",
+      slug: "cymasynth",
+      name: "CymaSynth",
+      kind: "synth",
+      diameter: 48,
+      spinDur: 40,
+      spinRev: false,
+    });
+    applyBodyTexture(synth, new Texture());
+    expect(synth.wrap?.uniforms.uCapMap?.value).toBe(1);
   });
 });
 
@@ -113,6 +129,15 @@ describe("createSphereWrapMaterial", () => {
     expect(mat.uniforms.uOpacity?.value).toBe(1);
     expect(mat.transparent).toBe(true);
     mat.dispose();
+  });
+
+  it("defaults to equator wrap and can flip to cap wrap", () => {
+    const equator = createSphereWrapMaterial(new Texture());
+    const caps = createSphereWrapMaterial(new Texture(), { capMap: true });
+    expect(equator.uniforms.uCapMap?.value).toBe(0);
+    expect(caps.uniforms.uCapMap?.value).toBe(1);
+    equator.dispose();
+    caps.dispose();
   });
 });
 

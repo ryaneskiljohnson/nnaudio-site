@@ -9,8 +9,9 @@
  * fill) so hydration cannot restyle the LCP element. Critical #home h1 / CTA
  * rules live in globals.css so the headline is visible before
  * styled-components hydrates. CircuitNetwork is a dynamic import so its
- * JS is not on the LCP path. The 3D tour idle-starts on phones and
- * desktop, under the still until Cymasphere is textured. `?tourCap=N`
+ * JS is not on the LCP path. The 3D tour mounts on the first client
+ * tick; a dark still stays up until the Cymasphere wrap is on the GPU
+ * so the opening sun matches the model. `?tourCap=N`
  * caps credit stops for recordings. Hero height
  * is reserved in globals.css (#home) so a
  * late sheet cannot collapse-then-expand.
@@ -349,7 +350,7 @@ const CircuitNetwork = dynamic(
   () => import(/* webpackPrefetch: false */ "./CircuitNetwork"),
   {
     ssr: false,
-    loading: () => <StaticHeroPoster />,
+    loading: () => <BoardPlaceholder aria-hidden />,
   }
 );
 
@@ -384,29 +385,39 @@ function StaticHeroPoster() {
 }
 
 /**
- * @brief Defers CircuitNetwork until idle on phones and desktop.
+ * @brief Mounts CircuitNetwork on the first client tick so the opening
+ * Cymasphere is the wrapped globe. Reduced motion stays on the poster.
  * Both start with the tour off so hydration matches.
- * @returns Tour mount flag and optional recording cap.
+ * @returns Tour mount flag, reduced-motion latch, and optional recording cap.
  */
 function useOptInHeroTour(): {
   allowTour: boolean;
+  reduceMotion: boolean;
   tourCap: number | undefined;
 } {
   const [allowTour, setAllowTour] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const [tourCap, setTourCap] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     const query = parseHeroTourQuery(window.location.search);
     setTourCap(query.tourCap);
-    const reduceMotion = window.matchMedia(
+    const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
-    const start = resolveHeroTourStart(reduceMotion);
+    setReduceMotion(reduce);
+    const start = resolveHeroTourStart(reduce);
     logHeroDebug("hero-tour-resolve", {
       allowTour: start.allowTour,
       scheduleDesktop: start.scheduleDesktop,
-      reduceMotion,
+      reduceMotion: reduce,
     });
+    if (start.allowTour) {
+      const img = new Image();
+      img.src = CYMASPHERE_SUN_POSTER;
+      setAllowTour(true);
+      return;
+    }
     if (!start.scheduleDesktop) return;
     return scheduleDesktopHeroTour(() => {
       logHeroDebug("hero-idle-start", {});
@@ -414,7 +425,7 @@ function useOptInHeroTour(): {
     }, window);
   }, []);
 
-  return { allowTour, tourCap };
+  return { allowTour, reduceMotion, tourCap };
 }
 
 /**
@@ -458,7 +469,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
 }) => {
   const pathname = usePathname();
   const heroRef = useRef<HTMLElement>(null);
-  const { allowTour, tourCap } = useOptInHeroTour();
+  const { allowTour, reduceMotion, tourCap } = useOptInHeroTour();
   const [tourRevealed, setTourRevealed] = useState(false);
   const [stillFade, setStillFade] = useState<"in" | "out">("in");
   const [showWaveform, setShowWaveform] = useState(false);
@@ -641,7 +652,7 @@ const EcosystemHero: React.FC<EcosystemHeroProps> = ({
             <BoardPlaceholder aria-hidden />
           )}
           <StillCover data-fade={stillFade} aria-hidden>
-            <StaticHeroPoster />
+            {reduceMotion ? <StaticHeroPoster /> : <BoardPlaceholder />}
           </StillCover>
         </BoardFade>
         <Headline data-hero-headline="">
