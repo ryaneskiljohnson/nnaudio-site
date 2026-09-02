@@ -80,6 +80,8 @@ describe("hero source contracts", () => {
     expect(scene).toContain("this.camera.add(key)");
     expect(scene).toContain("lookPlusZToward");
     expect(bodies).toContain("createSunAura");
+    expect(bodies).toContain('def.kind === "sun"');
+    expect(bodies).toContain("typeof document !== \"undefined\" && def.kind === \"sun\"");
     expect(scene).toContain("createHeroSkybox");
     expect(scene).not.toContain("createHeroNebula");
     expect(scene).not.toContain("poseHeroNebula");

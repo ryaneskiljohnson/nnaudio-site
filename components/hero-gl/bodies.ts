@@ -105,14 +105,17 @@ export function heroBodyTextureUrl(def: HeroBodyDef): string {
 
 /**
  * @brief Builds a unit sphere scaled to the world diameter.
+ * @param def Body definition.
+ * @returns Handle with a hidden mesh until the tour fades it in.
+ * @note The corona is Cymasphere-only. Catalog moons and CymaSynth
+ * used to inherit it and then fade the sprites in with the body.
  */
 export function createBodyMesh(def: HeroBodyDef): HeroBodyHandle {
   const mesh = new Mesh(BODY_GEO, tintMaterial());
   mesh.scale.setScalar(Math.max(4, def.diameter / 2));
   mesh.visible = false;
-  if (typeof document !== "undefined") {
+  if (typeof document !== "undefined" && def.kind === "sun") {
     mesh.add(createSunAura());
-    applyBodyAuraOpacity(mesh, def.kind === "sun" ? 1 : 0);
   }
   if (mesh.material && !Array.isArray(mesh.material)) {
     const solid = def.kind === "sun";
