@@ -270,25 +270,25 @@ html {
 
 /* Global button hover effect. Hero tour links opt out — brightness
  * on the Cymasphere sun reads as a hover glow on its halo. */
-button:hover, 
+button:hover:not(.hero-tour-arrow), 
 .button:hover,
 a.button:hover,
 a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit),
-[role="button"]:hover,
-button:hover *,
+[role="button"]:hover:not(.hero-tour-arrow),
+button:hover:not(.hero-tour-arrow) *,
 a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit):not(.marketing-catalog-tile) *,
-[role="button"]:hover *,
+[role="button"]:hover:not(.hero-tour-arrow) *,
 *[class*="Button"]:hover,
-*[class*="button"]:hover {
+*[class*="button"]:hover:not(.hero-tour-arrow) {
   color: white !important;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5) !important;
   filter: brightness(1.05) !important;
 }
 
 /* Override any green/accent color on button hover */
-button:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit),
+button:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit):not(.hero-tour-arrow),
 a:hover:not(.hero-sun):not(.hero-moon):not(.hero-credit),
-[role="button"]:hover {
+[role="button"]:hover:not(.hero-tour-arrow) {
   color: white !important;
 }
 

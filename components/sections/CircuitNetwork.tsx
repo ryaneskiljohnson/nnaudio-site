@@ -3,11 +3,12 @@
 /**
  * @fileoverview Homepage solar-system tour: Three.js scene + HTML credits.
  * Kepler and cameraTour are unchanged; the renderer is a 1080p / 60 FPS
- * WebGL game loop. Lite / Play gating stays in EcosystemHero.
+ * WebGL game loop. Side arrows seek the credit timeline. Lite / Play
+ * gating stays in EcosystemHero.
  * @module components/sections/CircuitNetwork
  */
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
@@ -25,6 +26,7 @@ import {
   moonDiameter,
   orbitRadiusPx,
   creditStageKeys,
+  seekTourByArrow,
   buildHeroCredits,
   assignCatalogSlotKeys,
   catalogOrbitSeats,
@@ -362,6 +364,73 @@ const PosterSun = styled.img`
   border-radius: 50%;
 `;
 
+/**
+ * @brief Prev/next controls for the featured-product tour.
+ */
+const TourNav = styled.nav`
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+`;
+
+/**
+ * @brief One side chevron that seeks the tour clock.
+ */
+const TourArrow = styled.button.attrs({
+  type: "button",
+  className: "hero-tour-arrow",
+})`
+  position: absolute;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(8, 10, 20, 0.42);
+  color: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  pointer-events: auto;
+  cursor: pointer;
+  transform: translateY(-50%);
+
+  &[data-dir="prev"] {
+    left: max(0.7rem, env(safe-area-inset-left, 0px));
+  }
+
+  &[data-dir="next"] {
+    right: max(0.7rem, env(safe-area-inset-right, 0px));
+  }
+
+  svg {
+    display: block;
+    width: 1.15rem;
+    height: 1.15rem;
+    pointer-events: none;
+  }
+
+  &:hover,
+  &:focus-visible {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.42);
+    background: rgba(16, 18, 32, 0.62);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(255, 214, 170, 0.7);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 768px) {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+`;
+
 const VisuallyHidden = styled.nav`
   position: absolute;
   width: 1px;
@@ -411,6 +480,9 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     armed: true,
   });
   const startedAt = useRef<number | null>(null);
+  const pendingSeekRef = useRef<{ elapsedMs: number; snap: boolean } | null>(
+    null
+  );
   const lastDrawAt = useRef<number | null>(null);
   const lastFrameAt = useRef<number | null>(null);
   const creditsWeight = useRef(0);
@@ -1090,6 +1162,15 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         startedAt.current += gap;
         tourWasPausedRef.current = false;
       }
+      const pendingSeek = pendingSeekRef.current;
+      if (pendingSeek) {
+        pendingSeekRef.current = null;
+        startedAt.current = now - pendingSeek.elapsedMs;
+        if (pendingSeek.snap) {
+          camFollow.current.armed = false;
+          faceHop.current = "";
+        }
+      }
       lastFrameAt.current = now;
       const gapClamped = Math.min(64, Math.max(8, gap));
       const ease = 1 - Math.exp(-gapClamped / 140);
@@ -1471,6 +1552,64 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
     };
   }, [reducedMotion]);
 
+  /**
+   * @brief Seeks the looping tour to the previous or next product.
+   * @param direction `-1` previous, `1` next.
+   */
+  const stepTour = useCallback(
+    (direction: -1 | 1) => {
+      const creditsNow = tourLive.current.credits;
+      if (creditsNow.length < 2 || reducedMotion) return;
+      const now = performance.now();
+      if (startedAt.current == null) startedAt.current = now;
+      const elapsed = now - startedAt.current;
+      const next = seekTourByArrow(elapsed, creditsNow, direction);
+      pendingSeekRef.current = next;
+      startedAt.current = now - next.elapsedMs;
+      lastCreditKey.current = null;
+      heroOnScreenRef.current = true;
+      tourArmedRef.current = true;
+      if (revealAtRef.current == null) revealAtRef.current = now;
+      if (next.snap) {
+        camFollow.current.armed = false;
+        faceHop.current = "";
+      }
+      if (parkedRef.current) {
+        parkedRef.current = false;
+        containerRef.current?.removeAttribute("data-parked");
+      }
+      startLoopRef.current();
+    },
+    [reducedMotion]
+  );
+
+  useEffect(() => {
+    if (reducedMotion || credits.length < 2) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      const target = event.target;
+      if (target instanceof HTMLElement) {
+        const tag = target.tagName;
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+      }
+      if (!heroOnScreenRef.current) return;
+      event.preventDefault();
+      stepTour(event.key === "ArrowRight" ? 1 : -1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [credits.length, reducedMotion, stepTour]);
+
   const onCanvasPointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const scene = sceneRef.current;
     const board = containerRef.current;
@@ -1509,6 +1648,42 @@ const CircuitNetwork: React.FC<CircuitNetworkProps> = ({
         </FallbackPoster>
       ) : null}
       <Vignette />
+      {!reducedMotion && webglOk && credits.length >= 2 ? (
+        <TourNav aria-label="Featured product tour">
+          <TourArrow
+            data-dir="prev"
+            aria-label="Previous product"
+            onClick={() => stepTour(-1)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M14.5 5.5 8 12l6.5 6.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </TourArrow>
+          <TourArrow
+            data-dir="next"
+            aria-label="Next product"
+            onClick={() => stepTour(1)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M9.5 5.5 16 12l-6.5 6.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </TourArrow>
+        </TourNav>
+      ) : null}
       <CreditSlot ref={creditWrapRef}>
         <CreditCard
           ref={creditLinkRef}

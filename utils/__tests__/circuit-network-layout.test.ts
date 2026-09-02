@@ -65,6 +65,11 @@ import {
   tourVisibleMoonKeys,
   skyParallaxCss,
   tourDurationMs,
+  creditIndexAtTourTime,
+  seekTourByArrow,
+  seekTourHoldMs,
+  seekTourHopMs,
+  type CreditTarget,
   type TourCamera,
 } from "@/utils/circuit-network-layout";
 
@@ -1547,5 +1552,80 @@ describe("tourVisibleMoonKeys", () => {
       traveling: true,
     });
     expect(keys).toEqual(expect.arrayContaining(["a", "b"]));
+  });
+});
+
+/**
+ * @brief Minimal credit used by tour-seek tests.
+ * @param key Unique credit key.
+ * @param weight Hold-length multiplier.
+ * @returns A catalog-shaped credit.
+ */
+function tourCredit(key: string, weight = 1): CreditTarget {
+  return {
+    key,
+    name: key,
+    startDeg: 0,
+    periodSec: 40,
+    radius: 0.5,
+    size: 80,
+    weight,
+  };
+}
+
+describe("seekTourByArrow", () => {
+  const credits = [tourCredit("a"), tourCredit("b"), tourCredit("c")];
+
+  it("treats the intro as the first stop", () => {
+    expect(creditIndexAtTourTime(200, credits)).toBe(0);
+    const next = seekTourByArrow(200, credits, 1);
+    expect(next.snap).toBe(true);
+    expect(next.elapsedMs).toBe(seekTourHoldMs(credits, 0));
+    const prev = seekTourByArrow(200, credits, -1);
+    expect(prev.snap).toBe(true);
+    expect(prev.elapsedMs).toBe(seekTourHoldMs(credits, 2));
+  });
+
+  it("starts the hop to the next product", () => {
+    const hold = TOUR_INTRO_MS + 400;
+    expect(creditIndexAtTourTime(hold, credits)).toBe(0);
+    const next = seekTourByArrow(hold, credits, 1);
+    expect(next.snap).toBe(false);
+    expect(next.elapsedMs).toBe(seekTourHopMs(credits, 0));
+    expect(cameraTour(next.elapsedMs, false, credits).traveling).toBe(true);
+  });
+
+  it("cancels an in-flight hop and returns to the outgoing hold", () => {
+    const hop = seekTourHopMs(credits, 0);
+    const back = seekTourByArrow(hop, credits, -1);
+    expect(back.snap).toBe(true);
+    expect(back.elapsedMs).toBe(seekTourHoldMs(credits, 0));
+    expect(cameraTour(back.elapsedMs, false, credits).focusKey).toBe("a");
+  });
+
+  it("snaps back to the previous hold", () => {
+    const second = TOUR_INTRO_MS + CREDIT_MS + 400;
+    expect(creditIndexAtTourTime(second, credits)).toBe(1);
+    const prev = seekTourByArrow(second, credits, -1);
+    expect(prev.snap).toBe(true);
+    expect(prev.elapsedMs).toBe(seekTourHoldMs(credits, 0));
+    expect(cameraTour(prev.elapsedMs, false, credits).focusKey).toBe("a");
+  });
+
+  it("wraps the last stop back to the first", () => {
+    const last = TOUR_INTRO_MS + CREDIT_MS * 2 + 400;
+    expect(creditIndexAtTourTime(last, credits)).toBe(2);
+    const next = seekTourByArrow(last, credits, 1);
+    expect(next.snap).toBe(true);
+    expect(next.elapsedMs).toBe(seekTourHoldMs(credits, 0));
+    expect(cameraTour(next.elapsedMs, false, credits).focusKey).toBe("a");
+  });
+
+  it("leaves a single-credit tour alone", () => {
+    const only = [tourCredit("solo")];
+    expect(seekTourByArrow(1200, only, 1)).toEqual({
+      elapsedMs: 1200,
+      snap: false,
+    });
   });
 });

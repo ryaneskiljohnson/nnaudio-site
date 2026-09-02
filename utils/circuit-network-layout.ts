@@ -1488,14 +1488,133 @@ function poseForCredit(
 }
 
 /**
- * @brief Which credit is on screen and how visible its card is, computed
- * purely from the timeline. The card fades over 280ms at both ends of
- * every credit, so it is continuous (0 at every boundary) regardless of
- * how camera poses are blended.
- * @param t Time within the current tour loop, ms.
- * @param credits Tour credits in play order.
- * @returns Focused key (null outside the credits window) and card opacity.
+ * @brief Elapsed time when credit `index` begins (after the intro).
+ * @param credits Ordered tour credits.
+ * @param index Credit index.
+ * @returns Milliseconds from tour start.
  */
+export function creditWindowStartMs(
+  credits: CreditTarget[],
+  index: number
+): number {
+  const clamped = Math.max(0, Math.min(credits.length - 1, index));
+  let acc = TOUR_INTRO_MS;
+  for (let i = 0; i < clamped; i += 1) {
+    acc += creditHoldMs(credits[i] as CreditTarget);
+  }
+  return acc;
+}
+
+/**
+ * @brief A time inside the hold when the card is up and the camera
+ * is not hopping.
+ * @param credits Ordered tour credits.
+ * @param index Credit index.
+ * @returns Milliseconds from tour start.
+ */
+export function seekTourHoldMs(
+  credits: CreditTarget[],
+  index: number
+): number {
+  const hold = creditHoldMs(credits[index] as CreditTarget);
+  const visible = Math.min(
+    CREDIT_FADE_MS + 160,
+    Math.max(80, hold - CREDIT_TRAVEL_MS - 120)
+  );
+  return creditWindowStartMs(credits, index) + visible;
+}
+
+/**
+ * @brief Start of the hop from `fromIndex` toward the next credit.
+ * @param credits Ordered tour credits.
+ * @param fromIndex Outgoing credit.
+ * @returns Milliseconds from tour start.
+ */
+export function seekTourHopMs(
+  credits: CreditTarget[],
+  fromIndex: number
+): number {
+  const hold = creditHoldMs(credits[fromIndex] as CreditTarget);
+  return (
+    creditWindowStartMs(credits, fromIndex) +
+    Math.max(0, hold - CREDIT_TRAVEL_MS) +
+    16
+  );
+}
+
+/**
+ * @brief Which credit the looping tour is on at `elapsedMs`.
+ * Intro counts as the first stop; outro counts as the last.
+ * @param elapsedMs Time since the tour started.
+ * @param credits Ordered tour credits.
+ * @returns Index, or 0 when the list is empty.
+ */
+export function creditIndexAtTourTime(
+  elapsedMs: number,
+  credits: CreditTarget[]
+): number {
+  if (credits.length === 0) return 0;
+  const total = tourDurationMs(credits);
+  const t = ((elapsedMs % total) + total) % total;
+  if (t < TOUR_INTRO_MS) return 0;
+  const located = locateCredit(t - TOUR_INTRO_MS, credits);
+  if (!located) return credits.length - 1;
+  return located.index;
+}
+
+/**
+ * @brief Maps a prev/next click onto a new tour clock.
+ * Next plays the hop when there is a later stop; otherwise it snaps
+ * to the wrap. Prev always snaps — the timeline only travels forward.
+ * Prev during a hop returns to the outgoing hold.
+ * @param elapsedMs Current tour clock.
+ * @param credits Ordered tour credits.
+ * @param direction `-1` previous, `1` next.
+ * @returns New elapsed time and whether the camera should snap.
+ */
+export function seekTourByArrow(
+  elapsedMs: number,
+  credits: CreditTarget[],
+  direction: -1 | 1
+): { elapsedMs: number; snap: boolean } {
+  if (credits.length < 2) {
+    return { elapsedMs, snap: false };
+  }
+  const total = tourDurationMs(credits);
+  const t = ((elapsedMs % total) + total) % total;
+  if (t < TOUR_INTRO_MS) {
+    const index = direction > 0 ? 0 : credits.length - 1;
+    return { elapsedMs: seekTourHoldMs(credits, index), snap: true };
+  }
+  const located = locateCredit(t - TOUR_INTRO_MS, credits);
+  if (!located) {
+    if (direction > 0) {
+      return { elapsedMs: seekTourHoldMs(credits, 0), snap: true };
+    }
+    return {
+      elapsedMs: seekTourHoldMs(credits, credits.length - 1),
+      snap: true,
+    };
+  }
+  if (direction > 0) {
+    if (located.index >= credits.length - 1) {
+      return { elapsedMs: seekTourHoldMs(credits, 0), snap: true };
+    }
+    if (located.local > located.hold - CREDIT_TRAVEL_MS) {
+      return {
+        elapsedMs: seekTourHoldMs(credits, located.index + 1),
+        snap: false,
+      };
+    }
+    return { elapsedMs: seekTourHopMs(credits, located.index), snap: false };
+  }
+  if (located.local > located.hold - CREDIT_TRAVEL_MS) {
+    return { elapsedMs: seekTourHoldMs(credits, located.index), snap: true };
+  }
+  const prev = located.index <= 0 ? credits.length - 1 : located.index - 1;
+  return { elapsedMs: seekTourHoldMs(credits, prev), snap: true };
+}
+
 /**
  * @brief Finds which credit is playing at `creditT`.
  * @param creditT Time since credits started, ms.
@@ -1518,6 +1637,12 @@ function locateCredit(
   return null;
 }
 
+/**
+ * @brief Which credit is on screen and how visible its card is.
+ * @param t Time within the current tour loop, ms.
+ * @param credits Tour credits in play order.
+ * @returns Focused key (null outside the credits window) and card opacity.
+ */
 function creditTimeline(
   t: number,
   credits: CreditTarget[]
