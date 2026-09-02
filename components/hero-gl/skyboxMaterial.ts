@@ -1,13 +1,11 @@
 /**
- * @fileoverview Two far-plane layers from the Cymasphere Android shaders:
- * DynamicStarsSkybox behind, Nebula as its own transparent pass.
- * Both sample a world-space view ray so the sky surrounds the tour.
+ * @fileoverview Hero far-plane sky: stars plus a faint aurora haze
+ * behind the solar system.
  * @module components/hero-gl/skyboxMaterial
  */
 
 import {
   AdditiveBlending,
-  Color,
   Group,
   Matrix4,
   Mesh,
@@ -17,6 +15,13 @@ import {
   type Camera,
   type Object3D,
 } from "three";
+
+/**
+ * Additive gain for the far-sky aurora. Visible as a wash, not a band.
+ * @note The shader fades a cone toward the sun so haze stays among the
+ * stars and does not punch through the transparent Cymasphere disk.
+ */
+export const HERO_AURORA_INTENSITY = 0.2;
 
 const VERT = /* glsl */ `
 varying vec2 vNdc;
@@ -108,72 +113,56 @@ void main() {
 }
 `;
 
-const NEBULA_FRAG = /* glsl */ `
+const AURORA_FRAG = /* glsl */ `
 ${GLSL_COMMON}
 
 uniform float uTime;
-uniform float uTimeOffset;
-uniform float uScale;
-uniform float uSpeed;
 uniform float uIntensity;
-uniform float uNegativeSpace;
-uniform vec3 uBodyColor;
-uniform vec3 uEdgeColor;
 
-vec2 unityGradientNoiseDir(vec2 p) {
-  p = hlslFmod2(p, 289.0);
-  float x = hlslFmod((34.0 * p.x + 1.0) * p.x, 289.0) + p.y;
-  x = hlslFmod((34.0 * x + 1.0) * x, 289.0);
-  x = fract(x / 41.0) * 2.0 - 1.0;
-  vec2 n = vec2(x - floor(x + 0.5), abs(x) - 0.5);
-  return n / max(length(n), 1e-6);
+float hash21(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
-float unityGradientNoise(vec2 uv, float scale) {
-  vec2 p = uv * scale;
-  vec2 ip = floor(p);
-  vec2 fp = fract(p);
-  float d00 = dot(unityGradientNoiseDir(ip), fp);
-  float d01 = dot(unityGradientNoiseDir(ip + vec2(0.0, 1.0)), fp - vec2(0.0, 1.0));
-  float d10 = dot(unityGradientNoiseDir(ip + vec2(1.0, 0.0)), fp - vec2(1.0, 0.0));
-  float d11 = dot(unityGradientNoiseDir(ip + vec2(1.0, 1.0)), fp - vec2(1.0, 1.0));
-  fp = fp * fp * fp * (fp * (fp * 6.0 - 15.0) + 10.0);
-  return mix(mix(d00, d01, fp.y), mix(d10, d11, fp.y), fp.x) + 0.5;
+float valueNoise2(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = hash21(i);
+  float b = hash21(i + vec2(1.0, 0.0));
+  float c = hash21(i + vec2(0.0, 1.0));
+  float d = hash21(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
-vec3 sampleNebulaGradient(float t) {
-  t = saturate(t);
-  vec3 blue = vec3(0.0, 0.184, 0.984);
-  vec3 violet = vec3(0.550, 0.220, 0.980);
-  vec3 teal = vec3(0.0, 0.62, 0.92);
-  if (t < 0.45) return mix(blue, violet, t / 0.45);
-  return mix(violet, teal, (t - 0.45) / 0.55);
+float fbm(vec2 p) {
+  float sum = 0.0;
+  float amp = 0.5;
+  for (int i = 0; i < 4; i++) {
+    sum += amp * valueNoise2(p);
+    p = p * 2.05 + vec2(13.1, 4.7);
+    amp *= 0.5;
+  }
+  return sum;
 }
 
 void main() {
-  vec2 uv = skyEquirect(skyDir()) * vec2(0.82, 0.52);
-  float drift = (uTimeOffset + uTime) * uSpeed * 0.0036;
-  vec2 warp = vec2(
-    unityGradientNoise(uv + vec2(drift * 0.18, -drift * 0.11), uScale * 0.035),
-    unityGradientNoise(uv + vec2(-drift * 0.14, drift * 0.16), uScale * 0.035)
-  ) - 0.5;
-  vec2 p = uv + warp * 0.22;
-  float n1 = unityGradientNoise(p + vec2(drift * 0.28, -drift * 0.12), uScale * 0.038);
-  float n2 = unityGradientNoise(p + vec2(0.62, -0.38) + vec2(-drift * 0.16, drift * 0.24), uScale * 0.044);
-  float n3 = unityGradientNoise(p + vec2(-0.41, 0.57) + vec2(drift * 0.11, -drift * 0.19), uScale * 0.05);
-  float cutoff = 0.58 + uNegativeSpace * 0.03;
-  float gain = uIntensity * 0.55;
-  float blobA = pow(saturate((n1 - cutoff) * gain), 1.75);
-  float blobB = pow(saturate((n2 - (cutoff - 0.02)) * gain), 1.75);
-  float blobC = pow(saturate((n3 - (cutoff + 0.05)) * gain), 1.85);
-  float cloud = max(blobA, max(blobB * 0.92, blobC * 0.7));
-  float centerTop = (1.0 - smoothstep(0.20, 0.74, abs(vNdc.x))) *
-    smoothstep(-0.08, 0.70, vNdc.y);
-  cloud *= 1.0 - centerTop * 0.96;
-  float swirl = saturate(n2);
-  vec3 tinted = mix(uEdgeColor, uBodyColor, swirl);
-  vec3 rgb = (tinted * 0.08 + sampleNebulaGradient(swirl) * 0.018) * cloud;
-  gl_FragColor = vec4(rgb, 1.0);
+  vec3 dir = skyDir();
+  vec2 eq = skyEquirect(dir);
+  float drift = uTime * 0.007;
+  vec2 field = vec2(eq.x * 0.2, eq.y * 0.24) + vec2(drift * 0.09, -drift * 0.04);
+  float n1 = fbm(field);
+  float n2 = fbm(field * 0.68 + vec2(3.8, -1.6));
+  float wash = mix(0.4, 1.0, saturate(n1 * 0.68 + n2 * 0.32));
+  vec3 camWorld = (uViewToLocal * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+  vec3 toSun = normalize(-camWorld);
+  float sunCone = 1.0 - smoothstep(0.9, 0.998, saturate(dot(dir, toSun)));
+  float haze = wash * sunCone;
+  vec3 blue = vec3(0.22, 0.38, 0.9);
+  vec3 violet = vec3(0.46, 0.3, 0.84);
+  vec3 teal = vec3(0.14, 0.52, 0.66);
+  vec3 tint = mix(blue, violet, saturate(n2));
+  tint = mix(tint, teal, saturate(n1) * 0.26);
+  gl_FragColor = vec4(tint * haze * uIntensity, 1.0);
   #include <colorspace_fragment>
 }
 `;
@@ -181,13 +170,6 @@ void main() {
 const INV_PROJ = new Matrix4();
 const INV_WORLD = new Matrix4();
 const VIEW_TO_LOCAL = new Matrix4();
-
-const AFTERGLOW = [
-  0x002ffb, 0xe869ee, 0xf60f6d, 0x7112ea, 0x0563ff, 0xb907e1, 0x92236f,
-];
-const AFTERGLOW_A = new Color();
-const AFTERGLOW_B = new Color();
-const AFTERGLOW_CYCLE_SEC = 18;
 
 function farLayer(
   name: string,
@@ -203,27 +185,25 @@ function farLayer(
 }
 
 /**
- * @brief Stars skybox plus a separate nebula plate, matching Android's two passes.
+ * @brief Far-plane stars with a faint aurora wash among them.
+ * @returns Sky group parented to the scene, not the Kepler world.
+ * @note Both layers sit at the far plane so planets stay in front.
+ * @example
+ * scene.add(createHeroSkybox());
  */
 export function createHeroSkybox(): Group {
-  const nebula = farLayer(
-    "hero-nebula",
+  const aurora = farLayer(
+    "hero-aurora",
     new ShaderMaterial({
-      name: "hero-nebula",
+      name: "hero-aurora",
       uniforms: {
         uTime: { value: 0 },
-        uTimeOffset: { value: 17 },
-        uScale: { value: 40 },
-        uSpeed: { value: 5 },
-        uIntensity: { value: 10 },
-        uNegativeSpace: { value: 2 },
-        uBodyColor: { value: new Color(0xe869ee) },
-        uEdgeColor: { value: new Color(0x002ffb) },
+        uIntensity: { value: HERO_AURORA_INTENSITY },
         uInvProj: { value: new Matrix4() },
         uViewToLocal: { value: new Matrix4() },
       },
       vertexShader: VERT,
-      fragmentShader: NEBULA_FRAG,
+      fragmentShader: AURORA_FRAG,
       transparent: true,
       blending: AdditiveBlending,
       depthTest: true,
@@ -231,7 +211,7 @@ export function createHeroSkybox(): Group {
       toneMapped: false,
       fog: false,
     }),
-    -21
+    -19
   );
   const stars = farLayer(
     "hero-stars",
@@ -259,19 +239,18 @@ export function createHeroSkybox(): Group {
   );
   const group = new Group();
   group.name = "hero-skybox";
-  group.add(nebula);
+  group.add(aurora);
   group.add(stars);
   return group;
 }
 
 /**
- * @brief Advances star twinkle and aims both sky passes in world space.
- * The tour camera is fixed; `world` carries the orbit, so sky directions
- * use inv(world) × camera so the field surrounds the solar system.
+ * @brief Advances star twinkle and aurora drift in world space.
  * @param root {@link createHeroSkybox} result.
  * @param camera Active tour camera.
  * @param world Kepler world group that receives the tour matrix.
  * @param timeSec Elapsed seconds.
+ * @returns Nothing.
  */
 export function poseHeroSkybox(
   root: Object3D,
@@ -280,8 +259,8 @@ export function poseHeroSkybox(
   timeSec: number
 ): void {
   const stars = root.getObjectByName("hero-stars") as Mesh | undefined;
-  const nebula = root.getObjectByName("hero-nebula") as Mesh | undefined;
-  if (!stars) return;
+  const aurora = root.getObjectByName("hero-aurora") as Mesh | undefined;
+  if (!stars || !aurora) return;
   camera.updateMatrixWorld(true);
   world.updateMatrixWorld(true);
   INV_PROJ.copy(camera.projectionMatrix).invert();
@@ -291,19 +270,8 @@ export function poseHeroSkybox(
   starMat.uniforms.uTime.value = timeSec;
   starMat.uniforms.uInvProj.value.copy(INV_PROJ);
   starMat.uniforms.uViewToLocal.value.copy(VIEW_TO_LOCAL);
-  if (nebula) {
-    const nebulaMat = nebula.material as ShaderMaterial;
-    nebulaMat.uniforms.uTime.value = timeSec;
-    nebulaMat.uniforms.uInvProj.value.copy(INV_PROJ);
-    nebulaMat.uniforms.uViewToLocal.value.copy(VIEW_TO_LOCAL);
-    const phase = timeSec / AFTERGLOW_CYCLE_SEC + 1;
-    const i = Math.floor(phase) % AFTERGLOW.length;
-    const f = phase - Math.floor(phase);
-    const ease = f * f * (3 - 2 * f);
-    nebulaMat.uniforms.uBodyColor.value.lerpColors(
-      AFTERGLOW_A.setHex(AFTERGLOW[i]),
-      AFTERGLOW_B.setHex(AFTERGLOW[(i + 1) % AFTERGLOW.length]),
-      ease
-    );
-  }
+  const auroraMat = aurora.material as ShaderMaterial;
+  auroraMat.uniforms.uTime.value = timeSec;
+  auroraMat.uniforms.uInvProj.value.copy(INV_PROJ);
+  auroraMat.uniforms.uViewToLocal.value.copy(VIEW_TO_LOCAL);
 }

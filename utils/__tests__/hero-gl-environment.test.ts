@@ -18,6 +18,7 @@ import {
 } from "@/components/hero-gl/environment";
 import {
   createHeroSkybox,
+  HERO_AURORA_INTENSITY,
   poseHeroSkybox,
 } from "@/components/hero-gl/skyboxMaterial";
 import {
@@ -79,29 +80,29 @@ describe("poseSynthOscRings", () => {
 });
 
 describe("hero skybox", () => {
-  it("keeps nebula and stars on separate far-plane passes", () => {
+  it("keeps stars and a faint aurora on the far plane", () => {
     const root = createHeroSkybox();
     expect(root.name).toBe("hero-skybox");
-    const nebula = root.getObjectByName("hero-nebula") as Mesh;
+    expect(root.getObjectByName("hero-nebula")).toBeUndefined();
     const stars = root.getObjectByName("hero-stars") as Mesh;
-    const nebulaMat = nebula.material as ShaderMaterial;
+    const aurora = root.getObjectByName("hero-aurora") as Mesh;
     const starMat = stars.material as ShaderMaterial;
-    expect(nebulaMat.uniforms.uScale.value).toBe(40);
-    expect(nebulaMat.uniforms.uSpeed.value).toBe(5);
+    const auroraMat = aurora.material as ShaderMaterial;
     expect(starMat.uniforms.uStarCount.value).toBe(135);
+    expect(auroraMat.uniforms.uIntensity.value).toBe(HERO_AURORA_INTENSITY);
     const camera = new PerspectiveCamera(50, 1, 2, 20000);
     camera.position.set(0, 0, 900);
     camera.updateMatrixWorld();
     const world = new Group();
     poseHeroSkybox(root, camera, world, 1.5);
     expect(starMat.uniforms.uTime.value).toBe(1.5);
-    expect(nebulaMat.uniforms.uTime.value).toBe(1.5);
+    expect(auroraMat.uniforms.uTime.value).toBe(1.5);
     expect(starMat.uniforms.uInvProj.value.elements[0]).not.toBe(1);
     const before = starMat.uniforms.uViewToLocal.value.elements.slice();
     world.rotation.y = 0.4;
     poseHeroSkybox(root, camera, world, 1.5);
     expect(starMat.uniforms.uViewToLocal.value.elements).not.toEqual(before);
-    expect(nebulaMat.uniforms.uViewToLocal.value.elements).toEqual(
+    expect(auroraMat.uniforms.uViewToLocal.value.elements).toEqual(
       starMat.uniforms.uViewToLocal.value.elements
     );
   });
