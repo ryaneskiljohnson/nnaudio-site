@@ -143,11 +143,11 @@ float unityGradientNoise(vec2 uv, float scale) {
 
 vec3 sampleNebulaGradient(float t) {
   t = saturate(t);
-  vec3 c0 = vec3(0.0, 0.184, 0.984);
-  vec3 c1 = vec3(0.910, 0.412, 0.933);
-  vec3 c2 = vec3(0.176, 0.984, 0.733);
-  if (t < 0.45) return mix(c0, c1, t / 0.45);
-  return mix(c1, c2, (t - 0.45) / 0.55);
+  vec3 blue = vec3(0.0, 0.184, 0.984);
+  vec3 violet = vec3(0.550, 0.220, 0.980);
+  vec3 teal = vec3(0.0, 0.62, 0.92);
+  if (t < 0.45) return mix(blue, violet, t / 0.45);
+  return mix(violet, teal, (t - 0.45) / 0.55);
 }
 
 void main() {
