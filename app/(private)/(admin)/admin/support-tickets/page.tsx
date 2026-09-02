@@ -78,6 +78,7 @@ import {
   SUPPORT_TICKET_FILE_ACCEPT,
 } from "@/utils/support/is-heic-or-heif-attachment";
 import { isInlinePlayableVideoAttachment } from "@/utils/support/is-inline-playable-video-attachment";
+import { supportTicketNeedsReply } from "@/utils/support/is-active-support-ticket-status";
 
 const SUPPORT_TICKETS_UNREAD_UPDATED_EVENT =
   "admin-support-tickets-unread-updated";
@@ -3397,7 +3398,7 @@ function SupportTicketsPage() {
                       >
                         {ticket.ticket_number}
                       </TicketId>
-                      {ticket.awaiting_admin_response && (
+                      {supportTicketNeedsReply(ticket.awaiting_admin_response, ticket.status) && (
                         <AwaitingResponseBadge title="Customer is waiting for a reply">
                           <FaBell />
                           Needs reply
@@ -3576,7 +3577,7 @@ function SupportTicketsPage() {
                               <FaEye />
                               {t("admin.supportTickets.ticketActions.view", "View Ticket")}
                             </MoreMenuItem>
-                            {ticket.awaiting_admin_response && (
+                            {supportTicketNeedsReply(ticket.awaiting_admin_response, ticket.status) && (
                               <MoreMenuItem
                                 onClick={() => handleMoreMenuAction('dismiss', ticket)}
                                 disabled={dismissingTicketId === ticket.id}
@@ -4010,7 +4011,7 @@ function SupportTicketsPage() {
                               <TicketId style={{ cursor: 'default', textDecoration: 'none' }}>
                                 {ticket.ticket_number}
                               </TicketId>
-                              {ticket.awaiting_admin_response && (
+                              {supportTicketNeedsReply(ticket.awaiting_admin_response, ticket.status) && (
                                 <AwaitingResponseBadge title="Customer is waiting for a reply">
                                   <FaBell />
                                   Needs reply

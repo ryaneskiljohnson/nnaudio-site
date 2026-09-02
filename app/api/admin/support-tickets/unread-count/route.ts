@@ -11,6 +11,7 @@ import {
   checkAdmin,
   getSupportTicketReplyStateMapAdmin,
 } from "@/app/actions/user-management";
+import { ACTIVE_SUPPORT_TICKET_STATUSES } from "@/utils/support/is-active-support-ticket-status";
 
 /**
  * @brief Returns the per-admin unread support ticket count.
@@ -44,7 +45,7 @@ export async function GET() {
     const { data: tickets, error: ticketsError } = await serviceSupabase
       .from("support_tickets")
       .select("id")
-      .in("status", ["open", "in_progress"])
+      .in("status", [...ACTIVE_SUPPORT_TICKET_STATUSES])
       .order("created_at", { ascending: false });
 
     if (ticketsError || !tickets?.length) {

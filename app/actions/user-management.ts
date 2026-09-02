@@ -22,6 +22,7 @@ import {
 import { stripe } from "@/utils/stripe/client";
 import { fetchProfile } from "@/utils/supabase/actions";
 import { resolveProfileUserIdByEmail } from "@/utils/supabase/resolve-profile-user-id";
+import { isActiveSupportTicketStatus } from "@/utils/support/is-active-support-ticket-status";
 // Email is imported dynamically where used (SendGrid via @/utils/email).
 
 export interface UserManagementRecord {
@@ -1725,7 +1726,9 @@ export async function getSupportTicketsAdmin(): Promise<{
         user_last_name: profile?.last_name ?? null,
         user_subscription: profile?.subscription ?? "none",
         last_reply_is_admin: replyState?.lastReplyIsAdmin ?? false,
-        awaiting_admin_response: replyState?.awaitingAdminResponse ?? false,
+        awaiting_admin_response:
+          isActiveSupportTicketStatus(ticket.status) &&
+          (replyState?.awaitingAdminResponse ?? false),
       };
     });
 
