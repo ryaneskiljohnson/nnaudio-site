@@ -94,6 +94,26 @@ Use this file for all product names, taglines, one-line pitches, prices, and URL
   - Create Any Key or Chord: Experience unprecedented control over your sound with C…
   - Dynamic Resonance: Gain unprecedented control over their audio textures and dron…
 
+### CymaSynth
+
+- **Slug**: cymasynth
+- **Tagline**: Professional Wavetable Synthesizer
+- **One-line pitch**: Professional wavetable synthesizer — 5 oscillators, 256-frame wavetable morphing, 64-route modulation matrix, dual filters, 32-voice polyphony.
+- **Price**: $99
+- **URL**: https://nnaud.io/product/cymasynth
+- **Hero images**:
+  - https://nnaud.io/images/cymasynth-sphere-hero.jpg
+  - https://nnaud.io/images/cymasynth-sphere.jpg
+  - https://nnaud.io/images/cymasynth-mark.png
+- **Differentiators**:
+  - 5 oscillators: OSC A/B/C + sub + noise, with 256-frame wavetable morphing
+  - 64-route modulation matrix (5 LFOs, 4 ADSR+Hold envelopes)
+  - Dual state-variable filters, serial or parallel
+  - Unison up to 7 voices per oscillator
+  - Built-in FX: distortion, chorus, delay, reverb
+  - VST3 / AU — Windows 10+, Mac 10.14+ (not Pro Tools)
+- **Note**: CymaSynth replaced Tetrad in the live purchase ad set. It is not a substitute for Cymasphere.
+
 ### Digital Dreamscape
 
 - **Slug**: digitaldreamscape-quad-rompler

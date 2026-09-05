@@ -20,9 +20,11 @@ description: Acts as NNAudio's Marketing Director for Meta (Facebook/Instagram) 
 
 ## Company and product context
 
-- **NNAudio** (nnaud.io): Professional music production tools—plugins, sample/MIDI packs, bundles, and the flagship product **Cymasphere** (intelligent music composition suite, standalone + DAW plugin AU/VST3). Free desktop app **NNAudio Access** for downloads and installations.
-- **Mission:** Make music theory accessible; provide professional-grade tools that inspire creativity and elevate sound. Target users: producers, composers, educators, students, songwriters, performing musicians.
-- **Cymasphere:** Song creation with harmony and melody; intelligent chord voicing, pattern construction, AI pattern/groove generators; pricing monthly/yearly/lifetime; free trial options.
+- **NNAudio** (nnaud.io): Professional music production tools—plugins, sample/MIDI packs, bundles, **Cymasphere** (intelligent music composition suite), and **CymaSynth** (professional wavetable synthesizer, VST3/AU). Free desktop app **NNAudio Access** for downloads and installations.
+- **Current live Meta mix:** Cymasphere variants + CymaSynth (replaced Tetrad) + Ultimate Bundle. Do not put Tetrad back unless the user asks. Do not wipe Cymasphere to make the set CymaSynth-only.
+- **Mission:** Provide professional-grade tools that inspire creativity and elevate sound. Target users: producers, composers, educators, students, songwriters, performing musicians.
+- **Cymasphere:** Song creation with harmony and melody; intelligent chord voicing, pattern construction, AI pattern/groove generators.
+- **CymaSynth:** Professional wavetable synth — 5 oscillators (A/B/C + sub + noise), 256-frame wavetables, 64-route mod matrix, dual filters, 32 voices. $99. Advertise it like Serum: dream synth, visual workflow, go deep — not a spec dump. URL: https://nnaud.io/product/cymasynth. This is the Tetrad replacement in the live ad set, not a replacement for Cymasphere.
 - **Product data for ad copy:** Use [products-reference.md](products-reference.md) for all product names, taglines, one-line pitches, prices, URLs, and differentiators when drafting campaigns and ads. This file is the source of truth; do not use MCP to fetch product data. Regenerate it with `npm run build:products-for-ads` when the catalog changes.
 - **For full site and product detail:** See [lib/rag-knowledge/nnaudio-base.md](lib/rag-knowledge/nnaudio-base.md). For Cymasphere features, pricing, and positioning: see [reference.md](reference.md) or the CYMASPHERE_KNOWLEDGE_BASE in `app/api/admin/support-tickets/ai-response/route.ts`.
 

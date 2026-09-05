@@ -9,7 +9,7 @@ All ad copy (headlines, primary text, CTAs) must follow these standards. **Never
 1. **Pattern interrupt first.** Open with something that breaks the expected "Discover X" / "Elevate your Y" script. Wrong number, bold claim, question, or contrarian line.
 2. **Specificity over vague.** Numbers, names, concrete outcomes. "30+ scale types" beats "advanced music theory." "7-day free trial" beats "try free."
 3. **Curiosity gap.** Tease the benefit or outcome without giving everything away. Make them need to click to resolve it.
-4. **Speak to real pain or desire.** "Stuck in the same four chords?" "Tired of theory holding you back?" "Want progressions that actually move?"
+4. **Speak to real pain or desire.** "Stuck in the same four chords?" "Want progressions that actually move?" Never imply the user is too dumb for theory.
 5. **One-to-one tone.** Talk like a human to one person. No "we're excited to announce," no corporate plural.
 6. **Short, punchy lines.** Feed-style ads: first line must hook. Use line breaks. One idea per sentence.
 7. **No filler.** Cut "incredible," "powerful," "perfect for producers," "take your music to the next level" unless you're subverting them.
@@ -24,13 +24,14 @@ All ad copy (headlines, primary text, CTAs) must follow these standards. **Never
 - "The ultimate solution for…"
 - "Take your creativity to the next level."
 - Vague CTAs: "Learn more" is okay only when headline/body do the heavy lifting; prefer "Start free trial," "Try Cymasphere free," "Get the trial."
+- **Never ship:** "You don't need more music theory." / "Not more theory." / any line that dismisses theory or talks down to the player.
 
 ---
 
 ## Cutting-edge tactics
 
 - **Open loop:** Promise a payoff in the ad, resolve it on the page. "The one thing that fixed my chord progressions" → click to see what it is.
-- **"Wrong" or contrarian hook:** "You don't need more music theory. You need something that uses it for you."
+- **"Wrong" or contrarian hook:** "Your DAW doesn't get harmony. This does." — contrarian about the tool, never about the musician.
 - **Question hook:** "Why do your progressions all sound the same?" "What if your DAW understood harmony?"
 - **Bold one-line claim:** Headline = single striking line. Body supports or twists it.
 - **Specificity hook:** "30+ scales. Voice leading that actually moves. Chords that connect." (concrete > abstract)
@@ -44,11 +45,41 @@ All ad copy (headlines, primary text, CTAs) must follow these standards. **Never
 
 - Confident, not arrogant. Clear, not cold.
 - Music-makers are smart and skeptical of hype. Respect that; be specific and honest.
-- Slight edge or opinion is fine: "Theory shouldn't be a gatekeeper." "Your DAW doesn't get harmony. This does."
+- Slight edge or opinion is fine: "Your DAW doesn't get harmony. This does."
+- **Live purchase mix:** Cymasphere + CymaSynth (Tetrad’s slot) + Ultimate Bundle. CymaSynth copy is wavetable/synth. Do not delete Cymasphere ads to make the set CymaSynth-only. Do not put Tetrad back unless asked.
+- **Cymasphere / theory (hard rule):** Theory is the power. The user is the master of it. Cymasphere *leverages* music theory and puts it in their hands. Never say they don't need theory, don't need more theory, or that the tool "already knows it so they don't have to." That is condescending and off-brand.
 
 ---
 
 ## Examples (use as templates; adapt to product)
+
+### CymaSynth — Serum-register (Tetrad replacement slot)
+
+Advertise the *instrument*, not a spec sheet. Serum-style: dream synth, visual workflow, go deep, sonic control. CymaSynth has **5 oscillators** (OSC A/B/C + sub + noise). Never say “3 oscillators.”
+
+**Headline:** The dream wavetable synth. $99.
+
+**Primary text:**  
+See the sound. Morph it in real time. Go as deep as you want.  
+5 oscillators. A matrix that modulates anything. VST3 / AU.
+
+**CTA:** Shop now | **Link:** https://nnaud.io/product/cymasynth
+**Image:** CymaSynth sphere hero (`/images/cymasynth-sphere-hero.jpg`) — keep this, not the plugin UI screenshot
+
+---
+
+### CymaSynth — control
+
+**Headline:** Ridiculous control over the sound.
+
+**Primary text:**  
+A wavetable synth built to be the one you actually design in.  
+High-fidelity oscillators. Real-time morphing. Every parameter in play.  
+CymaSynth. $99.
+
+**CTA:** Shop now | **Link:** https://nnaud.io/product/cymasynth
+
+---
 
 ### Cymasphere — pattern interrupt / question
 
@@ -68,22 +99,23 @@ Cymasphere handles the voice leading—you just write. Standalone or plugin.
 **Headline:** The one thing that fixed my progressions
 
 **Primary text:**  
-Not more theory. Not another course. A tool that uses theory for you—so you can write without overthinking.  
-Intelligent chord voicing. Patterns that adapt to your changes. Free trial.
+Not another course. A tool that puts theory in the engine so you can write with it—voice leading, voicings, patterns that follow your changes.  
+You stay in charge. Free trial.
 
 **CTA:** Try Cymasphere free | **Link:** https://nnaud.io/product/cymasphere
 
 ---
 
-### Cymasphere — contrarian / bold
+### Cymasphere — theory as power (required angle)
 
-**Headline:** You don't need more music theory.
+**Headline:** Theory in the engine. You're the one driving.
 
 **Primary text:**  
-You need something that already knows it. Cymasphere: harmony and patterns that work while you focus on the idea.  
-30+ scales. Voice leading built in. Standalone or in your DAW. Free trial.
+Cymasphere puts voice leading, scales, and voicings in your hands—so you actually use the theory, not study it in a binder.  
+30+ scales. Progressions that connect. You decide.  
+$149 (was $499). 7-day free trial.
 
-**CTA:** Get the trial | **Link:** https://nnaud.io/product/cymasphere
+**CTA:** Start free trial | **Link:** https://nnaud.io/product/cymasphere
 
 ---
 
@@ -116,6 +148,8 @@ Get the app free, then grab what you need.
 - [ ] First line hooks in under 3 seconds (pattern interrupt, question, or bold claim).
 - [ ] At least one concrete detail (number, feature name, or outcome).
 - [ ] No generic phrases from the "avoid" list.
+- [ ] Live purchase mix stays Cymasphere + CymaSynth + bundle unless the user changes it. Tetrad stays out.
+- [ ] Cymasphere copy treats theory as power the user masters — never as something they should skip.
 - [ ] CTA is specific where possible (e.g. "Start free trial" not just "Learn more").
 - [ ] Tone is one-to-one and confident, not corporate.
 
