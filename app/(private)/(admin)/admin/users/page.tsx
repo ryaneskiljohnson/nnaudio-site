@@ -34,7 +34,6 @@ import {
   FaCheck,
   FaExclamationTriangle,
   FaSyncAlt,
-  FaCreditCard,
   FaShoppingBag,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
@@ -53,7 +52,6 @@ import {
   getCustomerInvoicesAdmin,
   getUserByIdAdmin,
   getOwnedProductCountsAdmin,
-  getCrmPaymentMethodsAdmin,
 } from "@/app/actions/user-management";
 import type { UserData } from "@/utils/stripe/admin-analytics";
 import {
@@ -93,7 +91,7 @@ type AdminUserOrderRow = {
 
 const Container = styled.div`
   width: 100%;
-  max-width: 1400px;
+  max-width: none;
   margin: 0 auto;
   padding: 40px 20px;
 
@@ -336,67 +334,51 @@ const TableContainer = styled.div`
   overflow-x: auto;
   overflow-y: visible;
   border: 1px solid rgba(255, 255, 255, 0.05);
+`;
+
+/**
+ * @brief Sizes to the card so the load mask covers the full table.
+ */
+const TableStack = styled.div`
   position: relative;
-
-  @media (max-width: 768px) {
-    overflow-x: auto;
-
-    table {
-      min-width: 1520px;
-    }
-  }
+  width: 100%;
 `;
 
 const Table = styled.table`
   width: 100%;
-  min-width: 1520px;
   border-collapse: collapse;
   table-layout: fixed;
 
-  /* Column order: Name, Email, Bundle, Orders, Products, Join, Last Active, Tickets, Access, Spent, Actions */
-  th:nth-child(1),
-  td:nth-child(1) {
-    width: 180px;
+  /* Column order: Name, Email, Orders, Products, Joined, Active, Tickets, Access, Spent, Actions */
+  col:nth-child(1) {
+    width: 16%;
   }
-  th:nth-child(2),
-  td:nth-child(2) {
-    width: 200px;
+  col:nth-child(2) {
+    width: 18%;
   }
-  th:nth-child(3),
-  td:nth-child(3) {
-    width: 130px;
+  col:nth-child(3) {
+    width: 6%;
   }
-  th:nth-child(4),
-  td:nth-child(4) {
-    width: 70px;
+  col:nth-child(4) {
+    width: 7%;
   }
-  th:nth-child(5),
-  td:nth-child(5) {
-    width: 80px;
+  col:nth-child(5) {
+    width: 11%;
   }
-  th:nth-child(6),
-  td:nth-child(6) {
-    width: 190px;
+  col:nth-child(6) {
+    width: 11%;
   }
-  th:nth-child(7),
-  td:nth-child(7) {
-    width: 190px;
+  col:nth-child(7) {
+    width: 8%;
   }
-  th:nth-child(8),
-  td:nth-child(8) {
-    width: 110px;
+  col:nth-child(8) {
+    width: 8%;
   }
-  th:nth-child(9),
-  td:nth-child(9) {
-    width: 110px;
+  col:nth-child(9) {
+    width: 8%;
   }
-  th:nth-child(10),
-  td:nth-child(10) {
-    width: 100px;
-  }
-  th:nth-child(11),
-  td:nth-child(11) {
-    width: 90px;
+  col:nth-child(10) {
+    width: 7%;
   }
 `;
 
@@ -405,15 +387,17 @@ const TableHeader = styled.thead`
 `;
 
 const TableHeaderCell = styled.th<{ $sortable?: boolean }>`
-  padding: 1rem;
+  padding: 0.7rem 0.55rem;
   text-align: left;
   font-weight: 600;
+  font-size: 0.82rem;
   color: var(--text);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   cursor: ${(props) => (props.$sortable !== false ? "pointer" : "default")};
   user-select: none;
   transition: background-color 0.2s ease;
   position: relative;
+  white-space: nowrap;
 
   &:hover {
     background-color: ${(props) =>
@@ -428,24 +412,22 @@ const TableHeaderCell = styled.th<{ $sortable?: boolean }>`
   }
 `;
 
-const LastActiveHeaderCell = styled(TableHeaderCell)`
-  min-width: 190px;
-`;
-
 const LoadingOverlay = styled.div`
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  inset: 0;
   background-color: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(2px);
   z-index: 10;
   color: var(--text-secondary);
-  gap: 0.75rem;
+
+  /* Keep the spinner in the visible viewport while the mask covers the full table. */
+  > * {
+    position: sticky;
+    top: 40%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+  }
 `;
 
 const TableBody = styled.tbody``;
@@ -472,9 +454,9 @@ const TableRow = styled.tr<{ $paid?: boolean }>`
 `;
 
 const TableCell = styled.td`
-  padding: 1rem;
+  padding: 0.7rem 0.55rem;
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   vertical-align: middle;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -488,20 +470,23 @@ const TableCell = styled.td`
 `;
 
 const JoinDateTableCell = styled(TableCell)`
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
 `;
 
 const LastActiveTableCell = styled(TableCell)`
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+`;
+
+const DateStack = styled.span`
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  font-size: 0.8rem;
 `;
 
 const UserAvatar = styled.div<{ $color: string }>`
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background-color: ${(props) => props.$color};
   color: white;
@@ -516,23 +501,28 @@ const UserAvatar = styled.div<{ $color: string }>`
 const UserInfo = styled.div`
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.6rem;
+  min-width: 0;
 `;
 
 const UserDetails = styled.div`
   display: flex;
   flex-direction: column;
+  min-width: 0;
 `;
 
 const UserName = styled.div`
   font-weight: 600;
   color: var(--text);
   margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const UserEmail = styled.button<{ $copied?: boolean }>`
   display: block;
-  max-width: 200px;
+  max-width: 100%;
   padding: 0;
   border: none;
   background: none;
@@ -604,21 +594,6 @@ const NfrBadge = styled.span`
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   margin-left: 0.5rem;
-`;
-
-/** Ultimate bundle column: keep `td` as table-cell so row vertical-align works; flex lives inside. */
-const SubscriptionCell = styled(TableCell)`
-  vertical-align: middle;
-`;
-
-/**
- * @brief Flex row for badge, loading spinner, and payment-method icon inside the Ultimate bundle cell.
- */
-const SubscriptionCellInner = styled.div`
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
 `;
 
 const SupportTicketsCount = styled.div`
@@ -1469,7 +1444,7 @@ export default function AdminCRM() {
   const [totalCount, setTotalCount] = useState(0);
   const [absoluteUserTotal, setAbsoluteUserTotal] = useState(0);
   const [countLoading, setCountLoading] = useState(true);
-  const [usersPerPage, setUsersPerPage] = useState(10);
+  const [usersPerPage, setUsersPerPage] = useState(50);
 
   // Modal state
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
@@ -1527,9 +1502,6 @@ export default function AdminCRM() {
     useState<AdminListedOrder | null>(null);
   const [supportTicketCounts, setSupportTicketCounts] = useState<
     Record<string, { open: number; closed: number; total: number }>
-  >({});
-  const [hasPaymentMethod, setHasPaymentMethod] = useState<
-    Record<string, boolean>
   >({});
   const [selectedUserHasPaymentMethod, setSelectedUserHasPaymentMethod] =
     useState<boolean | null>(null);
@@ -1702,8 +1674,6 @@ export default function AdminCRM() {
       setUsers(result.users);
       // Clear support ticket counts when users change (will be repopulated)
       setSupportTicketCounts({});
-      // Clear payment method status when users change (will be repopulated)
-      setHasPaymentMethod({});
       setEliteBundleRecurringTierByUserId({});
       setEliteBundleRecurringTierFetched(false);
 
@@ -1749,25 +1719,6 @@ export default function AdminCRM() {
             }
           );
         }
-
-        getCrmPaymentMethodsAdmin(
-          result.users.map((u) => ({
-            userId: u.id,
-            customerId: u.customerId ?? null,
-            email: u.email ?? null,
-          }))
-        )
-          .then((pmRes) => {
-            if (fetchGen !== usersFetchGen.current) return;
-            if (pmRes.error) {
-              console.error("Error checking payment methods:", pmRes.error);
-              return;
-            }
-            setHasPaymentMethod((prev) => ({ ...prev, ...pmRes.byUserId }));
-          })
-          .catch((error) => {
-            console.error("Error checking payment methods:", error);
-          });
 
         getAdditionalUserDataAdmin(userIds)
           .then((additionalData) => {
@@ -1930,7 +1881,6 @@ export default function AdminCRM() {
     const serverSortableFields = [
       "firstName",
       "lastName",
-      "subscription",
       "createdAt",
       "email",
       "totalSpent",
@@ -1959,7 +1909,6 @@ export default function AdminCRM() {
     const allSortableFields = [
       "firstName",
       "lastName",
-      "subscription",
       "createdAt",
       "email",
       "lastActive",
@@ -2037,20 +1986,29 @@ export default function AdminCRM() {
   };
 
   const formatDateTimeNoLeadingZero = (dateString: string) => {
-    // Convert UTC to local time and format with date and time, removing leading zero from hour
-    const date = new Date(dateString);
-    const dateStr = date.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    // Use "numeric" for hour to avoid leading zeros (e.g., "8:30 AM" instead of "08:30 AM")
-    const timeStr = date.toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-    return `${dateStr}, ${timeStr}`;
+    const { date, time } = formatCrmTableDateParts(dateString);
+    return `${date} ${time}`;
+  };
+
+  /**
+   * @brief Compact local date + time for CRM table cells.
+   * @param dateString ISO timestamp.
+   * @returns Short date (`9/5/26`) and time (`2:30 PM`).
+   */
+  const formatCrmTableDateParts = (dateString: string) => {
+    const value = new Date(dateString);
+    return {
+      date: value.toLocaleDateString(undefined, {
+        year: "2-digit",
+        month: "numeric",
+        day: "numeric",
+      }),
+      time: value.toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }),
+    };
   };
 
   const formatCurrency = (amount: number) => {
@@ -3103,12 +3061,25 @@ export default function AdminCRM() {
             </FiltersSection>
 
             <TableContainer>
-              {loading && (
-                <LoadingOverlay>
-                  <NNAudioLoadingSpinner text="Loading users..." size={40} />
-                </LoadingOverlay>
-              )}
-              <Table>
+              <TableStack>
+                {loading && (
+                  <LoadingOverlay>
+                    <NNAudioLoadingSpinner text="Loading users..." size={40} />
+                  </LoadingOverlay>
+                )}
+                <Table>
+                <colgroup>
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                  <col />
+                </colgroup>
                 <TableHeader>
                   <tr>
                     <TableHeaderCell
@@ -3124,16 +3095,6 @@ export default function AdminCRM() {
                     >
                       {t("admin.crmPage.userTable.email", "Email")}
                       {getSortIcon("email")}
-                    </TableHeaderCell>
-                    <TableHeaderCell
-                      $sortable={true}
-                      onClick={() => handleSort("subscription")}
-                    >
-                      {t(
-                        "admin.crmPage.userTable.ultimateBundleSubscription",
-                        "Ultimate bundle"
-                      )}
-                      {getSortIcon("subscription")}
                     </TableHeaderCell>
                     <TableHeaderCell
                       $sortable={true}
@@ -3155,65 +3116,48 @@ export default function AdminCRM() {
                       $sortable={true}
                       onClick={() => handleSort("createdAt")}
                     >
-                      {t("admin.crmPage.userTable.joinDate", "Join Date")}
+                      {t("admin.crmPage.userTable.joinDate", "Joined")}
                       {getSortIcon("createdAt")}
                     </TableHeaderCell>
-                    <LastActiveHeaderCell
+                    <TableHeaderCell
                       $sortable={true}
                       onClick={() => handleSort("lastActive")}
                     >
-                      Last Active
+                      Active
                       {getSortIcon("lastActive")}
-                    </LastActiveHeaderCell>
+                    </TableHeaderCell>
                     <TableHeaderCell
                       $sortable={true}
                       onClick={() =>
                         handleSort("supportTickets" as keyof UserData)
                       }
                     >
-                      Support Tickets
+                      Tickets
                       {getSortIcon("supportTickets" as keyof UserData)}
                     </TableHeaderCell>
                     <TableHeaderCell $sortable={false}>
-                      NNAudio Access
+                      Access
                     </TableHeaderCell>
                     <TableHeaderCell
                       $sortable={true}
                       onClick={() => handleSort("totalSpent")}
                     >
-                      {t("admin.crmPage.userTable.totalSpent", "Total Spent")}
+                      {t("admin.crmPage.userTable.totalSpent", "Spent")}
                       {getSortIcon("totalSpent")}
                     </TableHeaderCell>
                     <TableHeaderCell $sortable={false}>Actions</TableHeaderCell>
                   </tr>
                 </TableHeader>
                 <TableBody>
-                  {loading ? (
-                    <>
-                      {Array.from({ length: 10 }).map((_, i) => (
-                        <TableRow
-                          key={`loading-placeholder-${i}`}
-                          style={{ pointerEvents: "none" }}
-                        >
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <LastActiveTableCell>
-                            {/* Simulate wrapped content to match actual row height */}
-                            <span style={{ visibility: "hidden" }}>
-                              11/15/2025, 02:30 PM
-                            </span>
-                          </LastActiveTableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                          <TableCell>&nbsp;</TableCell>
-                        </TableRow>
-                      ))}
-                    </>
+                  {users.length === 0 ? (
+                    <TableRow style={{ pointerEvents: "none" }}>
+                      <TableCell
+                        colSpan={10}
+                        style={{ height: "16rem", border: "none" }}
+                      >
+                        &nbsp;
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     users.map((userData, index) => {
                       const supportTicketCount = getSupportTicketCount(
@@ -3285,69 +3229,6 @@ export default function AdminCRM() {
                               {userData.email}
                             </UserEmail>
                           </TableCell>
-                          <SubscriptionCell>
-                            <SubscriptionCellInner>
-                              {userData.subscription === "admin" ? (
-                                <SubscriptionBadge
-                                  $color={getSubscriptionBadgeColor("admin")}
-                                  $variant="premium"
-                                >
-                                  {getSubscriptionIcon("admin")}
-                                  admin
-                                </SubscriptionBadge>
-                              ) : userData.customerId &&
-                                !eliteBundleRecurringTierFetched ? (
-                                <LoadingSpinner
-                                  style={{ display: "inline-block" }}
-                                />
-                              ) : (() => {
-                                  const eliteTier =
-                                    eliteBundleRecurringTierByUserId[
-                                      userData.id
-                                    ];
-                                  if (
-                                    eliteTier === "monthly" ||
-                                    eliteTier === "annual"
-                                  ) {
-                                    return (
-                                      <SubscriptionBadge
-                                        $color={getSubscriptionBadgeColor(
-                                          eliteTier
-                                        )}
-                                        $variant={
-                                          isSubscriptionPremium(eliteTier)
-                                            ? "premium"
-                                            : "default"
-                                        }
-                                      >
-                                        {getSubscriptionIcon(eliteTier)}
-                                        {eliteTier}
-                                      </SubscriptionBadge>
-                                    );
-                                  }
-                                  return (
-                                    <span
-                                      style={{
-                                        color: "var(--text-secondary)",
-                                        fontSize: "0.95rem",
-                                      }}
-                                    >
-                                      —
-                                    </span>
-                                  );
-                                })()}
-                              {userData.customerId &&
-                                hasPaymentMethod[userData.id] && (
-                                  <FaCreditCard
-                                    style={{
-                                      fontSize: "0.9rem",
-                                      color: "var(--text-secondary)",
-                                    }}
-                                    title="Credit card on file"
-                                  />
-                                )}
-                            </SubscriptionCellInner>
-                          </SubscriptionCell>
                           <TableCell>
                             {userData.orderCount === undefined ||
                             userData.orderCount === -1 ? (
@@ -3387,16 +3268,33 @@ export default function AdminCRM() {
                             )}
                           </TableCell>
                           <JoinDateTableCell>
-                            {formatDateTimeNoLeadingZero(userData.createdAt)}
+                            {(() => {
+                              const parts = formatCrmTableDateParts(
+                                userData.createdAt
+                              );
+                              return (
+                                <DateStack>
+                                  <span>{parts.date}</span>
+                                  <span>{parts.time}</span>
+                                </DateStack>
+                              );
+                            })()}
                           </JoinDateTableCell>
                           <LastActiveTableCell>
-                            {formatDateTimeNoLeadingZero(
-                              userData.lastActive || userData.createdAt
-                            )}
+                            {(() => {
+                              const parts = formatCrmTableDateParts(
+                                userData.lastActive || userData.createdAt
+                              );
+                              return (
+                                <DateStack>
+                                  <span>{parts.date}</span>
+                                  <span>{parts.time}</span>
+                                </DateStack>
+                              );
+                            })()}
                           </LastActiveTableCell>
                           <TableCell>
                             <SupportTicketsCount>
-                              <FaTicketAlt />
                               <TicketBadge
                                 $openCount={supportTicketCount.open}
                                 $closedCount={supportTicketCount.closed}
@@ -3503,6 +3401,7 @@ export default function AdminCRM() {
                   )}
                 </TableBody>
               </Table>
+              </TableStack>
 
               <Pagination>
                 <PaginationInfo>

@@ -18,6 +18,7 @@ import {
   emailIlikeOrClause,
   sanitizeCrmSearchTerm,
 } from "@/utils/crm/escape-search";
+import { holdQuery } from "@/utils/crm/hold-query";
 import {
   isDerivedCrmSortField,
   sortCrmProfileKeys,
@@ -1532,14 +1533,17 @@ export async function getUsersForCRMCount(
  * @param supabase Service-role client (for admin id lookup).
  * @param searchTerm Optional name/email search.
  * @param subscriptionFilter CRM filter value (`all`, `paying`, `admin`, plan types).
- * @returns Filtered query, or null when the filter matches nobody.
+ * @returns `{ query }` builder, or null when the filter matches nobody.
+ * @note The builder is wrapped. Returning a Supabase query from `async`
+ *   unwraps its thenable and executes the request, so `.order()` would
+ *   run on `{ data, error }` instead of the builder.
  */
 async function applyCrmProfileFilters(
   query: any,
   supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
   searchTerm?: string,
   subscriptionFilter?: string
-): Promise<any | null> {
+): Promise<{ query: any } | null> {
   let next = query;
 
   if (subscriptionFilter === "admin") {
@@ -1570,7 +1574,7 @@ async function applyCrmProfileFilters(
     }
   }
 
-  return applyCrmSearchFilter(next, searchTerm);
+  return holdQuery(applyCrmSearchFilter(next, searchTerm));
 }
 
 const CRM_PROFILE_KEY_COLUMNS =
@@ -1653,7 +1657,7 @@ async function fetchAllFilteredProfileKeys(
       subscriptionFilter
     );
     if (!filtered) return rows.length > 0 ? rows : null;
-    const { data, error } = await filtered
+    const { data, error } = await filtered.query
       .order("id", { ascending: true })
       .range(from, from + pageSize - 1);
     if (error) {
@@ -1734,7 +1738,7 @@ async function fetchProfileKeysByUserIdsInOrder(
       filter
     );
     if (!filtered) continue;
-    const { data, error } = await filtered;
+    const { data, error } = await filtered.query;
     if (error) {
       console.error("[CRM] Error fetching spend-sort users:", error);
       throw error;
@@ -1786,7 +1790,7 @@ async function fetchProfileKeysByCustomerIdsInOrder(
       filter
     );
     if (!filtered) continue;
-    const { data, error } = await filtered;
+    const { data, error } = await filtered.query;
     if (error) {
       console.error("[CRM] Error fetching spend-sort profiles:", error);
       throw error;
@@ -1914,7 +1918,7 @@ async function fetchNewestProfileKeys(
     subscriptionFilter
   );
   if (!filtered) return [];
-  const { data, error } = await filtered
+  const { data, error } = await filtered.query
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) {
