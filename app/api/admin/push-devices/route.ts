@@ -13,6 +13,9 @@ import { isApnsDeviceToken } from "@/lib/admin-push";
 
 const APP_BYPASS_HEADER = "x-nnaudio-app";
 const APP_PUSH_SECRET_HEADER = "x-nnaudio-app-push-secret";
+/** Fallback matching `nnaudioAppPushSecret` in the iOS wrapper when Vercel env is unset. */
+const COMPILED_APP_PUSH_SECRET =
+  "8f5abb29816e2a21cc405408a544924bde21c0125ffec99ec01bbf3bebf9b2b3";
 
 /**
  * @brief Compares two strings in constant time.
@@ -44,13 +47,8 @@ function secretsMatch(provided: string, expected: string): boolean {
  * ```
  */
 export async function POST(request: NextRequest) {
-  const expectedSecret = process.env.NNAUDIO_APP_PUSH_SECRET?.trim();
-  if (!expectedSecret) {
-    return NextResponse.json(
-      { error: "Push registration is not configured" },
-      { status: 503 }
-    );
-  }
+  const expectedSecret =
+    process.env.NNAUDIO_APP_PUSH_SECRET?.trim() || COMPILED_APP_PUSH_SECRET;
 
   const appHeader = request.headers.get(APP_BYPASS_HEADER);
   const providedSecret = request.headers.get(APP_PUSH_SECRET_HEADER) ?? "";
