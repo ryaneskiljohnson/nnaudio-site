@@ -62,6 +62,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import Link from "next/link";
 import VisualEditor from "@/components/email-campaigns/VisualEditor";
+import {
+  DEFAULT_BRAND_HEADER,
+  resolveBrandHeaderText,
+  splitBrandHeaderText,
+} from "@/utils/email-campaigns/brand-header";
 
 // Keyframes for spinner animation
 const spin = keyframes`
@@ -85,7 +90,7 @@ const CreateContainer = styled.div<{ $isDesignStep: boolean }>`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -150,7 +155,12 @@ const StepIndicator = styled.div`
   margin-bottom: 3rem;
 
   @media (max-width: 768px) {
-    gap: 0.5rem;
+    gap: 0.4rem;
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
   }
 `;
 
@@ -212,6 +222,11 @@ const StepContent = styled(motion.div)<{ $isDesignStep?: boolean }>`
   min-height: 600px;
   width: 100%;
   max-width: ${props => props.$isDesignStep ? 'none' : 'none'};
+
+  @media (max-width: 768px) {
+    min-height: 0;
+    padding: 1rem;
+  }
 `;
 
 const StepTitle = styled.h2`
@@ -484,6 +499,40 @@ const NavigationButtons = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-top: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+`;
+
+const DesignStepHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const DesignStepActions = styled.div`
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 0;
+    gap: 0.75rem;
+  }
 `;
 
 const NavButton = styled.button.withConfig({
@@ -531,6 +580,12 @@ const NavButton = styled.button.withConfig({
       transform: none;
       box-shadow: none;
     }
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 `;
 
@@ -1227,6 +1282,11 @@ const PreviewContainer = styled.div<{ $device: 'mobile' | 'tablet' | 'desktop' }
     }
   }};
   margin: 0 auto;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    max-width: 100%;
+  }
   transition: all 0.3s ease;
   border-radius: 12px;
   overflow: hidden;
@@ -1586,6 +1646,14 @@ const AudienceList = styled.div`
   gap: 1rem;
   max-height: 400px;
   overflow-y: auto;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
   
   &::-webkit-scrollbar {
     width: 6px;
@@ -2002,6 +2070,12 @@ const ModalContent = styled(motion.div)`
   max-width: 500px;
   width: 90%;
   border: 1px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    overflow-y: auto;
+  }
 `;
 
 const ModalTitle = styled.h2`
@@ -2021,6 +2095,14 @@ const ModalStats = styled.div`
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
   margin: 1.5rem 0;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const StatItem = styled.div`
@@ -2047,6 +2129,11 @@ const ModalActions = styled.div`
   gap: 1rem;
   justify-content: flex-end;
   margin-top: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
 `;
 
 const LoadingSpinner = styled(motion.div)`
@@ -2256,7 +2343,7 @@ function CreateCampaignPage() {
       { 
         id: 'brand-header', 
         type: 'brand-header', 
-        content: 'CYMASPHERE', 
+        content: DEFAULT_BRAND_HEADER, 
         fullWidth: true, 
         backgroundColor: 'linear-gradient(135deg, #1a1a1a 0%, #121212 100%)',
         textColor: '#ffffff',
@@ -2377,7 +2464,7 @@ function CreateCampaignPage() {
       replyToEmail: "",
     preheader: "",
     description: "",
-      brandHeader: "CYMASPHERE", // Default brand header text
+      brandHeader: DEFAULT_BRAND_HEADER,
       audienceIds: [],
       excludedAudienceIds: [],
     template: "",
@@ -2625,7 +2712,7 @@ function CreateCampaignPage() {
               replyToEmail: campaign.replyToEmail || '',
               preheader: campaign.preheader || '',
               description: campaign.description || '',
-              brandHeader: (campaign as { brandHeader?: string }).brandHeader || 'CYMASPHERE',
+              brandHeader: resolveBrandHeaderText((campaign as { brandHeader?: string }).brandHeader),
               audienceIds: campaign.audienceIds || [],
               excludedAudienceIds: campaign.excludedAudienceIds || [],
               template: campaign.template_id || '',
@@ -3216,7 +3303,7 @@ function CreateCampaignPage() {
         return { 
           ...baseElement, 
           fullWidth: true,
-          content: 'CYMASPHERE',
+          content: DEFAULT_BRAND_HEADER,
           backgroundColor: 'linear-gradient(135deg, #1a1a1a 0%, #121212 100%)',
           textColor: '#ffffff',
           logoStyle: 'gradient' // 'solid', 'gradient', 'outline'
@@ -3361,7 +3448,11 @@ function CreateCampaignPage() {
           // Generate new IDs for each element to avoid conflicts
           const newElements = template.variables.visual_elements.map((element: any) => ({
             ...element,
-            id: element.type + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+            id: element.type + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+            content:
+              element.type === "brand-header"
+                ? resolveBrandHeaderText(element.content)
+                : element.content,
           }));
           
           // Add a brand header at the top if it doesn't already exist
@@ -3370,7 +3461,7 @@ function CreateCampaignPage() {
             const brandHeaderElement = {
               id: 'brand-header_' + Date.now(),
               type: 'brand-header',
-              content: 'CYMASPHERE',
+              content: DEFAULT_BRAND_HEADER,
               fullWidth: true,
               backgroundColor: 'linear-gradient(135deg, #1a1a1a 0%, #121212 100%)',
               textColor: '#ffffff',
@@ -3633,8 +3724,8 @@ function CreateCampaignPage() {
                 display: flex;
                 align-items: center;
               ">
-                <span class="cyma-text">CYMA</span>
-                <span class="sphere-text">SPHERE</span>
+                <span class="cyma-text">${splitBrandHeaderText(element.content).lead}</span>
+                <span class="sphere-text">${splitBrandHeaderText(element.content).rest}</span>
               </div>
             </div>
           </div>`;
@@ -4431,7 +4522,7 @@ function CreateCampaignPage() {
       case 2:
         return (
           <StepContent variants={stepVariants} initial="hidden" animate="visible" exit="exit" $isDesignStep={true}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <DesignStepHeader>
               <div>
                 <StepTitle>
                   <FaEdit />
@@ -4442,7 +4533,7 @@ function CreateCampaignPage() {
                 </StepDescription>
               </div>
               
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem' }}>
+              <DesignStepActions>
                 <NavButton onClick={prevStep} disabled={currentStep <= 1}>
                   <FaArrowLeft />
                   Previous
@@ -4457,8 +4548,8 @@ function CreateCampaignPage() {
                   Next
                   <FaArrowRight />
                 </NavButton>
-              </div>
-            </div>
+              </DesignStepActions>
+            </DesignStepHeader>
             
             {/* Use the shared VisualEditor component */}
             <VisualEditor
@@ -4477,7 +4568,7 @@ function CreateCampaignPage() {
       case 3:
         return (
           <StepContent variants={stepVariants} initial="hidden" animate="visible" exit="exit" $isDesignStep={false}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <DesignStepHeader>
               <StepTitle style={{ marginBottom: 0 }}>
                 <FaEye />
                 Review & Schedule
@@ -4501,7 +4592,7 @@ function CreateCampaignPage() {
               >
                 <FaPaperPlane /> Send Test
               </button>
-            </div>
+            </DesignStepHeader>
             <StepDescription>
               Review your campaign details and choose when to send.
             </StepDescription>

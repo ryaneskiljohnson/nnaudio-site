@@ -11,6 +11,12 @@ const Container = styled.div`
   display: flex;
   height: 100vh;
   background-color: var(--bg);
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+  }
 `;
 
 const Sidebar = styled.div`
@@ -19,6 +25,13 @@ const Sidebar = styled.div`
   border-right: 1px solid var(--border);
   overflow-y: auto;
   padding: 1rem;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    max-height: none;
+  }
 `;
 
 const MainContent = styled.div`
@@ -36,6 +49,11 @@ const VideoPlayerContainer = styled.div`
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
+
+  @media (max-width: 768px) {
+    margin: 0.5rem;
+    padding: 1rem;
+  }
 `;
 
 // Removed inline ScriptPanel in favor of modal

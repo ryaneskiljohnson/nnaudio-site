@@ -40,7 +40,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -122,6 +122,12 @@ const ConnectionStatus = styled(motion.div)<{ $connected: boolean }>`
   svg {
     color: ${props => props.$connected ? '#22c55e' : '#ef4444'};
     font-size: 1.2rem;
+  }
+
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+    padding: 1rem;
+    align-items: flex-start;
   }
 `;
 
@@ -701,7 +707,9 @@ export default function AdManagerPage() {
                           border: '1px solid rgba(255,255,255,0.2)',
                           background: 'rgba(0,0,0,0.2)',
                           color: 'inherit',
-                          minWidth: 180,
+                          minWidth: 0,
+                          maxWidth: '100%',
+                          width: '100%',
                         }}
                       >
                         {adAccounts.map((acc) => (

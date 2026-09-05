@@ -27,6 +27,13 @@ const Header = styled.div`
   position: relative;
   z-index: 1;
   overflow: visible;
+  gap: 0.75rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.75rem 1rem;
+  }
 `;
 
 const BackButton = styled(Link)`
@@ -59,6 +66,11 @@ const DropdownContainer = styled.div`
   padding-left: 1rem;
   margin: 0 auto;
   z-index: 1001;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    padding-left: 0;
+  }
 `;
 
 const DropdownButton = styled.button.withConfig({
@@ -67,7 +79,8 @@ const DropdownButton = styled.button.withConfig({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 350px;
+  width: 100%;
+  max-width: 100%;
   padding: 0.75rem 1rem;
   background-color: var(--bg);
   border: 1px solid var(--border);

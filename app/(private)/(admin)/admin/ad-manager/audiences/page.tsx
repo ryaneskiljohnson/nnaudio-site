@@ -37,7 +37,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -335,6 +335,15 @@ const AudienceStats = styled.div`
   gap: 1rem;
   padding: 1.5rem;
   background: rgba(255, 255, 255, 0.02);
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr 1fr;
+    padding: 1rem;
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const AudienceStatItem = styled.div`
@@ -414,6 +423,12 @@ const ModalContent = styled(motion.div)`
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    overflow-y: auto;
+  }
 `;
 
 const ModalHeader = styled.div`

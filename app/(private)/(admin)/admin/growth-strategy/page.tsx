@@ -9,6 +9,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import Link from "next/link";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardHeader,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
 import {
   FaRocket,
   FaCheckCircle,
@@ -34,6 +41,10 @@ const PageContainer = styled.div`
   max-width: 960px;
   margin: 0 auto;
   padding: 2rem 0;
+
+  @media (max-width: 768px) {
+    padding: 8px 0;
+  }
 `;
 
 const PageTitle = styled.h1`
@@ -1317,24 +1328,39 @@ export default function GrowthStrategyPage() {
         <CardDescription>
           <Strong>Strategic bets (what we believe will win in 2026)</Strong>
         </CardDescription>
-        <Table>
-          <thead>
-            <tr>
-              <th>Bet</th>
-              <th>Why this matters</th>
-              <th>Success KPI</th>
-            </tr>
-          </thead>
-          <tbody>
-            {strategicBets2026.map((row) => (
-              <tr key={row.bet}>
-                <td>{row.bet}</td>
-                <td>{row.why}</td>
-                <td>{row.kpi}</td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+        <AdminResponsiveList
+          desktop={
+            <Table>
+              <thead>
+                <tr>
+                  <th>Bet</th>
+                  <th>Why this matters</th>
+                  <th>Success KPI</th>
+                </tr>
+              </thead>
+              <tbody>
+                {strategicBets2026.map((row) => (
+                  <tr key={row.bet}>
+                    <td>{row.bet}</td>
+                    <td>{row.why}</td>
+                    <td>{row.kpi}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          }
+          mobile={
+            <AdminMobileCardList>
+              {strategicBets2026.map((row) => (
+                <AdminDataCard key={row.bet}>
+                  <AdminDataCardHeader title={row.bet} />
+                  <AdminDataCardRow label="Why" value={row.why} />
+                  <AdminDataCardRow label="KPI" value={row.kpi} />
+                </AdminDataCard>
+              ))}
+            </AdminMobileCardList>
+          }
+        />
         <CardDescription>
           <Strong>Weekly operating cadence</Strong>
         </CardDescription>
@@ -1584,24 +1610,39 @@ export default function GrowthStrategyPage() {
         <CardDescription>
           <Strong>Landing pages to ship / tighten this week</Strong>
         </CardDescription>
-        <Table>
-          <thead>
-            <tr>
-              <th>Page</th>
-              <th>Focus</th>
-              <th>Primary CTA</th>
-            </tr>
-          </thead>
-          <tbody>
-            {week1LandingWork.map((row) => (
-              <tr key={row.page}>
-                <td>{row.page}</td>
-                <td>{row.focus}</td>
-                <td>{row.cta}</td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+        <AdminResponsiveList
+          desktop={
+            <Table>
+              <thead>
+                <tr>
+                  <th>Page</th>
+                  <th>Focus</th>
+                  <th>Primary CTA</th>
+                </tr>
+              </thead>
+              <tbody>
+                {week1LandingWork.map((row) => (
+                  <tr key={row.page}>
+                    <td>{row.page}</td>
+                    <td>{row.focus}</td>
+                    <td>{row.cta}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          }
+          mobile={
+            <AdminMobileCardList>
+              {week1LandingWork.map((row) => (
+                <AdminDataCard key={row.page}>
+                  <AdminDataCardHeader title={row.page} />
+                  <AdminDataCardRow label="Focus" value={row.focus} />
+                  <AdminDataCardRow label="CTA" value={row.cta} />
+                </AdminDataCard>
+              ))}
+            </AdminMobileCardList>
+          }
+        />
         <CardDescription>
           <Strong>Daily 10-minute scoreboard</Strong>
         </CardDescription>
@@ -1660,49 +1701,85 @@ export default function GrowthStrategyPage() {
           The business needs a clear free-to-paid ladder. Cold traffic should
           not be asked to buy the flagship first.
         </CardDescription>
-        <Table>
-          <thead>
-            <tr>
-              <th>Stage</th>
-              <th>Offer</th>
-              <th>Role</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Acquire</td>
-              <td>
-                <a href={`${BASE}/free-tools`} target="_blank" rel="noopener noreferrer">
-                  Free tools
-                </a>
-              </td>
-              <td>Use free FX, free MIDI, and NNAudio Access to grow owned audiences.</td>
-            </tr>
-            <tr>
-              <td>Convert</td>
-              <td>20 For 20 / paid singles</td>
-              <td>Use low-friction first purchases to prove paid intent.</td>
-            </tr>
-            <tr>
-              <td>Monetize</td>
-              <td>
-                <a href={`${BASE}/bundles`} target="_blank" rel="noopener noreferrer">
-                  Bundles
-                </a>
-              </td>
-              <td>Move best-fit users into Beat Lab, Producer&apos;s Arsenal, and Ultimate Bundle.</td>
-            </tr>
-            <tr>
-              <td>Premium</td>
-              <td>
-                <a href={`${BASE}/product/cymasphere`} target="_blank" rel="noopener noreferrer">
-                  Cymasphere
-                </a>
-              </td>
-              <td>Reserve the flagship for warmer traffic, retargeting, and higher-intent buyers.</td>
-            </tr>
-          </tbody>
-        </Table>
+        <AdminResponsiveList
+          desktop={
+            <Table>
+              <thead>
+                <tr>
+                  <th>Stage</th>
+                  <th>Offer</th>
+                  <th>Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Acquire</td>
+                  <td>
+                    <a href={`${BASE}/free-tools`} target="_blank" rel="noopener noreferrer">
+                      Free tools
+                    </a>
+                  </td>
+                  <td>Use free FX, free MIDI, and NNAudio Access to grow owned audiences.</td>
+                </tr>
+                <tr>
+                  <td>Convert</td>
+                  <td>20 For 20 / paid singles</td>
+                  <td>Use low-friction first purchases to prove paid intent.</td>
+                </tr>
+                <tr>
+                  <td>Monetize</td>
+                  <td>
+                    <a href={`${BASE}/bundles`} target="_blank" rel="noopener noreferrer">
+                      Bundles
+                    </a>
+                  </td>
+                  <td>Move best-fit users into Beat Lab, Producer&apos;s Arsenal, and Ultimate Bundle.</td>
+                </tr>
+                <tr>
+                  <td>Premium</td>
+                  <td>
+                    <a href={`${BASE}/product/cymasphere`} target="_blank" rel="noopener noreferrer">
+                      Cymasphere
+                    </a>
+                  </td>
+                  <td>Reserve the flagship for warmer traffic, retargeting, and higher-intent buyers.</td>
+                </tr>
+              </tbody>
+            </Table>
+          }
+          mobile={
+            <AdminMobileCardList>
+              <AdminDataCard>
+                <AdminDataCardHeader title="Acquire" subtitle="Free tools" />
+                <AdminDataCardRow
+                  label="Role"
+                  value="Use free FX, free MIDI, and NNAudio Access to grow owned audiences."
+                />
+              </AdminDataCard>
+              <AdminDataCard>
+                <AdminDataCardHeader title="Convert" subtitle="20 For 20 / paid singles" />
+                <AdminDataCardRow
+                  label="Role"
+                  value="Use low-friction first purchases to prove paid intent."
+                />
+              </AdminDataCard>
+              <AdminDataCard>
+                <AdminDataCardHeader title="Monetize" subtitle="Bundles" />
+                <AdminDataCardRow
+                  label="Role"
+                  value="Move best-fit users into Beat Lab, Producer's Arsenal, and Ultimate Bundle."
+                />
+              </AdminDataCard>
+              <AdminDataCard>
+                <AdminDataCardHeader title="Premium" subtitle="Cymasphere" />
+                <AdminDataCardRow
+                  label="Role"
+                  value="Reserve the flagship for warmer traffic, retargeting, and higher-intent buyers."
+                />
+              </AdminDataCard>
+            </AdminMobileCardList>
+          }
+        />
       </Card>
 
       <Card>

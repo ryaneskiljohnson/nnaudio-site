@@ -21,6 +21,16 @@ import LoadingComponent from "@/components/common/LoadingComponent";
 import StatLoadingSpinner from "@/components/common/StatLoadingSpinner";
 import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
 import { getTemplates } from "@/app/actions/email-campaigns";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty, AdminMobileLoading } from "@/components/admin/AdminMobileLoading";
 
 const TemplatesContainer = styled.div`
   width: 100%;
@@ -29,7 +39,7 @@ const TemplatesContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -169,6 +179,12 @@ const CreateButton = styled.button`
 
   svg {
     font-size: 0.9rem;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 `;
 
@@ -655,6 +671,8 @@ function TemplatesPage() {
           </CreateButton>
         </ActionsRow>
 
+        <AdminResponsiveList
+          desktop={
         <TemplatesGrid>
           <Table>
             <TableHeader>
@@ -777,6 +795,78 @@ function TemplatesPage() {
             </TableBody>
           </Table>
         </TemplatesGrid>
+          }
+          mobile={
+            loading ? (
+              <AdminMobileLoading count={4} />
+            ) : filteredTemplates.length === 0 ? (
+              <AdminMobileEmpty message="No templates found. Try adjusting your search criteria or create a new template." />
+            ) : (
+              <AdminMobileCardList>
+                {filteredTemplates.map((template) => (
+                  <AdminDataCard
+                    key={template.id}
+                    onClick={() => handleTemplateAction("view", template.id)}
+                  >
+                    <AdminDataCardHeader
+                      title={template.name}
+                      subtitle={template.description}
+                      badge={
+                        <StatusBadge status={template.status}>
+                          {template.status}
+                        </StatusBadge>
+                      }
+                    />
+                    <AdminDataCardMeta
+                      items={[
+                        { label: "Type", value: template.type },
+                        { label: "Usage", value: template.usage_count },
+                      ]}
+                    />
+                    <AdminDataCardRow
+                      label="Last Used"
+                      value={template.last_used_at ? new Date(template.last_used_at).toLocaleDateString() : "Never"}
+                    />
+                    <AdminDataCardRow
+                      label="Created"
+                      value={new Date(template.created_at).toLocaleDateString()}
+                    />
+                    <AdminDataCardActions>
+                      <DropdownItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTemplateAction("edit", template.id);
+                          setOpenDropdown(null);
+                        }}
+                      >
+                        <FaEdit /> Edit
+                      </DropdownItem>
+                      <DropdownItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTemplateAction("duplicate", template.id);
+                          setOpenDropdown(null);
+                        }}
+                      >
+                        <FaCopy /> Duplicate
+                      </DropdownItem>
+                      <DropdownItem
+                        variant="danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTemplateAction("delete", template.id);
+                          setOpenDropdown(null);
+                        }}
+                      >
+                        <FaTrash /> Delete
+                      </DropdownItem>
+                    </AdminDataCardActions>
+                  </AdminDataCard>
+                ))}
+              </AdminMobileCardList>
+            )
+          }
+        />
       </TemplatesContainer>
     </>
   );

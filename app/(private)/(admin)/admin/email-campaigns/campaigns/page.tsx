@@ -39,6 +39,19 @@ import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 
 import TableLoadingRow from "@/components/common/TableLoadingRow";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import {
+  AdminMobileEmpty,
+  AdminMobileLoading,
+} from "@/components/admin/AdminMobileLoading";
 import StatLoadingSpinner from "@/components/common/StatLoadingSpinner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/contexts/ToastContext";
@@ -51,7 +64,7 @@ const CampaignsContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -91,6 +104,11 @@ const StatsRow = styled.div`
   margin-bottom: 2rem;
 
   @media (max-width: 768px) {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+  }
+
+  @media (max-width: 480px) {
     grid-template-columns: 1fr;
   }
 `;
@@ -1692,7 +1710,7 @@ function CampaignsPage() {
     <div class="container">
         <div class="header">
             <div class="logo">
-                <span class="cyma">CYMA</span><span>SPHERE</span>
+                <span>AUDIO</span>
             </div>
         </div>
         
@@ -1779,6 +1797,8 @@ function CampaignsPage() {
           </Tab>
         </TabsContainer>
 
+        <AdminResponsiveList
+          desktop={
         <CampaignsGrid>
           <Table>
             <TableHeader>
@@ -2201,6 +2221,128 @@ function CampaignsPage() {
             </TableBody>
           </Table>
         </CampaignsGrid>
+          }
+          mobile={
+            loading ? (
+              <AdminMobileLoading count={4} />
+            ) : filteredCampaigns.length === 0 ? (
+              <AdminMobileEmpty message="Try adjusting your search criteria or create a new campaign." />
+            ) : (
+              <AdminMobileCardList>
+                {filteredCampaigns.map((campaign: any) => {
+                  const reach = campaignReachData[campaign.id]?.estimatedReach;
+                  const openRate =
+                    campaign.emails_sent && campaign.emails_sent > 0
+                      ? `${(((campaign.emails_opened || 0) / campaign.emails_sent) * 100).toFixed(1)}%`
+                      : "0%";
+                  const clickRate =
+                    campaign.emails_sent && campaign.emails_sent > 0
+                      ? `${(((campaign.emails_clicked || 0) / campaign.emails_sent) * 100).toFixed(1)}%`
+                      : "0%";
+                  const dateLabel =
+                    activeTab === "sent" && campaign.sent_at
+                      ? new Date(campaign.sent_at).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : campaign.created_at
+                        ? new Date(campaign.created_at).toLocaleDateString(undefined, {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "N/A";
+                  return (
+                    <AdminDataCard
+                      key={campaign.id}
+                      onClick={() => {
+                        if (campaign.status === "sent" || campaign.status === "completed") {
+                          handleShowDeliverabilityModal(campaign);
+                          return;
+                        }
+                        handleCampaignAction("edit", campaign.id);
+                      }}
+                    >
+                      <AdminDataCardHeader
+                        title={campaign.name || "Untitled"}
+                        subtitle={campaign.subject || campaign.description || "No description"}
+                        badge={
+                          <StatusBadge status={campaign.status || "draft"}>
+                            {campaign.status || "draft"}
+                          </StatusBadge>
+                        }
+                      />
+                      <AdminDataCardMeta
+                        items={
+                          activeTab === "sent"
+                            ? [
+                                { label: "Recipients", value: campaign.total_recipients || 0 },
+                                { label: "Open rate", value: openRate },
+                                { label: "Click rate", value: clickRate },
+                              ]
+                            : [
+                                {
+                                  label: "Reach",
+                                  value:
+                                    reach != null ? reach.toLocaleString() : "…",
+                                },
+                              ]
+                        }
+                      />
+                      {activeTab === "scheduled" ? (
+                        <AdminDataCardRow
+                          label="Scheduled"
+                          value={
+                            campaign.scheduled_at
+                              ? new Date(campaign.scheduled_at).toLocaleString(
+                                  undefined,
+                                  {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )
+                              : "Not scheduled"
+                          }
+                        />
+                      ) : null}
+                      <AdminDataCardRow label="Date" value={dateLabel} />
+                      <AdminDataCardActions>
+                        <ActionButton
+                          variant="secondary"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleCampaignAction("edit", campaign.id);
+                          }}
+                        >
+                          <FaEdit />
+                          Edit
+                        </ActionButton>
+                        <ActionButton
+                          variant="secondary"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDropdownToggle(campaign.id, event);
+                          }}
+                        >
+                          <FaEllipsisV />
+                          More
+                        </ActionButton>
+                      </AdminDataCardActions>
+                    </AdminDataCard>
+                  );
+                })}
+              </AdminMobileCardList>
+            )
+          }
+        />
         </>
         )}
       </CampaignsContainer>

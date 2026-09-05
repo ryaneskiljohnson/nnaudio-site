@@ -73,6 +73,19 @@ import {
 } from "@/components/admin/SupportReplyTranslate";
 
 import TableLoadingRow from "@/components/common/TableLoadingRow";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import {
+  AdminMobileEmpty,
+  AdminMobileLoading,
+} from "@/components/admin/AdminMobileLoading";
 import {
   isHeicOrHeifAttachment,
   SUPPORT_TICKET_FILE_ACCEPT,
@@ -91,7 +104,7 @@ const TicketsContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -1284,8 +1297,8 @@ const TicketModalContent = styled(motion.div)`
   overscroll-behavior: contain;
 
   @media (max-width: 768px) {
-    width: 100%;
-    height: 95vh;
+    width: min(100vw - 16px, 520px);
+    height: 85dvh;
     max-height: 95vh;
     padding: 1rem;
     border-radius: 8px;
@@ -1323,6 +1336,11 @@ const ModalHeader = styled.div`
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 0.75rem;
+
+  @media (max-width: 768px) {
+    align-items: flex-start;
+  }
 `;
 
 const ModalTitle = styled.h2`
@@ -1774,6 +1792,11 @@ const FormActions = styled.div`
   margin-top: 2rem;
   padding-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const CancelButton = styled.button`
@@ -3344,6 +3367,8 @@ function SupportTicketsPage() {
         {ticketsError && <ErrorMessage>{ticketsError}</ErrorMessage>}
 
         <TableContainer>
+          <AdminResponsiveList
+            desktop={
           <Table>
             <TableHeader>
               <tr>
@@ -3607,6 +3632,89 @@ function SupportTicketsPage() {
               ))}
             </TableBody>
           </Table>
+            }
+            mobile={
+              loadingTickets ? (
+                <AdminMobileLoading count={4} />
+              ) : paginatedTickets.length === 0 ? (
+                <AdminMobileEmpty message="No support tickets found" />
+              ) : (
+                <AdminMobileCardList>
+                  {paginatedTickets.map((ticket) => (
+                    <AdminDataCard
+                      key={ticket.id}
+                      onClick={() => openTicketModal(ticket.id)}
+                    >
+                      <AdminDataCardHeader
+                        title={ticket.subject}
+                        subtitle={ticket.ticket_number}
+                        badge={
+                          <StatusBadge $status={ticket.status}>
+                            {getStatusIcon(ticket.status)}
+                            {t(
+                              `admin.supportTickets.filters.${ticket.status}`,
+                              ticket.status
+                            )}
+                          </StatusBadge>
+                        }
+                      />
+                      <AdminDataCardMeta
+                        items={[
+                          {
+                            label: "Products",
+                            value: ticket.user_product_count ?? "—",
+                          },
+                          {
+                            label: "Orders",
+                            value: ticket.user_order_count ?? "—",
+                          },
+                        ]}
+                      />
+                      <AdminDataCardRow
+                        label="User"
+                        value={ticket.user_email || "Unknown"}
+                      />
+                      <AdminDataCardRow
+                        label="Created"
+                        value={formatDate(ticket.created_at)}
+                      />
+                      {supportTicketNeedsReply(
+                        ticket.awaiting_admin_response,
+                        ticket.status
+                      ) ? (
+                        <AdminDataCardRow
+                          label="Alert"
+                          value="Needs reply"
+                        />
+                      ) : null}
+                      <AdminDataCardActions>
+                        <ActionButton
+                          $variant="secondary"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openTicketModal(ticket.id);
+                          }}
+                        >
+                          <FaEye />
+                          View
+                        </ActionButton>
+                        <ActionButton
+                          $variant="secondary"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleMoreMenuClick(ticket.id, event);
+                          }}
+                        >
+                          <FaEllipsisV />
+                          More
+                        </ActionButton>
+                      </AdminDataCardActions>
+                    </AdminDataCard>
+                  ))}
+                </AdminMobileCardList>
+              )
+            }
+          />
           
           <Pagination>
             <PaginationInfo>

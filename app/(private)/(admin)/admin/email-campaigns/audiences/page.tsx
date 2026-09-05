@@ -40,6 +40,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import TableLoadingRow from "@/components/common/TableLoadingRow";
 import { useRouter } from "next/navigation";
 import { getAudiences, createAudience, deleteAudience, getAudienceSubscribers } from "@/app/actions/email-campaigns";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty, AdminMobileLoading } from "@/components/admin/AdminMobileLoading";
 
 // Global styles for animations
 const GlobalStyles = createGlobalStyle`
@@ -56,7 +66,7 @@ const AudiencesContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -228,6 +238,12 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         `;
     }
   }}
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
 `;
 
 const AudiencesTable = styled.div`
@@ -469,6 +485,12 @@ const ModalContent = styled(motion.div)`
   max-width: 500px;
   width: 90%;
   border: 1px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    overflow-y: auto;
+  }
 `;
 
 const ModalTitle = styled.h2`
@@ -963,6 +985,8 @@ function AudiencesPage() {
           </RightActions>
         </ActionsRow>
 
+        <AdminResponsiveList
+          desktop={
         <AudiencesTable>
           <Table>
             <TableHeader>
@@ -1079,6 +1103,63 @@ function AudiencesPage() {
             </TableBody>
           </Table>
         </AudiencesTable>
+          }
+          mobile={
+            loading ? (
+              <AdminMobileLoading count={4} />
+            ) : filteredAudiences.length === 0 ? (
+              <AdminMobileEmpty message="No audiences found. Try adjusting your search criteria or create a new audience." />
+            ) : (
+              <AdminMobileCardList>
+                {filteredAudiences.map((audience) => (
+                  <AdminDataCard
+                    key={audience.id}
+                    onClick={() => handleAudienceClick(audience.id)}
+                  >
+                    <AdminDataCardHeader
+                      title={audience.name}
+                      subtitle={audience.description}
+                      badge={
+                        <StatusBadge type={audience.type}>
+                          {audience.type === "dynamic" ? "🔄 Dynamic" : "📌 Static"}
+                        </StatusBadge>
+                      }
+                    />
+                    <AdminDataCardMeta
+                      items={[
+                        { label: "Subscribers", value: audience.subscribers.toLocaleString() },
+                        { label: "Engagement", value: audience.engagementRate },
+                      ]}
+                    />
+                    <AdminDataCardRow
+                      label="Last Active"
+                      value={new Date(audience.lastActive).toLocaleDateString()}
+                    />
+                    <AdminDataCardRow
+                      label="Tags"
+                      value={
+                        audience.tags.length
+                          ? audience.tags.map((tag: { text: string }) => tag.text).join(", ")
+                          : "—"
+                      }
+                    />
+                    <AdminDataCardActions>
+                      <DropdownItem onClick={(e) => { e.stopPropagation(); handleAudienceAction("edit", audience.id); }}>
+                        <FaEdit /> Edit
+                      </DropdownItem>
+                      <DropdownItem onClick={(e) => { e.stopPropagation(); handleAudienceAction("email", audience.id); }}>
+                        <FaEnvelope /> Campaign
+                      </DropdownItem>
+                      <DropdownItem onClick={(e) => { e.stopPropagation(); handleAudienceAction("delete", audience.id); }}>
+                        <FaTrash /> Delete
+                      </DropdownItem>
+                    </AdminDataCardActions>
+                  </AdminDataCard>
+                ))}
+              </AdminMobileCardList>
+            )
+          }
+        />
         </>
         )}
 

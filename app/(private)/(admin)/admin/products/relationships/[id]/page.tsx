@@ -11,6 +11,10 @@ const Container = styled.div`
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+
+  @media (max-width: 768px) {
+    padding: 8px 0;
+  }
 `;
 
 const Header = styled.div`
@@ -18,6 +22,12 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
 `;
 
 const Title = styled.h1`
@@ -47,7 +57,7 @@ const Content = styled.div`
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
   
-  @media (max-width: 968px) {
+  @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
 `;

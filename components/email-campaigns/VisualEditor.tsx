@@ -44,6 +44,11 @@ import {
   FaCheck
 } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
+import {
+  DEFAULT_BRAND_HEADER,
+  resolveBrandHeaderText,
+  splitBrandHeaderText,
+} from "@/utils/email-campaigns/brand-header";
 
 // Simple CSS to ensure basic styling works
 const fontSizeStyles = `
@@ -80,6 +85,11 @@ const ViewToggle = styled.button.withConfig({
   backdrop-filter: blur(10px);
   white-space: nowrap !important;
   line-height: 1 !important;
+
+  @media (max-width: 768px) {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.72rem;
+  }
   
   svg {
     display: inline-block !important;
@@ -118,6 +128,67 @@ const ViewToggleContainer = styled.div`
   border-radius: 50px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    gap: 0.5rem;
+    padding: 0.65rem;
+    border-radius: 16px;
+  }
+`;
+
+const EditorSplit = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  min-height: 600px;
+  overflow: visible;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    min-height: 0;
+  }
+`;
+
+const EditorCanvasPane = styled.div`
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  );
+  border-radius: 16px;
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  align-self: flex-start;
+  transition: all 0.3s ease;
+  overflow: visible;
+  min-width: 0;
+  width: 100%;
+`;
+
+const EditorSidePane = styled.div<{ $open: boolean }>`
+  width: ${(props) => (props.$open ? "320px" : "50px")};
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  );
+  border-radius: 16px;
+  padding: ${(props) => (props.$open ? "0.5rem" : "0.25rem")};
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  align-self: flex-start;
+  transition: all 0.3s ease;
+  overflow: visible;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 const EmailCanvas = styled.div`
@@ -148,6 +219,12 @@ const EmailContainer = styled.div`
     margin: 0 auto;
     padding: 0 24px;
     box-shadow: 0 0 0 1px rgba(0,0,0,0.04);
+
+    @media (max-width: 768px) {
+      min-width: 0;
+      max-width: 100%;
+      padding: 0 12px;
+    }
     
     /* Ensure no top spacing */
     > *:first-child {
@@ -606,9 +683,13 @@ const ModalContent = styled.div`
   padding: 2rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  min-width: 300px;
+  min-width: 0;
   max-width: 400px;
-  width: 90%;
+  width: min(90vw, 400px);
+
+  @media (max-width: 768px) {
+    padding: 1.25rem;
+  }
 `;
 
 const ModalTitle = styled.h3`
@@ -676,6 +757,10 @@ const ColorPresets = styled.div`
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   gap: 0.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
 `;
 
 const ColorPreset = styled.button`
@@ -696,6 +781,27 @@ const ModalButtons = styled.div`
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
+
+  @media (max-width: 768px) {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+`;
+
+const LinkEditAnchor = styled.div`
+  position: absolute;
+  top: 50%;
+  right: -60px;
+  transform: translateY(-50%);
+  z-index: 20;
+
+  @media (max-width: 768px) {
+    position: static;
+    transform: none;
+    margin-top: 0.75rem;
+    display: flex;
+    justify-content: center;
+  }
 `;
 
 const ModalButton = styled.button<{ $variant?: 'primary' | 'secondary' }>`
@@ -984,6 +1090,12 @@ export default function VisualEditor({
   const [editingElement, setEditingElement] = useState<string | null>(null);
   const [rightPanelState, setRightPanelState] = useState(rightPanelExpanded);
   const dragPreviewRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setRightPanelState(false);
+    }
+  }, []);
 
   // ✨ NEW: Design settings state
   const [designSettings, setDesignSettings] = useState({
@@ -1907,7 +2019,7 @@ export default function VisualEditor({
         return { 
           ...baseElement, 
           fullWidth: true,
-          content: 'NNAudio',
+          content: DEFAULT_BRAND_HEADER,
           backgroundColor: 'linear-gradient(135deg, #1a1a1a 0%, #121212 100%)',
           textColor: '#ffffff',
           logoStyle: 'gradient' // 'solid', 'gradient', 'outline'
@@ -2849,13 +2961,7 @@ export default function VisualEditor({
             
             {/* ✨ Link icon next to button when editing */}
             {isEditing && (
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                right: '-60px',
-                transform: 'translateY(-50%)',
-                zIndex: 20
-              }}>
+              <LinkEditAnchor>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -2891,7 +2997,7 @@ export default function VisualEditor({
                 >
                   <FaLink size={16} />
                 </button>
-              </div>
+              </LinkEditAnchor>
             )}
 
           </div>
@@ -3440,20 +3546,22 @@ export default function VisualEditor({
             >
               {element.logoStyle === 'gradient' ? (
                 <>
-                  <span style={{
-                    background: 'linear-gradient(90deg, #6c63ff, #4ecdc4)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text'
-                  }}>
-                    {element.content ? element.content.slice(0, 4) : 'CYMA'}
-                  </span>
+                  {splitBrandHeaderText(element.content).lead ? (
+                    <span style={{
+                      background: 'linear-gradient(90deg, #6c63ff, #4ecdc4)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text'
+                    }}>
+                      {splitBrandHeaderText(element.content).lead}
+                    </span>
+                  ) : null}
                   <span>
-                    {element.content ? element.content.slice(4) : 'SPHERE'}
+                    {splitBrandHeaderText(element.content).rest || resolveBrandHeaderText(element.content)}
                   </span>
                 </>
               ) : (
-                <span>{element.content || 'NNAudio'}</span>
+                <span>{resolveBrandHeaderText(element.content)}</span>
               )}
             </EditableText>
             
@@ -3760,28 +3868,10 @@ export default function VisualEditor({
         </ElementBlock>
       </div>
 
-      <div style={{ 
-        display: 'flex',
-        gap: '0.5rem', 
-        minHeight: '600px',
-        overflow: 'visible',
-        width: '100%'
-      }}>
+      <EditorSplit>
         
         {/* Visual Email Canvas - Left */}
-        <div ref={leftPaneRef} style={{ 
-          flex: rightPanelState ? '8' : '1 1 auto',
-          display: 'flex', 
-          flexDirection: 'column',
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%)',
-          borderRadius: '16px',
-          padding: '0.5rem',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
-          alignSelf: 'flex-start',
-          transition: 'all 0.3s ease',
-          overflow: 'visible',
-          minWidth: 0
-        }}>
+        <EditorCanvasPane ref={leftPaneRef}>
           <ViewToggleContainer>
             <ViewToggle 
               active={currentView === 'desktop'}
@@ -3967,10 +4057,10 @@ export default function VisualEditor({
                                         -webkit-background-clip: text;
                                         -webkit-text-fill-color: transparent;
                                         background-clip: text;
-                                      ">CYMA</span>
+                                      ">${splitBrandHeaderText(element.content).lead}</span>
                                       <span style="
                                         color: ${element.textColor || '#ffffff'};
-                                      ">SPHERE</span>
+                                      ">${splitBrandHeaderText(element.content).rest}</span>
                                     </div>
                                   </div>`;
                                 case 'image':
@@ -4085,7 +4175,7 @@ export default function VisualEditor({
                           fontWeight: 'bold',
                           letterSpacing: '0.2em'
                       }}>
-                          [LOGO] {element.content || 'NNAudio'}
+                          [LOGO] {resolveBrandHeaderText(element.content)}
                       </div>
                       )}
                       </div>
@@ -4194,23 +4284,10 @@ export default function VisualEditor({
               )}
             </EmailContainer>
           </EmailCanvas>
-        </div>
+        </EditorCanvasPane>
 
         {/* Settings Panels - Right */}
-        <div style={{ 
-          width: rightPanelState ? '320px' : '50px',
-          flexShrink: 0,
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '1.5rem', 
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0.01) 100%)',
-          borderRadius: '16px',
-          padding: rightPanelState ? '0.5rem' : '0.25rem',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
-          alignSelf: 'flex-start',
-          transition: 'all 0.3s ease',
-          overflow: 'visible'
-        }}>
+        <EditorSidePane $open={rightPanelState}>
           
           {/* Toggle Button */}
           <div style={{ 
@@ -5083,8 +5160,8 @@ export default function VisualEditor({
             </>
           )}
 
-        </div>
-      </div>
+        </EditorSidePane>
+      </EditorSplit>
       {/* Hidden drag preview */}
       <div ref={dragPreviewRef} style={{ position: 'absolute', top: '-1000px', left: '-1000px' }}>
         Dragging element...

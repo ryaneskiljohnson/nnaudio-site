@@ -42,7 +42,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -54,7 +54,7 @@ const Header = styled.div`
 
   @media (max-width: 768px) {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 1rem;
   }
 `;
@@ -133,6 +133,12 @@ const ActionButton = styled(motion.button)`
     cursor: not-allowed;
     transform: none;
   }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
 `;
 
 const CampaignCard = styled(motion.div)`
@@ -150,9 +156,16 @@ const CampaignHeader = styled.div`
   padding: 1.5rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  gap: 1rem;
 
   &:hover {
     background: rgba(255, 255, 255, 0.02);
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
   }
 `;
 
@@ -225,6 +238,11 @@ const CampaignActions = styled.div`
   display: flex;
   gap: 0.5rem;
   align-items: center;
+
+  @media (max-width: 768px) {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 `;
 
 const SmallActionButton = styled(motion.button)`
@@ -274,6 +292,16 @@ const CampaignContent = styled(motion.div)`
 const TabContainer = styled.div`
   display: flex;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  @media (max-width: 768px) {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
 `;
 
 const Tab = styled.button<{ $active: boolean }>`
@@ -393,6 +421,12 @@ const ModalContent = styled(motion.div)`
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    overflow-y: auto;
+  }
 `;
 
 const ModalHeader = styled.div`

@@ -39,6 +39,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import TableLoadingRow from "@/components/common/TableLoadingRow";
 import { getDeliverability } from "@/app/actions/email-campaigns";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty, AdminMobileLoading } from "@/components/admin/AdminMobileLoading";
 
 const DeliverabilityContainer = styled.div`
   width: 100%;
@@ -47,7 +57,7 @@ const DeliverabilityContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -849,6 +859,8 @@ function DeliverabilityPage() {
           </FiltersRow>
 
           {activeTab === 'domains' ? (
+            <AdminResponsiveList
+              desktop={
             <Table>
               <TableHeader>
                 <tr>
@@ -964,7 +976,59 @@ function DeliverabilityPage() {
                 )}
               </TableBody>
             </Table>
+              }
+              mobile={
+                loading || !deliverabilityData ? (
+                  <AdminMobileLoading count={3} />
+                ) : filteredDomains.length === 0 ? (
+                  <AdminMobileEmpty message="No domains found. Try adjusting your search criteria." />
+                ) : (
+                  <AdminMobileCardList>
+                    {filteredDomains.map((domain: any, index: number) => {
+                      const domainId = domain.domain || `domain-${index}`;
+                      const reputation = Math.round(domain.reputation || domain.deliveredRate || 0);
+                      const delivered = domain.delivered || 0;
+                      const bounced = domain.bounced || 0;
+                      const spam = domain.spam || 0;
+                      return (
+                        <AdminDataCard
+                          key={domainId}
+                          onClick={() => handleDomainAction("view", domainId)}
+                        >
+                          <AdminDataCardHeader
+                            title={domain.domain}
+                            subtitle={domain.lastChecked ? new Date(domain.lastChecked).toLocaleDateString() : "N/A"}
+                            badge={
+                              <ReputationScore score={reputation}>
+                                {reputation}
+                              </ReputationScore>
+                            }
+                          />
+                          <AdminDataCardMeta
+                            items={[
+                              { label: "Delivered", value: delivered.toLocaleString() },
+                              { label: "Bounced", value: bounced.toLocaleString() },
+                              { label: "Spam", value: spam.toLocaleString() },
+                            ]}
+                          />
+                          <AdminDataCardActions>
+                            <DropdownItem onClick={(e) => { e.stopPropagation(); handleDomainAction("view", domainId); }}>
+                              <FaEye /> View
+                            </DropdownItem>
+                            <DropdownItem onClick={(e) => { e.stopPropagation(); handleDomainAction("analyze", domainId); }}>
+                              <FaChartLine /> Analyze
+                            </DropdownItem>
+                          </AdminDataCardActions>
+                        </AdminDataCard>
+                      );
+                    })}
+                  </AdminMobileCardList>
+                )
+              }
+            />
           ) : (
+            <AdminResponsiveList
+              desktop={
             <Table>
               <TableHeader>
                 <tr>
@@ -1073,6 +1137,56 @@ function DeliverabilityPage() {
                 )}
               </TableBody>
             </Table>
+              }
+              mobile={
+                loading || !deliverabilityData ? (
+                  <AdminMobileLoading count={3} />
+                ) : filteredBounces.length === 0 ? (
+                  <AdminMobileEmpty message="No bounces found. Try adjusting your search criteria or filters." />
+                ) : (
+                  <AdminMobileCardList>
+                    {filteredBounces.map((bounce: any, index: number) => {
+                      const bounceId = bounce.email || `bounce-${index}`;
+                      const isHardBounce = bounce.reason?.toLowerCase().includes("does not exist") ||
+                        bounce.reason?.toLowerCase().includes("invalid") ||
+                        bounce.reason?.toLowerCase().includes("permanent");
+                      const bounceType = bounce.type || (isHardBounce ? "hard" : "soft");
+                      const timestamp = bounce.bouncedAt || bounce.timestamp;
+                      return (
+                        <AdminDataCard
+                          key={bounceId}
+                          onClick={() => handleBounceAction("view", bounceId)}
+                        >
+                          <AdminDataCardHeader
+                            title={bounce.email}
+                            subtitle={bounce.domain}
+                            badge={
+                              <StatusBadge status={bounceType === "hard" ? "bounced" : "spam"}>
+                                {bounceType} bounce
+                              </StatusBadge>
+                            }
+                          />
+                          <AdminDataCardRow label="Reason" value={bounce.reason || "Unknown reason"} />
+                          <AdminDataCardRow label="Campaign" value={bounce.campaignName || bounce.campaign || "N/A"} />
+                          <AdminDataCardRow
+                            label="When"
+                            value={timestamp ? new Date(timestamp).toLocaleString() : "N/A"}
+                          />
+                          <AdminDataCardActions>
+                            <DropdownItem onClick={(e) => { e.stopPropagation(); handleBounceAction("view", bounceId); }}>
+                              <FaEye /> View
+                            </DropdownItem>
+                            <DropdownItem onClick={(e) => { e.stopPropagation(); handleBounceAction("retry", bounceId); }}>
+                              <FaSync /> Retry
+                            </DropdownItem>
+                          </AdminDataCardActions>
+                        </AdminDataCard>
+                      );
+                    })}
+                  </AdminMobileCardList>
+                )
+              }
+            />
           )}
         </SectionContainer>
       </DeliverabilityContainer>

@@ -27,7 +27,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -38,6 +38,11 @@ const Header = styled.div`
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const HeaderLeft = styled.div`
@@ -131,7 +136,12 @@ const Select = styled.select`
   background: rgba(255, 255, 255, 0.05);
   color: var(--text);
   font-size: 0.95rem;
-  min-width: 200px;
+  min-width: 0;
+  max-width: 100%;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 
   &:focus {
     outline: none;

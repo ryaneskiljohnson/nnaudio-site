@@ -31,7 +31,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -204,6 +204,7 @@ const RadioGroup = styled.div`
   display: flex;
   gap: 1rem;
   margin-top: 0.5rem;
+  flex-wrap: wrap;
 `;
 
 const RadioOption = styled.label`

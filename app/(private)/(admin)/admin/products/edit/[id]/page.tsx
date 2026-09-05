@@ -20,6 +20,10 @@ const Container = styled.div`
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+
+  @media (max-width: 768px) {
+    padding: 8px 0;
+  }
 `;
 
 const Header = styled.div`
@@ -27,6 +31,12 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
 `;
 
 const Title = styled.h1`
@@ -55,6 +65,11 @@ const HeaderActions = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const ViewProductButton = styled(Link)`
@@ -306,7 +321,38 @@ const GridRow = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
-  
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const PricingGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const StripeGrid = styled.div<{ $cols: number }>`
+  display: grid;
+  grid-template-columns: repeat(${(props) => props.$cols}, 1fr);
+  gap: 1.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const DownloadMetaGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
@@ -1661,7 +1707,7 @@ export default function EditProductPage() {
         <FormSection>
           <SectionTitle>Pricing & Category</SectionTitle>
           
-          <GridRow style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+          <PricingGrid>
             <FormGroup>
               <Label>Price *</Label>
               <Input
@@ -1718,7 +1764,7 @@ export default function EditProductPage() {
                 <option value="archived">Archived</option>
               </Select>
             </FormGroup>
-          </GridRow>
+          </PricingGrid>
 
           {/* Bundle Products Management */}
           {formData.category === 'bundle' && (
@@ -2009,7 +2055,7 @@ export default function EditProductPage() {
           {(stripeIds.stripe_product_id || stripeIds.stripe_price_id || stripeIds.stripe_sale_price_id) && (
             <FormSection>
               <SectionTitle>Stripe Integration</SectionTitle>
-              <GridRow style={{ gridTemplateColumns: stripeIds.stripe_sale_price_id ? '1fr 1fr 1fr' : '1fr 1fr' }}>
+              <StripeGrid $cols={stripeIds.stripe_sale_price_id ? 3 : 2}>
                 {stripeIds.stripe_product_id && (
               <FormGroup>
                 <Label>Stripe Product ID</Label>
@@ -2043,7 +2089,7 @@ export default function EditProductPage() {
                     />
                   </FormGroup>
                 )}
-              </GridRow>
+              </StripeGrid>
               <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
                 Stripe products and prices are automatically synced when you save changes to the price field. 
                 Sale prices are for display/marketing purposes only and are not synced to Stripe.
@@ -2421,7 +2467,7 @@ export default function EditProductPage() {
                         placeholder="Apache Flute Plugin"
                       />
                     </FeatureItem>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                    <DownloadMetaGrid>
                       <FeatureItem>
                         <Label style={{ marginBottom: '0.25rem', fontSize: '0.9rem' }}>Type</Label>
                         <Select
@@ -2461,7 +2507,7 @@ export default function EditProductPage() {
                           )}
                         </div>
                       </FeatureItem>
-                    </div>
+                    </DownloadMetaGrid>
                     <RemoveButton
                       type="button"
                       onClick={() => removeDownload(index)}

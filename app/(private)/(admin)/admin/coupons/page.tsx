@@ -25,6 +25,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import styled, { keyframes } from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileLoading, AdminMobileEmpty } from "@/components/admin/AdminMobileLoading";
 
 import { 
   createOneTimeDiscountCode, 
@@ -53,7 +63,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -164,6 +174,12 @@ const CreateButton = styled.button`
   svg {
     font-size: 0.9rem;
   }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
 `;
 
 const Button = styled.button<{ $variant?: 'primary' | 'secondary' | 'danger' }>`
@@ -212,6 +228,12 @@ const Button = styled.button<{ $variant?: 'primary' | 'secondary' | 'danger' }>`
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 `;
 
@@ -392,6 +414,12 @@ const ModalContent = styled(motion.div)`
   max-width: 500px;
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    overflow-y: auto;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -401,6 +429,11 @@ const ModalHeader = styled.div`
   margin-bottom: 2rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 0.75rem;
+
+  @media (max-width: 768px) {
+    align-items: flex-start;
+  }
 `;
 
 const ModalTitle = styled.h2`
@@ -484,7 +517,7 @@ const FormRow = styled.div`
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 
-  @media (max-width: 480px) {
+  @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
 `;
@@ -919,14 +952,30 @@ export default function AdminCoupons() {
         )}
 
         {loading ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem' }}>
-            Loading coupons...
-          </div>
+          <AdminResponsiveList
+            desktop={
+              <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem' }}>
+                Loading coupons...
+              </div>
+            }
+            mobile={<AdminMobileLoading count={4} />}
+          />
         ) : filteredAndSortedCoupons.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem' }}>
-            {searchTerm ? 'No coupons found matching your search.' : 'No coupons created yet.'}
-          </div>
+          <AdminResponsiveList
+            desktop={
+              <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem' }}>
+                {searchTerm ? 'No coupons found matching your search.' : 'No coupons created yet.'}
+              </div>
+            }
+            mobile={
+              <AdminMobileEmpty
+                message={searchTerm ? 'No coupons found matching your search.' : 'No coupons created yet.'}
+              />
+            }
+          />
         ) : (
+          <AdminResponsiveList
+            desktop={
           <Table>
             <Thead>
               <Tr>
@@ -1025,6 +1074,54 @@ export default function AdminCoupons() {
           ))}
             </Tbody>
           </Table>
+            }
+            mobile={
+              <AdminMobileCardList>
+                {filteredAndSortedCoupons.map((code) => (
+                  <AdminDataCard key={code.id}>
+                    <AdminDataCardHeader
+                      title={<CouponCode>{code.code}</CouponCode>}
+                      subtitle={code.coupon.name || undefined}
+                      badge={
+                        <StatusBadge $active={code.active}>
+                          {code.active ? 'Active' : 'Inactive'}
+                        </StatusBadge>
+                      }
+                    />
+                    <AdminDataCardMeta
+                      items={[
+                        { label: "Discount", value: formatDiscount(code.coupon) },
+                        { label: "Used", value: `${code.times_redeemed} / ${code.max_redemptions || '∞'}` },
+                      ]}
+                    />
+                    <AdminDataCardRow label="Created" value={formatDate(code.created)} />
+                    <AdminDataCardRow
+                      label="Expires"
+                      value={code.expires_at ? formatDate(code.expires_at) : '-'}
+                    />
+                    <AdminDataCardActions>
+                      <ActionButton
+                        $variant="primary"
+                        onClick={() => handleCopyCode(code.code)}
+                        title="Copy code"
+                      >
+                        <FaCopy />
+                      </ActionButton>
+                      {code.active && (
+                        <ActionButton
+                          $variant="danger"
+                          onClick={() => handleDeactivateClick(code.id, code.code, code.type)}
+                          title={code.type === 'coupon' ? 'Delete' : 'Deactivate'}
+                        >
+                          {code.type === 'coupon' ? <FaTrash /> : <FaBan />}
+                        </ActionButton>
+                      )}
+                    </AdminDataCardActions>
+                  </AdminDataCard>
+                ))}
+              </AdminMobileCardList>
+            }
+          />
         )}
 
         {/* Create Coupon Modal */}

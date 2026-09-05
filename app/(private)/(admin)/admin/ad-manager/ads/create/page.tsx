@@ -42,7 +42,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -110,8 +110,16 @@ const StepIndicator = styled.div`
   padding: 2rem 3rem;
 
   @media (max-width: 768px) {
-    padding: 1rem;
-    margin-bottom: 3rem;
+    padding: 0.75rem 0;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 `;
 
@@ -281,7 +289,7 @@ const CreativeBuilder = styled.div`
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
 
-  @media (max-width: 968px) {
+  @media (max-width: 768px) {
     grid-template-columns: 1fr;
     gap: 1.5rem;
   }

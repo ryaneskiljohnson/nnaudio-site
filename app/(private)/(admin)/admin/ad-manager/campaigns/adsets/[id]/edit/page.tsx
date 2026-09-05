@@ -17,6 +17,10 @@ const Container = styled.div`
   max-width: 640px;
   margin: 0 auto;
   padding: 40px 20px;
+
+  @media (max-width: 768px) {
+    padding: 8px 0;
+  }
 `;
 
 const Header = styled.div`

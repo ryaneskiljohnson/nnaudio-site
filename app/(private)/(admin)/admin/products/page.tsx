@@ -10,11 +10,25 @@ import { useRouter } from "next/navigation";
 import PrimaryButton from "@/components/common/PrimaryButton";
 import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
 import ProductNewBadge from "@/components/products/ProductNewBadge";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileLoading, AdminMobileEmpty } from "@/components/admin/AdminMobileLoading";
 
 const Container = styled.div`
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+
+  @media (max-width: 768px) {
+    padding: 8px 0;
+  }
 `;
 
 const Header = styled.div`
@@ -22,12 +36,31 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+
+    a {
+      width: 100%;
+    }
+
+    a > * {
+      width: 100%;
+      min-height: 44px;
+    }
+  }
 `;
 
 const Title = styled.h1`
   font-size: 2.5rem;
   color: var(--text);
   font-weight: 700;
+
+  @media (max-width: 768px) {
+    font-size: 1.65rem;
+  }
 `;
 
 
@@ -38,6 +71,11 @@ const FilterBar = styled.div`
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const FilterButtonsContainer = styled.div`
@@ -45,6 +83,14 @@ const FilterButtonsContainer = styled.div`
   gap: 1rem;
   flex-wrap: wrap;
   align-items: center;
+
+  @media (max-width: 768px) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    padding-bottom: 0.25rem;
+  }
 `;
 
 const RightSideContainer = styled.div`
@@ -52,6 +98,12 @@ const RightSideContainer = styled.div`
   gap: 1rem;
   align-items: center;
   flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
 `;
 
 const SearchContainer = styled.div`
@@ -59,6 +111,12 @@ const SearchContainer = styled.div`
   min-width: 500px;
   max-width: 800px;
   flex: 1;
+
+  @media (max-width: 768px) {
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+  }
 `;
 
 const SearchInput = styled.input`
@@ -527,6 +585,12 @@ const ConfirmDialog = styled.div`
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    overflow-y: auto;
+  }
 `;
 
 const ConfirmDialogHeader = styled.div`
@@ -998,13 +1062,27 @@ export default function ProductsManagementPage() {
       </FilterBar>
 
       {loading ? (
-        <NNAudioLoadingSpinner text="Loading products..." />
+        <AdminResponsiveList
+          desktop={<NNAudioLoadingSpinner text="Loading products..." />}
+          mobile={<AdminMobileLoading count={4} />}
+        />
       ) : filteredAndSortedProducts.length === 0 ? (
-        <EmptyState>
-          <h3>No products found</h3>
-          <p>{searchQuery ? 'Try adjusting your search query' : 'Create your first product to get started'}</p>
-        </EmptyState>
+        <AdminResponsiveList
+          desktop={
+            <EmptyState>
+              <h3>No products found</h3>
+              <p>{searchQuery ? 'Try adjusting your search query' : 'Create your first product to get started'}</p>
+            </EmptyState>
+          }
+          mobile={
+            <AdminMobileEmpty
+              message={searchQuery ? 'Try adjusting your search query' : 'Create your first product to get started'}
+            />
+          }
+        />
       ) : (
+        <AdminResponsiveList
+          desktop={
         <TableContainer>
           <Table>
             <TableHeader>
@@ -1213,6 +1291,130 @@ export default function ProductsManagementPage() {
             </TableBody>
           </Table>
         </TableContainer>
+          }
+          mobile={
+            <AdminMobileCardList>
+              {filteredAndSortedProducts.map((product) => {
+                const eliteBundleNames = ['ultimate bundle', "producer's arsenal", 'beat lab'];
+                const isEliteBundle = product.category === 'bundle' &&
+                  eliteBundleNames.some(name => product.name.toLowerCase().includes(name));
+                let categoryLabel = product.category.charAt(0).toUpperCase() + product.category.slice(1);
+                if (isEliteBundle) {
+                  categoryLabel = 'Elite Bundle';
+                } else if (product.name.toLowerCase() === 'cymasphere' && product.category === 'application') {
+                  categoryLabel = 'MIDI Application / Plugin';
+                } else {
+                  const categoryMap: Record<string, string> = {
+                    'audio-fx-plugin': 'Audio FX Plugin',
+                    'instrument-plugin': 'Instrument Plugin',
+                    'application': 'Application',
+                    'pack': 'Pack',
+                    'bundle': 'Bundle',
+                    'preset': 'Preset',
+                  };
+                  categoryLabel = categoryMap[product.category] || categoryLabel;
+                }
+                const priceNode =
+                  product.sale_price && product.sale_price > 0 ? (
+                    <>
+                      <span style={{ textDecoration: 'line-through', fontSize: '0.85rem', opacity: 0.6, marginRight: '8px' }}>
+                        ${product.price}
+                      </span>
+                      ${product.sale_price}
+                    </>
+                  ) : (product.price === 0 || product.sale_price === 0 || (product.sale_price === null && product.price === 0)) ? (
+                    <>
+                      {(product.sale_price === 0 && product.price > 0) && (
+                        <span style={{ textDecoration: 'line-through', fontSize: '0.85rem', opacity: 0.6, marginRight: '8px' }}>
+                          ${product.price}
+                        </span>
+                      )}
+                      <FreeBadge>FREE</FreeBadge>
+                    </>
+                  ) : (
+                    `$${product.price}`
+                  );
+                return (
+                  <AdminDataCard
+                    key={product.id}
+                    onClick={() => router.push(`/admin/products/edit/${product.id}`)}
+                  >
+                    <AdminDataCardHeader
+                      title={product.name}
+                      subtitle={product.tagline || undefined}
+                      badge={
+                        <CategoryBadge $category={product.category}>
+                          {categoryLabel}
+                        </CategoryBadge>
+                      }
+                    />
+                    <AdminDataCardMeta
+                      items={[
+                        { label: "Price", value: priceNode },
+                        {
+                          label: "Status",
+                          value: (
+                            <StatusDropdown
+                              $status={product.status}
+                              value={product.status}
+                              onChange={(e) => handleStatusChange(product.id, e.target.value)}
+                              disabled={statusUpdatingId === product.id}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <option value="draft">Draft</option>
+                              <option value="active">Active</option>
+                              <option value="inactive">Inactive</option>
+                              <option value="archived">Archived</option>
+                            </StatusDropdown>
+                          ),
+                        },
+                      ]}
+                    />
+                    {product.is_featured && (
+                      <AdminDataCardRow label="Featured" value={<FeaturedBadge>Featured</FeaturedBadge>} />
+                    )}
+                    <AdminDataCardActions>
+                      <MenuItem
+                        href={`/product/${product.slug}`}
+                        target="_blank"
+                        $variant="view"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                        }}
+                      >
+                        <FaEye size={14} />
+                        View
+                      </MenuItem>
+                      <MenuItem
+                        href={`/admin/products/edit/${product.id}`}
+                        $variant="edit"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                        }}
+                      >
+                        <FaEdit size={14} />
+                        Edit
+                      </MenuItem>
+                      <MenuButtonItem
+                        $variant="delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(product.id);
+                          setOpenMenuId(null);
+                        }}
+                      >
+                        <FaTrash size={14} />
+                        Delete
+                      </MenuButtonItem>
+                    </AdminDataCardActions>
+                  </AdminDataCard>
+                );
+              })}
+            </AdminMobileCardList>
+          }
+        />
       )}
 
       {/* Delete Confirmation Dialog */}

@@ -37,7 +37,7 @@ const CreateContainer = styled.div<{ $isDesignStep: boolean }>`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -102,7 +102,12 @@ const StepIndicator = styled.div`
   margin-bottom: 3rem;
 
   @media (max-width: 768px) {
-    gap: 0.5rem;
+    gap: 0.4rem;
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
   }
 `;
 
@@ -178,6 +183,11 @@ const StepContent = styled(motion.div)<{ $isDesignStep?: boolean }>`
   min-height: 600px;
   width: 100%;
   max-width: ${props => props.$isDesignStep ? 'none' : 'none'};
+
+  @media (max-width: 768px) {
+    min-height: 0;
+    padding: 1rem;
+  }
 `;
 
 const FormGrid = styled.div`
@@ -268,6 +278,12 @@ const NavigationButtons = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-top: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
 `;
 
 const StatusToggleContainer = styled.div`
@@ -1127,7 +1143,7 @@ function EditTemplatePage() {
     <div class="container">
         <div class="header">
             <div class="logo">
-                <span class="cyma">CYMA</span><span>SPHERE</span>
+                <span>AUDIO</span>
             </div>
         </div>
         

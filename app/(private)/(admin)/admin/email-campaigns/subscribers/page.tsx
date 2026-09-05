@@ -34,6 +34,16 @@ import TableLoadingRow from "@/components/common/TableLoadingRow";
 import { useRouter } from "next/navigation";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import { getSubscribers } from "@/app/actions/email-campaigns";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty, AdminMobileLoading } from "@/components/admin/AdminMobileLoading";
 
 const SubscribersContainer = styled.div`
   width: 100%;
@@ -42,7 +52,7 @@ const SubscribersContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -253,6 +263,12 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger
         `;
     }
   }}
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
 `;
 
 const SubscribersGrid = styled.div`
@@ -768,6 +784,8 @@ function SubscribersPage() {
           </RightActions>
         </ActionsRow>
 
+        <AdminResponsiveList
+          desktop={
         <SubscribersGrid>
           <Table>
             <TableHeader>
@@ -895,6 +913,59 @@ function SubscribersPage() {
             </TableBody>
           </Table>
         </SubscribersGrid>
+          }
+          mobile={
+            loading ? (
+              <AdminMobileLoading count={4} />
+            ) : filteredSubscribers.length === 0 ? (
+              <AdminMobileEmpty message="No subscribers found. Try adjusting your search criteria or add new subscribers." />
+            ) : (
+              <AdminMobileCardList>
+                {filteredSubscribers.map((subscriber) => (
+                  <AdminDataCard
+                    key={subscriber.id}
+                    onClick={() => handleSubscriberClick(subscriber)}
+                  >
+                    <AdminDataCardHeader
+                      title={subscriber.name}
+                      subtitle={subscriber.email}
+                      badge={<StatusBadge status={subscriber.status}>{subscriber.status}</StatusBadge>}
+                    />
+                    <AdminDataCardMeta
+                      items={[
+                        { label: "Engagement", value: subscriber.engagement },
+                        { label: "Audiences", value: subscriber.audienceCount || 0 },
+                      ]}
+                    />
+                    <AdminDataCardRow
+                      label="Subscribed"
+                      value={new Date(subscriber.subscribeDate).toLocaleDateString()}
+                    />
+                    <AdminDataCardRow
+                      label="Last Activity"
+                      value={new Date(subscriber.lastActivity).toLocaleDateString()}
+                    />
+                    <AdminDataCardRow
+                      label="Opens / Clicks"
+                      value={`${subscriber.totalOpens} / ${subscriber.totalClicks}`}
+                    />
+                    <AdminDataCardActions>
+                      <DropdownItem onClick={(e) => { e.stopPropagation(); handleSubscriberClick(subscriber); }}>
+                        <FaEye /> View
+                      </DropdownItem>
+                      <DropdownItem onClick={(e) => { e.stopPropagation(); handleSubscriberAction('edit', subscriber.id); }}>
+                        <FaEdit /> Edit
+                      </DropdownItem>
+                      <DropdownItem onClick={(e) => { e.stopPropagation(); handleSubscriberAction('delete', subscriber.id); }}>
+                        <FaTrash /> Delete
+                      </DropdownItem>
+                    </AdminDataCardActions>
+                  </AdminDataCard>
+                ))}
+              </AdminMobileCardList>
+            )
+          }
+        />
       </SubscribersContainer>
     </>
   );

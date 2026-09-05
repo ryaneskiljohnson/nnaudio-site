@@ -62,6 +62,16 @@ const Spinner = styled.div`
 import TableLoadingRow from "@/components/common/TableLoadingRow";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty, AdminMobileLoading } from "@/components/admin/AdminMobileLoading";
 
 const AudienceContainer = styled.div`
   width: 100%;
@@ -70,7 +80,7 @@ const AudienceContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -254,6 +264,12 @@ const HeaderActionButton = styled.button<{ variant?: 'primary' | 'secondary' | '
         `;
     }
   }}
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
 `;
 
 const ContentSection = styled.div`
@@ -1672,6 +1688,8 @@ function AudienceDetailPage() {
                 )}
               </div>
 
+              <AdminResponsiveList
+                desktop={
               <SubscribersTable>
                 <Table>
                   <TableHeader>
@@ -1767,6 +1785,53 @@ function AudienceDetailPage() {
                   </TableBody>
                 </Table>
               </SubscribersTable>
+                }
+                mobile={
+                  subscribersLoading ? (
+                    <AdminMobileLoading count={4} />
+                  ) : filteredSubscribers.length === 0 ? (
+                    <AdminMobileEmpty message="No subscribers found." />
+                  ) : (
+                    <AdminMobileCardList>
+                      {filteredSubscribers.map((subscriber) => (
+                        <AdminDataCard key={subscriber.id}>
+                          <AdminDataCardHeader
+                            title={subscriber.name}
+                            subtitle={subscriber.email}
+                            badge={<StatusBadge status={subscriber.status}>{subscriber.status}</StatusBadge>}
+                          />
+                          <AdminDataCardMeta
+                            items={[
+                              { label: "Engagement", value: subscriber.engagement },
+                              {
+                                label: "Source",
+                                value: subscriber.source === "manual" ? "Manual" : "Filter",
+                              },
+                            ]}
+                          />
+                          <AdminDataCardRow
+                            label="Subscribed"
+                            value={new Date(subscriber.subscribeDate).toLocaleDateString()}
+                          />
+                          <AdminDataCardRow
+                            label="Last Activity"
+                            value={new Date(subscriber.lastActivity).toLocaleDateString()}
+                          />
+                          <AdminDataCardActions>
+                            <ActionButton
+                              variant="danger"
+                              onClick={() => handleRemoveSubscriber(subscriber)}
+                              title="Remove from audience"
+                            >
+                              <FaTimes />
+                            </ActionButton>
+                          </AdminDataCardActions>
+                        </AdminDataCard>
+                      ))}
+                    </AdminMobileCardList>
+                  )
+                }
+              />
               
               {/* Pagination Controls */}
               {pagination && pagination.total > 0 && (
@@ -1894,6 +1959,8 @@ function AudienceDetailPage() {
               />
             </SearchContainer>
 
+            <AdminResponsiveList
+              desktop={
             <SubscribersTable>
               <Table>
                 <TableHeader>
@@ -1966,6 +2033,47 @@ function AudienceDetailPage() {
                 </TableBody>
               </Table>
             </SubscribersTable>
+              }
+              mobile={
+                filteredSubscribers.length === 0 ? (
+                  <AdminMobileEmpty message="No subscribers found. Try adjusting your search criteria." />
+                ) : (
+                  <AdminMobileCardList>
+                    {filteredSubscribers.map((subscriber) => (
+                      <AdminDataCard key={subscriber.id}>
+                        <AdminDataCardHeader
+                          title={subscriber.name}
+                          subtitle={subscriber.email}
+                          badge={<StatusBadge status={subscriber.status}>{subscriber.status}</StatusBadge>}
+                        />
+                        <AdminDataCardMeta
+                          items={[
+                            { label: "Engagement", value: subscriber.engagement },
+                            {
+                              label: "Subscribed",
+                              value: new Date(subscriber.subscribeDate).toLocaleDateString(),
+                            },
+                          ]}
+                        />
+                        <AdminDataCardRow
+                          label="Last Activity"
+                          value={new Date(subscriber.lastActivity).toLocaleDateString()}
+                        />
+                        <AdminDataCardActions>
+                          <ActionButton
+                            variant="danger"
+                            onClick={() => handleRemoveSubscriber(subscriber)}
+                            title="Remove from audience"
+                          >
+                            <FaTimes />
+                          </ActionButton>
+                        </AdminDataCardActions>
+                      </AdminDataCard>
+                    ))}
+                  </AdminMobileCardList>
+                )
+              }
+            />
           </ContentSection>
         )}
       </AudienceContainer>

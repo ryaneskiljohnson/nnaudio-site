@@ -34,6 +34,15 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import styled from "styled-components";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty } from "@/components/admin/AdminMobileLoading";
 import { motion } from "framer-motion";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import { getAnalytics } from "@/app/actions/email-campaigns";
@@ -45,7 +54,7 @@ const PerformanceContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -401,6 +410,12 @@ const SectionHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
 `;
 
 const SectionTitle = styled.h3`
@@ -933,6 +948,8 @@ function PerformancePage() {
             </ActionButton>
           </SectionHeader>
 
+          <AdminResponsiveList
+            desktop={
           <Table>
             <TableHeader>
               <tr>
@@ -991,6 +1008,40 @@ function PerformancePage() {
               ))}
             </TableBody>
           </Table>
+            }
+            mobile={
+              !performanceData?.campaigns?.length ? (
+                <AdminMobileEmpty message="No campaign performance data yet." />
+              ) : (
+                <AdminMobileCardList>
+                  {performanceData.campaigns.map((campaign) => (
+                    <AdminDataCard
+                      key={campaign.id}
+                      onClick={() => handleCampaignClick(campaign.id)}
+                    >
+                      <AdminDataCardHeader
+                        title={campaign.name}
+                        subtitle={`${campaign.opens.toLocaleString()} opens • ${campaign.clicks.toLocaleString()} clicks`}
+                        badge={
+                          <StatusBadge status={campaign.performance}>
+                            {campaign.performance}
+                          </StatusBadge>
+                        }
+                      />
+                      <AdminDataCardMeta
+                        items={[
+                          { label: "Sent", value: campaign.sent.toLocaleString() },
+                          { label: "Open Rate", value: `${campaign.openRate}%` },
+                          { label: "Click Rate", value: `${campaign.clickRate}%` },
+                          { label: "Date", value: new Date(campaign.sentDate).toLocaleDateString() },
+                        ]}
+                      />
+                    </AdminDataCard>
+                  ))}
+                </AdminMobileCardList>
+              )
+            }
+          />
         </CampaignPerformanceSection>
       </PerformanceContainer>
     </>

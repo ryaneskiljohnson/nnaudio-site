@@ -24,6 +24,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty, AdminMobileLoading } from "@/components/admin/AdminMobileLoading";
 import {
   getUserManagementRecords,
   createUserManagementRecord,
@@ -74,7 +84,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -157,6 +167,12 @@ const CreateButton = styled.button`
 
   svg {
     font-size: 0.9rem;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 `;
 
@@ -257,6 +273,23 @@ const NotesCellContainer = styled.div`
   align-items: center;
   gap: 0.5rem;
   width: 100%;
+`;
+
+const CardNotesBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: 100%;
+  margin-bottom: 0.55rem;
+`;
+
+const CardNotesLabel = styled.div`
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 `;
 
 const NotesInput = styled.input`
@@ -384,6 +417,12 @@ const ModalContent = styled(motion.div)`
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    padding: 1.25rem;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -419,6 +458,29 @@ const CloseButton = styled.button`
 
 const FormGroup = styled.div`
   margin-bottom: 1.5rem;
+`;
+
+const FormColumns = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+`;
+
+const NameFields = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const Label = styled.label`
@@ -571,6 +633,12 @@ const GrantListToolbar = styled.div`
   align-items: center;
   margin-bottom: 0.75rem;
   gap: 0.75rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
 `;
 
 const GrantListCount = styled.span`
@@ -581,6 +649,8 @@ const GrantListCount = styled.span`
 const GrantListTableWrap = styled.div`
   max-height: 420px;
   overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
 `;
@@ -1284,6 +1354,8 @@ export default function UserManagementPage() {
               </div>
             )}
 
+            <AdminResponsiveList
+              desktop={
             <TableContainer>
               <Table>
                 <TableHeader>
@@ -1446,6 +1518,112 @@ export default function UserManagementPage() {
                 </TableBody>
               </Table>
             </TableContainer>
+              }
+              mobile={
+                loading ? (
+                  <AdminMobileLoading count={4} />
+                ) : records.length === 0 ? (
+                  <AdminMobileEmpty message='No users found. Click "Add User" to create one.' />
+                ) : filteredRecords.length === 0 ? (
+                  <AdminMobileEmpty message={`No users match your search "${searchQuery}".`} />
+                ) : (
+                  <AdminMobileCardList>
+                    {filteredRecords.map((record) => (
+                      <AdminDataCard key={record.id}>
+                        <AdminDataCardHeader
+                          title={record.user_email ?? "—"}
+                          badge={
+                            updatingRowId === record.id ? (
+                              <NNAudioLoadingSpinner size={20} />
+                            ) : (
+                              <ToggleSwitch $checked={record.active !== false}>
+                                <input
+                                  type="checkbox"
+                                  checked={record.active !== false}
+                                  onChange={(e) =>
+                                    handleUpdateActive(record.id, e.target.checked)
+                                  }
+                                />
+                                <span className="slider" />
+                              </ToggleSwitch>
+                            )
+                          }
+                        />
+                        <CardNotesBlock>
+                          <CardNotesLabel>Notes</CardNotesLabel>
+                          {updatingRowId === record.id ? (
+                            <NNAudioLoadingSpinner size={20} />
+                          ) : (
+                            <NotesCellContainer>
+                              <NotesInput
+                                type="text"
+                                value={record.notes || ""}
+                                placeholder="Add notes..."
+                                onChange={(e) => {
+                                  const newValue = e.target.value;
+                                  setRecords((prev) =>
+                                    prev.map((r) =>
+                                      r.id === record.id ? { ...r, notes: newValue } : r
+                                    )
+                                  );
+                                }}
+                              />
+                              <SaveButton
+                                onClick={() =>
+                                  handleUpdateNotes(record.id, record.notes || "")
+                                }
+                                disabled={
+                                  updatingRowId === record.id ||
+                                  (record.notes || "") === (originalNotes[record.id] || "")
+                                }
+                              >
+                                <FaCheck />
+                                Save
+                              </SaveButton>
+                            </NotesCellContainer>
+                          )}
+                        </CardNotesBlock>
+                        <AdminDataCardActions>
+                          <button
+                            onClick={() => {
+                              setGrantModalRecordId(record.id);
+                              setShowGrantForm(false);
+                            }}
+                            style={{
+                              padding: "8px 16px",
+                              background:
+                                (productGrants[grantsMapKey(record)]?.length || 0) > 0
+                                  ? "linear-gradient(90deg, var(--primary), var(--accent))"
+                                  : "rgba(255, 255, 255, 0.1)",
+                              border: "1px solid rgba(255, 255, 255, 0.2)",
+                              borderRadius: "6px",
+                              color: "white",
+                              cursor: "pointer",
+                              fontSize: "0.9rem",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                              fontWeight: 600,
+                            }}
+                          >
+                            <FaGift />
+                            {productGrants[grantsMapKey(record)]?.length || 0} Product
+                            {productGrants[grantsMapKey(record)]?.length !== 1 ? "s" : ""}
+                          </button>
+                          <DeleteButton
+                            onClick={() => handleDelete(record)}
+                            disabled={updatingRowId === record.id}
+                            title="Delete user management record"
+                          >
+                            <FaTrash />
+                          </DeleteButton>
+                        </AdminDataCardActions>
+                      </AdminDataCard>
+                    ))}
+                  </AdminMobileCardList>
+                )
+              }
+            />
           </>
         )}
 
@@ -1510,12 +1688,7 @@ export default function UserManagementPage() {
               </ModalHeader>
 
               <form onSubmit={handleCreate}>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: '1fr 1fr', 
-                  gap: '2rem',
-                  marginBottom: '2rem'
-                }}>
+                <FormColumns>
                   {/* Left Column - User Info */}
                   <div>
                     <h3 style={{ 
@@ -1707,7 +1880,7 @@ export default function UserManagementPage() {
                     </FormGroup>
 
                     {formInvite && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <NameFields>
                         <FormGroup>
                           <Label>First Name</Label>
                           <Input
@@ -1729,7 +1902,7 @@ export default function UserManagementPage() {
                             style={{ fontSize: '1rem', padding: '14px 16px' }}
                           />
                         </FormGroup>
-                      </div>
+                      </NameFields>
                     )}
 
                     <FormGroup>
@@ -1968,7 +2141,7 @@ export default function UserManagementPage() {
                       )}
                     </FormGroup>
                   </div>
-                </div>
+                </FormColumns>
 
                 <ModalActions>
                   <Button
@@ -2071,6 +2244,8 @@ export default function UserManagementPage() {
                   </GrantListToolbar>
 
                   {(productGrants[grantMapKey]?.length ?? 0) > 0 ? (
+                    <AdminResponsiveList
+                      desktop={
                     <GrantListTableWrap>
                       <GrantListTable>
                         <GrantListHead>
@@ -2139,6 +2314,52 @@ export default function UserManagementPage() {
                         </tbody>
                       </GrantListTable>
                     </GrantListTableWrap>
+                      }
+                      mobile={
+                        <AdminMobileCardList>
+                          {(productGrants[grantMapKey] ?? []).map((grant: ProductGrant) => (
+                            <AdminDataCard key={grant.id}>
+                              <AdminDataCardHeader
+                                title={grant.products?.name || "Unknown Product"}
+                                subtitle={grant.products?.slug || undefined}
+                              />
+                              <AdminDataCardRow
+                                label="Granted"
+                                value={new Date(grant.granted_at).toLocaleDateString()}
+                              />
+                              <AdminDataCardRow label="Notes" value={grant.notes || "—"} />
+                              <AdminDataCardActions>
+                                <GrantRevokeButton
+                                  type="button"
+                                  title={`Revoke ${grant.products?.name || "product"}`}
+                                  onClick={async () => {
+                                    if (!confirm(`Revoke "${grant.products?.name || "this product"}" from ${grantDisplayLabel}?`)) return;
+                                    try {
+                                      const result = await revokeProductGrant(grant.id);
+                                      if (result.success) {
+                                        showNotification("success", "Product grant revoked");
+                                        const em = grantModalRecord?.user_email?.trim();
+                                        if (em) void refreshGrantsForEmail(em);
+                                        if ((productGrants[grantMapKey]?.length ?? 0) === 1) {
+                                          setGrantModalRecordId(null);
+                                        }
+                                      } else {
+                                        throw new Error(result.error || "Failed to revoke");
+                                      }
+                                    } catch (err: unknown) {
+                                      const message = err instanceof Error ? err.message : "Failed to revoke grant";
+                                      showNotification("error", message);
+                                    }
+                                  }}
+                                >
+                                  <FaTrash size={12} />
+                                </GrantRevokeButton>
+                              </AdminDataCardActions>
+                            </AdminDataCard>
+                          ))}
+                        </AdminMobileCardList>
+                      }
+                    />
                   ) : (
                     <GrantEmptyState>
                       <FaGift />

@@ -99,6 +99,11 @@ const ModalContent = styled.div`
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -108,6 +113,12 @@ const ModalHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  gap: 0.75rem;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+    align-items: flex-start;
+  }
 `;
 
 const ModalTitle = styled.h2`
@@ -277,6 +288,11 @@ const SearchContainer = styled.div`
   position: relative;
   flex: 1;
   min-width: 200px;
+
+  @media (max-width: 768px) {
+    min-width: 0;
+    width: 100%;
+  }
 `;
 
 const SearchInput = styled.input`

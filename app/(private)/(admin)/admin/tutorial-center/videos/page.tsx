@@ -18,6 +18,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { getVideos } from "@/app/actions/tutorials";
 import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty, AdminMobileLoading } from "@/components/admin/AdminMobileLoading";
 
 // Animation variants
 const fadeIn = {
@@ -32,7 +42,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -633,17 +643,27 @@ export default function VideosPage() {
         </ResultsInfo>
 
         {loading ? (
-          <NNAudioLoadingSpinner text="Loading videos..." size={40} />
+          <AdminResponsiveList
+            desktop={<NNAudioLoadingSpinner text="Loading videos..." size={40} />}
+            mobile={<AdminMobileLoading count={4} />}
+          />
         ) : videos.length === 0 ? (
-          <EmptyState>
-            <FaVideo />
-            <EmptyTitle>No videos found</EmptyTitle>
-            <EmptyDescription>
-              Try adjusting your filters or search terms to find what you're
-              looking for.
-            </EmptyDescription>
-          </EmptyState>
+          <AdminResponsiveList
+            desktop={
+              <EmptyState>
+                <FaVideo />
+                <EmptyTitle>No videos found</EmptyTitle>
+                <EmptyDescription>
+                  Try adjusting your filters or search terms to find what you're
+                  looking for.
+                </EmptyDescription>
+              </EmptyState>
+            }
+            mobile={<AdminMobileEmpty message="Try adjusting your filters or search terms to find what you're looking for." />}
+          />
         ) : (
+          <AdminResponsiveList
+            desktop={
           <TableContainer>
             <Table>
               <TableHeader>
@@ -722,6 +742,45 @@ export default function VideosPage() {
               </TableBody>
             </Table>
           </TableContainer>
+            }
+            mobile={
+              <AdminMobileCardList>
+                {videos.map((video) => (
+                  <AdminDataCard key={video.id}>
+                    <AdminDataCardHeader
+                      title={video.title}
+                      subtitle={video.description}
+                      badge={
+                        <CategoryBadge>
+                          {getCategoryIcon(video.feature_category)}{" "}
+                          {getCategoryName(video.feature_category)}
+                        </CategoryBadge>
+                      }
+                    />
+                    <AdminDataCardMeta
+                      items={[
+                        { label: "Duration", value: formatDuration(video.duration) },
+                        { label: "Skill", value: video.theory_level_required },
+                      ]}
+                    />
+                    <AdminDataCardRow
+                      label="Tech"
+                      value={video.tech_level_required.replace("_", " ")}
+                    />
+                    <AdminDataCardRow label="App Mode" value={video.app_mode_applicability} />
+                    <AdminDataCardActions>
+                      <PlayButton
+                        href={`/admin/tutorial-center/playlists/${video.id}/videos/${video.id}`}
+                      >
+                        <FaPlay />
+                        Watch
+                      </PlayButton>
+                    </AdminDataCardActions>
+                  </AdminDataCard>
+                ))}
+              </AdminMobileCardList>
+            }
+          />
         )}
       </motion.div>
     </Container>

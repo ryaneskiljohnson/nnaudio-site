@@ -9,6 +9,16 @@ import React, { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { FaCheckCircle, FaClock, FaSearch, FaStar, FaTimesCircle } from "react-icons/fa";
 import type { AdminProductReviewRecord } from "@/app/actions/product-reviews";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty } from "@/components/admin/AdminMobileLoading";
 
 /** Dispatched after approve/reject/delete so the admin layout can refresh the sidebar pending count. */
 const REVIEWS_PENDING_UPDATED_EVENT = "admin-reviews-pending-updated";
@@ -18,6 +28,10 @@ const PageContainer = styled.div`
   max-width: 1480px;
   margin: 0 auto;
   padding: 40px 20px;
+
+  @media (max-width: 768px) {
+    padding: 8px 0;
+  }
 `;
 
 const Title = styled.h1`
@@ -67,13 +81,18 @@ const FilterBar = styled.div`
   gap: 1rem;
   margin-bottom: 1.5rem;
 
-  @media (max-width: 800px) {
+  @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
 `;
 
 const SearchWrap = styled.div`
   position: relative;
+
+  @media (max-width: 768px) {
+    min-width: 0;
+    width: 100%;
+  }
 `;
 
 const SearchIcon = styled(FaSearch)`
@@ -261,6 +280,12 @@ const DeleteDialog = styled.div`
   padding: 1.5rem 1.75rem;
   max-width: 400px;
   width: 90%;
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    overflow-y: auto;
+  }
 `;
 
 const DeleteDialogTitle = styled.h3`
@@ -280,6 +305,11 @@ const DeleteDialogActions = styled.div`
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
+
+  @media (max-width: 768px) {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
 `;
 
 const DialogButton = styled.button<{ $primary?: boolean }>`
@@ -510,6 +540,8 @@ export default function AdminReviewsPage() {
         </FilterSelect>
       </FilterBar>
 
+      <AdminResponsiveList
+        desktop={
       <TableWrap>
         <Table>
           <TableHead>
@@ -604,6 +636,80 @@ export default function AdminReviewsPage() {
           </tbody>
         </Table>
       </TableWrap>
+        }
+        mobile={
+          !loading && filteredReviews.length === 0 ? (
+            <AdminMobileEmpty message="No reviews match the current filters." />
+          ) : (
+            <AdminMobileCardList>
+              {filteredReviews.map((review) => (
+                <AdminDataCard key={review.id}>
+                  <AdminDataCardHeader
+                    title={review.product_name}
+                    subtitle={`/${review.product_slug}`}
+                    badge={
+                      <StatusBadge $status={review.moderation_status}>
+                        {getStatusIcon(review.moderation_status)}
+                        {review.moderation_status}
+                      </StatusBadge>
+                    }
+                  />
+                  <AdminDataCardMeta
+                    items={[
+                      { label: "Reviewer", value: review.customer_name || "Anonymous" },
+                      { label: "Rating", value: renderStars(review.rating) },
+                    ]}
+                  />
+                  <AdminDataCardRow label="Email" value={review.customer_email || "No email"} />
+                  <AdminDataCardRow
+                    label="Purchase"
+                    value={review.is_verified_purchase ? "Verified purchase" : "Unverified"}
+                  />
+                  <AdminDataCardRow
+                    label="Review"
+                    value={review.review_text || "No review text provided."}
+                  />
+                  <AdminDataCardRow
+                    label="Reward"
+                    value={
+                      review.reward_claimed_at
+                        ? `Claimed ${new Date(review.reward_claimed_at).toLocaleDateString()}`
+                        : "Not claimed"
+                    }
+                  />
+                  <AdminDataCardActions>
+                    <ActionButton
+                      type="button"
+                      $variant="approve"
+                      $fullWidth
+                      disabled={actionReviewId === review.id}
+                      onClick={() => handleModeration(review.id, "approved")}
+                    >
+                      Approve
+                    </ActionButton>
+                    <ActionButton
+                      type="button"
+                      $variant="reject"
+                      disabled={actionReviewId === review.id}
+                      onClick={() => handleModeration(review.id, "rejected")}
+                    >
+                      Reject
+                    </ActionButton>
+                    <ActionButton
+                      type="button"
+                      $variant="delete"
+                      disabled={actionReviewId === review.id}
+                      onClick={() => openDeleteConfirm(review.id)}
+                    >
+                      Delete
+                    </ActionButton>
+                  </AdminDataCardActions>
+                </AdminDataCard>
+              ))}
+            </AdminMobileCardList>
+          )
+        }
+      />
 
       {deleteConfirmReviewId && (
         <DeleteOverlay onClick={() => setDeleteConfirmReviewId(null)}>

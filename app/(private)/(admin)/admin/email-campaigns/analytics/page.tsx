@@ -15,11 +15,24 @@ import {
 } from 'react-icons/fa';
 import StatLoadingSpinner from '@/components/common/StatLoadingSpinner';
 import { getAnalytics } from '@/app/actions/email-campaigns';
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty } from "@/components/admin/AdminMobileLoading";
 
 const Container = styled.div`
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
+
+  @media (max-width: 768px) {
+    padding: 8px 0;
+  }
 `;
 
 const Header = styled.div`
@@ -27,19 +40,25 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
 `;
 
 const Title = styled.h1`
   font-size: 2.5rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--text);
   margin: 0;
   display: flex;
   align-items: center;
   gap: 1rem;
 
   svg {
-    color: #667eea;
+    color: var(--primary);
   }
 `;
 
@@ -47,19 +66,25 @@ const Controls = styled.div`
   display: flex;
   gap: 1rem;
   align-items: center;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const Select = styled.select`
   padding: 0.75rem 1rem;
-  border: 2px solid #e0e0e0;
+  border: 2px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  background: white;
+  background: var(--card-bg);
+  color: var(--text);
   font-size: 1rem;
   cursor: pointer;
 
   &:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--primary);
   }
 `;
 
@@ -75,7 +100,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   gap: 0.5rem;
   
   ${props => props.variant === 'primary' ? `
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     color: white;
     
     &:hover {
@@ -83,13 +108,19 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
       box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
     }
   ` : `
-    background: #f5f5f5;
-    color: #666;
+    background: var(--background);
+    color: var(--text-secondary);
 
   &:hover {
-      background: #e0e0e0;
+      background: var(--card-bg);
   }
   `}
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
 `;
 
 const StatsGrid = styled.div`
@@ -100,7 +131,7 @@ const StatsGrid = styled.div`
 `;
 
 const StatCard = styled(motion.div)`
-  background: white;
+  background: var(--card-bg);
   border-radius: 16px;
   padding: 2rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
@@ -140,12 +171,12 @@ const StatIcon = styled.div<{ color: string }>`
 const StatValue = styled.div`
   font-size: 2.5rem;
   font-weight: 700;
-  color: #333;
+  color: var(--text);
   margin-bottom: 0.5rem;
 `;
 
 const StatLabel = styled.div`
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.875rem;
   text-transform: uppercase;
   font-weight: 600;
@@ -171,7 +202,7 @@ const ChartsGrid = styled.div`
 `;
 
 const ChartCard = styled.div`
-  background: white;
+  background: var(--card-bg);
   border-radius: 16px;
   padding: 2rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
@@ -180,7 +211,7 @@ const ChartCard = styled.div`
 const ChartTitle = styled.h2`
   font-size: 1.5rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text);
   margin-bottom: 1.5rem;
 `;
 
@@ -204,14 +235,14 @@ const ChartRow = styled.div`
 const ChartLabel = styled.div`
   font-size: 0.9rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text);
 `;
 
 const ChartBarWrap = styled.div`
   width: 100%;
   height: 12px;
   border-radius: 999px;
-  background: #edf0f5;
+  background: var(--background);
   overflow: hidden;
 `;
 
@@ -228,12 +259,12 @@ const ChartBar = styled.div<{ $width: number; $variant?: 'primary' | 'secondary'
 const ChartValue = styled.div`
   font-size: 0.85rem;
   font-weight: 700;
-  color: #666;
+  color: var(--text-secondary);
   text-align: right;
 `;
 
 const TableCard = styled.div`
-  background: white;
+  background: var(--card-bg);
   border-radius: 16px;
   padding: 2rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
@@ -243,7 +274,7 @@ const TableCard = styled.div`
 const TableTitle = styled.h2`
   font-size: 1.5rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text);
   margin-bottom: 1.5rem;
 `;
 
@@ -255,9 +286,9 @@ const Table = styled.table`
 const TableHeader = styled.th`
   text-align: left;
   padding: 1rem;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.08);
   font-weight: 600;
-  color: #333;
+  color: var(--text);
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -265,25 +296,25 @@ const TableHeader = styled.th`
 
 const TableRow = styled.tr`
   &:hover {
-    background: #f8f9fa;
+    background: rgba(255, 255, 255, 0.03);
   }
 `;
 
 const TableCell = styled.td`
   padding: 1rem;
-  border-bottom: 1px solid #f0f0f0;
-  color: #666;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
 `;
 
 const CampaignName = styled.div`
   font-weight: 600;
-  color: #333;
+  color: var(--text);
   margin-bottom: 0.25rem;
 `;
 
 const CampaignType = styled.div`
   font-size: 0.875rem;
-  color: #666;
+  color: var(--text-secondary);
 `;
 
 const MetricBadge = styled.span<{ type: 'success' | 'warning' | 'danger' | 'info' }>`
@@ -313,7 +344,7 @@ const LoadingState = styled.div`
   justify-content: center;
   align-items: center;
   height: 200px;
-  color: #666;
+  color: var(--text-secondary);
 `;
 
 interface CampaignData {
@@ -545,6 +576,8 @@ export default function AnalyticsPage() {
 
         <TableCard>
         <TableTitle>Recent Campaigns</TableTitle>
+          <AdminResponsiveList
+            desktop={
           <Table>
           <thead>
               <tr>
@@ -587,6 +620,37 @@ export default function AnalyticsPage() {
             })}
           </tbody>
           </Table>
+            }
+            mobile={
+              campaigns.length === 0 ? (
+                <AdminMobileEmpty message="No campaign data available." />
+              ) : (
+                <AdminMobileCardList>
+                  {campaigns.map((campaign) => (
+                    <AdminDataCard key={campaign.id}>
+                      <AdminDataCardHeader
+                        title={campaign.name}
+                        subtitle={campaign.type}
+                      />
+                      <AdminDataCardMeta
+                        items={[
+                          { label: "Sent", value: campaign.sent.toLocaleString() },
+                          { label: "Delivered", value: campaign.delivered.toLocaleString() },
+                          { label: "Open Rate", value: `${campaign.openRate.toFixed(1)}%` },
+                          { label: "Click Rate", value: `${campaign.clickRate.toFixed(1)}%` },
+                        ]}
+                      />
+                      <AdminDataCardRow label="Unsubscribes" value={campaign.unsubscribed} />
+                      <AdminDataCardRow
+                        label="Date"
+                        value={campaign.sentDate ? new Date(campaign.sentDate).toLocaleDateString() : "N/A"}
+                      />
+                    </AdminDataCard>
+                  ))}
+                </AdminMobileCardList>
+              )
+            }
+          />
         </TableCard>
     </Container>
   );

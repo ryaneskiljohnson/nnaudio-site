@@ -46,7 +46,7 @@ const ABTestContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -294,6 +294,12 @@ const TestHeader = styled.div`
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+  }
 `;
 
 const TestInfo = styled.div`
@@ -414,6 +420,12 @@ const VariantHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75rem;
+  gap: 0.5rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const VariantTitle = styled.h4`
@@ -447,6 +459,10 @@ const VariantStats = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const VariantStat = styled.div`
@@ -513,6 +529,10 @@ const ComparisonGrid = styled.div`
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   text-align: center;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const ComparisonItem = styled.div``;

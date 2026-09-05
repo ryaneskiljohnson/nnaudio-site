@@ -12,6 +12,10 @@ const Container = styled.div`
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+
+  @media (max-width: 768px) {
+    padding: 8px 0;
+  }
 `;
 
 const Header = styled.div`
@@ -19,6 +23,12 @@ const Header = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
 `;
 
 const Title = styled.h1`
@@ -143,6 +153,16 @@ const GridRow = styled.div`
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
   
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const PricingGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
@@ -539,7 +559,7 @@ export default function CreateProductPage() {
         <FormSection>
           <SectionTitle>Pricing & Category</SectionTitle>
           
-          <GridRow style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
+          <PricingGrid>
             <FormGroup>
               <Label>Price *</Label>
               <Input
@@ -596,7 +616,7 @@ export default function CreateProductPage() {
                 <option value="archived">Archived</option>
               </Select>
             </FormGroup>
-          </GridRow>
+          </PricingGrid>
 
           <FormGroup>
             <CheckboxLabel>

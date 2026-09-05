@@ -41,7 +41,7 @@ const SubscriberContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -285,6 +285,12 @@ const SectionHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1.5rem;
+  gap: 0.75rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const SectionTitle = styled.h3`
@@ -310,7 +316,7 @@ const FormRow = styled.div`
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     grid-template-columns: 1fr;
   }
 `;
@@ -561,6 +567,12 @@ const ModalContent = styled(motion.div)`
   width: 90%;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    overflow-y: auto;
+  }
 `;
 
 const ModalTitle = styled.h3`

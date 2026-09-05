@@ -30,6 +30,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import TableLoadingRow from "@/components/common/TableLoadingRow";
 import StatLoadingSpinner from "@/components/common/StatLoadingSpinner";
 import Link from "next/link";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty, AdminMobileLoading } from "@/components/admin/AdminMobileLoading";
 
 const Container = styled.div`
   width: 100%;
@@ -38,7 +46,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -850,6 +858,8 @@ export default function AnalyticsPage() {
         <TableHeader>
           <TableTitle>Campaign Performance</TableTitle>
         </TableHeader>
+        <AdminResponsiveList
+          desktop={
         <Table>
           <TableHeaderRow>
             <div>Campaign Name</div>
@@ -877,6 +887,40 @@ export default function AnalyticsPage() {
             </TableRow>
           ))}
         </Table>
+          }
+          mobile={
+            loading ? (
+              <AdminMobileLoading count={3} />
+            ) : data.campaigns.length === 0 ? (
+              <AdminMobileEmpty message="No campaign performance data yet." />
+            ) : (
+              <AdminMobileCardList>
+                {data.campaigns.map((campaign) => (
+                  <AdminDataCard key={campaign.id}>
+                    <AdminDataCardHeader
+                      title={campaign.name}
+                      badge={
+                        <CampaignStatus $status={campaign.status}>
+                          {campaign.status === "active" ? <FaPlay /> : <FaPause />}
+                          {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+                        </CampaignStatus>
+                      }
+                    />
+                    <AdminDataCardMeta
+                      items={[
+                        { label: "Spent", value: formatCurrency(campaign.spent) },
+                        { label: "Impressions", value: formatNumber(campaign.impressions) },
+                        { label: "Clicks", value: formatNumber(campaign.clicks) },
+                        { label: "CTR", value: formatPercentage(campaign.ctr) },
+                        { label: "CPC", value: formatCurrency(campaign.cpc) },
+                      ]}
+                    />
+                  </AdminDataCard>
+                ))}
+              </AdminMobileCardList>
+            )
+          }
+        />
       </CampaignTable>
       </>
       )}

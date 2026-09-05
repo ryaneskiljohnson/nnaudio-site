@@ -59,6 +59,7 @@ const LayoutContainer = styled.div`
   display: flex;
   min-height: 100vh;
   width: 100%;
+  max-width: 100%;
   background-color: var(--background);
 `;
 
@@ -158,11 +159,38 @@ const Content = styled.main<ContentProps>`
   padding: 1.5rem;
   margin-left: ${props => props.$sidebarVisible ? '280px' : '0'};
   width: ${props => props.$sidebarVisible ? 'calc(100% - 280px)' : '100%'};
+  max-width: 100%;
+  min-width: 0;
 
   @media (max-width: 768px) {
     margin-left: 0;
     width: 100%;
-    padding-top: 70px;
+    padding: 70px 12px 24px;
+
+    h1 {
+      font-size: 1.65rem !important;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    h2 {
+      font-size: 1.25rem !important;
+      word-break: break-word;
+    }
+
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+      max-width: 100%;
+    }
+
+    img,
+    video,
+    iframe,
+    table {
+      max-width: 100%;
+    }
   }
 `;
 

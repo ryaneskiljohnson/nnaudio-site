@@ -34,6 +34,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import styled, { keyframes } from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty } from "@/components/admin/AdminMobileLoading";
 
 const spin = keyframes`
   from {
@@ -57,7 +67,7 @@ const Container = styled.div`
   overflow: visible;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -167,6 +177,12 @@ const CreateButton = styled.button`
 
   svg {
     font-size: 0.9rem;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 `;
 
@@ -450,6 +466,12 @@ const ConfirmDialogContent = styled(motion.div)`
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    overflow-y: auto;
+  }
 `;
 
 const ConfirmDialogTitle = styled.h3`
@@ -590,6 +612,11 @@ const ModalContent = styled(motion.div)`
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -599,6 +626,12 @@ const ModalHeader = styled.div`
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
 `;
 
 const ModalTitle = styled.h2`
@@ -1913,6 +1946,8 @@ export default function ResellersPage() {
           </CreateButton>
         </ActionsBar>
 
+        <AdminResponsiveList
+          desktop={
         <Table>
           <Thead>
             <tr>
@@ -2011,6 +2046,61 @@ export default function ResellersPage() {
             )}
           </Tbody>
         </Table>
+          }
+          mobile={
+            filteredResellers.length === 0 ? (
+              <AdminMobileEmpty
+                message={
+                  searchQuery
+                    ? "No resellers found matching your search"
+                    : "No resellers yet. Click 'Add Reseller' to get started."
+                }
+              />
+            ) : (
+              <AdminMobileCardList>
+                {filteredResellers.map((reseller) => (
+                  <AdminDataCard
+                    key={reseller.id}
+                    onClick={() => handleViewDetails(reseller)}
+                  >
+                    <AdminDataCardHeader
+                      title={reseller.name}
+                      subtitle={reseller.email || undefined}
+                      badge={
+                        <StatusBadge $status={reseller.status || "active"}>
+                          {reseller.status || "active"}
+                        </StatusBadge>
+                      }
+                    />
+                    <AdminDataCardRow label="Contact" value={reseller.contact_info || "—"} />
+                    <AdminDataCardRow
+                      label="Created"
+                      value={new Date(reseller.created_at).toLocaleDateString()}
+                    />
+                    <AdminDataCardActions>
+                      <MoreMenuItem onClick={(e) => { e.stopPropagation(); handleMoreMenuAction("view", reseller); }}>
+                        <FaEye /> View
+                      </MoreMenuItem>
+                      <MoreMenuItem onClick={(e) => { e.stopPropagation(); handleMoreMenuAction("generate-codes", reseller); }}>
+                        <FaKey /> Generate
+                      </MoreMenuItem>
+                      {reseller.status === "active" && (
+                        <MoreMenuItem onClick={(e) => { e.stopPropagation(); handleMoreMenuAction("suspend", reseller); }} $variant="danger">
+                          <FaBan /> Suspend
+                        </MoreMenuItem>
+                      )}
+                      {reseller.status === "suspended" && (
+                        <MoreMenuItem onClick={(e) => { e.stopPropagation(); handleMoreMenuAction("reactivate", reseller); }}>
+                          <FaUndo /> Reactivate
+                        </MoreMenuItem>
+                      )}
+                    </AdminDataCardActions>
+                  </AdminDataCard>
+                ))}
+              </AdminMobileCardList>
+            )
+          }
+        />
       </Container>
 
       {/* Add Reseller Modal */}
@@ -2204,6 +2294,8 @@ export default function ResellersPage() {
                         </p>
                       </div>
                     ) : (
+                  <AdminResponsiveList
+                    desktop={
                   <div style={{ overflowX: "auto" }}>
                     <Table>
                       <Thead>
@@ -2437,6 +2529,34 @@ export default function ResellersPage() {
                       </Tbody>
                     </Table>
                   </div>
+                    }
+                    mobile={
+                      <AdminMobileCardList>
+                        {detailsModalProductStats.map((stat) => (
+                          <AdminDataCard key={stat.product.id}>
+                            <AdminDataCardHeader title={stat.product.name} />
+                            <AdminDataCardMeta
+                              items={[
+                                { label: "Total", value: stat.total },
+                                { label: "Available", value: stat.available },
+                                { label: "Redeemed", value: stat.redeemed },
+                              ]}
+                            />
+                            <AdminDataCardActions>
+                              <ActionButton
+                                $variant="primary"
+                                onClick={() => handleViewCodes(stat.product.id)}
+                                disabled={stat.total === 0}
+                                title="View all codes"
+                              >
+                                <FaEye /> View Codes
+                              </ActionButton>
+                            </AdminDataCardActions>
+                          </AdminDataCard>
+                        ))}
+                      </AdminMobileCardList>
+                    }
+                  />
                     )}
                   </>
                 )}
@@ -2573,6 +2693,8 @@ export default function ResellersPage() {
                     <p style={{ color: "var(--text-secondary)" }}>No codes found</p>
                   </div>
                 ) : (
+                  <AdminResponsiveList
+                    desktop={
                   <div style={{ overflowX: "auto" }}>
                     <Table>
                       <Thead>
@@ -2661,6 +2783,86 @@ export default function ResellersPage() {
                       </Tbody>
                     </Table>
                   </div>
+                    }
+                    mobile={
+                      <AdminMobileCardList>
+                        {viewingCodes.map((code) => (
+                          <AdminDataCard key={code.id}>
+                            <AdminDataCardHeader
+                              title={
+                                <CopyableSerialButton
+                                  type="button"
+                                  title="Click to copy code"
+                                  aria-label="Copy serial code to clipboard"
+                                  onClick={() =>
+                                    void handleCopySerialToClipboard(code.serial_code)
+                                  }
+                                >
+                                  {formatSerialCode(code.serial_code)}
+                                </CopyableSerialButton>
+                              }
+                              badge={
+                                code.redeemed_at ? (
+                                  <span style={{
+                                    padding: "0.25rem 0.75rem",
+                                    borderRadius: "4px",
+                                    fontSize: "0.75rem",
+                                    fontWeight: "600",
+                                    backgroundColor: "rgba(231, 76, 60, 0.2)",
+                                    color: "#e74c3c",
+                                    textTransform: "uppercase"
+                                  }}>
+                                    Redeemed
+                                  </span>
+                                ) : (
+                                  <span style={{
+                                    padding: "0.25rem 0.75rem",
+                                    borderRadius: "4px",
+                                    fontSize: "0.75rem",
+                                    fontWeight: "600",
+                                    backgroundColor: "rgba(46, 204, 113, 0.2)",
+                                    color: "#2ecc71",
+                                    textTransform: "uppercase"
+                                  }}>
+                                    Available
+                                  </span>
+                                )
+                              }
+                            />
+                            <AdminDataCardRow
+                              label="Created"
+                              value={code.created_at ? new Date(code.created_at).toLocaleDateString() : "—"}
+                            />
+                            <AdminDataCardRow
+                              label="Redeemed"
+                              value={code.redeemed_at ? new Date(code.redeemed_at).toLocaleDateString() : "—"}
+                            />
+                            <AdminDataCardRow
+                              label="Redeemed By"
+                              value={
+                                code.redeemed_by_user ? (
+                                  <Link
+                                    href={`/admin/users?user=${code.redeemed_by_user.id}`}
+                                    style={{
+                                      color: "var(--primary)",
+                                      textDecoration: "none",
+                                      fontWeight: "500",
+                                    }}
+                                  >
+                                    {code.redeemed_by_user.first_name || code.redeemed_by_user.last_name
+                                      ? `${[code.redeemed_by_user.first_name, code.redeemed_by_user.last_name].filter(Boolean).join(" ")} (${code.redeemed_by_user.email})`
+                                      : code.redeemed_by_user.email}
+                                  </Link>
+                                ) : (
+                                  "—"
+                                )
+                              }
+                            />
+                          </AdminDataCard>
+                        ))}
+                      </AdminMobileCardList>
+                    }
+                  />
                 )}
               </ModalBody>
             </ModalContent>

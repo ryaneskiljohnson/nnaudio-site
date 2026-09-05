@@ -40,6 +40,15 @@ import { getUserByEmailAdmin } from "@/app/actions/user-management";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
 
 /**
  * @brief $0 shop checkout recorded as product_grants with notes "Free checkout" (RPC orderType grant).
@@ -59,7 +68,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -99,6 +108,14 @@ const TabRow = styled.div`
   gap: 0.5rem;
   margin-bottom: 2rem;
   flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.25rem;
+    margin-bottom: 1.1rem;
+  }
 `;
 
 const Tab = styled.button<{ $active: boolean }>`
@@ -116,6 +133,9 @@ const Tab = styled.button<{ $active: boolean }>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-height: 44px;
+  white-space: nowrap;
+  flex-shrink: 0;
 
   &:hover {
     background: rgba(255, 255, 255, 0.08);
@@ -158,6 +178,8 @@ const SearchBar = styled.div`
 
   @media (max-width: 768px) {
     max-width: none;
+    min-width: 0;
+    width: 100%;
   }
 `;
 
@@ -472,6 +494,12 @@ const ModalContent = styled(motion.div)`
   max-height: 90vh;
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    padding: 1.25rem;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -876,6 +904,111 @@ const OrderRow = React.memo(function OrderRow({
     </React.Fragment>
   );
 });
+
+/**
+ * @brief Mobile card for a single admin order with expandable details.
+ * @param props.order Order row data.
+ * @param props.isExpanded Whether the detail section is open.
+ * @param props.onToggle Expand/collapse handler.
+ * @param props.onCustomerClick Opens the customer profile modal.
+ * @returns Card representing one order on small screens.
+ */
+function MobileOrderCard({
+  order,
+  isExpanded,
+  onToggle,
+  onCustomerClick,
+}: OrderRowProps): React.ReactElement {
+  const itemsSummary = order.items
+    .map((item) => `${item.name} (×${item.quantity})`)
+    .join(", ");
+  const amountLabel =
+    order.amount === 0 && order.metadata?.grant_type
+      ? "Free"
+      : `$${order.amount.toFixed(2)}`;
+
+  return (
+    <AdminDataCard onClick={() => onToggle(order.id)}>
+      <AdminDataCardHeader
+        title={order.orderNumber}
+        subtitle={formatOrderDate(order.date)}
+        badge={
+          <OrderStatus
+            $status={
+              order.isRefunded
+                ? "refunded"
+                : order.isPartiallyRefunded
+                  ? "partially_refunded"
+                  : order.status
+            }
+          >
+            {getStatusIcon(order)} {getStatusText(order)}
+          </OrderStatus>
+        }
+      />
+      <AdminDataCardMeta
+        items={[
+          { label: "Amount", value: amountLabel },
+          { label: "Type", value: getOrderTypeLabel(order) },
+        ]}
+      />
+      <AdminDataCardRow
+        label="Customer"
+        value={
+          order.customerEmail ? (
+            <CustomerLink
+              onClick={(event) => {
+                event.stopPropagation();
+                onCustomerClick(order.customerEmail!);
+              }}
+            >
+              {order.customerEmail}
+            </CustomerLink>
+          ) : (
+            "—"
+          )
+        }
+      />
+      <AdminDataCardRow label="Items" value={itemsSummary || "—"} />
+      {isExpanded ? (
+        <div
+          onClick={(event) => event.stopPropagation()}
+          style={{ marginTop: "0.75rem" }}
+        >
+          {order.items.map((item, index) => (
+            <AdminDataCardRow
+              key={`${item.name}-${index}`}
+              label={item.name}
+              value={`$${((item.sale_price != null ? item.sale_price : item.price) * item.quantity).toFixed(2)}`}
+            />
+          ))}
+        </div>
+      ) : null}
+      <AdminDataCardActions>
+        <ExpandButton
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle(order.id);
+          }}
+        >
+          {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+          {isExpanded ? "Hide details" : "Details"}
+        </ExpandButton>
+        {order.receiptUrl ? (
+          <ActionButton
+            onClick={(event) => {
+              event.stopPropagation();
+              window.open(order.receiptUrl!, "_blank");
+            }}
+            style={{ marginTop: 0 }}
+          >
+            <FaExternalLinkAlt /> Receipt
+          </ActionButton>
+        ) : null}
+      </AdminDataCardActions>
+    </AdminDataCard>
+  );
+}
 
 export default function AdminOrdersPage() {
   const { user } = useAuth();
@@ -1316,53 +1449,82 @@ export default function AdminOrdersPage() {
             </p>
           </EmptyState>
         ) : (
-          <TableWrapper>
-            <Table>
-              <TableHead>
-                <tr>
-                  <TableHeaderCell
-                    $sortable
-                    onClick={() => handleSort("orderNumber")}
-                  >
-                    Order #
-                    <SortIcon field="orderNumber" />
-                  </TableHeaderCell>
-                  <TableHeaderCell
-                    $sortable
-                    onClick={() => handleSort("orderType")}
-                  >
-                    Type
-                    <SortIcon field="orderType" />
-                  </TableHeaderCell>
-                  <TableHeaderCell $sortable onClick={() => handleSort("date")}>
-                    Date
-                    <SortIcon field="date" />
-                  </TableHeaderCell>
-                  <TableHeaderCell
-                    $sortable
-                    onClick={() => handleSort("customer")}
-                  >
-                    Customer
-                    <SortIcon field="customer" />
-                  </TableHeaderCell>
-                  <TableHeaderCell $sortable onClick={() => handleSort("items")}>
-                    Items
-                    <SortIcon field="items" />
-                  </TableHeaderCell>
-                  <TableHeaderCell $sortable onClick={() => handleSort("amount")}>
-                    Amount
-                    <SortIcon field="amount" />
-                  </TableHeaderCell>
-                  <TableHeaderCell $sortable onClick={() => handleSort("status")}>
-                    Status
-                    <SortIcon field="status" />
-                  </TableHeaderCell>
-                  <TableHeaderCell style={{ width: 40 }} />
-                </tr>
-              </TableHead>
-              <TableBody>
+          <AdminResponsiveList
+            desktop={
+              <TableWrapper>
+                <Table>
+                  <TableHead>
+                    <tr>
+                      <TableHeaderCell
+                        $sortable
+                        onClick={() => handleSort("orderNumber")}
+                      >
+                        Order #
+                        <SortIcon field="orderNumber" />
+                      </TableHeaderCell>
+                      <TableHeaderCell
+                        $sortable
+                        onClick={() => handleSort("orderType")}
+                      >
+                        Type
+                        <SortIcon field="orderType" />
+                      </TableHeaderCell>
+                      <TableHeaderCell
+                        $sortable
+                        onClick={() => handleSort("date")}
+                      >
+                        Date
+                        <SortIcon field="date" />
+                      </TableHeaderCell>
+                      <TableHeaderCell
+                        $sortable
+                        onClick={() => handleSort("customer")}
+                      >
+                        Customer
+                        <SortIcon field="customer" />
+                      </TableHeaderCell>
+                      <TableHeaderCell
+                        $sortable
+                        onClick={() => handleSort("items")}
+                      >
+                        Items
+                        <SortIcon field="items" />
+                      </TableHeaderCell>
+                      <TableHeaderCell
+                        $sortable
+                        onClick={() => handleSort("amount")}
+                      >
+                        Amount
+                        <SortIcon field="amount" />
+                      </TableHeaderCell>
+                      <TableHeaderCell
+                        $sortable
+                        onClick={() => handleSort("status")}
+                      >
+                        Status
+                        <SortIcon field="status" />
+                      </TableHeaderCell>
+                      <TableHeaderCell style={{ width: 40 }} />
+                    </tr>
+                  </TableHead>
+                  <TableBody>
+                    {displayedOrders.map((order) => (
+                      <OrderRow
+                        key={order.id}
+                        order={order}
+                        isExpanded={expandedOrders.has(order.id)}
+                        onToggle={toggleOrder}
+                        onCustomerClick={handleCustomerClick}
+                      />
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableWrapper>
+            }
+            mobile={
+              <AdminMobileCardList>
                 {displayedOrders.map((order) => (
-                  <OrderRow
+                  <MobileOrderCard
                     key={order.id}
                     order={order}
                     isExpanded={expandedOrders.has(order.id)}
@@ -1370,9 +1532,9 @@ export default function AdminOrdersPage() {
                     onCustomerClick={handleCustomerClick}
                   />
                 ))}
-              </TableBody>
-            </Table>
-          </TableWrapper>
+              </AdminMobileCardList>
+            }
+          />
         )}
 
         {(filter === "all" || filter === "grant" || filter === "redemption") &&

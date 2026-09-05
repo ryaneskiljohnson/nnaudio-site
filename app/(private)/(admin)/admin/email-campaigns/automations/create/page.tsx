@@ -22,7 +22,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -334,6 +334,12 @@ const StepHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  gap: 0.75rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const StepTitle = styled.h4`

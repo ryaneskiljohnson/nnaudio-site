@@ -23,6 +23,16 @@ import StatLoadingSpinner from "@/components/common/StatLoadingSpinner";
 import useLanguage from "@/hooks/useLanguage";
 import { useAuth } from "@/contexts/AuthContext";
 import styled from "styled-components";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty, AdminMobileLoading } from "@/components/admin/AdminMobileLoading";
 
 const AutomationsContainer = styled.div`
   width: 100%;
@@ -31,7 +41,7 @@ const AutomationsContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -171,6 +181,12 @@ const CreateButton = styled.button`
 
   svg {
     font-size: 0.9rem;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 `;
 
@@ -698,6 +714,8 @@ function AutomationsPage() {
           </CreateButton>
         </ActionsRow>
 
+        <AdminResponsiveList
+          desktop={
         <AutomationsGrid>
           <Table>
             <TableHeader>
@@ -882,6 +900,70 @@ function AutomationsPage() {
             </TableBody>
           </Table>
         </AutomationsGrid>
+          }
+          mobile={
+            loading ? (
+              <AdminMobileLoading count={4} />
+            ) : filteredAndSortedAutomations.length === 0 ? (
+              <AdminMobileEmpty message="No automations found. Try adjusting your search criteria or create a new automation." />
+            ) : (
+              <AdminMobileCardList>
+                {filteredAndSortedAutomations.map((automation) => (
+                  <AdminDataCard
+                    key={automation.id}
+                    onClick={() =>
+                      router.push(`/admin/email-campaigns/automations/${automation.id}`)
+                    }
+                  >
+                    <AdminDataCardHeader
+                      title={automation.name || "Untitled Automation"}
+                      subtitle={automation.description || "No description"}
+                      badge={
+                        <StatusBadge status={automation.status || "draft"}>
+                          {automation.status || "draft"}
+                        </StatusBadge>
+                      }
+                    />
+                    <AdminDataCardMeta
+                      items={[
+                        { label: "Trigger", value: getTriggerLabel(automation.trigger_type) },
+                        { label: "Enrollments", value: (automation.total_enrollments || 0).toLocaleString() },
+                        { label: "Active", value: (automation.active_enrollments || 0).toLocaleString() },
+                        { label: "Completion", value: `${calculateCompletionRate(automation)}%` },
+                      ]}
+                    />
+                    <AdminDataCardRow
+                      label="Created"
+                      value={
+                        automation.created_at
+                          ? new Date(automation.created_at).toLocaleDateString()
+                          : "Unknown"
+                      }
+                    />
+                    <AdminDataCardActions>
+                      <DropdownItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/admin/email-campaigns/automations/${automation.id}`);
+                        }}
+                      >
+                        <FaEye /> View
+                      </DropdownItem>
+                      <DropdownItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/admin/email-campaigns/automations/${automation.id}/edit`);
+                        }}
+                      >
+                        <FaEdit /> Edit
+                      </DropdownItem>
+                    </AdminDataCardActions>
+                  </AdminDataCard>
+                ))}
+              </AdminMobileCardList>
+            )
+          }
+        />
       </AutomationsContainer>
     </>
   );

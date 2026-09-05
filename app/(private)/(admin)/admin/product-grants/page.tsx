@@ -14,12 +14,26 @@ import { useAuth } from "@/contexts/AuthContext";
 import styled from "styled-components";
 import { motion } from "framer-motion";
 import NNAudioLoadingSpinner from "@/components/common/NNAudioLoadingSpinner";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import { AdminMobileEmpty, AdminMobileLoading } from "@/components/admin/AdminMobileLoading";
 
 const Container = styled.div`
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
   padding: 40px 20px;
+
+  @media (max-width: 768px) {
+    padding: 8px 0;
+  }
 `;
 
 const Header = styled.div`
@@ -51,6 +65,11 @@ const ActionsBar = styled.div`
   align-items: center;
   margin-bottom: 2rem;
   gap: 1rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const SearchInput = styled.input`
@@ -66,6 +85,12 @@ const SearchInput = styled.input`
   &:focus {
     outline: none;
     border-color: var(--primary);
+  }
+
+  @media (max-width: 768px) {
+    max-width: none;
+    width: 100%;
+    min-width: 0;
   }
 `;
 
@@ -85,6 +110,12 @@ const CreateButton = styled.button`
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(108, 99, 255, 0.4);
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
   }
 `;
 
@@ -192,6 +223,11 @@ const ModalContent = styled(motion.div)`
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+  }
 `;
 
 const ModalTitle = styled.h2`
@@ -501,10 +537,17 @@ export default function ProductGrantsPage() {
       </ActionsBar>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "4rem" }}>
-          <NNAudioLoadingSpinner />
-        </div>
+        <AdminResponsiveList
+          desktop={
+            <div style={{ textAlign: "center", padding: "4rem" }}>
+              <NNAudioLoadingSpinner />
+            </div>
+          }
+          mobile={<AdminMobileLoading count={4} />}
+        />
       ) : (
+        <AdminResponsiveList
+          desktop={
         <Table>
           <TableHeader>
             <TableRow>
@@ -569,6 +612,40 @@ export default function ProductGrantsPage() {
             )}
           </tbody>
         </Table>
+          }
+          mobile={
+            filteredGrants.length === 0 ? (
+              <AdminMobileEmpty message="No product grants found" />
+            ) : (
+              <AdminMobileCardList>
+                {filteredGrants.map((grant) => (
+                  <AdminDataCard key={grant.id}>
+                    <AdminDataCardHeader
+                      title={grant.products?.name || "Product not found"}
+                      subtitle={grant.user_email}
+                    />
+                    <AdminDataCardMeta
+                      items={[
+                        { label: "Amount", value: `$${(grant.amount ?? 0).toFixed(2)}` },
+                        { label: "Granted", value: new Date(grant.granted_at).toLocaleDateString() },
+                      ]}
+                    />
+                    <AdminDataCardRow label="Notes" value={grant.notes || "—"} />
+                    <AdminDataCardActions>
+                      <DeleteButton
+                        type="button"
+                        title="Revoke grant"
+                        onClick={() => handleDelete(grant.id)}
+                      >
+                        <FaTrash size={12} />
+                      </DeleteButton>
+                    </AdminDataCardActions>
+                  </AdminDataCard>
+                ))}
+              </AdminMobileCardList>
+            )
+          }
+        />
       )}
 
       {/* Create Modal */}

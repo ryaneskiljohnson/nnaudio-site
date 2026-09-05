@@ -43,7 +43,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -255,6 +255,42 @@ const FormActions = styled.div`
   }
 `;
 
+const GeneratedPlaylistCard = styled.div`
+  background: var(--card-bg);
+  padding: 2rem;
+  border-radius: 12px;
+  border: 2px solid var(--primary);
+  margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    padding: 1.25rem 1rem;
+  }
+`;
+
+const GeneratedPlaylistHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  gap: 1rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const ProfileDetailsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
 const GenerateButton = styled.button`
   display: flex;
   align-items: center;
@@ -398,6 +434,12 @@ const EditProfileButton = styled.button`
 
   svg {
     font-size: 0.8rem;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: center;
+    white-space: normal;
   }
 `;
 
@@ -856,14 +898,8 @@ export default function TutorialCenter() {
 
         {generatedPlaylist && (
           <motion.div variants={fadeIn} style={{ marginBottom: '2rem' }}>
-            <div style={{ 
-              background: 'var(--card-bg)', 
-              padding: '2rem', 
-              borderRadius: '12px',
-              border: '2px solid var(--primary)',
-              marginBottom: '2rem'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '2rem', gap: '1rem' }}>
+            <GeneratedPlaylistCard>
+              <GeneratedPlaylistHeader>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: 0 }}>
                   <div style={{ 
                     width: '48px', 
@@ -888,47 +924,14 @@ export default function TutorialCenter() {
                     </p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setShowProfilingForm(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    color: 'var(--text)',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    fontSize: '0.9rem',
-                    fontWeight: '500',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                    e.currentTarget.style.borderColor = 'var(--primary)';
-                    e.currentTarget.style.color = 'var(--primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                    e.currentTarget.style.color = 'var(--text)';
-                  }}
-                >
+                <EditProfileButton onClick={() => setShowProfilingForm(true)}>
                   <FaCog />
                   Edit Profile
-                </button>
-              </div>
+                </EditProfileButton>
+              </GeneratedPlaylistHeader>
 
               {/* Profile Details with Icons */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-                gap: '1.5rem',
-                marginBottom: '2rem'
-              }}>
+              <ProfileDetailsGrid>
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -1062,7 +1065,7 @@ export default function TutorialCenter() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </ProfileDetailsGrid>
 
               {/* Learning Path Stats */}
               <div style={{ 
@@ -1176,7 +1179,7 @@ export default function TutorialCenter() {
                   Continue Learning
                 </Link>
               </div>
-            </div>
+            </GeneratedPlaylistCard>
           </motion.div>
         )}
 

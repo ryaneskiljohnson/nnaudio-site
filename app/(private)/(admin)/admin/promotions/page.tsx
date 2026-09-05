@@ -31,6 +31,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import LoadingComponent from "@/components/common/LoadingComponent";
 import { utcToPSTDate, formatPSTDate } from "@/utils/timezoneUtils";
 import { computePromotionalUnitPrice } from "@/utils/promotions/apply-promotion";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
 
 // Types
 interface Promotion {
@@ -98,7 +107,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -167,6 +176,12 @@ const Button = styled.button<{ $variant?: 'primary' | 'secondary' | 'danger' }>`
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
   }
 `;
 
@@ -298,7 +313,9 @@ const ModalContent = styled(motion.div)`
   border: 1px solid rgba(255, 255, 255, 0.1);
 
   @media (max-width: 768px) {
-    padding: 1.5rem;
+    padding: 1.25rem;
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
   }
 `;
 
@@ -886,87 +903,183 @@ export default function PromotionsPage() {
           <p>Create your first promotional campaign to get started</p>
         </EmptyState>
       ) : (
-        <Table>
-          <Thead>
-            <tr>
-              <Th>Status</Th>
-              <Th>Campaign</Th>
-              <Th>Discount</Th>
-              <Th>Scope</Th>
-              <Th>List pricing</Th>
-              <Th>Dates</Th>
-              <Th>Coupon</Th>
-              <Th>Stats</Th>
-              <Th>Actions</Th>
-            </tr>
-          </Thead>
-          <Tbody>
-            {promotions.map(promotion => (
-              <Tr key={promotion.id}>
-                <Td>
-                  <StatusBadge $active={promotion.active}>
-                    {promotion.active ? <FaToggleOn /> : <FaToggleOff />}
-                    {promotion.active ? 'ACTIVE' : 'INACTIVE'}
-                  </StatusBadge>
-                </Td>
-                <Td>
-                  <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '0.25rem' }}>
-                    {promotion.title}
-                  </div>
-                  <div style={{ fontSize: '0.8rem' }}>
-                    {promotion.description}
-                  </div>
-                </Td>
-                <Td>
-                  {promotion.discount_type === 'percentage' 
-                    ? `${promotion.discount_value}% OFF`
-                    : `$${promotion.discount_value} OFF`
-                  }
-                </Td>
-                <Td>
-                  <div style={{ fontSize: '0.8rem' }}>
-                    {promotion.promotion_target_mode === 'all'
-                      ? 'All offers'
-                      : `${promotion.included_targets?.length ?? 0} target(s)`}
-                  </div>
-                </Td>
-                <Td>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    {promotion.promotion_target_mode === 'all'
-                      ? 'Each offer uses its own list price'
-                      : 'Discount applies to selected targets’ list prices'}
-                  </span>
-                </Td>
-                <Td>
-                  <div style={{ fontSize: '0.8rem' }}>
-                    {formatDate(promotion.start_date)}
-                    <br />
-                    to {formatDate(promotion.end_date)}
-                  </div>
-                </Td>
-                <Td>
-                  <div style={{ fontSize: '0.8rem' }}>
-                    {promotion.stripe_coupon_code}
-                    {promotion.stripe_coupon_created && (
-                      <div style={{ color: '#10b981', marginTop: '0.25rem' }}>
-                        ✓ Created in Stripe
+        <AdminResponsiveList
+          desktop={
+            <Table>
+              <Thead>
+                <tr>
+                  <Th>Status</Th>
+                  <Th>Campaign</Th>
+                  <Th>Discount</Th>
+                  <Th>Scope</Th>
+                  <Th>List pricing</Th>
+                  <Th>Dates</Th>
+                  <Th>Coupon</Th>
+                  <Th>Stats</Th>
+                  <Th>Actions</Th>
+                </tr>
+              </Thead>
+              <Tbody>
+                {promotions.map((promotion) => (
+                  <Tr key={promotion.id}>
+                    <Td>
+                      <StatusBadge $active={promotion.active}>
+                        {promotion.active ? <FaToggleOn /> : <FaToggleOff />}
+                        {promotion.active ? "ACTIVE" : "INACTIVE"}
+                      </StatusBadge>
+                    </Td>
+                    <Td>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          color: "var(--text)",
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        {promotion.title}
                       </div>
-                    )}
-                  </div>
-                </Td>
-                <Td>
-                  <div style={{ fontSize: '0.8rem' }}>
-                    <div>Views: {promotion.views}</div>
-                    <div>Conversions: {promotion.conversions}</div>
-                    <div>Revenue: ${promotion.revenue || 0}</div>
-                  </div>
-                </Td>
-                <Td>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ fontSize: "0.8rem" }}>
+                        {promotion.description}
+                      </div>
+                    </Td>
+                    <Td>
+                      {promotion.discount_type === "percentage"
+                        ? `${promotion.discount_value}% OFF`
+                        : `$${promotion.discount_value} OFF`}
+                    </Td>
+                    <Td>
+                      <div style={{ fontSize: "0.8rem" }}>
+                        {promotion.promotion_target_mode === "all"
+                          ? "All offers"
+                          : `${promotion.included_targets?.length ?? 0} target(s)`}
+                      </div>
+                    </Td>
+                    <Td>
+                      <span
+                        style={{
+                          fontSize: "0.8rem",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        {promotion.promotion_target_mode === "all"
+                          ? "Each offer uses its own list price"
+                          : "Discount applies to selected targets’ list prices"}
+                      </span>
+                    </Td>
+                    <Td>
+                      <div style={{ fontSize: "0.8rem" }}>
+                        {formatDate(promotion.start_date)}
+                        <br />
+                        to {formatDate(promotion.end_date)}
+                      </div>
+                    </Td>
+                    <Td>
+                      <div style={{ fontSize: "0.8rem" }}>
+                        {promotion.stripe_coupon_code}
+                        {promotion.stripe_coupon_created && (
+                          <div
+                            style={{
+                              color: "#10b981",
+                              marginTop: "0.25rem",
+                            }}
+                          >
+                            ✓ Created in Stripe
+                          </div>
+                        )}
+                      </div>
+                    </Td>
+                    <Td>
+                      <div style={{ fontSize: "0.8rem" }}>
+                        <div>Views: {promotion.views}</div>
+                        <div>Conversions: {promotion.conversions}</div>
+                        <div>Revenue: ${promotion.revenue || 0}</div>
+                      </div>
+                    </Td>
+                    <Td>
+                      <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <ActionButton
+                          $variant="toggle"
+                          onClick={() => handleToggle(promotion)}
+                          title={promotion.active ? "Deactivate" : "Activate"}
+                        >
+                          {promotion.active ? <FaToggleOff /> : <FaToggleOn />}
+                        </ActionButton>
+                        <ActionButton
+                          $variant="edit"
+                          onClick={() => handleEdit(promotion)}
+                          title="Edit"
+                        >
+                          <FaEdit />
+                        </ActionButton>
+                        <ActionButton
+                          $variant="delete"
+                          onClick={() => handleDeleteClick(promotion)}
+                          title="Delete"
+                        >
+                          <FaTrash />
+                        </ActionButton>
+                      </div>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          }
+          mobile={
+            <AdminMobileCardList>
+              {promotions.map((promotion) => (
+                <AdminDataCard key={promotion.id}>
+                  <AdminDataCardHeader
+                    title={promotion.title}
+                    subtitle={promotion.description}
+                    badge={
+                      <StatusBadge $active={promotion.active}>
+                        {promotion.active ? <FaToggleOn /> : <FaToggleOff />}
+                        {promotion.active ? "ACTIVE" : "INACTIVE"}
+                      </StatusBadge>
+                    }
+                  />
+                  <AdminDataCardMeta
+                    items={[
+                      {
+                        label: "Discount",
+                        value:
+                          promotion.discount_type === "percentage"
+                            ? `${promotion.discount_value}% OFF`
+                            : `$${promotion.discount_value} OFF`,
+                      },
+                      {
+                        label: "Revenue",
+                        value: `$${promotion.revenue || 0}`,
+                      },
+                      { label: "Views", value: promotion.views },
+                      {
+                        label: "Conversions",
+                        value: promotion.conversions,
+                      },
+                    ]}
+                  />
+                  <AdminDataCardRow
+                    label="Scope"
+                    value={
+                      promotion.promotion_target_mode === "all"
+                        ? "All offers"
+                        : `${promotion.included_targets?.length ?? 0} target(s)`
+                    }
+                  />
+                  <AdminDataCardRow
+                    label="Dates"
+                    value={`${formatDate(promotion.start_date)} to ${formatDate(promotion.end_date)}`}
+                  />
+                  <AdminDataCardRow
+                    label="Coupon"
+                    value={promotion.stripe_coupon_code || "—"}
+                  />
+                  <AdminDataCardActions>
                     <ActionButton
                       $variant="toggle"
                       onClick={() => handleToggle(promotion)}
-                      title={promotion.active ? 'Deactivate' : 'Activate'}
+                      title={promotion.active ? "Deactivate" : "Activate"}
                     >
                       {promotion.active ? <FaToggleOff /> : <FaToggleOn />}
                     </ActionButton>
@@ -984,12 +1097,12 @@ export default function PromotionsPage() {
                     >
                       <FaTrash />
                     </ActionButton>
-                  </div>
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
+                  </AdminDataCardActions>
+                </AdminDataCard>
+              ))}
+            </AdminMobileCardList>
+          }
+        />
       )}
 
       {/* Create/Edit Modal */}

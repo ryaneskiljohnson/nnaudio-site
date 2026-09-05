@@ -13,6 +13,10 @@ const PageContainer = styled.div`
   max-width: 900px;
   margin: 0 auto;
   padding: 2rem 0;
+
+  @media (max-width: 768px) {
+    padding: 8px 0;
+  }
 `;
 
 const PageTitle = styled.h1`
@@ -34,6 +38,10 @@ const Card = styled.div`
   border-radius: 12px;
   padding: 1.5rem 2rem;
   margin-bottom: 1.5rem;
+
+  @media (max-width: 768px) {
+    padding: 1.25rem 1rem;
+  }
 `;
 
 const CardTitle = styled.h2`

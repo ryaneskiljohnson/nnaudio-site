@@ -77,6 +77,19 @@ import AdminOrdersListDialog, {
 } from "@/components/admin/AdminOrdersListDialog";
 import { mergeDefinedUserFields } from "@/utils/crm/merge-defined-user-fields";
 import { nextCrmSort } from "@/utils/crm/sort-profile-keys";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
+import {
+  AdminMobileEmpty,
+  AdminMobileLoading,
+} from "@/components/admin/AdminMobileLoading";
 
 /** Row shape from GET /api/admin/user-orders */
 type AdminUserOrderRow = {
@@ -96,7 +109,7 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -123,7 +136,7 @@ const CRMContainer = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 8px 0;
   }
 `;
 
@@ -1080,6 +1093,8 @@ const MoreMenuButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
 
   &:hover {
     background-color: rgba(255, 255, 255, 0.1);
@@ -3061,6 +3076,8 @@ export default function AdminCRM() {
             </FiltersSection>
 
             <TableContainer>
+              <AdminResponsiveList
+                desktop={
               <TableStack>
                 {loading && (
                   <LoadingOverlay>
@@ -3402,6 +3419,173 @@ export default function AdminCRM() {
                 </TableBody>
               </Table>
               </TableStack>
+                }
+                mobile={
+                  loading ? (
+                    <AdminMobileLoading count={4} />
+                  ) : users.length === 0 ? (
+                    <AdminMobileEmpty message="No users found matching your search." />
+                  ) : (
+                    <AdminMobileCardList>
+                      {users.map((userData) => {
+                        const supportTicketCount = getSupportTicketCount(
+                          userData.id
+                        );
+                        const access = nnaudioAccessInstallerCell(userData);
+                        const joined = formatCrmTableDateParts(
+                          userData.createdAt
+                        );
+                        const active = formatCrmTableDateParts(
+                          userData.lastActive || userData.createdAt
+                        );
+                        return (
+                          <AdminDataCard
+                            key={userData.id}
+                            onClick={() => handleViewUser(userData)}
+                          >
+                            <AdminDataCardHeader
+                              title={
+                                <span
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.4rem",
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  {getDisplayName(userData)}
+                                  {userData.hasNfrEliteBundle ? (
+                                    <NfrBadge title="NFR includes a product from an ultimate bundle">
+                                      <FaCrown />
+                                      NFR
+                                    </NfrBadge>
+                                  ) : null}
+                                </span>
+                              }
+                              subtitle={userData.email}
+                            />
+                            <AdminDataCardMeta
+                              items={[
+                                {
+                                  label: "Orders",
+                                  value:
+                                    userData.orderCount === undefined ||
+                                    userData.orderCount === -1
+                                      ? "…"
+                                      : userData.orderCount,
+                                },
+                                {
+                                  label: "Products",
+                                  value:
+                                    userData.productCount === undefined ||
+                                    userData.productCount === -1
+                                      ? "…"
+                                      : userData.productCount,
+                                },
+                                {
+                                  label: "Spent",
+                                  value:
+                                    userData.totalSpent === -1
+                                      ? "…"
+                                      : formatCurrency(userData.totalSpent),
+                                },
+                                {
+                                  label: "Tickets",
+                                  value: supportTicketCount.total,
+                                },
+                              ]}
+                            />
+                            <AdminDataCardRow
+                              label="Joined"
+                              value={`${joined.date} ${joined.time}`}
+                            />
+                            <AdminDataCardRow
+                              label="Active"
+                              value={`${active.date} ${active.time}`}
+                            />
+                            <AdminDataCardRow
+                              label="Access"
+                              value={access.label}
+                            />
+                            <AdminDataCardActions>
+                              <MoreMenuButton
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleViewUser(userData);
+                                }}
+                              >
+                                <FaEye />
+                                View
+                              </MoreMenuButton>
+                              <MoreMenuButton
+                                onClick={(event) =>
+                                  handleMoreMenuClick(userData.id, event)
+                                }
+                              >
+                                <FaEllipsisV />
+                                More
+                              </MoreMenuButton>
+                            </AdminDataCardActions>
+                            {openMoreMenu === userData.id ? (
+                              <MoreMenuDropdown
+                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                style={{
+                                  position: "relative",
+                                  top: "0.5rem",
+                                  right: 0,
+                                }}
+                              >
+                                <MoreMenuItem
+                                  onClick={() =>
+                                    handleMoreMenuAction("view", userData)
+                                  }
+                                >
+                                  <FaEye />
+                                  View Profile
+                                </MoreMenuItem>
+                                <MoreMenuItem
+                                  onClick={() =>
+                                    handleMoreMenuAction("edit", userData)
+                                  }
+                                >
+                                  <FaEdit />
+                                  Edit User
+                                </MoreMenuItem>
+                                <MoreMenuItem
+                                  onClick={() =>
+                                    handleMoreMenuAction("email", userData)
+                                  }
+                                >
+                                  <FaEnvelope />
+                                  Send Email
+                                </MoreMenuItem>
+                                <MoreMenuItem
+                                  onClick={() =>
+                                    handleMoreMenuAction("ban", userData)
+                                  }
+                                >
+                                  <FaBan />
+                                  Ban User
+                                </MoreMenuItem>
+                                <MoreMenuItem
+                                  variant="danger"
+                                  onClick={() =>
+                                    handleMoreMenuAction("delete", userData)
+                                  }
+                                >
+                                  <FaTrash />
+                                  Delete User
+                                </MoreMenuItem>
+                              </MoreMenuDropdown>
+                            ) : null}
+                          </AdminDataCard>
+                        );
+                      })}
+                    </AdminMobileCardList>
+                  )
+                }
+              />
 
               <Pagination>
                 <PaginationInfo>

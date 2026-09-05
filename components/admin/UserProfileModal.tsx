@@ -28,6 +28,15 @@ import {
 import { getCustomerSubscriptions } from "@/utils/stripe/actions";
 import { updateUserProStatus } from "@/utils/subscriptions/check-subscription";
 import { NnaudioAccessInstallerBadges } from "@/components/admin/NnaudioAccessInstallerBadges";
+import AdminResponsiveList from "@/components/admin/AdminResponsiveList";
+import {
+  AdminDataCard,
+  AdminDataCardActions,
+  AdminDataCardHeader,
+  AdminDataCardMeta,
+  AdminDataCardRow,
+  AdminMobileCardList,
+} from "@/components/admin/AdminDataCard";
 import AdminProductListDialog, {
   AdminCountLinkButton,
   listedProductsFromOrder,
@@ -70,6 +79,12 @@ const ModalContent = styled(motion.div)`
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
+
+  @media (max-width: 768px) {
+    width: min(100vw - 24px, 520px);
+    max-height: 85dvh;
+    padding: 1.25rem;
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -79,6 +94,12 @@ const ModalHeader = styled.div`
   margin-bottom: 2rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
 `;
 
 const ModalTitle = styled.h2`
@@ -966,6 +987,8 @@ export default function UserProfileModal({
                 <EmptyState>Loading subscriptions...</EmptyState>
               ) : userSubscriptions.length > 0 ? (
                 <>
+                  <AdminResponsiveList
+                    desktop={
                   <DataTable>
                     <DataTableHeader>
                       <tr>
@@ -1135,6 +1158,73 @@ export default function UserProfileModal({
                       })}
                     </DataTableBody>
                   </DataTable>
+                    }
+                    mobile={
+                      <AdminMobileCardList>
+                        {userSubscriptions.map((sub) => {
+                          const isActive = sub.status === "active" || sub.status === "trialing";
+                          const isCanceled = sub.status === "canceled" || sub.cancel_at_period_end;
+                          const price = sub.items?.[0]?.price;
+                          const interval = price?.recurring?.interval || "";
+                          const isMonthly = interval === "month";
+                          const isAnnual = interval === "year";
+                          const currentPlan = isMonthly ? "monthly" : isAnnual ? "annual" : "unknown";
+                          const amount = price?.unit_amount ? price.unit_amount / 100 : 0;
+                          const customerId =
+                            typeof sub.customer === "string"
+                              ? sub.customer
+                              : sub.customer?.id || user?.customerId || "";
+                          return (
+                            <AdminDataCard key={sub.id}>
+                              <AdminDataCardHeader
+                                title={currentPlan}
+                                subtitle={sub.id}
+                                badge={<StatusBadge $status={sub.status}>{sub.status}</StatusBadge>}
+                              />
+                              <AdminDataCardMeta
+                                items={[
+                                  { label: "Amount", value: formatCurrency(amount * 100) },
+                                  { label: "Auto Renew", value: isCanceled ? "No" : "Yes" },
+                                ]}
+                              />
+                              <AdminDataCardRow
+                                label="Period"
+                                value={
+                                  sub.current_period_start && sub.current_period_end
+                                    ? `${new Date(sub.current_period_start * 1000).toLocaleDateString()} - ${new Date(sub.current_period_end * 1000).toLocaleDateString()}`
+                                    : "N/A"
+                                }
+                              />
+                              {(onCancelSubscription || onReactivateSubscription) && (
+                                <AdminDataCardActions>
+                                  {isActive && !isCanceled && onCancelSubscription && (
+                                    <RefundButton
+                                      variant="danger"
+                                      disabled={subscriptionLoading === sub.id}
+                                      onClick={() => onCancelSubscription(sub.id, customerId)}
+                                    >
+                                      {subscriptionLoading === sub.id ? <LoadingSpinner /> : <FaBan />}
+                                      Cancel
+                                    </RefundButton>
+                                  )}
+                                  {isCanceled && onReactivateSubscription && (
+                                    <RefundButton
+                                      variant="primary"
+                                      disabled={subscriptionLoading === sub.id}
+                                      onClick={() => onReactivateSubscription(sub.id, customerId)}
+                                    >
+                                      {subscriptionLoading === sub.id ? <LoadingSpinner /> : <FaUndo />}
+                                      Reactivate
+                                    </RefundButton>
+                                  )}
+                                </AdminDataCardActions>
+                              )}
+                            </AdminDataCard>
+                          );
+                        })}
+                      </AdminMobileCardList>
+                    }
+                  />
                 </>
               ) : (
                 <EmptyState>No subscriptions found</EmptyState>
@@ -1167,6 +1257,8 @@ export default function UserProfileModal({
                       View all tickets
                     </Link>
                   </div>
+                  <AdminResponsiveList
+                    desktop={
                   <DataTable>
                     <DataTableHeader>
                       <tr>
@@ -1218,6 +1310,41 @@ export default function UserProfileModal({
                       ))}
                     </DataTableBody>
                   </DataTable>
+                    }
+                    mobile={
+                      <AdminMobileCardList>
+                        {supportTickets.map((ticket) => (
+                          <AdminDataCard key={ticket.id}>
+                            <AdminDataCardHeader
+                              title={ticket.subject}
+                              subtitle={ticket.ticket_number}
+                              badge={
+                                <span
+                                  style={{
+                                    textTransform: "capitalize",
+                                    padding: "0.25rem 0.5rem",
+                                    borderRadius: "4px",
+                                    backgroundColor:
+                                      ticket.status === "open"
+                                        ? "rgba(52, 152, 219, 0.2)"
+                                        : ticket.status === "in_progress"
+                                        ? "rgba(241, 196, 15, 0.2)"
+                                        : ticket.status === "resolved"
+                                        ? "rgba(46, 204, 113, 0.2)"
+                                        : "rgba(149, 165, 166, 0.2)",
+                                    color: "var(--text)",
+                                  }}
+                                >
+                                  {ticket.status.replace("_", " ")}
+                                </span>
+                              }
+                            />
+                            <AdminDataCardRow label="Created" value={formatDate(ticket.created_at)} />
+                          </AdminDataCard>
+                        ))}
+                      </AdminMobileCardList>
+                    }
+                  />
                 </>
               ) : (
                 <EmptyState>No support tickets found</EmptyState>
@@ -1233,6 +1360,8 @@ export default function UserProfileModal({
               {loadingInvoices ? (
                 <EmptyState>Loading invoices...</EmptyState>
               ) : userInvoices.length > 0 ? (
+                <AdminResponsiveList
+                  desktop={
                 <DataTable>
                   <DataTableHeader>
                     <tr>
@@ -1304,6 +1433,31 @@ export default function UserProfileModal({
                     ))}
                   </DataTableBody>
                 </DataTable>
+                  }
+                  mobile={
+                    <AdminMobileCardList>
+                      {userInvoices.map((invoice) => (
+                        <AdminDataCard key={invoice.id}>
+                          <AdminDataCardHeader
+                            title={invoice.number || "N/A"}
+                            subtitle={invoice.id}
+                            badge={<StatusBadge $status={invoice.status}>{invoice.status}</StatusBadge>}
+                          />
+                          <AdminDataCardMeta
+                            items={[
+                              { label: "Amount", value: formatCurrency(invoice.amount * 100) },
+                              { label: "Created", value: formatDate(invoice.createdAt) },
+                            ]}
+                          />
+                          <AdminDataCardRow
+                            label="Paid"
+                            value={invoice.paidAt ? formatDate(invoice.paidAt) : "N/A"}
+                          />
+                        </AdminDataCard>
+                      ))}
+                    </AdminMobileCardList>
+                  }
+                />
               ) : (
                 <EmptyState>No invoices found</EmptyState>
               )}
@@ -1318,6 +1472,8 @@ export default function UserProfileModal({
               {loadingUserOrders ? (
                 <EmptyState>Loading orders...</EmptyState>
               ) : userOrders.length > 0 ? (
+                <AdminResponsiveList
+                  desktop={
                 <DataTable>
                   <DataTableHeader>
                     <tr>
@@ -1406,6 +1562,57 @@ export default function UserProfileModal({
                     })}
                   </DataTableBody>
                 </DataTable>
+                  }
+                  mobile={
+                    <AdminMobileCardList>
+                      {userOrders.map((row) => {
+                        const orderProducts = listedProductsFromOrder(row);
+                        return (
+                          <AdminDataCard
+                            key={`${row.type}-${row.id}`}
+                            onClick={() => {
+                              if (orderProducts.length > 0) {
+                                setSelectedOrder(row);
+                              }
+                            }}
+                          >
+                            <AdminDataCardHeader
+                              title={row.type === "stripe" ? "Payment" : "Grant"}
+                              subtitle={row.created ? formatDate(row.created) : "—"}
+                            />
+                            <AdminDataCardMeta
+                              items={[
+                                { label: "Amount", value: formatCurrency(row.amountCents) },
+                                {
+                                  label: "Products",
+                                  value: orderProducts.length > 0 ? productCountLabel(orderProducts.length) : "—",
+                                },
+                              ]}
+                            />
+                            {onRefundPurchase && row.type === "stripe" && (
+                              <AdminDataCardActions>
+                                <RefundButton
+                                  variant="danger"
+                                  disabled={refundLoading === row.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRefundPurchase(
+                                      row.id,
+                                      row.amountCents / 100,
+                                      orderProducts.map((product) => product.name).join(", ") || row.id
+                                    );
+                                  }}
+                                >
+                                  Refund
+                                </RefundButton>
+                              </AdminDataCardActions>
+                            )}
+                          </AdminDataCard>
+                        );
+                      })}
+                    </AdminMobileCardList>
+                  }
+                />
               ) : (
                 <EmptyState>No orders found</EmptyState>
               )}

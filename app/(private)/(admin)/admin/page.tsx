@@ -1,4 +1,11 @@
 "use client";
+
+/**
+ * @fileoverview Admin dashboard with compact mobile summaries, revenue windows,
+ * analytics charts, and notification feeds.
+ * @module app/(private)/(admin)/admin/page
+ */
+
 import React, { useEffect, useState, useMemo } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
@@ -15,6 +22,7 @@ import {
   FaDollarSign,
   FaClock,
   FaStar,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -53,7 +61,10 @@ const Container = styled.div`
   padding: 40px 20px;
 
   @media (max-width: 768px) {
-    padding: 20px 15px;
+    padding: 0;
+    min-height: calc(100dvh - 64px);
+    display: flex;
+    flex-direction: column;
   }
 `;
 
@@ -62,6 +73,12 @@ const TabNavigation = styled.div`
   gap: 0.5rem;
   margin-bottom: 2rem;
   border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 768px) {
+    gap: 0;
+    margin-bottom: 0.55rem;
+    flex-shrink: 0;
+  }
 `;
 
 const TabButton = styled.button<{ $active: boolean }>`
@@ -82,13 +99,18 @@ const TabButton = styled.button<{ $active: boolean }>`
   }
 
   @media (max-width: 768px) {
-    padding: 0.75rem 1rem;
-    font-size: 0.9rem;
+    flex: 1;
+    padding: 0.45rem 0.35rem;
+    font-size: 0.78rem;
   }
 `;
 
 const Header = styled.div`
   margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
 `;
 
 const Title = styled.h1`
@@ -120,24 +142,30 @@ const Subtitle = styled.p`
   }
 `;
 
+/**
+ * @brief Revenue and live-visitor summary cards.
+ * @note Mobile uses a 2-column dense grid so the summaries tab fits one viewport.
+ */
 const StatsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1.5rem;
   margin-bottom: 3rem;
 
   @media (max-width: 1200px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    margin-bottom: 2rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+    margin-bottom: 0;
+    flex: 1;
+    align-content: stretch;
   }
 `;
 
-const StatCard = styled(motion.div)`
+const StatCard = styled(motion.div)<{ $wide?: boolean }>`
   background-color: var(--card-bg);
   border-radius: 16px;
   padding: 2rem;
@@ -167,8 +195,21 @@ const StatCard = styled(motion.div)`
   }
 
   @media (max-width: 768px) {
-    padding: 1.5rem;
-    border-radius: 12px;
+    padding: 0.55rem 0.65rem;
+    border-radius: 10px;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 0;
+    grid-column: ${props => (props.$wide ? "1 / -1" : "auto")};
+
+    &:hover {
+      transform: none;
+    }
+
+    &::before {
+      height: 2px;
+    }
   }
 `;
 
@@ -180,7 +221,8 @@ const StatIcon = styled.div`
   margin-bottom: 0.5rem;
 
   @media (max-width: 768px) {
-    font-size: 2.5rem;
+    font-size: 1rem;
+    margin-bottom: 0;
   }
 `;
 
@@ -189,6 +231,11 @@ const StatContent = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    gap: 0.1rem;
+  }
 `;
 
 const StatValue = styled.div`
@@ -202,7 +249,11 @@ const StatValue = styled.div`
   background-clip: text;
 
   @media (max-width: 768px) {
-    font-size: 2rem;
+    font-size: 1.15rem;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 `;
 
@@ -213,6 +264,11 @@ const StatLabel = styled.p`
   letter-spacing: 1px;
   margin: 0;
   font-weight: 600;
+
+  @media (max-width: 768px) {
+    font-size: 0.62rem;
+    letter-spacing: 0.4px;
+  }
 `;
 
 const StatDetail = styled.div`
@@ -221,6 +277,28 @@ const StatDetail = styled.div`
   margin: 0;
   opacity: 0.8;
   line-height: 1.4;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+const SummariesPanel = styled.div`
+  @media (max-width: 768px) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+`;
+
+const DashboardBody = styled(motion.div)`
+  @media (max-width: 768px) {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
 `;
 
 const RecentActivitySection = styled(motion.div)`
@@ -942,7 +1020,7 @@ export default function AdminDashboard() {
 
   return (
     <Container>
-      <motion.div initial="hidden" animate="visible" variants={staggerChildren}>
+      <DashboardBody initial="hidden" animate="visible" variants={staggerChildren}>
         <TabNavigation>
           <TabButton 
             $active={activeTab === 'summaries'} 
@@ -965,7 +1043,7 @@ export default function AdminDashboard() {
         </TabNavigation>
 
         {activeTab === 'summaries' && (
-          <>
+          <SummariesPanel>
         <Header>
           <Title>
             <FaCrown />
@@ -979,7 +1057,7 @@ export default function AdminDashboard() {
           <StatCard variants={fadeIn}>
             <StatIcon><FaDollarSign /></StatIcon>
             <StatContent>
-              <StatLabel>Total revenue today</StatLabel>
+              <StatLabel>Today</StatLabel>
               {loadingRevenueSummaries ? (
                 <StatValue><StatLoadingSpinner /></StatValue>
               ) : (
@@ -1010,6 +1088,17 @@ export default function AdminDashboard() {
             </StatContent>
           </StatCard>
           <StatCard variants={fadeIn}>
+            <StatIcon><FaCalendarAlt /></StatIcon>
+            <StatContent>
+              <StatLabel>YTD</StatLabel>
+              {loadingYtdSales ? (
+                <StatValue><StatLoadingSpinner /></StatValue>
+              ) : (
+                <StatValue>{formatCurrency(ytdSales ?? 0)}</StatValue>
+              )}
+            </StatContent>
+          </StatCard>
+          <StatCard variants={fadeIn} $wide>
             <StatIcon><FaUsers /></StatIcon>
             <StatContent>
               <StatLabel>On site now</StatLabel>
@@ -1026,7 +1115,7 @@ export default function AdminDashboard() {
             </StatContent>
           </StatCard>
         </StatsGrid>
-          </>
+          </SummariesPanel>
         )}
 
         {activeTab === 'analytics' && (
@@ -1064,7 +1153,7 @@ export default function AdminDashboard() {
             fadeIn={fadeIn}
           />
         )}
-      </motion.div>
+      </DashboardBody>
     </Container>
   );
 }
