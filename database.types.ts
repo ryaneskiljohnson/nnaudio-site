@@ -41,6 +41,30 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_push_devices: {
+        Row: {
+          created_at: string
+          device_token: string
+          id: string
+          sandbox: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          device_token: string
+          id?: string
+          sandbox?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          device_token?: string
+          id?: string
+          sandbox?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_support_ticket_state: {
         Row: {
           admin_user_id: string

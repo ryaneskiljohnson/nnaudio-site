@@ -1,13 +1,9 @@
 /**
- * @fileoverview Full-screen WKWebView loading the NNAudio admin site; handles loading state and refresh.
+ * @fileoverview Full-screen WKWebView loading the NNAudio admin site; handles loading state, refresh, and push deep links.
  * @note Uses a Safari-like User-Agent and a custom header so Vercel WAF can bypass the app without disabling Attack Challenge Mode.
  */
 import UIKit
 import WebKit
-
-/// Header sent by the iOS app so Vercel Firewall can bypass Attack Challenge for this client only. Must match the WAF rule value.
-private let nnaudioAppBypassHeaderName = "X-NNAudio-App"
-private let nnaudioAppBypassHeaderValue = "1"
 
 class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     private var webView: WKWebView!
@@ -22,7 +18,31 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         setupWebView()
         setupLoadingIndicator()
         setupRefreshButton()
-        loadWebContent()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleOpenAdminPath(_:)),
+            name: .nnaudioOpenAdminPath,
+            object: nil
+        )
+        if let pending = AdminPushNavigation.consumePendingPath() {
+            loadWebContent(path: pending)
+        } else {
+            loadWebContent()
+        }
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    /**
+     * @brief Navigates the WebView when a push alert is tapped.
+     * @param notification Posted with a `/admin…` path string
+     */
+    @objc private func handleOpenAdminPath(_ notification: Notification) {
+        guard let path = notification.object as? String else { return }
+        AdminPushNavigation.pendingPath = nil
+        loadWebContent(path: path)
     }
     
     private func setupNavigationBar() {
@@ -103,8 +123,13 @@ class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         view.addSubview(loadingIndicator)
     }
     
-    private func loadWebContent() {
-        let urlString = "https://nnaud.io/admin"
+    /**
+     * @brief Loads an admin path on nnaud.io with the WAF bypass header.
+     * @param path Relative admin path, default `/admin`
+     */
+    private func loadWebContent(path: String = "/admin") {
+        let safePath = AdminPushNavigation.sanitize(path) ?? "/admin"
+        let urlString = nnaudioSiteOrigin + safePath
         print("Initial load - Attempting to load URL: \(urlString)")
         
         guard let url = URL(string: urlString) else {

@@ -2,7 +2,8 @@
  * @fileoverview Stripe webhook: cache invalidation and branded order confirmation emails.
  * @module app/api/stripe/webhook/route
  *
- * On checkout.session.completed we send an NNAudio-branded order confirmation via SendGrid.
+ * On checkout.session.completed we send an NNAudio-branded order confirmation via SendGrid
+ * and an iOS admin push for paid orders.
  * On payment_intent.succeeded / checkout.session.completed we queue delayed review follow-ups.
  * On refund.created we send an NNAudio-branded refund confirmation email and disable review rewards for that order.
  * In Stripe Dashboard → Settings → Customer emails you can turn off Stripe’s default receipts if desired.
@@ -268,6 +269,24 @@ async function sendOrderConfirmationEmail(
       console.log("Order confirmation copy sent to admin", adminEmail);
     } else {
       console.error("Failed to send order copy to admin:", adminResult.error);
+    }
+  }
+
+  if (amountTotal > 0) {
+    try {
+      const { buildPaidOrderPush, sendAdminPush } = await import(
+        "@/lib/admin-push"
+      );
+      const payload = buildPaidOrderPush({
+        amountCents: amountTotal,
+        currency: fullSession.currency ?? "usd",
+        itemNames: lineItems.map((item) => item.name),
+      });
+      if (payload) {
+        await sendAdminPush(payload);
+      }
+    } catch (pushError) {
+      console.error("[webhook] Admin paid-order push failed:", pushError);
     }
   }
 }
@@ -553,6 +572,27 @@ async function sendPaymentIntentOrderConfirmationEmail(
       console.error(
         "[webhook] Failed to send PaymentIntent order copy to admin:",
         adminResult.error
+      );
+    }
+  }
+
+  if (paidTotalCents > 0) {
+    try {
+      const { buildPaidOrderPush, sendAdminPush } = await import(
+        "@/lib/admin-push"
+      );
+      const payload = buildPaidOrderPush({
+        amountCents: paidTotalCents,
+        currency,
+        itemNames: lineItems.map((item) => item.name),
+      });
+      if (payload) {
+        await sendAdminPush(payload);
+      }
+    } catch (pushError) {
+      console.error(
+        "[webhook] Admin PaymentIntent paid-order push failed:",
+        pushError
       );
     }
   }

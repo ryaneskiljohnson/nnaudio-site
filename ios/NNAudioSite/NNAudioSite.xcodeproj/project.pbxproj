@@ -3,13 +3,14 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		223627B330457E13B8BE0516 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F8ED319968A7461090B72A /* WebViewController.swift */; };
 		24204692060336F6D60A03B3 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99CFD4C23A2396D5E20E6C72 /* AppDelegate.swift */; };
 		390EC39A4D18E86A334FAF57 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4089C7BADEA17D56979DF7C9 /* LaunchScreen.storyboard */; };
+		7E2B0D1C8A3F4E5B6C7D8E9F /* PushConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F3A1C2E9B4D5E6A7C8D9E0F /* PushConfig.swift */; };
 		AEAAFAD232551B941AA02D04 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 514EF3CEC3D3FFD8800C3AAE /* Assets.xcassets */; };
 		CC21211338D6C334D0B0794A /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B430297ECAC8056EC6FF577 /* SceneDelegate.swift */; };
 /* End PBXBuildFile section */
@@ -19,8 +20,10 @@
 		514EF3CEC3D3FFD8800C3AAE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5B430297ECAC8056EC6FF577 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		7CA33BA114C23B56FD4DD042 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8F3A1C2E9B4D5E6A7C8D9E0F /* PushConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushConfig.swift; sourceTree = "<group>"; };
 		99CFD4C23A2396D5E20E6C72 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		B1DBDF82F61BE59ACCAD56E3 /* NNAudioSite.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NNAudioSite.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9A4B2D3F0C5E6F7A8D9E0F1A /* NNAudioSite.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NNAudioSite.entitlements; sourceTree = "<group>"; };
+		B1DBDF82F61BE59ACCAD56E3 /* NNAudioSite.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NNAudioSite.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C1F8ED319968A7461090B72A /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -47,6 +50,8 @@
 				99CFD4C23A2396D5E20E6C72 /* AppDelegate.swift */,
 				514EF3CEC3D3FFD8800C3AAE /* Assets.xcassets */,
 				7CA33BA114C23B56FD4DD042 /* Info.plist */,
+				9A4B2D3F0C5E6F7A8D9E0F1A /* NNAudioSite.entitlements */,
+				8F3A1C2E9B4D5E6A7C8D9E0F /* PushConfig.swift */,
 				4089C7BADEA17D56979DF7C9 /* LaunchScreen.storyboard */,
 				5B430297ECAC8056EC6FF577 /* SceneDelegate.swift */,
 				C1F8ED319968A7461090B72A /* WebViewController.swift */,
@@ -83,7 +88,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					6BD0BC66B14B9022D964EEBA = {
-						DevelopmentTeam = H9K2MR7HPY;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -124,6 +128,7 @@
 			files = (
 				24204692060336F6D60A03B3 /* AppDelegate.swift in Sources */,
 				CC21211338D6C334D0B0794A /* SceneDelegate.swift in Sources */,
+				7E2B0D1C8A3F4E5B6C7D8E9F /* PushConfig.swift in Sources */,
 				223627B330457E13B8BE0516 /* WebViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -198,9 +203,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = NNAudioSite/NNAudioSite.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = H9K2MR7HPY;
+				DEVELOPMENT_TEAM = QSFW8GQ9MG;
 				INFOPLIST_FILE = NNAudioSite/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -272,9 +278,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = NNAudioSite/NNAudioSite.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = H9K2MR7HPY;
+				DEVELOPMENT_TEAM = QSFW8GQ9MG;
 				INFOPLIST_FILE = NNAudioSite/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

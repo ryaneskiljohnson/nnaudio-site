@@ -3143,12 +3143,14 @@ This is an automated notification from NNAudio Support.
  * @param messageId Message id (for logging / future use)
  * @param isAdminReply When true, copy reflects a team member reply
  * @param excludeReplyingAdminUserId If set with isAdminReply, that user's auth email is removed from all recipients (including support inbox when it matches), so the replier is not copied on their own reply.
+ * @param ticketPushKind New ticket vs customer reply for the iOS admin alert
  */
 async function sendSupportTicketEmailNotificationToAdmin(
   ticketId: string,
   messageId: string,
   isAdminReply: boolean = false,
   excludeReplyingAdminUserId?: string | null,
+  ticketPushKind: "new_ticket" | "customer_reply" = "customer_reply",
 ): Promise<void> {
   try {
     const serviceSupabase = await createSupabaseServiceRole();
@@ -3163,6 +3165,27 @@ async function sendSupportTicketEmailNotificationToAdmin(
     if (ticketError || !ticket) {
       console.error("Error fetching ticket for email:", ticketError);
       return;
+    }
+
+    if (!isAdminReply) {
+      try {
+        const { buildTicketPush, sendAdminPush } = await import(
+          "@/lib/admin-push"
+        );
+        await sendAdminPush(
+          buildTicketPush({
+            kind: ticketPushKind,
+            ticketId: ticket.id,
+            ticketNumber: ticket.ticket_number,
+            subject: ticket.subject,
+          }),
+        );
+      } catch (pushError) {
+        console.error(
+          "[support ticket admin push] Failed to notify devices:",
+          pushError,
+        );
+      }
     }
 
     // Get user email and name
@@ -3918,6 +3941,8 @@ export async function createSupportTicket(data: {
             ticket.id,
             message.id,
             false, // new ticket, not an admin reply
+            null,
+            "new_ticket",
           );
         } catch (emailError) {
           console.error(

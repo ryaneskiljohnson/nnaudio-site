@@ -14,7 +14,12 @@ targets:
         INFOPLIST_FILE: NNAudioSite/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: io.nnaud
         CODE_SIGN_STYLE: Automatic
-        DEVELOPMENT_TEAM: H9K2MR7HPY
+        DEVELOPMENT_TEAM: QSFW8GQ9MG
+        CODE_SIGN_ENTITLEMENTS: NNAudioSite/NNAudioSite.entitlements
+    entitlements:
+      path: NNAudioSite/NNAudioSite.entitlements
+      properties:
+        aps-environment: development
     info:
       path: NNAudioSite/Info.plist
       properties:

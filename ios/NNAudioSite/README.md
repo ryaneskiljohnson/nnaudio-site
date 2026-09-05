@@ -69,6 +69,34 @@ If it still doesn’t work: try the header **Key** as exactly **`X-NNAudio-App`*
 1. **Firewall** → find **Attack Challenge Mode** → select **Disable** → Save.
 2. Reload the app. All traffic (including the app) will no longer be challenged.
 
+## Push notifications (paid orders and support tickets)
+
+The wrapper registers an APNs device token on launch. The site then alerts every registered device when a **paid** order completes or a support ticket is created / gets a customer reply. Tapping the alert opens `/admin/orders` or `/admin/support-tickets?ticket=…` in the WebView.
+
+Push is independent of the admin **email** toggles on `/admin/notifications`. Free orders never notify.
+
+### Apple Developer (required before pushes will deliver)
+
+1. [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list) → Identifiers → App ID `io.nnaud` → enable **Push Notifications** → Save.
+2. [Keys](https://developer.apple.com/account/resources/authkeys/list) → **+** → enable **Apple Push Notifications service (APNs)** → Continue → download the `.p8` once. Note the **Key ID**.
+3. Team ID is `QSFW8GQ9MG` (Ethinx LLC — same team that signs the app).
+
+Xcode Debug builds use the APNs **sandbox**. TestFlight / App Store builds use **production**. Rebuild the app after enabling the capability so the device token can register.
+
+### Server environment variables
+
+Set these in Vercel (Production and Preview) and in local `.env`. Values must match the Apple key and the secret compiled into `PushConfig.swift`.
+
+| Variable | Value |
+| --- | --- |
+| `APNS_KEY_ID` | Key ID from the APNs auth key |
+| `APNS_TEAM_ID` | `QSFW8GQ9MG` |
+| `APNS_KEY_P8` | Full `.p8` PEM (or the base64 body; the server wraps it) |
+| `APNS_BUNDLE_ID` | `io.nnaud` |
+| `NNAUDIO_APP_PUSH_SECRET` | Same string as `nnaudioAppPushSecret` in `NNAudioSite/PushConfig.swift` |
+
+After setting Vercel env vars, redeploy the site. After changing the Apple App ID capability, rebuild and reinstall the iOS app, accept the notification prompt, then trigger a paid test order or a ticket.
+
 ## Security Considerations
 
 - For production deployment, update the NSAppTransportSecurity settings in Info.plist to only allow your specific domain
