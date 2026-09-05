@@ -12,7 +12,7 @@ import { config } from "dotenv";
 import { resolve } from "node:path";
 import { sendAdminPush } from "../lib/admin-push";
 
-config({ path: resolve(process.cwd(), ".env.local") });
+config({ path: resolve(process.cwd(), ".env.local"), override: true });
 
 /**
  * @brief Fan-out a visible test payload so we can confirm banners and tap-to-open.
