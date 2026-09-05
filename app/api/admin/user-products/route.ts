@@ -9,6 +9,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { checkAdmin } from "@/app/actions/user-management";
 import { getAccessibleProductIds } from "@/utils/nnaudio-access/access";
+import { fetchActiveCatalogProducts } from "@/utils/crm/active-catalog-products";
 
 /**
  * GET /api/admin/user-products?user_id=...
@@ -40,42 +41,27 @@ export async function GET(request: NextRequest) {
 
     const { data: profile } = await serviceSupabase
       .from("profiles")
-      .select("customer_id")
+      .select("customer_id, email")
       .eq("id", userId)
       .single();
 
     const { productIds } = await getAccessibleProductIds(userId, {
       customer_id: profile?.customer_id ?? null,
-      email,
+      email: profile?.email ?? email,
     });
 
-    const count = productIds.size;
-    if (count === 0) {
-      return NextResponse.json({ count: 0, products: [] });
-    }
-
-    const productIdsArray = Array.from(productIds);
-    const { data: products, error: productsError } = await (serviceSupabase as any)
-      .from("products")
-      .select("id, name, slug, featured_image_url")
-      .in("id", productIdsArray)
-      .eq("status", "active");
-
-    if (productsError) {
-      console.error("[user-products] Error fetching products:", productsError);
-      return NextResponse.json(
-        { error: "Failed to fetch products" },
-        { status: 500 }
-      );
-    }
+    const products = await fetchActiveCatalogProducts(
+      serviceSupabase,
+      productIds
+    );
 
     return NextResponse.json({
-      count: products?.length ?? 0,
-      products: (products ?? []).map((p: { id: string; name: string; slug: string; featured_image_url?: string | null }) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        featured_image_url: p.featured_image_url ?? null,
+      count: products.length,
+      products: products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        featured_image_url: product.featured_image_url ?? null,
       })),
     });
   } catch (error) {

@@ -13,13 +13,20 @@ import {
 } from "@/lib/ultimate-elite-bundles";
 import { createClient } from "@/utils/supabase/server";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
+import { chunkIds, fetchAllRangedRows } from "@/utils/supabase/in-chunks";
 import { getAccessibleProductIds } from "@/utils/nnaudio-access/access";
+import { countActiveOwnedProducts } from "@/utils/crm/owned-product-count";
+import {
+  anyCustomerHasPaymentMethod,
+  stripeCustomerIdsForProfile,
+} from "@/utils/stripe/profile-customers";
 import {
   getAllUsersForCRM,
   getUsersForCRMCount,
   getAdditionalUserData,
 } from "@/utils/stripe/admin-analytics";
 import { stripe } from "@/utils/stripe/client";
+import { productNamesFromPaymentIntent } from "@/utils/stripe/payment-intent-products";
 import { fetchProfile } from "@/utils/supabase/actions";
 import { resolveProfileUserIdByEmail } from "@/utils/supabase/resolve-profile-user-id";
 import { isActiveSupportTicketStatus } from "@/utils/support/is-active-support-ticket-status";
@@ -867,7 +874,7 @@ export async function getAllUsersForCRMAdmin(
       sortDirection,
     );
 
-    return { users: result.users };
+    return { users: result.users, error: result.error };
   } catch (error) {
     console.error("Error in getAllUsersForCRMAdmin:", error);
     return {
@@ -1195,6 +1202,137 @@ export async function getAdditionalUserDataAdmin(userIds: string[]): Promise<{
         error instanceof Error
           ? error.message
           : "Failed to fetch additional data",
+    };
+  }
+}
+
+/**
+ * @brief Loads owned-product counts for CRM table rows (grants + purchases, bundles expanded).
+ * @param users User ids with optional Stripe customer id and email for access lookup.
+ * @returns Map of user id → owned product count.
+ * @note Bounded concurrency to avoid Stripe rate limits. Same source as /api/admin/user-products.
+ * @example
+ * ```ts
+ * const { counts } = await getOwnedProductCountsAdmin([{ userId, customerId, email }]);
+ * ```
+ */
+export async function getOwnedProductCountsAdmin(
+  users: Array<{
+    userId: string;
+    customerId?: string | null;
+    email?: string | null;
+  }>,
+): Promise<{ counts: Record<string, number>; error?: string }> {
+  try {
+    const supabase = await createClient();
+    if (!(await checkAdmin(supabase))) {
+      return { counts: {}, error: "Unauthorized" };
+    }
+
+    const unique = new Map<
+      string,
+      { userId: string; customerId?: string | null; email?: string | null }
+    >();
+    for (const row of users) {
+      if (row.userId) unique.set(row.userId, row);
+    }
+    const list = Array.from(unique.values());
+    const counts: Record<string, number> = {};
+    if (list.length === 0) return { counts };
+
+    const concurrency = 6;
+    let cursor = 0;
+    async function worker(): Promise<void> {
+      while (cursor < list.length) {
+        const i = cursor++;
+        const row = list[i];
+        try {
+          counts[row.userId] = await countActiveOwnedProducts(row.userId, {
+            customer_id: row.customerId ?? null,
+            email: row.email ?? null,
+          });
+        } catch (error) {
+          console.error(
+            `Error fetching owned product count for ${row.userId}:`,
+            error,
+          );
+        }
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, list.length) }, () => worker()),
+    );
+    return { counts };
+  } catch (error) {
+    console.error("Error in getOwnedProductCountsAdmin:", error);
+    return {
+      counts: {},
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch product counts",
+    };
+  }
+}
+
+/**
+ * @brief Checks payment methods for a page of CRM users in one admin call.
+ * @param users Profile ids with optional Stripe customer id and email.
+ * @returns Map of user id → whether any linked Stripe customer has a card.
+ * @example
+ * const { byUserId } = await getCrmPaymentMethodsAdmin([
+ *   { userId, customerId, email },
+ * ]);
+ */
+export async function getCrmPaymentMethodsAdmin(
+  users: Array<{
+    userId: string;
+    customerId?: string | null;
+    email?: string | null;
+  }>
+): Promise<{ byUserId: Record<string, boolean>; error?: string }> {
+  try {
+    const supabase = await createClient();
+    if (!(await checkAdmin(supabase))) {
+      return { byUserId: {}, error: "Unauthorized" };
+    }
+    const unique = new Map<
+      string,
+      { userId: string; customerId?: string | null; email?: string | null }
+    >();
+    for (const row of users) {
+      if (row.userId) unique.set(row.userId, row);
+    }
+    const list = Array.from(unique.values());
+    const byUserId: Record<string, boolean> = {};
+    const concurrency = 6;
+    let cursor = 0;
+    async function worker(): Promise<void> {
+      while (cursor < list.length) {
+        const index = cursor++;
+        const row = list[index];
+        if (!row) continue;
+        const customerIds = await stripeCustomerIdsForProfile({
+          customer_id: row.customerId,
+          email: row.email,
+        });
+        byUserId[row.userId] = await anyCustomerHasPaymentMethod(customerIds);
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, Math.max(list.length, 1)) }, () =>
+        worker()
+      )
+    );
+    return { byUserId };
+  } catch (error) {
+    console.error("Error in getCrmPaymentMethodsAdmin:", error);
+    return {
+      byUserId: {},
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to check payment methods",
     };
   }
 }
@@ -4278,31 +4416,31 @@ export async function getCustomerPurchasesAdmin(customerId: string): Promise<{
     type PiWithInvoice = import("stripe").Stripe.PaymentIntent & { invoice?: import("stripe").Stripe.Invoice };
     const purchases = paymentIntents.data.map((pi) => {
       const piWithInvoice = pi as PiWithInvoice;
-      // Determine description from metadata, invoice, or amount
-      let description = "One-time purchase";
+      const invoice = piToInvoiceMap.get(pi.id);
+      const invoiceLines = (invoice?.lines?.data ?? [])
+        .map((line) => line.description?.trim() ?? "")
+        .filter((name) => name.length > 0);
+      const productNames = productNamesFromPaymentIntent(
+        pi.metadata,
+        pi.description,
+        invoiceLines
+      );
+      let description =
+        productNames.length > 0 ? productNames.join(", ") : "One-time purchase";
 
-      // Check if this is a lifetime purchase
-      if (pi.metadata?.purchase_type === "lifetime") {
-        description = "Lifetime Access Purchase";
-      }
-      // Check if this payment intent is linked to an invoice (subscription payment)
-      else if (piToInvoiceMap.has(pi.id)) {
-        const invoice = piToInvoiceMap.get(pi.id)!;
-        if (invoice.parent?.subscription_details?.subscription) {
+      if (productNames.length === 0) {
+        if (pi.metadata?.purchase_type === "lifetime") {
+          description = "Lifetime Access Purchase";
+        } else if (
+          invoice?.parent?.subscription_details?.subscription ||
+          (piWithInvoice.invoice &&
+            typeof piWithInvoice.invoice === "object" &&
+            piWithInvoice.invoice.parent?.subscription_details?.subscription)
+        ) {
           description = "Subscription payment";
-        } else {
-          description = "One-time purchase";
+        } else if (pi.amount === 0) {
+          description = "Free purchase";
         }
-      }
-      // Check if payment intent has invoice in expanded data (invoice not in SDK types for 2026)
-      else if (
-        piWithInvoice.invoice &&
-        typeof piWithInvoice.invoice === "object" &&
-        piWithInvoice.invoice.parent?.subscription_details?.subscription
-      ) {
-        description = "Subscription payment";
-      } else if (pi.amount === 0) {
-        description = "Free purchase";
       }
 
       return {
@@ -4405,32 +4543,6 @@ export async function getUserSupportTicketCountsAdmin(
     // Use service role to bypass RLS for admin queries
     const serviceSupabase = await createSupabaseServiceRole();
 
-    const { data: tickets, error: ticketsError } = await serviceSupabase
-      .from("support_tickets")
-      .select("user_id, status")
-      .in("user_id", userIds);
-
-    if (ticketsError) {
-      // If table doesn't exist (42P01), return empty counts silently
-      // This allows the UI to work even if the migration hasn't been run yet
-      if (ticketsError.code === "42P01") {
-        const counts: Record<
-          string,
-          { open: number; closed: number; total: number }
-        > = {};
-        userIds.forEach((userId) => {
-          counts[userId] = { open: 0, closed: 0, total: 0 };
-        });
-        return { counts };
-      }
-      console.error("Error fetching support ticket counts:", ticketsError);
-      return {
-        counts: {},
-        error: ticketsError.message || "Failed to fetch support ticket counts",
-      };
-    }
-
-    // Count tickets per user by status
     const counts: Record<
       string,
       { open: number; closed: number; total: number }
@@ -4439,22 +4551,50 @@ export async function getUserSupportTicketCountsAdmin(
       counts[userId] = { open: 0, closed: 0, total: 0 };
     });
 
-    if (tickets) {
+    try {
+      const tickets: Array<{ user_id: string; status: string }> = [];
+      for (const chunk of chunkIds(userIds)) {
+        const page = await fetchAllRangedRows<{
+          user_id: string;
+          status: string;
+        }>((from, to) =>
+          serviceSupabase
+            .from("support_tickets")
+            .select("user_id, status")
+            .in("user_id", chunk)
+            .order("id", { ascending: true })
+            .range(from, to)
+        );
+        tickets.push(...page);
+      }
+
       tickets.forEach((ticket) => {
         const userId = ticket.user_id;
         if (userId && counts[userId] !== undefined) {
           counts[userId].total += 1;
-
-          // Open tickets: 'open' or 'in_progress'
           if (ticket.status === "open" || ticket.status === "in_progress") {
             counts[userId].open += 1;
-          }
-          // Closed tickets: 'resolved' or 'closed'
-          else if (ticket.status === "resolved" || ticket.status === "closed") {
+          } else if (
+            ticket.status === "resolved" ||
+            ticket.status === "closed"
+          ) {
             counts[userId].closed += 1;
           }
         }
       });
+    } catch (ticketsError) {
+      const code = (ticketsError as { code?: string }).code;
+      if (code === "42P01") {
+        return { counts };
+      }
+      console.error("Error fetching support ticket counts:", ticketsError);
+      return {
+        counts: {},
+        error:
+          ticketsError instanceof Error
+            ? ticketsError.message
+            : "Failed to fetch support ticket counts",
+      };
     }
 
     return { counts };

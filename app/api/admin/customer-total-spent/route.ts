@@ -1,77 +1,70 @@
+/**
+ * @fileoverview Admin API: net paid spend for a Stripe customer and/or CRM user.
+ * @module api/admin/customer-total-spent
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { checkAdmin } from "@/app/actions/user-management";
-import { stripe } from "@/utils/stripe/client";
+import {
+  stripeCustomerIdsForProfile,
+  sumPaidChargeCentsForCustomerIds,
+} from "@/utils/stripe/profile-customers";
 
+/**
+ * GET /api/admin/customer-total-spent?userId=...&customerId=...
+ * @param request Query `userId` and/or `customerId`.
+ * @returns 200 `{ success, totalSpent }` in dollars; 400/401/500 on error.
+ */
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
-
-    // Check admin authorization
     if (!(await checkAdmin(supabase))) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
+    const userId = searchParams.get("userId");
     const customerId = searchParams.get("customerId");
-
-    if (!customerId) {
+    if (!userId && !customerId) {
       return NextResponse.json(
-        { error: "customerId is required" },
+        { error: "userId or customerId is required" },
         { status: 400 }
       );
     }
 
-    // Fetch all charges for this customer - most accurate method
-    // Charges are the source of truth for actual money charged
-    const allCharges = await stripe.charges.list({
-      customer: customerId,
-      limit: 100,
+    let email: string | null = null;
+    let linkedCustomerId = customerId;
+    if (userId) {
+      const service = await createSupabaseServiceRole();
+      const { data: profile } = await service
+        .from("profiles")
+        .select("customer_id, email")
+        .eq("id", userId)
+        .maybeSingle();
+      linkedCustomerId = profile?.customer_id ?? linkedCustomerId;
+      email = profile?.email ?? null;
+    }
+
+    const customerIds = await stripeCustomerIdsForProfile({
+      customer_id: linkedCustomerId,
+      email,
     });
-
-    // Use a Set to track charge IDs to prevent double counting
-    // (in case there are any duplicates in the response)
-    const seenChargeIds = new Set<string>();
-    
-    // Sum all successful, paid charges that haven't been fully refunded
-    // amount_refunded is the amount that was refunded, so we subtract it
-    const totalSpentCents = allCharges.data
-      .filter((charge) => {
-        // Only count each charge once (deduplicate by ID)
-        if (seenChargeIds.has(charge.id)) {
-          return false;
-        }
-        seenChargeIds.add(charge.id);
-        
-        // Only count paid, non-refunded charges
-        return charge.paid && !charge.refunded;
-      })
-      .reduce((sum, charge) => {
-        // amount is the original charge amount, amount_refunded is what was refunded
-        // So net amount = amount - amount_refunded
-        const netAmount = charge.amount - (charge.amount_refunded || 0);
-        return sum + netAmount;
-      }, 0);
-
-    // Convert from cents to dollars
-    const totalSpent = totalSpentCents / 100;
+    const totalSpentCents = await sumPaidChargeCentsForCustomerIds(customerIds);
 
     return NextResponse.json({
       success: true,
-      totalSpent,
+      totalSpent: totalSpentCents / 100,
     });
   } catch (error) {
-    console.error('Error calculating total spent:', error);
+    console.error("Error calculating total spent:", error);
     return NextResponse.json(
-      { 
-        error: 'Failed to calculate total spent',
-        details: error instanceof Error ? error.message : 'Unknown error'
+      {
+        error: "Failed to calculate total spent",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
   }
 }
-

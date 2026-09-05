@@ -1,11 +1,41 @@
 "use server";
 
+import { unstable_cache } from "next/cache";
 import { requireAdminAction } from "@/utils/auth/action-guards";
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 import { getNormalizedEmailsWithUltimateBundleProductGrants } from "@/lib/ultimate-elite-bundles";
 import { SubscriptionType } from "@/utils/supabase/types";
 import Stripe from "stripe";
 import { stripe } from "@/utils/stripe/client";
+import {
+  emailFromStripeCharge,
+  isPaidStripeCharge,
+  stripeCustomerIdFromCharge,
+} from "@/utils/stripe/paid-charge";
+import { attributeSpendToUsers } from "@/utils/crm/attribute-spend";
+import { countActiveOwnedProducts } from "@/utils/crm/owned-product-count";
+import {
+  emailIlikeOrClause,
+  sanitizeCrmSearchTerm,
+} from "@/utils/crm/escape-search";
+import {
+  isDerivedCrmSortField,
+  sortCrmProfileKeys,
+  type CrmProfileSortExtras,
+  type CrmProfileSortKey,
+} from "@/utils/crm/sort-profile-keys";
+import {
+  canPageFromSpendersOnly,
+  customerIdsRankedBySpend,
+  idsRankedByText,
+  sliceRankedPage,
+} from "@/utils/crm/total-spent-page";
+import { chunkIds, fetchAllRangedRows } from "@/utils/supabase/in-chunks";
+
+/** Cache window for the paying-customer Stripe spend index. */
+const PAYING_CUSTOMER_CACHE_SECONDS = 120;
+/** Safety cap: 500 pages × 100 charges (walk stops earlier when Stripe is done). */
+const MAX_PAYING_CHARGE_PAGES = 500;
 
 export interface AdminDashboardStats {
   totalUsers: number;
@@ -48,6 +78,8 @@ export interface UserData {
   totalSpent: number;
   /** Number of paid orders (Stripe charges). -1 while loading. */
   orderCount?: number;
+  /** Catalog products the user owns. -1 while loading. */
+  productCount?: number;
   hasNfr?: boolean;
   /** True when user_management NFR applies and they have a grant for a product in an ultimate bundle. */
   hasNfrEliteBundle?: boolean;
@@ -1208,6 +1240,218 @@ export async function getRecentActivity(
 }
 
 /**
+ * @brief Stripe spend index used for paying-customer filter, spend sort, and row seeds.
+ */
+type PayingSpendIndex = {
+  customerIds: string[];
+  userIds: string[];
+  spentCentsByCustomerId: Record<string, number>;
+  orderCountByCustomerId: Record<string, number>;
+  spentCentsByUserId: Record<string, number>;
+  orderCountByUserId: Record<string, number>;
+  emailByCustomerId: Record<string, string>;
+};
+
+/**
+ * @brief Fresh empty spend index (never share a mutable singleton).
+ * @returns Empty maps and id lists.
+ */
+function emptySpendIndex(): PayingSpendIndex {
+  return {
+    customerIds: [],
+    userIds: [],
+    spentCentsByCustomerId: {},
+    orderCountByCustomerId: {},
+    spentCentsByUserId: {},
+    orderCountByUserId: {},
+    emailByCustomerId: {},
+  };
+}
+
+/**
+ * @brief Walks Stripe charges and sums remaining paid amount and paid-order count per customer.
+ * @returns Customer ids, spend in cents, and paid charge counts.
+ * @note Same paid-charge rule as CRM `totalSpent`. Walks until Stripe is exhausted or the safety cap.
+ */
+async function fetchPayingStripeSpendIndex(): Promise<PayingSpendIndex> {
+  const spent = new Map<string, number>();
+  const orders = new Map<string, number>();
+  const emails = new Map<string, string>();
+  let startingAfter: string | undefined;
+  for (let page = 0; page < MAX_PAYING_CHARGE_PAGES; page++) {
+    const list = await stripe.charges.list({
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    for (const charge of list.data) {
+      if (!isPaidStripeCharge(charge)) continue;
+      const customerId = stripeCustomerIdFromCharge(charge);
+      if (!customerId) continue;
+      const net = charge.amount - (charge.amount_refunded ?? 0);
+      spent.set(customerId, (spent.get(customerId) ?? 0) + net);
+      orders.set(customerId, (orders.get(customerId) ?? 0) + 1);
+      const email = emailFromStripeCharge(charge);
+      if (email && !emails.has(customerId)) {
+        emails.set(customerId, email);
+      }
+    }
+    if (!list.has_more || list.data.length === 0) break;
+    startingAfter = list.data[list.data.length - 1]?.id;
+    if (!startingAfter) break;
+  }
+
+  const customerIds = Array.from(spent.keys());
+  await fillMissingStripeCustomerEmails(customerIds, emails);
+  const attributed = await attributeSpendIndexToProfiles(
+    customerIds,
+    Object.fromEntries(spent),
+    Object.fromEntries(orders),
+    Object.fromEntries(emails)
+  );
+
+  return {
+    customerIds,
+    userIds: Object.keys(attributed.spentCentsByUserId),
+    spentCentsByCustomerId: Object.fromEntries(spent),
+    orderCountByCustomerId: Object.fromEntries(orders),
+    spentCentsByUserId: attributed.spentCentsByUserId,
+    orderCountByUserId: attributed.orderCountByUserId,
+    emailByCustomerId: Object.fromEntries(emails),
+  };
+}
+
+/**
+ * @brief Retrieves Stripe customer emails when charges did not include one.
+ * @param customerIds Paying Stripe customer ids.
+ * @param emails Emails already collected from charges (mutated).
+ */
+async function fillMissingStripeCustomerEmails(
+  customerIds: string[],
+  emails: Map<string, string>
+): Promise<void> {
+  const missing = customerIds.filter((id) => !emails.has(id));
+  for (const chunk of chunkIds(missing, 8)) {
+    await Promise.all(
+      chunk.map(async (customerId) => {
+        try {
+          const customer = await stripe.customers.retrieve(customerId);
+          if (customer.deleted || !("email" in customer) || !customer.email) {
+            return;
+          }
+          const email = customer.email.toLowerCase().trim();
+          if (email) emails.set(customerId, email);
+        } catch (error) {
+          console.error(
+            "[CRM] Error loading Stripe customer email:",
+            customerId,
+            error
+          );
+        }
+      })
+    );
+  }
+}
+
+/**
+ * @brief Loads profiles for paying customers (by customer_id, then email).
+ * @param customerIds Paying Stripe customer ids.
+ * @param spentCentsByCustomerId Net paid cents keyed by customer.
+ * @param orderCountByCustomerId Paid order counts keyed by customer.
+ * @param emailByCustomerId Lowercased emails keyed by customer.
+ * @returns Per-user spend and order counts.
+ */
+async function attributeSpendIndexToProfiles(
+  customerIds: string[],
+  spentCentsByCustomerId: Record<string, number>,
+  orderCountByCustomerId: Record<string, number>,
+  emailByCustomerId: Record<string, string>
+): Promise<{
+  spentCentsByUserId: Record<string, number>;
+  orderCountByUserId: Record<string, number>;
+}> {
+  const supabase = await createSupabaseServiceRole();
+  const profiles: Array<{
+    id: string;
+    customer_id: string | null;
+    email: string | null;
+    created_at: string | null;
+  }> = [];
+  const seen = new Set<string>();
+
+  const pushRows = (
+    rows: Array<{
+      id: string;
+      customer_id: string | null;
+      email: string | null;
+      created_at?: string | null;
+    }>
+  ) => {
+    for (const row of rows) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      profiles.push({
+        id: row.id,
+        customer_id: row.customer_id,
+        email: row.email,
+        created_at: row.created_at ?? null,
+      });
+    }
+  };
+
+  for (const chunk of chunkIds(customerIds)) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, customer_id, email, created_at")
+      .in("customer_id", chunk);
+    if (error) {
+      console.error("[CRM] Error matching spend by customer_id:", error);
+      throw error;
+    }
+    pushRows(data ?? []);
+  }
+
+  const emails = [
+    ...new Set(
+      customerIds
+        .map((id) => emailByCustomerId[id])
+        .filter((email): email is string => Boolean(email))
+    ),
+  ];
+  for (const chunk of chunkIds(emails)) {
+    const orClause = emailIlikeOrClause(chunk);
+    if (!orClause) continue;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, customer_id, email, created_at")
+      .or(orClause);
+    if (error) {
+      console.error("[CRM] Error matching spend by email:", error);
+      throw error;
+    }
+    pushRows(data ?? []);
+  }
+
+  return attributeSpendToUsers(
+    spentCentsByCustomerId,
+    orderCountByCustomerId,
+    emailByCustomerId,
+    profiles
+  );
+}
+
+/**
+ * @brief Cached Stripe spend index for CRM paying filter and total-spent sort.
+ * @returns Paying customer ids and spend cents.
+ */
+async function getPayingStripeSpendIndex(): Promise<PayingSpendIndex> {
+  return unstable_cache(
+    fetchPayingStripeSpendIndex,
+    ["crm-paying-stripe-spend-index-v3"],
+    { revalidate: PAYING_CUSTOMER_CACHE_SECONDS }
+  )();
+}
+
+/**
  * Get total count of users for CRM (separate from pagination)
  */
 export async function getUsersForCRMCount(
@@ -1235,6 +1479,13 @@ export async function getUsersForCRMCount(
       } else {
         return 0;
       }
+    } else if (subscriptionFilter === "paying") {
+      const keys = await fetchAllFilteredProfileKeys(
+        supabase,
+        searchTerm,
+        "paying"
+      );
+      return keys?.length ?? 0;
     } else if (subscriptionFilter && subscriptionFilter !== "all") {
       const validSubscriptionTypes: SubscriptionType[] = [
         "none",
@@ -1252,57 +1503,13 @@ export async function getUsersForCRMCount(
       }
     }
 
-    // Apply search filter if provided
     if (searchTerm && searchTerm.trim().length > 0) {
-      const searchLower = searchTerm.trim();
-      const searchMatchingIds: string[] = [];
-
-      // Search profiles table
-      const { data: nameIdMatches } = await supabase
-        .from("profiles")
-        .select("id")
-        .or(
-          `first_name.ilike.%${searchLower}%,last_name.ilike.%${searchLower}%,id.ilike.%${searchLower}%`
-        );
-
-      if (nameIdMatches) {
-        searchMatchingIds.push(...nameIdMatches.map((p) => p.id));
-      }
-
-      // Search auth.users for email (limited to 5k for performance)
-      try {
-        const {
-          data: { users },
-          error: emailError,
-        } = await supabase.auth.admin.listUsers({
-          page: 1,
-          perPage: 5000,
-        });
-
-        if (!emailError && users) {
-          const searchLowerEmail = searchLower.toLowerCase();
-          const emailMatches = users
-            .filter((user) =>
-              user.email?.toLowerCase().includes(searchLowerEmail)
-            )
-            .map((user) => user.id);
-          searchMatchingIds.push(...emailMatches);
-        }
-      } catch (emailSearchError) {
-        // Continue with name/id matches only
-      }
-
-      const validIds = [...new Set(searchMatchingIds)].filter((id) =>
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          id
-        )
+      const keys = await fetchAllFilteredProfileKeys(
+        supabase,
+        searchTerm,
+        subscriptionFilter
       );
-
-      if (validIds.length > 0) {
-        countQuery = countQuery.in("id", validIds);
-      } else {
-        return 0;
-      }
+      return keys?.length ?? 0;
     }
 
     const { count, error } = await countQuery;
@@ -1320,6 +1527,909 @@ export async function getUsersForCRMCount(
 }
 
 /**
+ * @brief Applies CRM search + subscription/paying/admin filters to a profiles query.
+ * @param query Supabase profiles query builder.
+ * @param supabase Service-role client (for admin id lookup).
+ * @param searchTerm Optional name/email search.
+ * @param subscriptionFilter CRM filter value (`all`, `paying`, `admin`, plan types).
+ * @returns Filtered query, or null when the filter matches nobody.
+ */
+async function applyCrmProfileFilters(
+  query: any,
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  searchTerm?: string,
+  subscriptionFilter?: string
+): Promise<any | null> {
+  let next = query;
+
+  if (subscriptionFilter === "admin") {
+    const { data: admins, error: adminsError } = await supabase
+      .from("admins")
+      .select("user");
+    if (adminsError || !admins?.length) return null;
+    const adminIds = admins.map((admin: { user: string }) => admin.user);
+    if (adminIds.length === 0) return null;
+    next = next.in("id", adminIds);
+  } else if (subscriptionFilter === "paying") {
+    // Paying customers are loaded in customer-id chunks — do not `.in()` the full list.
+    return null;
+  } else if (subscriptionFilter && subscriptionFilter !== "all") {
+    const validSubscriptionTypes: SubscriptionType[] = [
+      "none",
+      "monthly",
+      "annual",
+      "lifetime",
+    ];
+    if (
+      validSubscriptionTypes.includes(subscriptionFilter as SubscriptionType)
+    ) {
+      next = next.eq(
+        "subscription",
+        subscriptionFilter as SubscriptionType
+      );
+    }
+  }
+
+  return applyCrmSearchFilter(next, searchTerm);
+}
+
+const CRM_PROFILE_KEY_COLUMNS =
+  "id, customer_id, email, created_at, updated_at, first_name, last_name, subscription";
+
+/**
+ * @brief Applies search to a profiles query (name and email).
+ * @param query Profiles query builder.
+ * @param searchTerm Optional search string.
+ * @returns Query with `or` search applied when needed.
+ */
+function applyCrmSearchFilter(query: any, searchTerm?: string): any {
+  const sanitized = sanitizeCrmSearchTerm(searchTerm);
+  if (sanitized === null) {
+    return query;
+  }
+  if (sanitized === "") {
+    return query.eq("id", "00000000-0000-0000-0000-000000000000");
+  }
+  const orConditions = [
+    `first_name.ilike.%${sanitized}%`,
+    `last_name.ilike.%${sanitized}%`,
+    `email.ilike.%${sanitized}%`,
+  ];
+  const parts = sanitized.split(/\s+/);
+  if (parts.length > 1) {
+    for (const part of parts) {
+      if (part.length > 0) {
+        orConditions.push(`first_name.ilike.%${part}%`);
+        orConditions.push(`last_name.ilike.%${part}%`);
+      }
+    }
+  }
+  return query.or(orConditions.join(","));
+}
+
+/**
+ * @brief Loads every matching CRM profile key for filter, count, and derived sorts.
+ * @param supabase Service-role client.
+ * @param searchTerm Optional CRM search.
+ * @param subscriptionFilter CRM filter value.
+ * @returns All matching keys, or null when the filter matches nobody.
+ */
+async function fetchAllFilteredProfileKeys(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  searchTerm?: string,
+  subscriptionFilter?: string
+): Promise<CrmProfileSortKey[] | null> {
+  if (subscriptionFilter === "paying") {
+    const { userIds } = await getPayingStripeSpendIndex();
+    if (userIds.length === 0) return null;
+    const rows: CrmProfileSortKey[] = [];
+    for (const chunk of chunkIds(userIds)) {
+      let query = supabase
+        .from("profiles")
+        .select(CRM_PROFILE_KEY_COLUMNS)
+        .in("id", chunk)
+        .order("id", { ascending: true });
+      query = applyCrmSearchFilter(query, searchTerm);
+      const { data, error } = await query;
+      if (error) {
+        console.error("[CRM] Error fetching paying profile keys:", error);
+        throw error;
+      }
+      if (data?.length) {
+        rows.push(...(data as CrmProfileSortKey[]));
+      }
+    }
+    return rows.length > 0 ? rows : null;
+  }
+
+  const pageSize = 1000;
+  const rows: CrmProfileSortKey[] = [];
+  for (let from = 0; ; from += pageSize) {
+    const base = supabase.from("profiles").select(CRM_PROFILE_KEY_COLUMNS);
+    const filtered = await applyCrmProfileFilters(
+      base,
+      supabase,
+      searchTerm,
+      subscriptionFilter
+    );
+    if (!filtered) return rows.length > 0 ? rows : null;
+    const { data, error } = await filtered
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) {
+      console.error("[CRM] Error fetching profile keys:", error);
+      throw error;
+    }
+    if (!data?.length) break;
+    rows.push(...(data as CrmProfileSortKey[]));
+    if (data.length < pageSize) break;
+  }
+  return rows.length > 0 ? rows : null;
+}
+
+/**
+ * @brief Loads full profile rows for a page of ids, preserving the given order.
+ * @param supabase Service-role client.
+ * @param pageIds Ordered profile ids.
+ * @returns Profiles in `pageIds` order.
+ */
+async function fetchProfilesByOrderedIds(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  pageIds: string[]
+): Promise<any[]> {
+  if (pageIds.length === 0) return [];
+  const byId = new Map<string, any>();
+  for (const chunk of chunkIds(pageIds)) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .in("id", chunk);
+    if (error) {
+      console.error("Error fetching profiles for CRM page:", error);
+      throw error;
+    }
+    for (const row of data ?? []) {
+      byId.set((row as { id: string }).id, row);
+    }
+  }
+  const order = new Map(pageIds.map((id, index) => [id, index]));
+  return pageIds
+    .map((id) => byId.get(id))
+    .filter(Boolean)
+    .sort(
+      (a: { id: string }, b: { id: string }) =>
+        (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0)
+    );
+}
+
+/**
+ * @brief Loads profile sort keys for user ids, preserving spend order.
+ * @param supabase Service-role client.
+ * @param userIdsInOrder Profile ids already sorted by spend.
+ * @param searchTerm Optional CRM search.
+ * @param subscriptionFilter CRM filter (`paying` is treated as all spenders).
+ * @param stopAfter Stop after this many matching keys.
+ * @returns Matching keys in the same user-id order.
+ */
+async function fetchProfileKeysByUserIdsInOrder(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  userIdsInOrder: string[],
+  searchTerm?: string,
+  subscriptionFilter?: string,
+  stopAfter?: number
+): Promise<CrmProfileSortKey[]> {
+  const filter =
+    subscriptionFilter === "paying" ? "all" : subscriptionFilter;
+  const ordered: CrmProfileSortKey[] = [];
+  for (const chunk of chunkIds(userIdsInOrder)) {
+    let query = supabase
+      .from("profiles")
+      .select(CRM_PROFILE_KEY_COLUMNS)
+      .in("id", chunk)
+      .order("id", { ascending: true });
+    const filtered = await applyCrmProfileFilters(
+      query,
+      supabase,
+      searchTerm,
+      filter
+    );
+    if (!filtered) continue;
+    const { data, error } = await filtered;
+    if (error) {
+      console.error("[CRM] Error fetching spend-sort users:", error);
+      throw error;
+    }
+    const byId = new Map<string, CrmProfileSortKey>();
+    for (const row of (data ?? []) as CrmProfileSortKey[]) {
+      byId.set(row.id, row);
+    }
+    for (const userId of chunk) {
+      const row = byId.get(userId);
+      if (row) ordered.push(row);
+      if (stopAfter != null && ordered.length >= stopAfter) {
+        return ordered.slice(0, stopAfter);
+      }
+    }
+  }
+  return ordered;
+}
+
+/**
+ * @brief Loads profile sort keys for customer ids, preserving spend order.
+ * @param supabase Service-role client.
+ * @param customerIdsInOrder Customer ids already sorted by spend.
+ * @param searchTerm Optional CRM search.
+ * @param subscriptionFilter CRM filter (`paying` is treated as all spenders).
+ * @param stopAfter Stop after this many matching keys (used for desc spend pages).
+ * @returns Matching keys in the same customer-id order.
+ */
+async function fetchProfileKeysByCustomerIdsInOrder(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  customerIdsInOrder: string[],
+  searchTerm?: string,
+  subscriptionFilter?: string,
+  stopAfter?: number
+): Promise<CrmProfileSortKey[]> {
+  const filter =
+    subscriptionFilter === "paying" ? "all" : subscriptionFilter;
+  const ordered: CrmProfileSortKey[] = [];
+  for (const chunk of chunkIds(customerIdsInOrder)) {
+    let query = supabase
+      .from("profiles")
+      .select(CRM_PROFILE_KEY_COLUMNS)
+      .in("customer_id", chunk)
+      .order("id", { ascending: true });
+    const filtered = await applyCrmProfileFilters(
+      query,
+      supabase,
+      searchTerm,
+      filter
+    );
+    if (!filtered) continue;
+    const { data, error } = await filtered;
+    if (error) {
+      console.error("[CRM] Error fetching spend-sort profiles:", error);
+      throw error;
+    }
+    const byCustomer = new Map<string, CrmProfileSortKey[]>();
+    for (const row of (data ?? []) as CrmProfileSortKey[]) {
+      if (!row.customer_id) continue;
+      const list = byCustomer.get(row.customer_id) ?? [];
+      list.push(row);
+      byCustomer.set(row.customer_id, list);
+    }
+    for (const customerId of chunk) {
+      const rows = byCustomer.get(customerId);
+      if (rows?.length) ordered.push(...rows);
+      if (stopAfter != null && ordered.length >= stopAfter) {
+        return ordered.slice(0, stopAfter);
+      }
+    }
+  }
+  return ordered;
+}
+
+/**
+ * @brief Pages CRM keys by Stripe spend without loading every $0 profile first.
+ * @param supabase Service-role client.
+ * @param searchTerm Optional CRM search.
+ * @param subscriptionFilter CRM filter value.
+ * @param sortDirection Ascending or descending.
+ * @param page 1-based page.
+ * @param limit Page size.
+ * @param spendIndex Cached spend totals.
+ * @returns The keys for this page, or null when nobody matches.
+ */
+async function fetchTotalSpentPageKeys(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  searchTerm: string | undefined,
+  subscriptionFilter: string | undefined,
+  sortDirection: "asc" | "desc" | undefined,
+  page: number,
+  limit: number,
+  spendIndex: PayingSpendIndex
+): Promise<CrmProfileSortKey[] | null> {
+  const direction = sortDirection === "asc" ? "asc" : "desc";
+  const payingOnly = subscriptionFilter === "paying";
+  const rankedIds =
+    Object.keys(spendIndex.spentCentsByUserId).length > 0
+      ? customerIdsRankedBySpend(spendIndex.spentCentsByUserId, direction)
+      : customerIdsRankedBySpend(spendIndex.spentCentsByCustomerId, direction);
+  const prefetchByUser = Object.keys(spendIndex.spentCentsByUserId).length > 0;
+
+  const needed = Math.max(0, (page - 1) * limit) + limit;
+  const prefetchSpenders = payingOnly || direction === "desc";
+  const spenderKeys = prefetchSpenders
+    ? prefetchByUser
+      ? await fetchProfileKeysByUserIdsInOrder(
+          supabase,
+          rankedIds,
+          searchTerm,
+          subscriptionFilter,
+          needed
+        )
+      : await fetchProfileKeysByCustomerIdsInOrder(
+          supabase,
+          rankedIds,
+          searchTerm,
+          subscriptionFilter,
+          needed
+        )
+    : [];
+
+  if (
+    prefetchSpenders &&
+    canPageFromSpendersOnly(
+      spenderKeys.length,
+      page,
+      limit,
+      payingOnly,
+      direction
+    )
+  ) {
+    const pageKeys = sliceRankedPage(spenderKeys, page, limit);
+    return pageKeys.length > 0 ? pageKeys : null;
+  }
+
+  // Asc (all users) or a desc page that runs past the last spender: $0 rows
+  // must be ranked too. Re-sort the full filtered set — do not append zeros
+  // onto a truncated spender list or mid-tier spenders disappear.
+  const allKeys = await fetchAllFilteredProfileKeys(
+    supabase,
+    searchTerm,
+    subscriptionFilter
+  );
+  if (!allKeys?.length) {
+    const pageKeys = sliceRankedPage(spenderKeys, page, limit);
+    return pageKeys.length > 0 ? pageKeys : null;
+  }
+  sortCrmProfileKeys(allKeys, "totalSpent", direction, {
+    spentCentsByUserId: spendIndex.spentCentsByUserId,
+    spentCentsByCustomerId: spendIndex.spentCentsByCustomerId,
+  });
+  const pageKeys = sliceRankedPage(allKeys, page, limit);
+  return pageKeys.length > 0 ? pageKeys : null;
+}
+
+/**
+ * @brief Newest matching profiles by `created_at` (used with last-active prefetch).
+ * @param supabase Service-role client.
+ * @param searchTerm Optional CRM search.
+ * @param subscriptionFilter CRM filter (`paying` is handled by the caller).
+ * @param limit Max rows to return.
+ * @returns Newest matching keys.
+ */
+async function fetchNewestProfileKeys(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  searchTerm: string | undefined,
+  subscriptionFilter: string | undefined,
+  limit: number
+): Promise<CrmProfileSortKey[]> {
+  if (limit <= 0 || subscriptionFilter === "paying") return [];
+  const base = supabase.from("profiles").select(CRM_PROFILE_KEY_COLUMNS);
+  const filtered = await applyCrmProfileFilters(
+    base,
+    supabase,
+    searchTerm,
+    subscriptionFilter
+  );
+  if (!filtered) return [];
+  const { data, error } = await filtered
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    console.error("[CRM] Error fetching newest profiles for last-active:", error);
+    throw error;
+  }
+  return (data ?? []) as CrmProfileSortKey[];
+}
+
+/**
+ * @brief Distinct product-grant user ids (candidates for Products sort).
+ * @param supabase Service-role client.
+ * @returns User ids that have at least one grant.
+ */
+async function productGrantUserIds(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>
+): Promise<string[]> {
+  const ids = new Set<string>();
+  const rows = await fetchAllRangedRows<{ user_id?: string | null }>(
+    (from, to) =>
+      supabase
+        .from("product_grants")
+        .select("user_id")
+        .order("id", { ascending: true })
+        .range(from, to)
+  );
+  for (const row of rows) {
+    if (row.user_id) ids.add(row.user_id);
+  }
+  return Array.from(ids);
+}
+
+/**
+ * @brief Latest session timestamp for every user_sessions row.
+ * @param supabase Service-role client.
+ * @returns Map of user id → ISO timestamp.
+ */
+async function lastActiveByAllSessions(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>
+): Promise<Record<string, string>> {
+  const lastActive: Record<string, string> = {};
+  const sessions = await fetchAllRangedRows<{
+    user_id: string;
+    refreshed_at?: string | null;
+    updated_at?: string | null;
+    created_at?: string | null;
+  }>((from, to) =>
+    supabase
+      .from("user_sessions")
+      .select("user_id, refreshed_at, updated_at, created_at")
+      .order("id", { ascending: true })
+      .range(from, to)
+  );
+  for (const session of sessions) {
+    const stamp =
+      session.refreshed_at || session.updated_at || session.created_at;
+    if (!stamp) continue;
+    const existing = lastActive[session.user_id];
+    if (!existing || stamp > existing) {
+      lastActive[session.user_id] = stamp;
+    }
+  }
+  return lastActive;
+}
+
+/**
+ * @brief Ticket totals for every support ticket (unscoped).
+ * @param supabase Service-role client.
+ * @returns Map of user id → ticket count.
+ */
+async function ticketTotalsAllUsers(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>
+): Promise<Record<string, number>> {
+  const totals: Record<string, number> = {};
+  try {
+    const tickets = await fetchAllRangedRows<{ user_id?: string }>(
+      (from, to) =>
+        supabase
+          .from("support_tickets")
+          .select("user_id")
+          .order("id", { ascending: true })
+          .range(from, to)
+    );
+    for (const row of tickets) {
+      const userId = row.user_id;
+      if (!userId) continue;
+      totals[userId] = (totals[userId] ?? 0) + 1;
+    }
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "42P01") return totals;
+    console.error("[CRM] Error fetching all tickets for sort:", error);
+    throw error;
+  }
+  return totals;
+}
+
+/**
+ * @brief Pages last-active / tickets / products without scanning every $0 profile.
+ * @param supabase Service-role client.
+ * @param searchTerm Optional CRM search.
+ * @param subscriptionFilter CRM filter value.
+ * @param sortField `lastActive`, `supportTickets`, or `productCount`.
+ * @param sortDirection Ascending or descending.
+ * @param page 1-based page.
+ * @param limit Page size.
+ * @param spendIndex Cached spend totals (product-count candidates).
+ * @returns Page keys plus extras to seed the table, or null when nobody matches.
+ */
+async function fetchDerivedMetricPageKeys(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  searchTerm: string | undefined,
+  subscriptionFilter: string | undefined,
+  sortField: "lastActive" | "supportTickets" | "productCount",
+  sortDirection: "asc" | "desc" | undefined,
+  page: number,
+  limit: number,
+  spendIndex: PayingSpendIndex
+): Promise<{
+  pageKeys: CrmProfileSortKey[];
+  extras: CrmProfileSortExtras;
+} | null> {
+  const direction = sortDirection === "asc" ? "asc" : "desc";
+  const payingOnly = subscriptionFilter === "paying";
+  const needed = Math.max(0, (page - 1) * limit) + limit;
+
+  const pageFromKeys = async (
+    keys: CrmProfileSortKey[],
+    extras: CrmProfileSortExtras
+  ): Promise<{
+    pageKeys: CrmProfileSortKey[];
+    extras: CrmProfileSortExtras;
+  } | null> => {
+    sortCrmProfileKeys(keys, sortField, direction, extras);
+    const pageKeys = sliceRankedPage(keys, page, limit);
+    return pageKeys.length > 0 ? { pageKeys, extras } : null;
+  };
+
+  if (payingOnly || direction === "asc") {
+    const keys = await fetchAllFilteredProfileKeys(
+      supabase,
+      searchTerm,
+      subscriptionFilter
+    );
+    if (!keys?.length) return null;
+    const { extras } = await buildCrmSortExtras(
+      supabase,
+      keys,
+      sortField,
+      spendIndex
+    );
+    return pageFromKeys(keys, extras);
+  }
+
+  if (sortField === "lastActive") {
+    const lastActiveByUserId = await lastActiveByAllSessions(supabase);
+    const sessionKeys = await fetchProfileKeysByUserIdsInOrder(
+      supabase,
+      idsRankedByText(lastActiveByUserId, "desc"),
+      searchTerm,
+      subscriptionFilter,
+      needed
+    );
+    const newestKeys = await fetchNewestProfileKeys(
+      supabase,
+      searchTerm,
+      subscriptionFilter,
+      needed
+    );
+    const byId = new Map<string, CrmProfileSortKey>();
+    for (const key of [...sessionKeys, ...newestKeys]) {
+      byId.set(key.id, key);
+    }
+    const union = Array.from(byId.values());
+    const extras: CrmProfileSortExtras = { lastActiveByUserId };
+    if (
+      canPageFromSpendersOnly(union.length, page, limit, false, "desc")
+    ) {
+      return pageFromKeys(union, extras);
+    }
+    const allKeys = await fetchAllFilteredProfileKeys(
+      supabase,
+      searchTerm,
+      subscriptionFilter
+    );
+    if (!allKeys?.length) return pageFromKeys(union, extras);
+    extras.lastActiveByUserId = {
+      ...lastActiveByUserId,
+      ...(await lastActiveByUserIds(
+        supabase,
+        allKeys.map((key) => key.id)
+      )),
+    };
+    return pageFromKeys(allKeys, extras);
+  }
+
+  if (sortField === "supportTickets") {
+    const ticketTotalByUserId = await ticketTotalsAllUsers(supabase);
+    const rankedIds = customerIdsRankedBySpend(
+      ticketTotalByUserId,
+      "desc"
+    ).filter((userId) => (ticketTotalByUserId[userId] ?? 0) > 0);
+    const ticketKeys = await fetchProfileKeysByUserIdsInOrder(
+      supabase,
+      rankedIds,
+      searchTerm,
+      subscriptionFilter,
+      needed
+    );
+    const extras: CrmProfileSortExtras = { ticketTotalByUserId };
+    if (
+      canPageFromSpendersOnly(ticketKeys.length, page, limit, false, "desc")
+    ) {
+      return pageFromKeys(ticketKeys, extras);
+    }
+    const allKeys = await fetchAllFilteredProfileKeys(
+      supabase,
+      searchTerm,
+      subscriptionFilter
+    );
+    if (!allKeys?.length) return pageFromKeys(ticketKeys, extras);
+    extras.ticketTotalByUserId = {
+      ...ticketTotalByUserId,
+      ...(await ticketTotalsByUserIds(
+        supabase,
+        allKeys.map((key) => key.id)
+      )),
+    };
+    return pageFromKeys(allKeys, extras);
+  }
+
+  const candidateIds = new Set<string>(spendIndex.userIds);
+  for (const userId of await productGrantUserIds(supabase)) {
+    candidateIds.add(userId);
+  }
+  const candidateKeys = await fetchProfileKeysByUserIdsInOrder(
+    supabase,
+    Array.from(candidateIds),
+    searchTerm,
+    subscriptionFilter
+  );
+  const productCountByUserId =
+    await accessActiveProductCountsByUserId(candidateKeys);
+  const withProducts = candidateKeys.filter(
+    (key) => (productCountByUserId[key.id] ?? 0) > 0
+  );
+  const extras: CrmProfileSortExtras = { productCountByUserId };
+  if (
+    canPageFromSpendersOnly(withProducts.length, page, limit, false, "desc")
+  ) {
+    return pageFromKeys(withProducts, extras);
+  }
+  const allKeys = await fetchAllFilteredProfileKeys(
+    supabase,
+    searchTerm,
+    subscriptionFilter
+  );
+  if (!allKeys?.length) return pageFromKeys(withProducts, extras);
+  const remaining = allKeys.filter((key) => !productCountByUserId[key.id]);
+  Object.assign(
+    productCountByUserId,
+    await accessActiveProductCountsByUserId(remaining)
+  );
+  extras.productCountByUserId = productCountByUserId;
+  return pageFromKeys(allKeys, extras);
+}
+
+/**
+ * @brief Latest session timestamp per user for a set of profile ids.
+ * @param supabase Service-role client.
+ * @param userIds Profile ids.
+ * @returns Map of user id → ISO timestamp.
+ */
+async function lastActiveByUserIds(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  userIds: string[]
+): Promise<Record<string, string>> {
+  const lastActive: Record<string, string> = {};
+  for (const chunk of chunkIds(userIds)) {
+    try {
+      const sessions = await fetchAllRangedRows<{
+        user_id: string;
+        refreshed_at?: string | null;
+        updated_at?: string | null;
+        created_at?: string | null;
+      }>((from, to) =>
+        supabase
+          .from("user_sessions")
+          .select("user_id, refreshed_at, updated_at, created_at")
+          .in("user_id", chunk)
+          .order("id", { ascending: true })
+          .range(from, to)
+      );
+      for (const session of sessions) {
+        const stamp =
+          session.refreshed_at || session.updated_at || session.created_at;
+        if (!stamp) continue;
+        const existing = lastActive[session.user_id];
+        if (!existing || stamp > existing) {
+          lastActive[session.user_id] = stamp;
+        }
+      }
+    } catch (error) {
+      console.error("[CRM] Error fetching sessions for sort:", error);
+      throw error;
+    }
+  }
+  return lastActive;
+}
+
+/**
+ * @brief Ticket totals per user for a set of profile ids.
+ * @param supabase Service-role client.
+ * @param userIds Profile ids.
+ * @returns Map of user id → ticket count.
+ */
+async function ticketTotalsByUserIds(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  userIds: string[]
+): Promise<Record<string, number>> {
+  const totals: Record<string, number> = {};
+  for (const chunk of chunkIds(userIds)) {
+    try {
+      const tickets = await fetchAllRangedRows<{ user_id?: string }>(
+        (from, to) =>
+          supabase
+            .from("support_tickets")
+            .select("user_id")
+            .in("user_id", chunk)
+            .order("id", { ascending: true })
+            .range(from, to)
+      );
+      for (const row of tickets) {
+        const userId = row.user_id;
+        if (!userId) continue;
+        totals[userId] = (totals[userId] ?? 0) + 1;
+      }
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code === "42P01") continue;
+      console.error("[CRM] Error fetching tickets for sort:", error);
+      throw error;
+    }
+  }
+  return totals;
+}
+
+/**
+ * @brief Free-checkout order counts (email + minute buckets) for profile emails.
+ * @param supabase Service-role client.
+ * @param keys Profile keys with emails.
+ * @returns Map of user id → free checkout order count.
+ */
+async function freeCheckoutOrderCountsByUserId(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  keys: CrmProfileSortKey[]
+): Promise<Record<string, number>> {
+  const emailToUserIds = new Map<string, string[]>();
+  for (const key of keys) {
+    const email = key.email?.toLowerCase().trim();
+    if (!email) continue;
+    const list = emailToUserIds.get(email) ?? [];
+    list.push(key.id);
+    emailToUserIds.set(email, list);
+  }
+  const emails = Array.from(emailToUserIds.keys());
+  if (emails.length === 0) return {};
+
+  const bucketsByEmail = new Map<string, Set<number>>();
+  const MINUTE_MS = 60 * 1000;
+  for (const chunk of chunkIds(emails)) {
+    try {
+      const grantRows = await fetchAllRangedRows<{
+        user_email?: string | null;
+        granted_at: string;
+        notes: string | null;
+      }>((from, to) =>
+        supabase
+          .from("product_grants")
+          .select("user_email, granted_at, notes")
+          .in("user_email", chunk)
+          .order("id", { ascending: true })
+          .range(from, to)
+      );
+      for (const row of grantRows) {
+        if (row.notes?.trim().toLowerCase() !== "free checkout") continue;
+        const em = String(row.user_email ?? "")
+          .toLowerCase()
+          .trim();
+        if (!em) continue;
+        const bucket = Math.floor(
+          new Date(row.granted_at).getTime() / MINUTE_MS
+        );
+        const set = bucketsByEmail.get(em) ?? new Set<number>();
+        set.add(bucket);
+        bucketsByEmail.set(em, set);
+      }
+    } catch (error) {
+      console.error("[CRM] Error fetching free checkout grants:", error);
+    }
+  }
+
+  const counts: Record<string, number> = {};
+  bucketsByEmail.forEach((set, email) => {
+    for (const userId of emailToUserIds.get(email) ?? []) {
+      counts[userId] = (counts[userId] ?? 0) + set.size;
+    }
+  });
+  return counts;
+}
+
+/**
+ * @brief Cached active owned-product count (same source as the table cell and dialog).
+ * @param key Profile sort key.
+ * @returns Active owned product count.
+ */
+async function cachedActiveOwnedProductCount(
+  key: CrmProfileSortKey
+): Promise<number> {
+  return unstable_cache(
+    () =>
+      countActiveOwnedProducts(key.id, {
+        customer_id: key.customer_id,
+        email: key.email,
+      }),
+    ["crm-owned-product-count", key.id],
+    { revalidate: PAYING_CUSTOMER_CACHE_SECONDS }
+  )();
+}
+
+/**
+ * @brief Active owned-product counts for full-set Products sort.
+ * @param keys Matching profile keys.
+ * @returns Map of user id → active owned product count.
+ */
+async function accessActiveProductCountsByUserId(
+  keys: CrmProfileSortKey[]
+): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+  const concurrency = 8;
+  let cursor = 0;
+  async function worker(): Promise<void> {
+    while (cursor < keys.length) {
+      const index = cursor++;
+      const key = keys[index];
+      if (!key.customer_id && !key.email) {
+        counts[key.id] = 0;
+        continue;
+      }
+      try {
+        counts[key.id] = await cachedActiveOwnedProductCount(key);
+      } catch (error) {
+        console.error(
+          `[CRM] Error counting owned products for ${key.id}:`,
+          error
+        );
+      }
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, Math.max(keys.length, 1)) }, () =>
+      worker()
+    )
+  );
+  return counts;
+}
+
+/**
+ * @brief Builds sort extras and order counts for a full CRM key list.
+ * @param supabase Service-role client.
+ * @param keys Matching profile keys.
+ * @param sortField Frontend sort field.
+ * @param spendIndex Cached Stripe spend index.
+ * @returns Sort extras plus per-user paid+free order counts.
+ */
+async function buildCrmSortExtras(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceRole>>,
+  keys: CrmProfileSortKey[],
+  sortField: string | undefined,
+  spendIndex: PayingSpendIndex
+): Promise<{ extras: CrmProfileSortExtras; orderCountByUserId: Record<string, number> }> {
+  const userIds = keys.map((key) => key.id);
+  const extras: CrmProfileSortExtras = {
+    spentCentsByUserId: spendIndex.spentCentsByUserId,
+    spentCentsByCustomerId: spendIndex.spentCentsByCustomerId,
+  };
+  const orderCountByUserId: Record<string, number> = {};
+
+  if (sortField === "orderCount") {
+    const freeOrders = await freeCheckoutOrderCountsByUserId(supabase, keys);
+    for (const key of keys) {
+      const stripeOrders =
+        spendIndex.orderCountByUserId[key.id] ??
+        (key.customer_id
+          ? (spendIndex.orderCountByCustomerId[key.customer_id] ?? 0)
+          : 0);
+      orderCountByUserId[key.id] = stripeOrders + (freeOrders[key.id] ?? 0);
+    }
+    extras.orderCountByUserId = orderCountByUserId;
+  }
+
+  if (sortField === "lastActive") {
+    extras.lastActiveByUserId = await lastActiveByUserIds(supabase, userIds);
+  }
+  if (sortField === "supportTickets") {
+    extras.ticketTotalByUserId = await ticketTotalsByUserIds(supabase, userIds);
+  }
+  if (sortField === "productCount") {
+    extras.productCountByUserId = await accessActiveProductCountsByUserId(keys);
+  }
+
+  return { extras, orderCountByUserId };
+}
+
+/**
  * Fetches paginated users with their Stripe data for the CRM
  * Does NOT fetch total count - use getUsersForCRMCount separately
  */
@@ -1332,6 +2442,7 @@ export async function getAllUsersForCRM(
   sortDirection?: "asc" | "desc"
 ): Promise<{
   users: UserData[];
+  error?: string;
 }> {
   await requireAdminAction();
   try {
@@ -1361,7 +2472,7 @@ export async function getAllUsersForCRM(
         // Error fetching admins - return empty result
         query = query.eq("id", "00000000-0000-0000-0000-000000000000");
       }
-    } else if (subscriptionFilter && subscriptionFilter !== "all") {
+    } else if (subscriptionFilter && subscriptionFilter !== "all" && subscriptionFilter !== "paying") {
       // Apply subscription filter for valid subscription types
       const validSubscriptionTypes: SubscriptionType[] = [
         "none",
@@ -1379,33 +2490,111 @@ export async function getAllUsersForCRM(
       }
     }
 
-    // Apply search filtering at the database query level
-    if (searchTerm && searchTerm.trim().length > 0) {
-      const searchLower = searchTerm.trim();
+    query = applyCrmSearchFilter(query, searchTerm);
 
-      // Use or() with multiple ilike conditions
-      // Search by first name, last name, and email
-      const orConditions = [
-        `first_name.ilike.%${searchLower}%`,
-        `last_name.ilike.%${searchLower}%`,
-        `email.ilike.%${searchLower}%`,
-      ];
-
-      // For full name search (e.g., "ryan johnson"), split and search for both parts
-      const parts = searchLower.trim().split(/\s+/);
-      if (parts.length > 1) {
-        // If search term has multiple words, also search for "first_name matches part1 AND last_name matches part2"
-        // We'll handle this by adding conditions that match any part in first or last name
-        for (const part of parts) {
-          if (part.length > 0) {
-            orConditions.push(`first_name.ilike.%${part}%`);
-            orConditions.push(`last_name.ilike.%${part}%`);
-          }
+    const needsSpendIndex =
+      subscriptionFilter === "paying" ||
+      sortField === "totalSpent" ||
+      sortField === "orderCount" ||
+      sortField === "productCount";
+    let spendIndex = emptySpendIndex();
+    if (needsSpendIndex) {
+      try {
+        spendIndex = await getPayingStripeSpendIndex();
+      } catch (spendError) {
+        console.error("[CRM] Error loading Stripe spend index:", spendError);
+        if (
+          sortField === "totalSpent" ||
+          sortField === "orderCount" ||
+          sortField === "productCount" ||
+          subscriptionFilter === "paying"
+        ) {
+          throw spendError;
         }
       }
+    }
+    let seededOrderCountByUserId: Record<string, number> | null = null;
+    let seededProductCountByUserId: Record<string, number> | null = null;
+    let seededLastActiveByUserId: Record<string, string> | null = null;
+    let allProfiles: any[] | null = null;
+    const needsFullScan =
+      subscriptionFilter === "paying" || isDerivedCrmSortField(sortField);
 
-      const orConditionsStr = orConditions.join(",");
-      query = query.or(orConditionsStr);
+    if (sortField === "totalSpent") {
+      const pageKeys = await fetchTotalSpentPageKeys(
+        supabase,
+        searchTerm,
+        subscriptionFilter,
+        sortDirection,
+        page,
+        limit,
+        spendIndex
+      );
+      if (!pageKeys || pageKeys.length === 0) {
+        return { users: [] };
+      }
+      allProfiles = await fetchProfilesByOrderedIds(
+        supabase,
+        pageKeys.map((key) => key.id)
+      );
+    } else if (
+      sortField === "lastActive" ||
+      sortField === "supportTickets" ||
+      sortField === "productCount"
+    ) {
+      const derived = await fetchDerivedMetricPageKeys(
+        supabase,
+        searchTerm,
+        subscriptionFilter,
+        sortField,
+        sortDirection,
+        page,
+        limit,
+        spendIndex
+      );
+      if (!derived || derived.pageKeys.length === 0) {
+        return { users: [] };
+      }
+      if (sortField === "productCount") {
+        seededProductCountByUserId = derived.extras.productCountByUserId ?? {};
+      }
+      if (sortField === "lastActive") {
+        seededLastActiveByUserId = derived.extras.lastActiveByUserId ?? {};
+      }
+      allProfiles = await fetchProfilesByOrderedIds(
+        supabase,
+        derived.pageKeys.map((key) => key.id)
+      );
+    } else if (needsFullScan) {
+      const keys = await fetchAllFilteredProfileKeys(
+        supabase,
+        searchTerm,
+        subscriptionFilter
+      );
+      if (!keys || keys.length === 0) {
+        return { users: [] };
+      }
+      const { extras, orderCountByUserId } = await buildCrmSortExtras(
+        supabase,
+        keys,
+        sortField,
+        spendIndex
+      );
+      seededOrderCountByUserId =
+        sortField === "orderCount" ? orderCountByUserId : null;
+      if (sortField === "productCount") {
+        seededProductCountByUserId = extras.productCountByUserId ?? null;
+      }
+      sortCrmProfileKeys(keys, sortField, sortDirection, extras);
+      const offset = (page - 1) * limit;
+      const pageKeys = keys.slice(offset, offset + limit);
+      if (pageKeys.length === 0) {
+        return { users: [] };
+      }
+      allProfiles = await fetchProfilesByOrderedIds(
+        supabase,
+        pageKeys.map((key) => key.id)
+      );
     }
 
     // Map frontend sort fields to database column names
@@ -1414,13 +2603,13 @@ export async function getAllUsersForCRM(
       firstName: "first_name",
       lastName: "last_name",
       subscription: "subscription",
-      createdAt: "updated_at", // Using updated_at as created_at equivalent
+      createdAt: "created_at",
       email: "email", // Email is now available in profiles table (synced from auth.users)
     };
 
     // Apply sorting to the query if the field can be sorted in the database
     // This MUST be done BEFORE pagination to ensure correct results
-    if (sortField && sortField in dbSortableFields) {
+    if (allProfiles === null && sortField && sortField in dbSortableFields) {
       const dbSortField = dbSortableFields[sortField];
       const ascending = sortDirection === "asc";
 
@@ -1478,7 +2667,7 @@ export async function getAllUsersForCRM(
           nullsFirst: false, // NULLs always last
         });
       }
-    } else {
+    } else if (allProfiles === null) {
       // Default sorting by updated_at desc if no sort specified or field can't be sorted in DB
       // Note: Fields like 'email', 'lastActive', and 'totalSpent' cannot be sorted at DB level
       // as they require data from external sources (auth.users, stripe API, etc)
@@ -1497,16 +2686,20 @@ export async function getAllUsersForCRM(
       });
     }
 
-    // All sorting and filtering happens at the database level
-    // Apply pagination at the database level (always, for all sort types)
-    const offset = (page - 1) * limit;
-    query = query.range(offset, offset + limit - 1);
+    if (allProfiles === null) {
+      // All sorting and filtering happens at the database level
+      // Apply pagination at the database level (always, for all sort types)
+      const offset = (page - 1) * limit;
+      query = query.range(offset, offset + limit - 1);
 
-    const { data: allProfiles, error: profilesError } = await query;
+      const { data, error: profilesError } = await query;
 
-    if (profilesError) {
-      console.error("Error fetching profiles for CRM:", profilesError);
-      throw profilesError;
+      if (profilesError) {
+        console.error("Error fetching profiles for CRM:", profilesError);
+        throw profilesError;
+      }
+
+      allProfiles = data ?? [];
     }
 
     if (!allProfiles || allProfiles.length === 0) {
@@ -1528,34 +2721,34 @@ export async function getAllUsersForCRM(
     const normalizedEmails = userEmails.map((e) => e.toLowerCase().trim());
     if (profileIds.length > 0 || normalizedEmails.length > 0) {
       try {
-        const [byIdsRes, byEmailsRes] = await Promise.all([
-          profileIds.length > 0
-            ? supabase
-                .from("user_management")
-                .select("user_id, user_email, pro")
-                .in("user_id", profileIds)
-            : Promise.resolve({
-                data: [] as {
-                  user_id?: string | null;
-                  user_email?: string | null;
-                  pro?: boolean | null;
-                }[],
-                error: null,
-              }),
-          normalizedEmails.length > 0
-            ? supabase
-                .from("user_management")
-                .select("user_id, user_email, pro")
-                .in("user_email", normalizedEmails)
-            : Promise.resolve({
-                data: [] as {
-                  user_id?: string | null;
-                  user_email?: string | null;
-                  pro?: boolean | null;
-                }[],
-                error: null,
-              }),
-        ]);
+        const nfrByIdRows: Array<{
+          user_id?: string | null;
+          user_email?: string | null;
+          pro?: boolean | null;
+        }> = [];
+        const nfrByEmailRows: Array<{
+          user_id?: string | null;
+          user_email?: string | null;
+          pro?: boolean | null;
+        }> = [];
+        for (const chunk of chunkIds(profileIds)) {
+          const { data, error } = await supabase
+            .from("user_management")
+            .select("user_id, user_email, pro")
+            .in("user_id", chunk);
+          if (error) throw error;
+          if (data) nfrByIdRows.push(...data);
+        }
+        for (const chunk of chunkIds(normalizedEmails)) {
+          const { data, error } = await supabase
+            .from("user_management")
+            .select("user_id, user_email, pro")
+            .in("user_email", chunk);
+          if (error) throw error;
+          if (data) nfrByEmailRows.push(...data);
+        }
+        const byIdsRes = { data: nfrByIdRows, error: null };
+        const byEmailsRes = { data: nfrByEmailRows, error: null };
 
         const nfrError = byIdsRes.error ?? byEmailsRes.error;
         const nfrRecords = [
@@ -1637,10 +2830,28 @@ export async function getAllUsersForCRM(
         customerId: profile.customer_id || undefined,
         subscriptionExpiration: profile.subscription_expiration || undefined,
         trialExpiration: profile.trial_expiration || undefined,
-        createdAt: profile.updated_at || new Date().toISOString(),
-        lastActive: profile.updated_at || new Date().toISOString(), // Default to join date, will be updated if session data exists
-        totalSpent: -1, // -1 indicates loading, will be updated when data loads
-        orderCount: -1, // -1 indicates loading, will be updated when additional data loads
+        createdAt:
+          profile.created_at ||
+          profile.updated_at ||
+          new Date().toISOString(),
+        lastActive:
+          seededLastActiveByUserId?.[profile.id] ||
+          profile.created_at ||
+          profile.updated_at ||
+          new Date().toISOString(),
+        totalSpent: needsSpendIndex
+          ? (spendIndex.spentCentsByUserId[profile.id] ??
+              (profile.customer_id
+                ? (spendIndex.spentCentsByCustomerId[profile.customer_id] ??
+                  0)
+                : 0)) / 100
+          : -1,
+        orderCount: seededOrderCountByUserId
+          ? (seededOrderCountByUserId[profile.id] ?? 0)
+          : -1,
+        productCount: seededProductCountByUserId
+          ? (seededProductCountByUserId[profile.id] ?? 0)
+          : -1,
         hasNfr,
         hasNfrEliteBundle:
           hasNfr && eliteNfrEmailSet.has(normalizedEmail),
@@ -1656,9 +2867,10 @@ export async function getAllUsersForCRM(
     };
   } catch (error) {
     console.error("Error fetching users for CRM:", error);
-    // Return empty array instead of throwing to prevent frontend from hanging
     return {
       users: [],
+      error:
+        error instanceof Error ? error.message : "Failed to fetch users",
     };
   }
 }
@@ -1684,189 +2896,46 @@ export async function getAdditionalUserData(userIds: string[]): Promise<{
 
   try {
     const supabase = await createSupabaseServiceRole();
-
-    // Fetch user sessions for lastActive
+    let spendIndex: PayingSpendIndex = emptySpendIndex();
     try {
-      const { data: allSessions, error: sessionsError } = await supabase
-        .from("user_sessions")
-        .select("user_id, refreshed_at, updated_at, created_at")
-        .in("user_id", userIds);
+      spendIndex = await getPayingStripeSpendIndex();
+    } catch (spendError) {
+      console.error("[CRM] Error loading Stripe spend index:", spendError);
+    }
+    Object.assign(lastActiveMap, await lastActiveByUserIds(supabase, userIds));
 
-      if (!sessionsError && allSessions) {
-        // Group by user_id and get the most recent session for each user
-        const sessionsByUser = new Map<
-          string,
-          {
-            user_id: string;
-            refreshed_at?: string | null;
-            updated_at?: string | null;
-            created_at?: string | null;
-          }
-        >();
-        allSessions.forEach((session) => {
-          const existing = sessionsByUser.get(session.user_id);
-          if (!existing) {
-            sessionsByUser.set(session.user_id, session);
-          } else {
-            // Compare timestamps to find most recent
-            const existingTime =
-              existing.refreshed_at ||
-              existing.updated_at ||
-              existing.created_at;
-            const currentTime =
-              session.refreshed_at || session.updated_at || session.created_at;
-            if (currentTime && (!existingTime || currentTime > existingTime)) {
-              sessionsByUser.set(session.user_id, session);
-            }
-          }
-        });
-
-        sessionsByUser.forEach((session, userId) => {
-          const lastActive =
-            session.refreshed_at || session.updated_at || session.created_at;
-          if (lastActive) {
-            lastActiveMap[userId] = lastActive;
-          }
-        });
+    const keys: CrmProfileSortKey[] = [];
+    for (const chunk of chunkIds(userIds)) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(CRM_PROFILE_KEY_COLUMNS)
+        .in("id", chunk);
+      if (error) {
+        console.error("Error fetching customer IDs:", error);
+        return {
+          lastActive: lastActiveMap,
+          totalSpent: totalSpentMap,
+          orderCount: orderCountMap,
+        };
       }
-    } catch (sessionsErr) {
-      console.error("Error batch fetching user sessions:", sessionsErr);
+      keys.push(...((data ?? []) as CrmProfileSortKey[]));
     }
 
-    // Fetch customer IDs and emails from profiles (email matches product_grants.user_email)
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("id, customer_id, email")
-      .in("id", userIds);
-
-    if (profilesError) {
-      console.error("Error fetching customer IDs:", profilesError);
-      return { lastActive: lastActiveMap, totalSpent: totalSpentMap, orderCount: orderCountMap };
+    const freeOrders = await freeCheckoutOrderCountsByUserId(supabase, keys);
+    for (const profile of keys) {
+      const totalCents =
+        spendIndex.spentCentsByUserId[profile.id] ??
+        (profile.customer_id
+          ? (spendIndex.spentCentsByCustomerId[profile.customer_id] ?? 0)
+          : 0);
+      totalSpentMap[profile.id] = totalCents / 100;
+      const stripeOrd =
+        spendIndex.orderCountByUserId[profile.id] ??
+        (profile.customer_id
+          ? (spendIndex.orderCountByCustomerId[profile.customer_id] ?? 0)
+          : 0);
+      orderCountMap[profile.id] = stripeOrd + (freeOrders[profile.id] ?? 0);
     }
-
-    const customerIds =
-      profiles?.map((p) => p.customer_id).filter((id): id is string => !!id) ||
-      [];
-
-    const chargesMap = new Map<string, number>();
-    const stripeOrderCountByCustomerId = new Map<string, number>();
-
-    // Fetch Stripe data for totalSpent and paid order count using Charges API
-    if (customerIds.length > 0) {
-      try {
-        const chargePromises = customerIds.map(async (customerId) => {
-          try {
-            const charges = await stripe.charges.list({
-              customer: customerId,
-              limit: 100,
-            });
-
-            const seenChargeIds = new Set<string>();
-
-            const paidCharges = charges.data.filter((charge) => {
-              if (seenChargeIds.has(charge.id)) return false;
-              seenChargeIds.add(charge.id);
-              return charge.paid && !charge.refunded;
-            });
-
-            const totalSpentCents = paidCharges.reduce((sum, charge) => {
-              const netAmount = charge.amount - (charge.amount_refunded || 0);
-              return sum + netAmount;
-            }, 0);
-
-            if (totalSpentCents > 0) {
-              chargesMap.set(customerId, totalSpentCents);
-            }
-            if (paidCharges.length > 0) {
-              stripeOrderCountByCustomerId.set(
-                customerId,
-                paidCharges.length,
-              );
-            }
-          } catch (err) {
-            console.error(
-              `Error fetching charges for customer ${customerId}:`,
-              err
-            );
-          }
-        });
-
-        await Promise.allSettled(chargePromises);
-      } catch (stripeErr) {
-        console.error("Error batch fetching Stripe charges:", stripeErr);
-      }
-    }
-
-    // $0 cart checkouts: no Stripe charge; rows in product_grants with notes from /api/payment-intent
-    const freeOrderCountByEmail = new Map<string, number>();
-    const profileEmails = [
-      ...new Set(
-        (profiles || [])
-          .map((p) => {
-            const em = (p as { email?: string | null }).email;
-            return typeof em === "string" ? em.toLowerCase().trim() : "";
-          })
-          .filter((e): e is string => e.length > 0),
-      ),
-    ];
-
-    if (profileEmails.length > 0) {
-      try {
-        const { data: grantRows, error: grantsError } = await supabase
-          .from("product_grants")
-          .select("user_email, granted_at, notes")
-          .in("user_email", profileEmails);
-
-        if (!grantsError && grantRows?.length) {
-          const MINUTE_MS = 60 * 1000;
-          const bucketsByEmail = new Map<string, Set<number>>();
-          for (const row of grantRows as {
-            user_email: string;
-            granted_at: string;
-            notes: string | null;
-          }[]) {
-            if (row.notes?.trim().toLowerCase() !== "free checkout") {
-              continue;
-            }
-            const em = row.user_email.toLowerCase().trim();
-            const bucket = Math.floor(
-              new Date(row.granted_at).getTime() / MINUTE_MS,
-            );
-            if (!bucketsByEmail.has(em)) {
-              bucketsByEmail.set(em, new Set());
-            }
-            bucketsByEmail.get(em)!.add(bucket);
-          }
-          bucketsByEmail.forEach((set, em) => {
-            freeOrderCountByEmail.set(em, set.size);
-          });
-        }
-      } catch (freeOrdErr) {
-        console.error("Error batch counting free checkout orders:", freeOrdErr);
-      }
-    }
-
-    profiles?.forEach((profile) => {
-      const p = profile as {
-        id: string;
-        customer_id?: string | null;
-        email?: string | null;
-      };
-      if (p.customer_id) {
-        const totalCents = chargesMap.get(p.customer_id) || 0;
-        const total = totalCents / 100;
-        if (total > 0) {
-          totalSpentMap[p.id] = total;
-        }
-      }
-      const stripeOrd = p.customer_id
-        ? (stripeOrderCountByCustomerId.get(p.customer_id) ?? 0)
-        : 0;
-      const em =
-        typeof p.email === "string" ? p.email.toLowerCase().trim() : "";
-      const freeOrd = em ? (freeOrderCountByEmail.get(em) ?? 0) : 0;
-      orderCountMap[p.id] = stripeOrd + freeOrd;
-    });
 
     return { lastActive: lastActiveMap, totalSpent: totalSpentMap, orderCount: orderCountMap };
   } catch (error) {

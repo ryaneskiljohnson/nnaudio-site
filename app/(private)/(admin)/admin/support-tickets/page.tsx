@@ -78,6 +78,7 @@ import {
   SUPPORT_TICKET_FILE_ACCEPT,
 } from "@/utils/support/is-heic-or-heif-attachment";
 import { isInlinePlayableVideoAttachment } from "@/utils/support/is-inline-playable-video-attachment";
+import { formatOrderProductNames } from "@/utils/stripe/payment-intent-products";
 import { supportTicketNeedsReply } from "@/utils/support/is-active-support-ticket-status";
 
 const SUPPORT_TICKETS_UNREAD_UPDATED_EVENT =
@@ -1895,6 +1896,7 @@ interface UserOrder {
   amountCents: number;
   created: string | null;
   productName?: string | null;
+  productNames?: string[];
 }
 
 function SupportTicketsPage() {
@@ -3912,19 +3914,25 @@ function SupportTicketsPage() {
                   </div>
                 ) : (
                   <OrdersDialogList>
-                    {userOrdersList.map((order) => (
-                      <OrdersDialogItem key={`${order.type}-${order.id}`}>
-                        {order.created
-                          ? new Date(order.created).toLocaleDateString(undefined, {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })
-                          : "—"}{" "}
-                        · {order.type === "grant" ? (order.productName ? `Product grant: ${order.productName}` : "Product grant") : "Order"}{" "}
-                        · {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(order.amountCents / 100)}
-                      </OrdersDialogItem>
-                    ))}
+                    {userOrdersList.map((order) => {
+                      const productsLabel = formatOrderProductNames(order);
+                      const kind =
+                        order.type === "grant" ? "Product grant" : "Order";
+                      return (
+                        <OrdersDialogItem key={`${order.type}-${order.id}`}>
+                          {order.created
+                            ? new Date(order.created).toLocaleDateString(undefined, {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "—"}{" "}
+                          · {kind}
+                          {productsLabel ? ` · ${productsLabel}` : ""}{" "}
+                          · {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(order.amountCents / 100)}
+                        </OrdersDialogItem>
+                      );
+                    })}
                   </OrdersDialogList>
                 )}
               </OrdersDialogContent>

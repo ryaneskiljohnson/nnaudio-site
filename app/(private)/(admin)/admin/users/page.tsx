@@ -1,5 +1,10 @@
 "use client";
-import React, { useEffect, useState } from "react";
+
+/**
+ * @fileoverview Admin CRM users table: search, filter, sort, and manage customer accounts.
+ * @module app/(private)/(admin)/admin/users/page
+ */
+import React, { useEffect, useRef, useState } from "react";
 import NextSEO from "@/components/NextSEO";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
@@ -47,6 +52,8 @@ import {
   getCustomerPurchasesAdmin,
   getCustomerInvoicesAdmin,
   getUserByIdAdmin,
+  getOwnedProductCountsAdmin,
+  getCrmPaymentMethodsAdmin,
 } from "@/app/actions/user-management";
 import type { UserData } from "@/utils/stripe/admin-analytics";
 import {
@@ -61,6 +68,17 @@ import {
 import { deleteUserAccount } from "@/utils/stripe/supabase-stripe";
 import { updateUserProfileFromStripe } from "@/app/actions/user-management";
 import { updateUserProStatus } from "@/utils/subscriptions/check-subscription";
+import AdminProductListDialog, {
+  AdminCountLinkButton,
+  listedProductsFromOrder,
+  productCountLabel,
+  type AdminListedProduct,
+} from "@/components/admin/AdminProductListDialog";
+import AdminOrdersListDialog, {
+  type AdminListedOrder,
+} from "@/components/admin/AdminOrdersListDialog";
+import { mergeDefinedUserFields } from "@/utils/crm/merge-defined-user-fields";
+import { nextCrmSort } from "@/utils/crm/sort-profile-keys";
 
 /** Row shape from GET /api/admin/user-orders */
 type AdminUserOrderRow = {
@@ -69,6 +87,8 @@ type AdminUserOrderRow = {
   amountCents: number;
   created: string | null;
   productName?: string | null;
+  productNames?: string[];
+  products?: AdminListedProduct[];
 };
 
 const Container = styled.div`
@@ -322,53 +342,62 @@ const TableContainer = styled.div`
     overflow-x: auto;
 
     table {
-      min-width: 1000px;
+      min-width: 1520px;
     }
   }
 `;
 
 const Table = styled.table`
   width: 100%;
+  min-width: 1520px;
   border-collapse: collapse;
   table-layout: fixed;
 
-  /* Define column widths */
+  /* Column order: Name, Email, Bundle, Orders, Products, Join, Last Active, Tickets, Access, Spent, Actions */
   th:nth-child(1),
   td:nth-child(1) {
-    width: 200px;
-  } /* Name */
+    width: 180px;
+  }
   th:nth-child(2),
   td:nth-child(2) {
-    width: 220px;
-  } /* Email */
+    width: 200px;
+  }
   th:nth-child(3),
   td:nth-child(3) {
-    width: 140px;
-  } /* Subscription */
+    width: 130px;
+  }
   th:nth-child(4),
   td:nth-child(4) {
-    width: 60px;
-  } /* Orders */
+    width: 70px;
+  }
   th:nth-child(5),
   td:nth-child(5) {
-    width: 110px;
-  } /* Join Date */
+    width: 80px;
+  }
   th:nth-child(6),
   td:nth-child(6) {
-    width: 110px;
-  } /* Last Active */
+    width: 190px;
+  }
   th:nth-child(7),
   td:nth-child(7) {
-    width: 100px;
-  } /* Support Tickets */
+    width: 190px;
+  }
   th:nth-child(8),
   td:nth-child(8) {
-    width: 100px;
-  } /* Total Spent */
+    width: 110px;
+  }
   th:nth-child(9),
   td:nth-child(9) {
-    width: 80px;
-  } /* Actions */
+    width: 110px;
+  }
+  th:nth-child(10),
+  td:nth-child(10) {
+    width: 100px;
+  }
+  th:nth-child(11),
+  td:nth-child(11) {
+    width: 90px;
+  }
 `;
 
 const TableHeader = styled.thead`
@@ -400,7 +429,7 @@ const TableHeaderCell = styled.th<{ $sortable?: boolean }>`
 `;
 
 const LastActiveHeaderCell = styled(TableHeaderCell)`
-  min-width: 180px;
+  min-width: 190px;
 `;
 
 const LoadingOverlay = styled.div`
@@ -421,13 +450,20 @@ const LoadingOverlay = styled.div`
 
 const TableBody = styled.tbody``;
 
-const TableRow = styled.tr`
+/**
+ * @brief CRM user row. Paying customers get a light green wash so they stand out.
+ * @param $paid True when `totalSpent` is a loaded amount greater than $0.
+ */
+const TableRow = styled.tr<{ $paid?: boolean }>`
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   transition: background-color 0.2s ease;
   cursor: pointer;
+  background-color: ${(props) =>
+    props.$paid ? "rgba(46, 204, 113, 0.08)" : "transparent"};
 
   &:hover {
-    background-color: rgba(255, 255, 255, 0.02);
+    background-color: ${(props) =>
+      props.$paid ? "rgba(46, 204, 113, 0.16)" : "rgba(255, 255, 255, 0.02)"};
   }
 
   &:last-child {
@@ -452,15 +488,15 @@ const TableCell = styled.td`
 `;
 
 const JoinDateTableCell = styled(TableCell)`
-  white-space: normal;
-  overflow: visible;
-  word-wrap: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const LastActiveTableCell = styled(TableCell)`
-  min-width: 180px;
-  white-space: normal;
-  overflow: visible;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const UserAvatar = styled.div<{ $color: string }>`
@@ -494,13 +530,30 @@ const UserName = styled.div`
   margin-bottom: 0.25rem;
 `;
 
-const UserEmail = styled.div`
+const UserEmail = styled.button<{ $copied?: boolean }>`
+  display: block;
+  max-width: 200px;
+  padding: 0;
+  border: none;
+  background: none;
   font-size: 0.8rem;
-  color: var(--text-secondary);
+  color: ${(props) => (props.$copied ? "#2ecc71" : "var(--text-secondary)")};
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 200px;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    color: ${(props) => (props.$copied ? "#27ae60" : "var(--primary)")};
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
 `;
 
 const SubscriptionBadge = styled.span<{
@@ -893,6 +946,33 @@ const DataTableRow = styled.tr`
 
   &:hover {
     background-color: rgba(255, 255, 255, 0.02);
+  }
+`;
+
+const ClickableOrderRow = styled(DataTableRow)`
+  cursor: pointer;
+`;
+
+const TableCountLink = styled.button`
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--primary);
+  font-size: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+
+  &:hover:not(:disabled) {
+    color: var(--accent, #9d97ff);
+  }
+
+  &:disabled {
+    color: var(--text);
+    cursor: default;
+    text-decoration: none;
+    font-weight: 500;
   }
 `;
 
@@ -1431,6 +1511,20 @@ export default function AdminCRM() {
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [userOrders, setUserOrders] = useState<AdminUserOrderRow[]>([]);
   const [loadingUserOrders, setLoadingUserOrders] = useState(false);
+  const [ownedProducts, setOwnedProducts] = useState<AdminListedProduct[]>([]);
+  const [loadingOwnedProducts, setLoadingOwnedProducts] = useState(false);
+  const [showOwnedProductsDialog, setShowOwnedProductsDialog] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<AdminUserOrderRow | null>(
+    null
+  );
+  const [tableProductsOpen, setTableProductsOpen] = useState(false);
+  const [tableProducts, setTableProducts] = useState<AdminListedProduct[]>([]);
+  const [tableProductsLoading, setTableProductsLoading] = useState(false);
+  const [tableOrdersOpen, setTableOrdersOpen] = useState(false);
+  const [tableOrders, setTableOrders] = useState<AdminListedOrder[]>([]);
+  const [tableOrdersLoading, setTableOrdersLoading] = useState(false);
+  const [tableSelectedOrder, setTableSelectedOrder] =
+    useState<AdminListedOrder | null>(null);
   const [supportTicketCounts, setSupportTicketCounts] = useState<
     Record<string, { open: number; closed: number; total: number }>
   >({});
@@ -1499,6 +1593,16 @@ export default function AdminCRM() {
   const [subscriptionRefreshMessage, setSubscriptionRefreshMessage] = useState<
     string | null
   >(null);
+  const [copiedEmailUserId, setCopiedEmailUserId] = useState<string | null>(
+    null
+  );
+  const [copyNotice, setCopyNotice] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const usersFetchGen = useRef(0);
+  const tableProductsRequestId = useRef(0);
+  const tableOrdersRequestId = useRef(0);
 
   // Debounce search term
   useEffect(() => {
@@ -1562,6 +1666,7 @@ export default function AdminCRM() {
 
   // Fetch users (data only, no count)
   const fetchUsers = async (isSearchOperation = false) => {
+    const fetchGen = ++usersFetchGen.current;
     try {
       if (isSearchOperation) {
         setSearchLoading(true);
@@ -1588,7 +1693,12 @@ export default function AdminCRM() {
 
       console.log(`[Frontend] Received ${result.users.length} users from API`);
 
-      // All sorting is done in the database query - just use the results as-is
+      if (fetchGen !== usersFetchGen.current) {
+        return;
+      }
+
+      // Server returns the current page already sorted.
+      setError(null);
       setUsers(result.users);
       // Clear support ticket counts when users change (will be repopulated)
       setSupportTicketCounts({});
@@ -1618,11 +1728,14 @@ export default function AdminCRM() {
         };
 
         if (usersWithCustomerIds.length === 0) {
-          setEliteBundleRecurringTierByUserId(buildEliteTierMap({}));
-          setEliteBundleRecurringTierFetched(true);
+          if (fetchGen === usersFetchGen.current) {
+            setEliteBundleRecurringTierByUserId(buildEliteTierMap({}));
+            setEliteBundleRecurringTierFetched(true);
+          }
         } else {
           getEliteBundleRecurringTiersForCRMAdmin(usersWithCustomerIds).then(
             (tierRes) => {
+              if (fetchGen !== usersFetchGen.current) return;
               if (tierRes.error) {
                 console.error(
                   "Error fetching elite bundle subscription tiers:",
@@ -1637,43 +1750,28 @@ export default function AdminCRM() {
           );
         }
 
-        if (usersWithCustomerIds.length > 0) {
-          // Check payment methods for all customers in parallel
-          const paymentMethodChecks = usersWithCustomerIds.map(
-            async ({ userId, customerId }) => {
-              try {
-                const response = await fetch(
-                  `/api/admin/customer-has-payment-method?customerId=${customerId}`
-                );
-                const data = await response.json();
-                return {
-                  userId,
-                  hasPaymentMethod: data.success && data.hasPaymentMethod,
-                };
-              } catch (error) {
-                console.error(
-                  `Error checking payment method for ${customerId}:`,
-                  error
-                );
-                return { userId, hasPaymentMethod: false };
-              }
+        getCrmPaymentMethodsAdmin(
+          result.users.map((u) => ({
+            userId: u.id,
+            customerId: u.customerId ?? null,
+            email: u.email ?? null,
+          }))
+        )
+          .then((pmRes) => {
+            if (fetchGen !== usersFetchGen.current) return;
+            if (pmRes.error) {
+              console.error("Error checking payment methods:", pmRes.error);
+              return;
             }
-          );
-
-          Promise.allSettled(paymentMethodChecks).then((results) => {
-            const paymentMethodMap: Record<string, boolean> = {};
-            results.forEach((result) => {
-              if (result.status === "fulfilled") {
-                paymentMethodMap[result.value.userId] =
-                  result.value.hasPaymentMethod;
-              }
-            });
-            setHasPaymentMethod((prev) => ({ ...prev, ...paymentMethodMap }));
+            setHasPaymentMethod((prev) => ({ ...prev, ...pmRes.byUserId }));
+          })
+          .catch((error) => {
+            console.error("Error checking payment methods:", error);
           });
-        }
 
         getAdditionalUserDataAdmin(userIds)
           .then((additionalData) => {
+            if (fetchGen !== usersFetchGen.current) return;
             if (additionalData.error) {
               console.error(
                 "Error fetching additional data:",
@@ -1682,79 +1780,78 @@ export default function AdminCRM() {
               return;
             }
 
-            // Update users with additional data
-            setUsers((prevUsers) => {
-              let updatedUsers = prevUsers.map((user) => ({
-                ...user,
-                lastActive:
-                  additionalData.lastActive[user.id] || user.createdAt, // Fallback to join date if no session data
-                totalSpent:
-                  additionalData.totalSpent[user.id] !== undefined
-                    ? additionalData.totalSpent[user.id]
-                    : 0, // Default to 0 if no data found
-                orderCount:
-                  additionalData.orderCount?.[user.id] !== undefined
-                    ? additionalData.orderCount[user.id]
-                    : 0,
-              }));
-
-              // Apply client-side sorting for fields that can't be sorted server-side
+            const requestedIds = new Set(userIds);
+            const fieldsByUserId: Record<string, Partial<UserData>> = {};
+            for (const userId of userIds) {
+              const fields: Partial<UserData> = {};
               if (
-                sortField === "lastActive" ||
-                sortField === "totalSpent" ||
-                sortField === "orderCount" ||
-                sortField === "supportTickets"
+                sortField !== "lastActive" &&
+                additionalData.lastActive[userId]
               ) {
-                updatedUsers = [...updatedUsers].sort((a, b) => {
-                  let aValue: any;
-                  let bValue: any;
-
-                  if (sortField === "lastActive") {
-                    aValue = a.lastActive || a.createdAt;
-                    bValue = b.lastActive || b.createdAt;
-                  } else if (sortField === "totalSpent") {
-                    aValue = a.totalSpent;
-                    bValue = b.totalSpent;
-                  } else if (sortField === "orderCount") {
-                    aValue = a.orderCount ?? -1;
-                    bValue = b.orderCount ?? -1;
-                  } else if (sortField === "supportTickets") {
-                    aValue = supportTicketCounts[a.id]?.total || 0;
-                    bValue = supportTicketCounts[b.id]?.total || 0;
-                  }
-
-                  // Handle null/undefined values
-                  if (aValue == null && bValue == null) return 0;
-                  if (aValue == null) return 1; // null values go to end
-                  if (bValue == null) return -1;
-
-                  // Compare values
-                  if (sortField === "lastActive") {
-                    // Compare dates
-                    const aDate = new Date(aValue).getTime();
-                    const bDate = new Date(bValue).getTime();
-                    return sortDirection === "asc"
-                      ? aDate - bDate
-                      : bDate - aDate;
-                  } else {
-                    // Compare numbers
-                    return sortDirection === "asc"
-                      ? aValue - bValue
-                      : bValue - aValue;
-                  }
-                });
+                fields.lastActive = additionalData.lastActive[userId];
               }
-
-              return updatedUsers;
-            });
+              // Keep the same cents used to rank the page — a later index
+              // refresh must not reshuffle amounts on an already-sorted page.
+              if (
+                sortField !== "totalSpent" &&
+                additionalData.totalSpent[userId] !== undefined
+              ) {
+                fields.totalSpent = additionalData.totalSpent[userId];
+              }
+              if (additionalData.orderCount?.[userId] !== undefined) {
+                fields.orderCount = additionalData.orderCount[userId];
+              }
+              if (Object.keys(fields).length > 0) {
+                fieldsByUserId[userId] = fields;
+              }
+            }
+            setUsers((prevUsers) =>
+              mergeDefinedUserFields(prevUsers, requestedIds, fieldsByUserId)
+            );
           })
           .catch((err) => {
             console.error("Error fetching additional user data:", err);
           });
 
+        getOwnedProductCountsAdmin(
+          result.users.map((u) => ({
+            userId: u.id,
+            customerId: u.customerId ?? null,
+            email: u.email ?? null,
+          }))
+        )
+          .then((productCounts) => {
+            if (fetchGen !== usersFetchGen.current) return;
+            if (productCounts.error) {
+              console.error(
+                "Error fetching owned product counts:",
+                productCounts.error
+              );
+              return;
+            }
+            const requestedIds = new Set(
+              result.users.map((user) => user.id)
+            );
+            const fieldsByUserId: Record<string, Partial<UserData>> = {};
+            if (sortField !== "productCount") {
+              for (const [userId, productCount] of Object.entries(
+                productCounts.counts
+              )) {
+                fieldsByUserId[userId] = { productCount };
+              }
+            }
+            setUsers((prevUsers) =>
+              mergeDefinedUserFields(prevUsers, requestedIds, fieldsByUserId)
+            );
+          })
+          .catch((err) => {
+            console.error("Error fetching owned product counts:", err);
+          });
+
         // Fetch support ticket counts
         getUserSupportTicketCountsAdmin(userIds)
           .then((countsData) => {
+            if (fetchGen !== usersFetchGen.current) return;
             if (countsData.error) {
               console.error(
                 "Error fetching support ticket counts:",
@@ -1776,10 +1873,12 @@ export default function AdminCRM() {
       console.error("Error fetching users:", err);
       setError("Failed to load user data");
     } finally {
-      if (isSearchOperation) {
-        setSearchLoading(false);
-      } else {
-        setLoading(false);
+      if (fetchGen === usersFetchGen.current) {
+        if (isSearchOperation) {
+          setSearchLoading(false);
+        } else {
+          setLoading(false);
+        }
       }
     }
   };
@@ -1813,65 +1912,6 @@ export default function AdminCRM() {
     languageLoading,
   ]);
 
-  // Apply client-side sorting when sortField changes to a client-sortable field
-  useEffect(() => {
-    if (
-      sortField === "lastActive" ||
-      sortField === "totalSpent" ||
-      sortField === "orderCount" ||
-      sortField === "supportTickets"
-    ) {
-      setUsers((prevUsers) => {
-        // Only sort if we have the data
-        const hasData = prevUsers.every(
-          (u) =>
-            (sortField === "lastActive" && u.lastActive) ||
-            (sortField === "totalSpent" && u.totalSpent !== -1) ||
-            (sortField === "orderCount" && (u.orderCount ?? -1) !== -1) ||
-            (sortField === "supportTickets" &&
-              supportTicketCounts[u.id] !== undefined)
-        );
-
-        if (!hasData) return prevUsers; // Wait for data to load
-
-        return [...prevUsers].sort((a, b) => {
-          let aValue: any;
-          let bValue: any;
-
-          if (sortField === "lastActive") {
-            aValue = a.lastActive || a.createdAt;
-            bValue = b.lastActive || b.createdAt;
-          } else if (sortField === "totalSpent") {
-            aValue = a.totalSpent;
-            bValue = b.totalSpent;
-          } else if (sortField === "orderCount") {
-            aValue = a.orderCount ?? -1;
-            bValue = b.orderCount ?? -1;
-          } else if (sortField === "supportTickets") {
-            aValue = supportTicketCounts[a.id]?.total || 0;
-            bValue = supportTicketCounts[b.id]?.total || 0;
-          }
-
-          // Handle null/undefined values
-          if (aValue == null && bValue == null) return 0;
-          if (aValue == null) return 1; // null values go to end
-          if (bValue == null) return -1;
-
-          // Compare values
-          if (sortField === "lastActive") {
-            // Compare dates
-            const aDate = new Date(aValue).getTime();
-            const bDate = new Date(bValue).getTime();
-            return sortDirection === "asc" ? aDate - bDate : bDate - aDate;
-          } else {
-            // Compare numbers
-            return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
-          }
-        });
-      });
-    }
-  }, [sortField, sortDirection, supportTicketCounts]);
-
   // Close more menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1887,36 +1927,31 @@ export default function AdminCRM() {
   }, []);
 
   const handleSort = (field: keyof UserData) => {
-    // All fields are now sortable
-    // Some are sorted server-side (database fields), others are sorted client-side
     const serverSortableFields = [
       "firstName",
       "lastName",
       "subscription",
       "createdAt",
       "email",
+      "totalSpent",
+      "lastActive",
+      "orderCount",
+      "supportTickets",
+      "productCount",
     ];
 
-    // Fields that need client-side sorting (from external sources)
-    const clientSortableFields = ["lastActive", "totalSpent", "orderCount", "supportTickets"];
-
-    const allSortableFields = [
-      ...serverSortableFields,
-      ...clientSortableFields,
-    ];
-
-    if (!allSortableFields.includes(field as string)) {
-      console.log(`Field "${field}" is not sortable`);
+    if (!serverSortableFields.includes(field as string)) {
       return;
     }
 
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field as keyof UserData | "supportTickets");
-      setSortDirection("asc");
-    }
-    setCurrentPage(1); // Reset to first page when sorting changes
+    const next = nextCrmSort(
+      sortField as string,
+      sortDirection,
+      field as string
+    );
+    setSortField(next.field as keyof UserData | "supportTickets");
+    setSortDirection(next.direction);
+    setCurrentPage(1);
   };
 
   const getSortIcon = (field: keyof UserData) => {
@@ -1931,6 +1966,7 @@ export default function AdminCRM() {
       "totalSpent",
       "orderCount",
       "supportTickets",
+      "productCount",
     ];
     const isSortable = allSortableFields.includes(field as string);
 
@@ -2024,77 +2060,6 @@ export default function AdminCRM() {
     }).format(amount);
   };
 
-  const getRemainingTrialDays = (trialExpiration?: string): number | null => {
-    if (!trialExpiration) return null;
-
-    const trialEnd = new Date(trialExpiration);
-    const now = new Date();
-
-    // Check if trial is still active (not expired)
-    if (trialEnd <= now) return null;
-
-    // Calculate days remaining
-    const diffTime = trialEnd.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays > 0 ? diffDays : null;
-  };
-
-  const getTrialInfo = (
-    trialExpiration?: string,
-    createdAt?: string,
-    subscriptionExpiration?: string
-  ): { days: number | string; isActive: boolean } | null => {
-    if (!trialExpiration) return null;
-
-    const trialEnd = new Date(trialExpiration);
-    const now = new Date();
-
-    // Check if trial is still active
-    if (trialEnd > now) {
-      // Active trial - return remaining days
-      const diffTime = trialEnd.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return { days: diffDays > 0 ? diffDays : 0, isActive: true };
-    }
-
-    // Trial has expired - calculate duration
-    // Try to determine if it was 7 or 14 days
-    let estimatedDuration = 7; // Default to 7 days (most common)
-
-    if (createdAt) {
-      const accountCreated = new Date(createdAt);
-      const daysFromCreationToTrialEnd = Math.floor(
-        (trialEnd.getTime() - accountCreated.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      // Heuristic:
-      // - 7-day trials typically end 6-9 days after account creation
-      // - 14-day trials typically end 13-16 days after account creation
-      if (
-        daysFromCreationToTrialEnd >= 13 &&
-        daysFromCreationToTrialEnd <= 16
-      ) {
-        estimatedDuration = 14;
-      } else if (
-        daysFromCreationToTrialEnd >= 6 &&
-        daysFromCreationToTrialEnd <= 9
-      ) {
-        estimatedDuration = 7;
-      }
-    }
-
-    // If we have subscription expiration, we can also check when subscription started
-    // Subscription typically starts right after trial ends
-    if (subscriptionExpiration) {
-      const subStart = new Date(subscriptionExpiration);
-      // If subscription started very close to trial end, we can infer trial duration
-      // But this is less reliable, so we'll stick with the creation-based heuristic
-    }
-
-    return { days: estimatedDuration, isActive: false };
-  };
-
   const getDisplayName = (user: UserData) => {
     if (
       user.firstName &&
@@ -2186,27 +2151,24 @@ export default function AdminCRM() {
       setUserSubscriptions([]);
       setUserPurchases([]);
       setUserInvoices([]);
-      setSelectedUserHasPaymentMethod(false);
+      setSelectedUserHasPaymentMethod(null);
     }
 
     // Support tickets + unified orders (Stripe + grants, includes free checkouts)
     await Promise.all([
       fetchUserSupportTickets(user.id),
       fetchUserOrders(user.id),
+      fetchOwnedProducts(user.id),
     ]);
 
-    // Recalculate totalSpent using server-side API endpoint
-    // This ensures Stripe secret key is only used on the server
-    if (user.customerId) {
-      try {
-        const [totalSpentResponse, paymentMethodResponse] = await Promise.all([
-          fetch(
-            `/api/admin/customer-total-spent?customerId=${user.customerId}`
-          ),
-          fetch(
-            `/api/admin/customer-has-payment-method?customerId=${user.customerId}`
-          ),
-        ]);
+    // Recalculate totalSpent using every Stripe customer for this profile
+    // (linked customer_id plus customers that share the profile email).
+    try {
+      const spendParams = new URLSearchParams({ userId: user.id });
+      const [totalSpentResponse, paymentMethodResponse] = await Promise.all([
+        fetch(`/api/admin/customer-total-spent?${spendParams}`),
+        fetch(`/api/admin/customer-has-payment-method?${spendParams}`),
+      ]);
 
         const totalSpentData = await totalSpentResponse.json();
         const paymentMethodData = await paymentMethodResponse.json();
@@ -2290,7 +2252,6 @@ export default function AdminCRM() {
           };
         });
       }
-    }
   };
 
   const fetchUserSubscriptions = async (customerId: string) => {
@@ -2376,6 +2337,39 @@ export default function AdminCRM() {
   };
 
   /**
+   * @brief Loads catalog products the user currently owns (grants + purchases).
+   * @param userId Supabase auth user id.
+   * @returns Promise<void>
+   */
+  const fetchOwnedProducts = async (userId: string) => {
+    try {
+      setLoadingOwnedProducts(true);
+      setOwnedProducts([]);
+      const res = await fetch(
+        `/api/admin/user-products?user_id=${encodeURIComponent(userId)}`
+      );
+      const data = (await res.json()) as {
+        products?: AdminListedProduct[];
+        error?: string;
+      };
+      if (!res.ok) {
+        console.error(
+          "Error fetching owned products:",
+          data.error ?? res.statusText
+        );
+        setOwnedProducts([]);
+        return;
+      }
+      setOwnedProducts(Array.isArray(data.products) ? data.products : []);
+    } catch (err) {
+      console.error("Error fetching owned products:", err);
+      setOwnedProducts([]);
+    } finally {
+      setLoadingOwnedProducts(false);
+    }
+  };
+
+  /**
    * @brief Loads unified order rows (Stripe PIs + product grants) for the user profile modal.
    */
   const fetchUserOrders = async (userId: string) => {
@@ -2406,6 +2400,80 @@ export default function AdminCRM() {
     }
   };
 
+  /**
+   * @brief Opens the table-level owned-products dialog for a CRM row.
+   * @param userId Profile user id.
+   * @param event Click event (stopped so the row modal does not open).
+   */
+  const openTableProducts = async (
+    userId: string,
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation();
+    const requestId = ++tableProductsRequestId.current;
+    setTableProductsOpen(true);
+    setTableProducts([]);
+    setTableProductsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/user-products?user_id=${encodeURIComponent(userId)}`
+      );
+      if (requestId !== tableProductsRequestId.current) return;
+      if (!res.ok) {
+        console.error("Error fetching table products:", res.status);
+        setTableProducts([]);
+        return;
+      }
+      const data = (await res.json()) as { products?: AdminListedProduct[] };
+      if (requestId !== tableProductsRequestId.current) return;
+      setTableProducts(Array.isArray(data.products) ? data.products : []);
+    } catch (error) {
+      if (requestId !== tableProductsRequestId.current) return;
+      console.error("Error fetching table products:", error);
+      setTableProducts([]);
+    } finally {
+      if (requestId === tableProductsRequestId.current) {
+        setTableProductsLoading(false);
+      }
+    }
+  };
+
+  /**
+   * @brief Opens the table-level orders dialog for a CRM row.
+   * @param userId Profile user id.
+   * @param event Click event (stopped so the row modal does not open).
+   */
+  const openTableOrders = async (userId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const requestId = ++tableOrdersRequestId.current;
+    setTableOrdersOpen(true);
+    setTableOrders([]);
+    setTableSelectedOrder(null);
+    setTableOrdersLoading(true);
+    try {
+      const res = await fetch(
+        `/api/admin/user-orders?user_id=${encodeURIComponent(userId)}`
+      );
+      if (requestId !== tableOrdersRequestId.current) return;
+      if (!res.ok) {
+        console.error("Error fetching table orders:", res.status);
+        setTableOrders([]);
+        return;
+      }
+      const data = (await res.json()) as { orders?: AdminListedOrder[] };
+      if (requestId !== tableOrdersRequestId.current) return;
+      setTableOrders(Array.isArray(data.orders) ? data.orders : []);
+    } catch (error) {
+      if (requestId !== tableOrdersRequestId.current) return;
+      console.error("Error fetching table orders:", error);
+      setTableOrders([]);
+    } finally {
+      if (requestId === tableOrdersRequestId.current) {
+        setTableOrdersLoading(false);
+      }
+    }
+  };
+
   const closeModal = () => {
     setShowUserModal(false);
     setSelectedUser(null);
@@ -2417,6 +2485,47 @@ export default function AdminCRM() {
     setUserInvoices([]);
     setUserOrders([]);
     setLoadingUserOrders(false);
+    setOwnedProducts([]);
+    setLoadingOwnedProducts(false);
+    setShowOwnedProductsDialog(false);
+    setSelectedOrder(null);
+  };
+
+  /**
+   * @brief Copies a CRM row email to the clipboard without opening the user modal.
+   * @param email Address to copy.
+   * @param userId Profile id used for brief copied feedback.
+   * @param event Click event (stopped so the row modal does not open).
+   * @returns Promise that resolves when the copy attempt finishes.
+   * @example
+   * handleCopyUserEmail("user@example.com", user.id, event);
+   */
+  const handleCopyUserEmail = async (
+    email: string,
+    userId: string,
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation();
+    const value = String(email ?? "").trim();
+    if (!value) {
+      setCopyNotice({ type: "error", message: "No email to copy" });
+      return;
+    }
+    try {
+      if (!navigator?.clipboard?.writeText) {
+        setCopyNotice({
+          type: "error",
+          message: "Clipboard is not available in this context",
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(value);
+      setCopiedEmailUserId(userId);
+      setCopyNotice({ type: "success", message: "Email copied" });
+    } catch (error) {
+      console.error("Copy email failed:", error);
+      setCopyNotice({ type: "error", message: "Could not copy email" });
+    }
   };
 
   const handleMoreMenuClick = (userId: string, e: React.MouseEvent) => {
@@ -2435,7 +2544,9 @@ export default function AdminCRM() {
         console.log("Edit user:", user.id);
         break;
       case "email":
-        console.log("Send email to:", user.email);
+        if (user.email) {
+          window.location.href = `mailto:${user.email}`;
+        }
         break;
       case "ban":
         console.log("Ban user:", user.id);
@@ -2824,6 +2935,17 @@ export default function AdminCRM() {
     }
   }, [subscriptionError]);
 
+  useEffect(() => {
+    if (!copyNotice && !copiedEmailUserId) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setCopyNotice(null);
+      setCopiedEmailUserId(null);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [copyNotice, copiedEmailUserId]);
+
   // Show page immediately - no early returns
   const showContent = !languageLoading && user;
 
@@ -2955,6 +3077,12 @@ export default function AdminCRM() {
                   <option value="all">
                     {t("admin.crmPage.filters.all", "All Users")}
                   </option>
+                  <option value="paying">
+                    {t(
+                      "admin.crmPage.filters.paying",
+                      "Paying Customers"
+                    )}
+                  </option>
                   <option value="none">
                     {t("admin.crmPage.filters.free", "Free Users")}
                   </option>
@@ -3016,6 +3144,15 @@ export default function AdminCRM() {
                     </TableHeaderCell>
                     <TableHeaderCell
                       $sortable={true}
+                      onClick={() =>
+                        handleSort("productCount" as keyof UserData)
+                      }
+                    >
+                      Products
+                      {getSortIcon("productCount" as keyof UserData)}
+                    </TableHeaderCell>
+                    <TableHeaderCell
+                      $sortable={true}
                       onClick={() => handleSort("createdAt")}
                     >
                       {t("admin.crmPage.userTable.joinDate", "Join Date")}
@@ -3063,6 +3200,7 @@ export default function AdminCRM() {
                           <TableCell>&nbsp;</TableCell>
                           <TableCell>&nbsp;</TableCell>
                           <TableCell>&nbsp;</TableCell>
+                          <TableCell>&nbsp;</TableCell>
                           <LastActiveTableCell>
                             {/* Simulate wrapped content to match actual row height */}
                             <span style={{ visibility: "hidden" }}>
@@ -3089,6 +3227,12 @@ export default function AdminCRM() {
                           custom={index}
                           initial="hidden"
                           animate="visible"
+                          $paid={userData.totalSpent > 0}
+                          title={
+                            userData.totalSpent > 0
+                              ? "Paid customer"
+                              : undefined
+                          }
                           onClick={() => handleViewUser(userData)}
                         >
                           <TableCell>
@@ -3121,7 +3265,25 @@ export default function AdminCRM() {
                             </UserInfo>
                           </TableCell>
                           <TableCell>
-                            <UserEmail>{userData.email}</UserEmail>
+                            <UserEmail
+                              type="button"
+                              $copied={copiedEmailUserId === userData.id}
+                              title={
+                                copiedEmailUserId === userData.id
+                                  ? "Copied"
+                                  : "Click to copy"
+                              }
+                              aria-label={`Copy ${userData.email}`}
+                              onClick={(event) =>
+                                handleCopyUserEmail(
+                                  userData.email,
+                                  userData.id,
+                                  event
+                                )
+                              }
+                            >
+                              {userData.email}
+                            </UserEmail>
                           </TableCell>
                           <SubscriptionCell>
                             <SubscriptionCellInner>
@@ -3192,8 +3354,36 @@ export default function AdminCRM() {
                               <LoadingSpinner
                                 style={{ display: "inline-block" }}
                               />
+                            ) : userData.orderCount > 0 ? (
+                              <TableCountLink
+                                type="button"
+                                onClick={(e) =>
+                                  openTableOrders(userData.id, e)
+                                }
+                              >
+                                {userData.orderCount}
+                              </TableCountLink>
                             ) : (
                               userData.orderCount
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {userData.productCount === undefined ||
+                            userData.productCount === -1 ? (
+                              <LoadingSpinner
+                                style={{ display: "inline-block" }}
+                              />
+                            ) : userData.productCount > 0 ? (
+                              <TableCountLink
+                                type="button"
+                                onClick={(e) =>
+                                  openTableProducts(userData.id, e)
+                                }
+                              >
+                                {userData.productCount}
+                              </TableCountLink>
+                            ) : (
+                              userData.productCount
                             )}
                           </TableCell>
                           <JoinDateTableCell>
@@ -3529,17 +3719,24 @@ export default function AdminCRM() {
                     </InfoValue>
                   </InfoItem>
                   <InfoItem>
-                    <InfoLabel>Trial Days Left</InfoLabel>
+                    <InfoLabel>Products owned</InfoLabel>
                     <InfoValue>
-                      {(() => {
-                        const daysLeft = getRemainingTrialDays(
-                          selectedUser.trialExpiration
-                        );
-                        if (daysLeft === null) {
-                          return "N/A";
-                        }
-                        return `${daysLeft} day${daysLeft !== 1 ? "s" : ""}`;
-                      })()}
+                      {loadingOwnedProducts ? (
+                        <LoadingSpinner
+                          style={{
+                            display: "inline-block",
+                            marginRight: "8px",
+                          }}
+                        />
+                      ) : (
+                        <AdminCountLinkButton
+                          type="button"
+                          disabled={ownedProducts.length === 0}
+                          onClick={() => setShowOwnedProductsDialog(true)}
+                        >
+                          {ownedProducts.length}
+                        </AdminCountLinkButton>
+                      )}
                     </InfoValue>
                   </InfoItem>
                   <InfoItem>
@@ -3878,47 +4075,57 @@ export default function AdminCRM() {
                       <tr>
                         <DataTableHeaderCell>Date</DataTableHeaderCell>
                         <DataTableHeaderCell>Type</DataTableHeaderCell>
+                        <DataTableHeaderCell>Products</DataTableHeaderCell>
                         <DataTableHeaderCell>Amount</DataTableHeaderCell>
-                        <DataTableHeaderCell>Reference</DataTableHeaderCell>
                       </tr>
                     </DataTableHeader>
                     <DataTableBody>
-                      {userOrders.map((row) => (
-                        <DataTableRow key={`${row.type}-${row.id}`}>
-                          <DataTableCell>
-                            {row.created
-                              ? formatDate(row.created)
-                              : "—"}
-                          </DataTableCell>
-                          <DataTableCell>
-                            <StatusBadge
-                              $status={
-                                row.type === "stripe" ? "succeeded" : "active"
+                      {userOrders.map((row) => {
+                        const orderProducts = listedProductsFromOrder(row);
+                        return (
+                          <ClickableOrderRow
+                            key={`${row.type}-${row.id}`}
+                            onClick={() => {
+                              if (orderProducts.length > 0) {
+                                setSelectedOrder(row);
                               }
-                            >
-                              {row.type === "stripe" ? "Payment" : "Grant"}
-                            </StatusBadge>
-                          </DataTableCell>
-                          <DataTableCell>
-                            {formatCurrency(row.amountCents / 100)}
-                          </DataTableCell>
-                          <DataTableCell>
-                            {row.type === "stripe" ? (
-                              <StripeLink
-                                href={`https://dashboard.stripe.com/payments/${row.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            }}
+                          >
+                            <DataTableCell>
+                              {row.created
+                                ? formatDate(row.created)
+                                : "—"}
+                            </DataTableCell>
+                            <DataTableCell>
+                              <StatusBadge
+                                $status={
+                                  row.type === "stripe" ? "succeeded" : "active"
+                                }
                               >
-                                {row.id}
-                              </StripeLink>
-                            ) : (
-                              <span style={{ color: "var(--text-secondary)" }}>
-                                {row.productName ?? row.id}
-                              </span>
-                            )}
-                          </DataTableCell>
-                        </DataTableRow>
-                      ))}
+                                {row.type === "stripe" ? "Payment" : "Grant"}
+                              </StatusBadge>
+                            </DataTableCell>
+                            <DataTableCell>
+                              {orderProducts.length > 0 ? (
+                                <AdminCountLinkButton
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedOrder(row);
+                                  }}
+                                >
+                                  {productCountLabel(orderProducts.length)}
+                                </AdminCountLinkButton>
+                              ) : (
+                                "—"
+                              )}
+                            </DataTableCell>
+                            <DataTableCell>
+                              {formatCurrency(row.amountCents / 100)}
+                            </DataTableCell>
+                          </ClickableOrderRow>
+                        );
+                      })}
                     </DataTableBody>
                   </DataTable>
                 ) : (
@@ -4089,6 +4296,77 @@ export default function AdminCRM() {
               </ModalSection>
             </ModalContent>
           </ModalOverlay>
+        )}
+
+        <AdminProductListDialog
+          title="Products they own"
+          products={ownedProducts}
+          isOpen={showUserModal && showOwnedProductsDialog}
+          onClose={() => setShowOwnedProductsDialog(false)}
+        />
+        <AdminProductListDialog
+          title="Order products"
+          products={selectedOrder ? listedProductsFromOrder(selectedOrder) : []}
+          isOpen={showUserModal && selectedOrder !== null}
+          onClose={() => setSelectedOrder(null)}
+          stripePaymentId={
+            selectedOrder?.type === "stripe" ? selectedOrder.id : null
+          }
+        />
+        <AdminProductListDialog
+          title="Products they own"
+          products={tableProducts}
+          isOpen={tableProductsOpen}
+          loading={tableProductsLoading}
+          onClose={() => {
+            setTableProductsOpen(false);
+            setTableProducts([]);
+          }}
+        />
+        <AdminOrdersListDialog
+          title="Orders"
+          orders={tableOrders}
+          isOpen={tableOrdersOpen}
+          loading={tableOrdersLoading}
+          onClose={() => {
+            setTableOrdersOpen(false);
+            setTableOrders([]);
+            setTableSelectedOrder(null);
+          }}
+          onSelectOrder={(order) => setTableSelectedOrder(order)}
+        />
+        <AdminProductListDialog
+          title="Order products"
+          products={
+            tableSelectedOrder
+              ? listedProductsFromOrder(tableSelectedOrder)
+              : []
+          }
+          isOpen={tableSelectedOrder !== null}
+          onClose={() => setTableSelectedOrder(null)}
+          stripePaymentId={
+            tableSelectedOrder?.type === "stripe"
+              ? tableSelectedOrder.id
+              : null
+          }
+          zIndex={10700}
+        />
+
+        {copyNotice && (
+          <RefundNotification
+            type={copyNotice.type}
+            initial={{ opacity: 0, x: 300 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 300 }}
+            onClick={() => setCopyNotice(null)}
+          >
+            {copyNotice.type === "success" ? (
+              <FaCheck />
+            ) : (
+              <FaExclamationTriangle />
+            )}
+            {copyNotice.message}
+          </RefundNotification>
         )}
 
         {/* Refund Notifications */}

@@ -1,3 +1,8 @@
+/**
+ * @fileoverview Admin user profile modal: identity, subscriptions, tickets,
+ * invoices, orders with purchased products, and catalog products the user owns.
+ * @module components/admin/UserProfileModal
+ */
 "use client";
 import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
@@ -17,15 +22,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import styled from "styled-components";
 import type { UserData } from "@/utils/stripe/admin-analytics";
 import {
-  getCustomerPurchasesAdmin,
   getCustomerInvoicesAdmin,
   getUserSupportTicketsAdmin,
 } from "@/app/actions/user-management";
-import { getProductGrantsForUsers } from "@/app/actions/product-grants";
-import type { ProductGrant } from "@/app/actions/product-grants";
 import { getCustomerSubscriptions } from "@/utils/stripe/actions";
 import { updateUserProStatus } from "@/utils/subscriptions/check-subscription";
 import { NnaudioAccessInstallerBadges } from "@/components/admin/NnaudioAccessInstallerBadges";
+import AdminProductListDialog, {
+  AdminCountLinkButton,
+  listedProductsFromOrder,
+  productCountLabel,
+  type AdminListedProduct,
+} from "@/components/admin/AdminProductListDialog";
 
 /** @brief Row from GET /api/admin/user-orders */
 type AdminUserOrderRow = {
@@ -34,6 +42,8 @@ type AdminUserOrderRow = {
   amountCents: number;
   created: string | null;
   productName?: string | null;
+  productNames?: string[];
+  products?: AdminListedProduct[];
 };
 
 const ModalOverlay = styled(motion.div)`
@@ -227,30 +237,8 @@ const EmptyState = styled.div`
   font-style: italic;
 `;
 
-/** Scrollable container for the products-owned list at the bottom of the modal */
-const ScrollableProductsSection = styled.div`
-  max-height: 320px;
-  overflow-y: auto;
-  overflow-x: auto;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.02);
-
-  &::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-  }
+const ClickableOrderRow = styled(DataTableRow)`
+  cursor: pointer;
 `;
 
 const SubscriptionBadge = styled.span<{
@@ -539,16 +527,6 @@ export default function UserProfileModal({
   const [subscriptionRefreshMessage, setSubscriptionRefreshMessage] = useState<
     string | null
   >(null);
-  const [userPurchases, setUserPurchases] = useState<
-    Array<{
-      id: string;
-      amount: number;
-      status: string;
-      createdAt: string;
-      description: string;
-    }>
-  >([]);
-  const [loadingPurchases, setLoadingPurchases] = useState(false);
   const [userInvoices, setUserInvoices] = useState<
     Array<{
       id: string;
@@ -573,40 +551,50 @@ export default function UserProfileModal({
   const [hasPaymentMethod, setHasPaymentMethod] = useState<boolean | null>(
     null
   );
-  const [userProductGrants, setUserProductGrants] = useState<ProductGrant[]>([]);
-  const [loadingProductGrants, setLoadingProductGrants] = useState(false);
+  const [ownedProducts, setOwnedProducts] = useState<AdminListedProduct[]>([]);
+  const [loadingOwnedProducts, setLoadingOwnedProducts] = useState(false);
+  const [showOwnedProductsDialog, setShowOwnedProductsDialog] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<AdminUserOrderRow | null>(
+    null
+  );
   const [userOrders, setUserOrders] = useState<AdminUserOrderRow[]>([]);
   const [loadingUserOrders, setLoadingUserOrders] = useState(false);
 
-  const fetchUserProductGrants = useCallback(
-    async (args: { userId: string; email?: string | null }) => {
-      if (!args.userId?.trim()) {
-        setUserProductGrants([]);
+  /**
+   * @brief Loads catalog products the user currently has access to (grants + purchases).
+   * @param userId Supabase auth user id.
+   * @returns Promise<void>
+   */
+  const fetchOwnedProducts = useCallback(async (userId: string) => {
+    if (!userId.trim()) {
+      setOwnedProducts([]);
+      return;
+    }
+    try {
+      setLoadingOwnedProducts(true);
+      const res = await fetch(
+        `/api/admin/user-products?user_id=${encodeURIComponent(userId)}`
+      );
+      const data = (await res.json()) as {
+        products?: AdminListedProduct[];
+        error?: string;
+      };
+      if (!res.ok) {
+        console.error(
+          "Error fetching owned products:",
+          data.error ?? res.statusText
+        );
+        setOwnedProducts([]);
         return;
       }
-      try {
-        setLoadingProductGrants(true);
-        const { data, error } = await getProductGrantsForUsers([
-          {
-            userId: args.userId.trim(),
-            email: args.email?.trim() ? args.email.trim().toLowerCase() : null,
-          },
-        ]);
-        if (error) {
-          console.error("Error fetching product grants:", error);
-          setUserProductGrants([]);
-        } else {
-          setUserProductGrants(data ?? []);
-        }
-      } catch (error) {
-        console.error("Error fetching product grants:", error);
-        setUserProductGrants([]);
-      } finally {
-        setLoadingProductGrants(false);
-      }
-    },
-    []
-  );
+      setOwnedProducts(Array.isArray(data.products) ? data.products : []);
+    } catch (error) {
+      console.error("Error fetching owned products:", error);
+      setOwnedProducts([]);
+    } finally {
+      setLoadingOwnedProducts(false);
+    }
+  }, []);
 
   const fetchUserSubscriptions = useCallback(async (customerId: string) => {
     try {
@@ -624,25 +612,6 @@ export default function UserProfileModal({
       setUserSubscriptions([]);
     } finally {
       setLoadingSubscriptions(false);
-    }
-  }, []);
-
-  const fetchUserPurchases = useCallback(async (customerId: string) => {
-    try {
-      setLoadingPurchases(true);
-      const result = await getCustomerPurchasesAdmin(customerId);
-
-      if (result.error) {
-        console.error("Error fetching purchases:", result.error);
-        setUserPurchases([]);
-      } else {
-        setUserPurchases(result.purchases);
-      }
-    } catch (error) {
-      console.error("Error fetching purchases:", error);
-      setUserPurchases([]);
-    } finally {
-      setLoadingPurchases(false);
     }
   }, []);
 
@@ -754,53 +723,49 @@ export default function UserProfileModal({
     if (isOpen && user) {
       // Reset all data when modal opens with a new user
       setUserSubscriptions([]);
-      setUserPurchases([]);
       setUserInvoices([]);
       setSupportTickets([]);
-      setUserProductGrants([]);
+      setOwnedProducts([]);
       setUserOrders([]);
+      setShowOwnedProductsDialog(false);
+      setSelectedOrder(null);
       setHasPaymentMethod(null);
 
       if (user.id) {
-        fetchUserProductGrants({
-          userId: user.id,
-          email: user.email ?? null,
-        });
+        fetchOwnedProducts(user.id);
       }
       if (user.customerId) {
         fetchUserSubscriptions(user.customerId);
-        fetchUserPurchases(user.customerId);
         fetchUserInvoices(user.customerId);
-
-        // Fetch payment method status
-        fetch(
-          `/api/admin/customer-has-payment-method?customerId=${user.customerId}`
-        )
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success) {
-              setHasPaymentMethod(data.hasPaymentMethod);
-            } else {
-              setHasPaymentMethod(false);
-            }
-          })
-          .catch((error) => {
-            console.error("Error checking payment method:", error);
-            setHasPaymentMethod(false);
-          });
-      } else {
-        setHasPaymentMethod(false);
       }
+      fetch(
+        `/api/admin/customer-has-payment-method?${new URLSearchParams({
+          userId: user.id,
+        })}`
+      )
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            setHasPaymentMethod(data.hasPaymentMethod);
+          } else {
+            setHasPaymentMethod(false);
+          }
+        })
+        .catch((error) => {
+          console.error("Error checking payment method:", error);
+          setHasPaymentMethod(false);
+        });
       fetchUserSupportTickets(user.id);
       fetchUserOrders(user.id);
     } else if (!isOpen) {
       // Clear data when modal closes
       setUserSubscriptions([]);
-      setUserPurchases([]);
       setUserInvoices([]);
       setSupportTickets([]);
-      setUserProductGrants([]);
+      setOwnedProducts([]);
       setUserOrders([]);
+      setShowOwnedProductsDialog(false);
+      setSelectedOrder(null);
       setHasPaymentMethod(null);
     }
   }, [
@@ -809,10 +774,9 @@ export default function UserProfileModal({
     user?.email,
     user?.customerId,
     fetchUserSubscriptions,
-    fetchUserPurchases,
     fetchUserInvoices,
     fetchUserSupportTickets,
-    fetchUserProductGrants,
+    fetchOwnedProducts,
     fetchUserOrders,
   ]);
 
@@ -911,21 +875,21 @@ export default function UserProfileModal({
                   </InfoValue>
                 </InfoItem>
                 <InfoItem>
-                  <InfoLabel>Trial Days Left</InfoLabel>
+                  <InfoLabel>Products owned</InfoLabel>
                   <InfoValue>
-                    {(() => {
-                      if (!user.trialExpiration) return "N/A";
-                      const trialEnd = new Date(user.trialExpiration);
-                      const now = new Date();
-                      if (trialEnd <= now) return "N/A";
-                      const diffTime = trialEnd.getTime() - now.getTime();
-                      const diffDays = Math.ceil(
-                        diffTime / (1000 * 60 * 60 * 24)
-                      );
-                      return diffDays > 0
-                        ? `${diffDays} day${diffDays !== 1 ? "s" : ""}`
-                        : "N/A";
-                    })()}
+                    {loadingOwnedProducts ? (
+                      <LoadingSpinner
+                        style={{ display: "inline-block", marginRight: "8px" }}
+                      />
+                    ) : (
+                      <AdminCountLinkButton
+                        type="button"
+                        disabled={ownedProducts.length === 0}
+                        onClick={() => setShowOwnedProductsDialog(true)}
+                      >
+                        {ownedProducts.length}
+                      </AdminCountLinkButton>
+                    )}
                   </InfoValue>
                 </InfoItem>
                 <InfoItem>
@@ -1359,45 +1323,87 @@ export default function UserProfileModal({
                     <tr>
                       <DataTableHeaderCell>Date</DataTableHeaderCell>
                       <DataTableHeaderCell>Type</DataTableHeaderCell>
+                      <DataTableHeaderCell>Products</DataTableHeaderCell>
                       <DataTableHeaderCell>Amount</DataTableHeaderCell>
-                      <DataTableHeaderCell>Reference</DataTableHeaderCell>
+                      {onRefundPurchase ? (
+                        <DataTableHeaderCell>Actions</DataTableHeaderCell>
+                      ) : null}
                     </tr>
                   </DataTableHeader>
                   <DataTableBody>
-                    {userOrders.map((row) => (
-                      <DataTableRow key={`${row.type}-${row.id}`}>
-                        <DataTableCell>
-                          {row.created ? formatDate(row.created) : "—"}
-                        </DataTableCell>
-                        <DataTableCell>
-                          <StatusBadge
-                            $status={
-                              row.type === "stripe" ? "succeeded" : "active"
+                    {userOrders.map((row) => {
+                      const orderProducts = listedProductsFromOrder(row);
+                      return (
+                        <ClickableOrderRow
+                          key={`${row.type}-${row.id}`}
+                          onClick={() => {
+                            if (orderProducts.length > 0) {
+                              setSelectedOrder(row);
                             }
-                          >
-                            {row.type === "stripe" ? "Payment" : "Grant"}
-                          </StatusBadge>
-                        </DataTableCell>
-                        <DataTableCell>
-                          {formatCurrency(row.amountCents)}
-                        </DataTableCell>
-                        <DataTableCell>
-                          {row.type === "stripe" ? (
-                            <StripeLink
-                              href={`https://dashboard.stripe.com/payments/${row.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                          }}
+                        >
+                          <DataTableCell>
+                            {row.created ? formatDate(row.created) : "—"}
+                          </DataTableCell>
+                          <DataTableCell>
+                            <StatusBadge
+                              $status={
+                                row.type === "stripe" ? "succeeded" : "active"
+                              }
                             >
-                              {row.id}
-                            </StripeLink>
-                          ) : (
-                            <span style={{ color: "var(--text-secondary)" }}>
-                              {row.productName ?? row.id}
-                            </span>
+                              {row.type === "stripe" ? "Payment" : "Grant"}
+                            </StatusBadge>
+                          </DataTableCell>
+                          <DataTableCell>
+                            {orderProducts.length > 0 ? (
+                              <AdminCountLinkButton
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedOrder(row);
+                                }}
+                              >
+                                {productCountLabel(orderProducts.length)}
+                              </AdminCountLinkButton>
+                            ) : (
+                              "—"
+                            )}
+                          </DataTableCell>
+                          <DataTableCell>
+                            {formatCurrency(row.amountCents)}
+                          </DataTableCell>
+                          {onRefundPurchase && (
+                            <DataTableCell>
+                              {row.type === "stripe" && (
+                                <RefundButton
+                                  variant="danger"
+                                  disabled={refundLoading === row.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRefundPurchase(
+                                      row.id,
+                                      row.amountCents / 100,
+                                      orderProducts
+                                        .map((product) => product.name)
+                                        .join(", ") || row.id
+                                    );
+                                  }}
+                                >
+                                  {refundLoading === row.id ? (
+                                    <LoadingSpinner />
+                                  ) : (
+                                    <FaUndo />
+                                  )}
+                                  {refundSuccess === row.id
+                                    ? "Refunded"
+                                    : "Refund"}
+                                </RefundButton>
+                              )}
+                            </DataTableCell>
                           )}
-                        </DataTableCell>
-                      </DataTableRow>
-                    ))}
+                        </ClickableOrderRow>
+                      );
+                    })}
                   </DataTableBody>
                 </DataTable>
               ) : (
@@ -1405,111 +1411,24 @@ export default function UserProfileModal({
               )}
             </ModalSection>
 
-            {/* Products owned - grants + purchases, full list, scrollable */}
-            <ModalSection>
-              <SectionTitle>
-                <FaChartLine />
-                Products they own
-              </SectionTitle>
-              <ScrollableProductsSection>
-                {loadingPurchases || loadingProductGrants ? (
-                  <EmptyState>Loading products...</EmptyState>
-                ) : userProductGrants.length > 0 || userPurchases.length > 0 ? (
-                  <DataTable>
-                    <DataTableHeader>
-                      <tr>
-                        <DataTableHeaderCell>Product / Description</DataTableHeaderCell>
-                        <DataTableHeaderCell>Source</DataTableHeaderCell>
-                        <DataTableHeaderCell>Amount</DataTableHeaderCell>
-                        <DataTableHeaderCell>Status</DataTableHeaderCell>
-                        <DataTableHeaderCell>Date</DataTableHeaderCell>
-                        {onRefundPurchase ? (
-                          <DataTableHeaderCell>Actions</DataTableHeaderCell>
-                        ) : null}
-                      </tr>
-                    </DataTableHeader>
-                    <DataTableBody>
-                      {userProductGrants.map((grant) => (
-                        <DataTableRow key={`grant-${grant.id}`}>
-                          <DataTableCell>
-                            {grant.products?.name ?? grant.product_id}
-                          </DataTableCell>
-                          <DataTableCell>
-                            <StatusBadge $status="active">Grant</StatusBadge>
-                          </DataTableCell>
-                          <DataTableCell>—</DataTableCell>
-                          <DataTableCell>—</DataTableCell>
-                          <DataTableCell>
-                            {formatDate(grant.granted_at)}
-                          </DataTableCell>
-                          {onRefundPurchase && <DataTableCell />}
-                        </DataTableRow>
-                      ))}
-                      {userPurchases.map((purchase) => (
-                        <DataTableRow key={`purchase-${purchase.id}`}>
-                          <DataTableCell>
-                            <StripeLink
-                              href={`https://dashboard.stripe.com/payments/${purchase.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {purchase.description}
-                            </StripeLink>
-                          </DataTableCell>
-                          <DataTableCell>
-                            <StatusBadge $status={purchase.status}>
-                              Purchase
-                            </StatusBadge>
-                          </DataTableCell>
-                          <DataTableCell>
-                            {formatCurrency(purchase.amount * 100)}
-                          </DataTableCell>
-                          <DataTableCell>
-                            <StatusBadge $status={purchase.status}>
-                              {purchase.status}
-                            </StatusBadge>
-                          </DataTableCell>
-                          <DataTableCell>
-                            {formatDate(purchase.createdAt)}
-                          </DataTableCell>
-                          {onRefundPurchase && (
-                            <DataTableCell>
-                              {purchase.status === "succeeded" && (
-                                <RefundButton
-                                  variant="danger"
-                                  disabled={refundLoading === purchase.id}
-                                  onClick={() =>
-                                    onRefundPurchase(
-                                      purchase.id,
-                                      purchase.amount,
-                                      purchase.description
-                                    )
-                                  }
-                                >
-                                  {refundLoading === purchase.id ? (
-                                    <LoadingSpinner />
-                                  ) : (
-                                    <FaUndo />
-                                  )}
-                                  {refundSuccess === purchase.id
-                                    ? "Refunded"
-                                    : "Refund"}
-                                </RefundButton>
-                              )}
-                            </DataTableCell>
-                          )}
-                        </DataTableRow>
-                      ))}
-                    </DataTableBody>
-                  </DataTable>
-                ) : (
-                  <EmptyState>No products found</EmptyState>
-                )}
-              </ScrollableProductsSection>
-            </ModalSection>
           </ModalContent>
         </ModalOverlay>
       )}
+      <AdminProductListDialog
+        title="Products they own"
+        products={ownedProducts}
+        isOpen={isOpen && showOwnedProductsDialog}
+        onClose={() => setShowOwnedProductsDialog(false)}
+      />
+      <AdminProductListDialog
+        title="Order products"
+        products={selectedOrder ? listedProductsFromOrder(selectedOrder) : []}
+        isOpen={isOpen && selectedOrder !== null}
+        onClose={() => setSelectedOrder(null)}
+        stripePaymentId={
+          selectedOrder?.type === "stripe" ? selectedOrder.id : null
+        }
+      />
     </AnimatePresence>
   );
 }
