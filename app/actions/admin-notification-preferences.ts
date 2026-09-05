@@ -3,7 +3,7 @@
  * @module actions/admin-notification-preferences
  *
  * Used by the admin notifications page. Preferences are stored in
- * admin_notification_preferences (notify_on_paid_order, notify_on_free_order).
+ * admin_notification_preferences. Free-order copies are never sent.
  */
 
 "use server";
@@ -15,7 +15,6 @@ import { createClient } from "@/utils/supabase/server";
  */
 export interface AdminNotificationPreferences {
   notify_on_paid_order: boolean;
-  notify_on_free_order: boolean;
 }
 
 /**
@@ -50,7 +49,7 @@ export async function getAdminNotificationPreferences(): Promise<{
 
     const { data: prefs, error } = await supabase
       .from("admin_notification_preferences")
-      .select("notify_on_paid_order, notify_on_free_order")
+      .select("notify_on_paid_order")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -64,7 +63,6 @@ export async function getAdminNotificationPreferences(): Promise<{
         success: true,
         preferences: {
           notify_on_paid_order: prefs.notify_on_paid_order ?? false,
-          notify_on_free_order: prefs.notify_on_free_order ?? false,
         },
       };
     }
@@ -74,7 +72,6 @@ export async function getAdminNotificationPreferences(): Promise<{
       success: true,
       preferences: {
         notify_on_paid_order: false,
-        notify_on_free_order: false,
       },
     };
   } catch (e) {
@@ -89,8 +86,9 @@ export async function getAdminNotificationPreferences(): Promise<{
 
 /**
  * @brief Updates the current admin's notification preferences.
- * @param preferences - New values for notify_on_paid_order and notify_on_free_order
+ * @param preferences - New values for notify_on_paid_order
  * @returns Success and optional error message.
+ * @note notify_on_free_order is always persisted as false; free orders never notify admins.
  */
 export async function updateAdminNotificationPreferences(
   preferences: AdminNotificationPreferences
@@ -121,7 +119,7 @@ export async function updateAdminNotificationPreferences(
         {
           user_id: user.id,
           notify_on_paid_order: preferences.notify_on_paid_order,
-          notify_on_free_order: preferences.notify_on_free_order,
+          notify_on_free_order: false,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id" }

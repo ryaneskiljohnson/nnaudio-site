@@ -139,7 +139,7 @@ async function findUserIdByCustomerId(
 /**
  * Sends branded order confirmation email for a completed checkout session (payment mode).
  * Uses NNAudio branding; receipt URL from Stripe charge when available.
- * Also sends a copy to admins who opted in (paid vs free order toggles).
+ * Also sends a copy to admins who opted in for paid orders. Free orders never notify admins.
  */
 async function sendOrderConfirmationEmail(
   session: Stripe.Checkout.Session
@@ -251,9 +251,7 @@ async function sendOrderConfirmationEmail(
     console.error("Failed to send order confirmation email:", result.error);
   }
 
-  const isFreeOrder = amountTotal === 0;
-  const isPaidOrder = amountTotal > 0;
-  const adminEmails = await getAdminEmailsForOrderCopy(isPaidOrder, isFreeOrder);
+  const adminEmails = await getAdminEmailsForOrderCopy(amountTotal > 0);
   const subject = "Your order confirmation – NNAud.io";
   const html = buildOrderConfirmationHtml(data);
   const text = buildOrderConfirmationText(data);
@@ -535,7 +533,7 @@ async function sendPaymentIntentOrderConfirmationEmail(
     );
   }
 
-  const adminEmails = await getAdminEmailsForOrderCopy(true, false);
+  const adminEmails = await getAdminEmailsForOrderCopy(true);
   for (const adminEmail of adminEmails) {
     const adminResult = await sendEmail({
       to: adminEmail,

@@ -3,7 +3,7 @@
  * @module app/(private)/(admin)/admin/notifications/page
  *
  * Allows the logged-in admin to opt in to receiving the same order confirmation email
- * as the customer, with separate toggles for paid orders and free orders (total = 0).
+ * as the customer for paid orders. Free orders never notify admins.
  */
 
 "use client";
@@ -11,7 +11,7 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
-import { FaBell, FaEnvelope, FaShoppingCart, FaGift, FaCheck, FaExclamationCircle } from "react-icons/fa";
+import { FaBell, FaEnvelope, FaShoppingCart, FaCheck, FaExclamationCircle } from "react-icons/fa";
 import {
   getAdminNotificationPreferences,
   updateAdminNotificationPreferences,
@@ -204,6 +204,10 @@ const ErrorBanner = styled.div`
   }
 `;
 
+/**
+ * @brief Admin notifications settings page for paid-order confirmation copies.
+ * @returns Notification preference toggles for the logged-in admin.
+ */
 export default function AdminNotificationsPage() {
   const [preferences, setPreferences] = useState<AdminNotificationPreferences | null>(null);
   const [loading, setLoading] = useState(true);
@@ -219,7 +223,7 @@ export default function AdminNotificationsPage() {
       setPreferences(res.preferences);
       setLoadError(null);
     } else {
-      setPreferences({ notify_on_paid_order: false, notify_on_free_order: false });
+      setPreferences({ notify_on_paid_order: false });
       setLoadError(res.error ?? "Failed to load preferences");
     }
     setLoading(false);
@@ -268,7 +272,6 @@ export default function AdminNotificationsPage() {
   }
 
   const paidOn = preferences?.notify_on_paid_order ?? false;
-  const freeOn = preferences?.notify_on_free_order ?? false;
 
   return (
     <Container>
@@ -283,7 +286,7 @@ export default function AdminNotificationsPage() {
             Notifications
           </Title>
           <Subtitle>
-            Choose when to receive a copy of the same order confirmation email we send to customers.
+            Choose whether to receive a copy of paid-order confirmation emails. Free orders are never copied to admins.
           </Subtitle>
         </Header>
 
@@ -326,32 +329,6 @@ export default function AdminNotificationsPage() {
               disabled={saving}
               aria-pressed={paidOn}
               aria-label="Toggle paid order emails"
-            />
-          </ToggleRow>
-          <ToggleRow>
-            <ToggleLabel
-              onClick={(e) => {
-                e.preventDefault();
-                if (!saving) handleToggle("notify_on_free_order", !freeOn);
-              }}
-            >
-              <ToggleIcon>
-                <FaGift />
-              </ToggleIcon>
-              <div>
-                <ToggleText>Free orders</ToggleText>
-                <ToggleDescription>
-                  Email me a copy when a customer completes a free order (total = 0).
-                </ToggleDescription>
-              </div>
-            </ToggleLabel>
-            <Switch
-              $on={freeOn}
-              type="button"
-              onClick={() => !saving && handleToggle("notify_on_free_order", !freeOn)}
-              disabled={saving}
-              aria-pressed={freeOn}
-              aria-label="Toggle free order emails"
             />
           </ToggleRow>
           {(message || saving) && (

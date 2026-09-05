@@ -2,13 +2,14 @@
  * @fileoverview Admin emails for order copies and support ticket notifications.
  * @module lib/admin-order-email-copy
  *
- * Used by Stripe webhook, payment-intent (free orders), and support ticket correspondence.
+ * Used by Stripe webhook (paid order confirmation copies) and support ticket correspondence.
+ * Free orders never notify admins.
  */
 
 import { createSupabaseServiceRole } from "@/utils/supabase/service";
 
 /**
- * Fetches all admin user emails (from admins table + profiles).
+ * @brief Fetches all admin user emails (from admins table + profiles).
  * Used for support ticket notifications so all admins receive correspondence.
  * @returns Array of admin email addresses (no duplicates)
  */
@@ -31,29 +32,25 @@ export async function getAdminEmails(): Promise<string[]> {
 }
 
 /**
- * Fetches admin emails that should receive a copy of the order confirmation.
+ * @brief Fetches admin emails that opted in to paid-order confirmation copies.
  * @param isPaidOrder - true when order total > 0
- * @param isFreeOrder - true when order total === 0
  * @returns Array of admin email addresses (no duplicates)
+ * @note Free orders never notify admins, regardless of stored preferences.
+ * @example
+ * const emails = await getAdminEmailsForOrderCopy(amountTotal > 0);
  */
 export async function getAdminEmailsForOrderCopy(
-  isPaidOrder: boolean,
-  isFreeOrder: boolean
+  isPaidOrder: boolean
 ): Promise<string[]> {
-  if (!isPaidOrder && !isFreeOrder) return [];
+  if (!isPaidOrder) return [];
   const supabase = await createSupabaseServiceRole();
   const { data: rows, error } = await supabase
     .from("admin_notification_preferences")
-    .select("user_id, notify_on_paid_order, notify_on_free_order")
-    .or("notify_on_paid_order.eq.true,notify_on_free_order.eq.true");
+    .select("user_id, notify_on_paid_order")
+    .eq("notify_on_paid_order", true);
 
   if (error || !rows?.length) return [];
-  const wantCopy = rows.filter(
-    (r) =>
-      (isPaidOrder && r.notify_on_paid_order) ||
-      (isFreeOrder && r.notify_on_free_order)
-  );
-  const userIds = [...new Set(wantCopy.map((r) => r.user_id))];
+  const userIds = [...new Set(rows.map((r) => r.user_id))];
   const { data: profiles } = await supabase
     .from("profiles")
     .select("email")

@@ -20,7 +20,6 @@ import {
   buildOrderConfirmationText,
   type OrderLineItem as ConfirmationLineItem,
 } from "@/utils/order-confirmation-email";
-import { getAdminEmailsForOrderCopy } from "@/lib/admin-order-email-copy";
 import { findOrCreateCustomer } from "@/utils/stripe/actions";
 import { normalizePurchaseEmail } from "@/utils/stripe/link-purchases-to-user";
 import { repriceShopCartLines, RepriceError, type PricedLine } from "@/utils/checkout/reprice-cart";
@@ -353,25 +352,6 @@ export async function POST(request: NextRequest) {
         console.log('[payment-intent] Free order confirmation email sent to', email);
       } else {
         console.error('[payment-intent] Free order confirmation email failed:', result.error);
-      }
-      const adminEmails = await getAdminEmailsForOrderCopy(false, true);
-      const subject = 'Your order confirmation – NNAud.io';
-      const html = buildOrderConfirmationHtml(data);
-      const text = buildOrderConfirmationText(data);
-      for (const adminEmail of adminEmails) {
-        const adminResult = await sendEmail({
-          to: adminEmail,
-          subject,
-          html,
-          text,
-          from: 'NNAudio Support <support@nnaud.io>',
-          replyTo: 'support@nnaud.io',
-        });
-        if (adminResult.success) {
-          console.log('[payment-intent] Free order confirmation copy sent to admin', adminEmail);
-        } else {
-          console.error('[payment-intent] Free order copy to admin failed:', adminResult.error);
-        }
       }
 
       return NextResponse.json({
