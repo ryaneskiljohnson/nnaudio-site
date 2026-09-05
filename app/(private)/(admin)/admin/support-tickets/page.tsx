@@ -176,6 +176,11 @@ const FiltersSection = styled.div`
   padding: 1.5rem;
   margin-bottom: 2rem;
   border: 1px solid rgba(255, 255, 255, 0.05);
+
+  @media (max-width: 768px) {
+    padding: 0.9rem;
+    margin-bottom: 1rem;
+  }
 `;
 
 const FiltersRow = styled.div`
@@ -186,7 +191,18 @@ const FiltersRow = styled.div`
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 0.75rem;
+  }
+`;
+
+const FilterActionsRow = styled.div`
+  display: contents;
+
+  @media (max-width: 768px) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: stretch;
   }
 `;
 
@@ -213,6 +229,10 @@ const SearchInput = styled.input`
   &::placeholder {
     color: var(--text-secondary);
   }
+
+  @media (max-width: 768px) {
+    font-size: 16px;
+  }
 `;
 
 const SearchIcon = styled.div`
@@ -234,6 +254,12 @@ const FilterSelect = styled.select`
   min-width: 150px;
   cursor: pointer;
 
+  @media (max-width: 768px) {
+    min-width: 0;
+    width: 100%;
+    font-size: 16px;
+  }
+
   &:focus {
     outline: none;
     border-color: var(--primary);
@@ -245,7 +271,7 @@ const FilterSelect = styled.select`
   }
 `;
 
-const ActionButton = styled.button<{ $variant?: 'primary' | 'secondary' | 'success' }>`
+const ActionButton = styled.button<{ $variant?: 'primary' | 'secondary' | 'success' | 'danger' }>`
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -268,6 +294,24 @@ const ActionButton = styled.button<{ $variant?: 'primary' | 'secondary' | 'succe
             box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
           }
         `;
+      case 'secondary':
+        return `
+          background: rgba(255, 255, 255, 0.08);
+          color: var(--text);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          &:hover {
+            background: rgba(255, 255, 255, 0.12);
+          }
+        `;
+      case 'danger':
+        return `
+          background: rgba(231, 76, 60, 0.16);
+          color: #ff8a80;
+          border: 1px solid rgba(231, 76, 60, 0.35);
+          &:hover {
+            background: rgba(231, 76, 60, 0.24);
+          }
+        `;
       case 'primary':
       default:
         return `
@@ -284,6 +328,12 @@ const ActionButton = styled.button<{ $variant?: 'primary' | 'secondary' | 'succe
   svg {
     font-size: 0.9rem;
   }
+
+  @media (max-width: 768px) {
+    min-height: 44px;
+    justify-content: center;
+    padding: 12px 14px;
+  }
 `;
 
 const TableContainer = styled.div`
@@ -297,6 +347,14 @@ const TableContainer = styled.div`
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   scrollbar-gutter: stable;
+
+  @media (max-width: 768px) {
+    background: none;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    scrollbar-gutter: auto;
+  }
 `;
 
 const Table = styled.table`
@@ -709,6 +767,15 @@ const Pagination = styled.div`
   padding: 1rem;
   background-color: rgba(255, 255, 255, 0.02);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.85rem 0 0;
+    background: none;
+    border-top: none;
+  }
 `;
 
 const PaginationInfo = styled.div`
@@ -720,6 +787,12 @@ const PaginationButtons = styled.div`
   display: flex;
   gap: 0.5rem;
   margin-left: auto;
+
+  @media (max-width: 768px) {
+    margin-left: 0;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 `;
 
 const PaginationEllipsis = styled.span`
@@ -980,6 +1053,12 @@ const JumpToCurrentButton = styled.button<{ $visible: boolean }>`
 const MessageInputWrapper = styled.div`
   position: relative;
   width: 100%;
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+
+  @media (max-width: 768px) {
+    padding: 0.55rem 0 0;
+  }
 `;
 
 const Message = styled.div<{ $isAdmin?: boolean }>`
@@ -997,6 +1076,10 @@ const Message = styled.div<{ $isAdmin?: boolean }>`
     width: fit-content;
     max-width: 75%;
   `}
+
+  @media (max-width: 768px) {
+    max-width: 92%;
+  }
 `;
 
 const MessageAvatar = styled.div<{ $isAdmin?: boolean }>`
@@ -1155,6 +1238,13 @@ const MessageInput = styled.div`
   background-color: rgba(255, 255, 255, 0.02);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.7rem;
+    gap: 0.55rem;
+  }
 `;
 
 const MessageTextArea = styled.textarea`
@@ -1179,12 +1269,23 @@ const MessageTextArea = styled.textarea`
   &::placeholder {
     color: var(--text-secondary);
   }
+
+  @media (max-width: 768px) {
+    font-size: 16px;
+    min-height: 72px;
+    width: 100%;
+    border-radius: 12px;
+  }
 `;
 
 const MessageActions = styled.div`
   display: flex;
   gap: 0.5rem;
   align-items: center;
+
+  @media (max-width: 768px) {
+    justify-content: flex-end;
+  }
 `;
 
 const AttachButton = styled.button`
@@ -1259,8 +1360,8 @@ const ModalOverlay = styled(motion.div)<{ $zIndex?: number }>`
   overscroll-behavior: none;
 
   @media (max-width: 768px) {
-    padding: 10px;
-    align-items: flex-end;
+    padding: 0;
+    align-items: stretch;
   }
 `;
 
@@ -1297,36 +1398,77 @@ const TicketModalContent = styled(motion.div)`
   overscroll-behavior: contain;
 
   @media (max-width: 768px) {
-    width: min(100vw - 16px, 520px);
-    height: 85dvh;
-    max-height: 95vh;
-    padding: 1rem;
-    border-radius: 8px;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding: 0.75rem 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+    border-radius: 0;
+    border: none;
   }
 `;
 
-const ConversationHeaderGrid = styled.div`
+const ConversationHeaderGrid = styled.div<{ $open?: boolean }>`
   display: grid;
   grid-template-columns: auto 1fr auto auto auto auto;
   gap: 1rem;
   width: 100%;
 
   @media (max-width: 768px) {
+    display: ${(props) => (props.$open ? "grid" : "none")};
     grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
-    
-    > div:nth-child(3),
-    > div:nth-child(4),
-    > div:nth-child(5),
-    > div:nth-child(6) {
-      grid-column: span 1;
+    padding-top: 0.75rem;
+
+    > div:nth-child(1),
+    > div:nth-child(2) {
+      display: none;
     }
   }
+`;
 
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
+const TicketMetaToggle = styled.button`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
   }
+`;
+
+const DesktopOnly = styled.div`
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+const MobileOnly = styled.div`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: block;
+  }
+`;
+
+const MobileStatusSelect = styled.select`
+  max-width: 100%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
 `;
 
 const ModalHeader = styled.div`
@@ -1340,6 +1482,8 @@ const ModalHeader = styled.div`
 
   @media (max-width: 768px) {
     align-items: flex-start;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
   }
 `;
 
@@ -1356,7 +1500,14 @@ const ModalTitle = styled.h2`
   }
 
   @media (max-width: 768px) {
-    font-size: 1.2rem;
+    font-size: 1.05rem;
+    line-height: 1.3;
+    min-width: 0;
+    display: block;
+
+    svg {
+      display: none;
+    }
   }
 `;
 
@@ -1444,6 +1595,11 @@ const DeleteModalActions = styled.div`
   display: flex;
   gap: 1rem;
   justify-content: center;
+
+  @media (max-width: 768px) {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
 `;
 
 const AIModalContent = styled(motion.div)`
@@ -1939,6 +2095,7 @@ function SupportTicketsPage() {
   const [statusDropdownPosition, setStatusDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const [moreMenuPosition, setMoreMenuPosition] = useState<{ top: number; right: number } | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [ticketMetaOpen, setTicketMetaOpen] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [isScrolledUp, setIsScrolledUp] = useState<Map<string, boolean>>(new Map());
   const messagesContainerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -2497,6 +2654,7 @@ function SupportTicketsPage() {
   };
 
   const openTicketModal = (ticketId: string) => {
+    setTicketMetaOpen(false);
     setSelectedTicketId(ticketId);
     // Load ticket details if not already loaded
     if (!ticketDetails.has(ticketId)) {
@@ -3340,12 +3498,13 @@ function SupportTicketsPage() {
               </SearchIcon>
               <SearchInput
                 type="text"
-                placeholder={t("admin.supportTickets.searchPlaceholder", "Search tickets by subject, user, or ticket ID...")}
+                placeholder="Search tickets..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </SearchContainer>
             
+            <FilterActionsRow>
             <FilterSelect
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -3361,6 +3520,7 @@ function SupportTicketsPage() {
               <FaPlus />
               {t("admin.supportTickets.createTicket", "Create Ticket")}
             </ActionButton>
+            </FilterActionsRow>
           </FiltersRow>
         </FiltersSection>
 
@@ -3649,64 +3809,121 @@ function SupportTicketsPage() {
                         title={ticket.subject}
                         subtitle={ticket.ticket_number}
                         badge={
-                          <StatusBadge $status={ticket.status}>
-                            {getStatusIcon(ticket.status)}
-                            {t(
-                              `admin.supportTickets.filters.${ticket.status}`,
-                              ticket.status
-                            )}
-                          </StatusBadge>
+                          supportTicketNeedsReply(
+                            ticket.awaiting_admin_response,
+                            ticket.status
+                          ) ? (
+                            <AwaitingResponseBadge>
+                              <FaBell />
+                              Needs reply
+                            </AwaitingResponseBadge>
+                          ) : (
+                            <StatusBadge $status={ticket.status}>
+                              {getStatusIcon(ticket.status)}
+                              {t(
+                                `admin.supportTickets.filters.${ticket.status}`,
+                                ticket.status
+                              )}
+                            </StatusBadge>
+                          )
                         }
                       />
                       <AdminDataCardMeta
                         items={[
                           {
                             label: "Products",
-                            value: ticket.user_product_count ?? "—",
+                            value: renderEnrichmentCount(
+                              ticket,
+                              ticket.user_product_count,
+                              ProductsCountLink,
+                              openProductsDialog,
+                            ),
                           },
                           {
                             label: "Orders",
-                            value: ticket.user_order_count ?? "—",
+                            value: renderEnrichmentCount(
+                              ticket,
+                              ticket.user_order_count,
+                              OrdersCountLink,
+                              openOrdersDialog,
+                            ),
                           },
                         ]}
                       />
                       <AdminDataCardRow
                         label="User"
-                        value={ticket.user_email || "Unknown"}
+                        value={
+                          ticket.user_id ? (
+                            <TicketUser
+                              onClick={(event) => handleViewUser(ticket.user_id, event)}
+                            >
+                              {ticket.user_email || "Unknown"}
+                            </TicketUser>
+                          ) : (
+                            ticket.user_email || "Unknown"
+                          )
+                        }
                       />
                       <AdminDataCardRow
                         label="Created"
                         value={formatDate(ticket.created_at)}
                       />
-                      {supportTicketNeedsReply(
-                        ticket.awaiting_admin_response,
-                        ticket.status
-                      ) ? (
-                        <AdminDataCardRow
-                          label="Alert"
-                          value="Needs reply"
-                        />
-                      ) : null}
+                      <AdminDataCardRow
+                        label="Status"
+                        value={
+                          <MobileStatusSelect
+                            value={
+                              ticket.status === "inProgress"
+                                ? "in_progress"
+                                : ticket.status
+                            }
+                            onClick={(event) => event.stopPropagation()}
+                            onChange={(event) =>
+                              handleStatusChange(
+                                ticket.id,
+                                event.target.value as
+                                  | "open"
+                                  | "in_progress"
+                                  | "resolved"
+                                  | "closed"
+                              )
+                            }
+                          >
+                            <option value="open">Open</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="closed">Closed</option>
+                          </MobileStatusSelect>
+                        }
+                      />
                       <AdminDataCardActions>
+                        {supportTicketNeedsReply(
+                          ticket.awaiting_admin_response,
+                          ticket.status
+                        ) ? (
+                          <ActionButton
+                            $variant="secondary"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleMoreMenuAction("dismiss", ticket);
+                            }}
+                            disabled={dismissingTicketId === ticket.id}
+                          >
+                            <FaBell />
+                            {dismissingTicketId === ticket.id
+                              ? "Dismissing..."
+                              : "Dismiss"}
+                          </ActionButton>
+                        ) : null}
                         <ActionButton
-                          $variant="secondary"
+                          $variant="danger"
                           onClick={(event) => {
                             event.stopPropagation();
-                            openTicketModal(ticket.id);
+                            void handleMoreMenuAction("delete", ticket);
                           }}
                         >
-                          <FaEye />
-                          View
-                        </ActionButton>
-                        <ActionButton
-                          $variant="secondary"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleMoreMenuClick(ticket.id, event);
-                          }}
-                        >
-                          <FaEllipsisV />
-                          More
+                          <FaTrash />
+                          Delete
                         </ActionButton>
                       </AdminDataCardActions>
                     </AdminDataCard>
@@ -4071,10 +4288,21 @@ function SupportTicketsPage() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <ModalHeader>
-                    <ModalTitle>
-                      <FaTicketAlt />
-                      {ticket.subject}
-                    </ModalTitle>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <ModalTitle>
+                        <FaTicketAlt />
+                        {ticket.subject}
+                      </ModalTitle>
+                      <div
+                        style={{
+                          marginTop: "0.25rem",
+                          fontSize: "0.8rem",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        {ticket.ticket_number}
+                      </div>
+                    </div>
                     <div
                       style={{
                         display: "flex",
@@ -4084,14 +4312,16 @@ function SupportTicketsPage() {
                       }}
                     >
                       {ticket.user_email?.trim() ? (
-                        <NfrManageButton
-                          type="button"
-                          style={{ marginTop: 0 }}
-                          onClick={() => openNfrForTicketEmail(ticket.user_email!)}
-                        >
-                          <FaGift />
-                          Manage NFR&apos;s
-                        </NfrManageButton>
+                        <DesktopOnly>
+                          <NfrManageButton
+                            type="button"
+                            style={{ marginTop: 0 }}
+                            onClick={() => openNfrForTicketEmail(ticket.user_email!)}
+                          >
+                            <FaGift />
+                            Manage NFR&apos;s
+                          </NfrManageButton>
+                        </DesktopOnly>
                       ) : null}
                       <CloseButton onClick={closeTicketModal}>
                         <FaTimes />
@@ -4118,8 +4348,16 @@ function SupportTicketsPage() {
                       </div>
                     ) : (
                       <>
-                        <ConversationHeader style={{ padding: '0 1rem 1rem 1rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', flexShrink: 0 }}>
-                          <ConversationHeaderGrid>
+                        <ConversationHeader style={{ padding: '0 0 0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', flexShrink: 0 }}>
+                          <TicketMetaToggle
+                            type="button"
+                            onClick={() => setTicketMetaOpen((open) => !open)}
+                            aria-expanded={ticketMetaOpen}
+                          >
+                            <span>{ticketMetaOpen ? "Hide ticket details" : "Ticket details"}</span>
+                            {ticketMetaOpen ? <FaChevronUp /> : <FaChevronDown />}
+                          </TicketMetaToggle>
+                          <ConversationHeaderGrid $open={ticketMetaOpen}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
                                 {t("admin.supportTickets.ticketTable.id", "Ticket ID")}
@@ -4213,10 +4451,36 @@ function SupportTicketsPage() {
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
                                 {t("admin.supportTickets.ticketTable.status", "Status")}
                               </div>
-                              <StatusBadge $status={ticket.status}>
-                                {getStatusIcon(ticket.status)}
-                                {t(`admin.supportTickets.filters.${ticket.status}`, ticket.status)}
-                              </StatusBadge>
+                              <DesktopOnly>
+                                <StatusBadge $status={ticket.status}>
+                                  {getStatusIcon(ticket.status)}
+                                  {t(`admin.supportTickets.filters.${ticket.status}`, ticket.status)}
+                                </StatusBadge>
+                              </DesktopOnly>
+                              <MobileOnly>
+                                <MobileStatusSelect
+                                  value={
+                                    ticket.status === "inProgress"
+                                      ? "in_progress"
+                                      : ticket.status
+                                  }
+                                  onChange={(event) =>
+                                    handleStatusChange(
+                                      ticket.id,
+                                      event.target.value as
+                                        | "open"
+                                        | "in_progress"
+                                        | "resolved"
+                                        | "closed"
+                                    )
+                                  }
+                                >
+                                  <option value="open">Open</option>
+                                  <option value="in_progress">In Progress</option>
+                                  <option value="resolved">Resolved</option>
+                                  <option value="closed">Closed</option>
+                                </MobileStatusSelect>
+                              </MobileOnly>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>
@@ -4226,6 +4490,23 @@ function SupportTicketsPage() {
                                 {formatDate(ticket.created_at)}
                               </div>
                             </div>
+                            {ticket.user_email?.trim() ? (
+                              <MobileOnly>
+                                <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600 }}>
+                                    NFR
+                                  </div>
+                                  <NfrManageButton
+                                    type="button"
+                                    style={{ marginTop: 0 }}
+                                    onClick={() => openNfrForTicketEmail(ticket.user_email!)}
+                                  >
+                                    <FaGift />
+                                    Manage NFR&apos;s
+                                  </NfrManageButton>
+                                </div>
+                              </MobileOnly>
+                            ) : null}
                           </ConversationHeaderGrid>
                         </ConversationHeader>
 
@@ -4416,7 +4697,7 @@ function SupportTicketsPage() {
                           )}
                         </div>
 
-                        <MessageInputWrapper style={{ padding: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.1)', flexShrink: 0 }}>
+                        <MessageInputWrapper style={{ flexShrink: 0 }}>
                           {selectedTicketId && (
                             <SupportReplyTranslate
                               draftText={newMessages[selectedTicketId] || ""}
